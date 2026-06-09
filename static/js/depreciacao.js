@@ -40,6 +40,16 @@ function limparResumo() {
   mostrarAuditoriaArea(false);
 }
 
+function resetarFluxoDepreciacao() {
+  ultimoResumoDepreciacao = null;
+  mostrarResultadoArea(false);
+  mostrarAuditoriaArea(false);
+  atualizarFeedbackCalculo("", 0, false);
+  atualizarStatusResultado("Aguardando seleção do veículo.", "muted");
+  limparResumo();
+}
+window.resetarFluxoDepreciacao = resetarFluxoDepreciacao;
+
 function configurarBotoesResultado(curvaEncontrada, podeCalcularFuturo) {
   const btnDetalhes = document.getElementById("btn_ver_detalhes");
   const btnCalcular = document.getElementById("btn_calcular_futuro");
@@ -620,7 +630,7 @@ function renderizarGraficoBarrasResultado(data) {
     value.textContent = formatarMoedaBR(item.valor);
     const bar = document.createElement("div");
     bar.className = "bar-chart-bar";
-    bar.style.height = `${Math.max(12, (item.valor / max) * 230)}px`;
+    bar.style.height = `${Math.max(12, (item.valor / max) * 250)}px`;
     const label = document.createElement("div");
     label.className = "bar-chart-label";
     label.textContent = item.label;
@@ -757,7 +767,7 @@ function renderizarGraficoBarras(atual, futuro) {
     value.textContent = formatarMoedaBR(item.valor);
     const bar = document.createElement("div");
     bar.className = "bar-chart-bar";
-    bar.style.height = `${Math.max(10, (item.valor / max) * 210)}px`;
+    bar.style.height = `${Math.max(10, (item.valor / max) * 250)}px`;
     const label = document.createElement("div");
     label.className = "bar-chart-label";
     label.textContent = item.label;

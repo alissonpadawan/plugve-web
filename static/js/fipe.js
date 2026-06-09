@@ -34,11 +34,49 @@ function anoNumeroFipe(codigoAno, nomeAno) {
 }
 
 function anoPermitidoNaTela(item) {
-  const tipo = document.getElementById("tipo_veiculo")?.value || "auto";
-  if (tipo !== "combustao") return true;
+  // Regra metodológica do PlugVE: a interface só trabalha com Zero km ou ano/modelo >= 2012.
+  // Isso evita poluir a análise com veículos obsoletos e versões sem relevância comparativa atual.
   if (codigoAnoFipeZeroKm(item.codigo)) return true;
   const ano = anoNumeroFipe(item.codigo, item.nome);
-  return ano === null || ano >= 2012;
+  return ano !== null && ano >= 2012;
+}
+
+function obterTextoSelecionado(select) {
+  if (!select || select.selectedIndex < 0) return "";
+  return select.options[select.selectedIndex]?.dataset?.nome || select.options[select.selectedIndex]?.textContent || "";
+}
+
+async function bloquearModeloAntigoSemAnoValido(marca, modelo, anosOriginais) {
+  if (!marca?.value || !modelo?.value) return;
+  const nomeModelo = obterTextoSelecionado(modelo);
+  const nomeMarca = obterTextoSelecionado(marca);
+  try {
+    await fetch("/api/fipe/bloquear_modelo", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        codigo_marca: marca.value,
+        codigo_modelo: modelo.value,
+        marca: nomeMarca,
+        modelo: nomeModelo,
+        motivo: "sem_ano_2012_ou_zero_km",
+        anos_encontrados: (anosOriginais || []).map(a => a.nome || a.codigo).slice(0, 80)
+      })
+    });
+  } catch (e) {
+    // Se não conseguir salvar o bloqueio, a tela ainda continua funcionando.
+  }
+
+  const opt = modelo.options[modelo.selectedIndex];
+  if (opt) opt.remove();
+  modelo.value = "";
+  limparSelect(document.getElementById("fipe_ano"), "Selecione outro modelo");
+  ultimoDetalheFipe = null;
+  if (typeof window.resetarFluxoDepreciacao === "function") window.resetarFluxoDepreciacao();
+  if (typeof atualizarStatusResultado === "function") {
+    atualizarStatusResultado(`Modelo ocultado: não possui versão Zero km nem ano/modelo de 2012 em diante.`, "erro");
+    mostrarResultadoArea(true);
+  }
 }
 
 function limparValorMonetario(valorBruto) {
@@ -87,7 +125,8 @@ async function carregarModelosFipe() {
   }
 
   try {
-    const resp = await fetch(`/api/fipe/modelos?codigo_marca=${encodeURIComponent(marca.value)}`);
+    const tipo = document.getElementById("tipo_veiculo")?.value || "auto";
+    const resp = await fetch(`/api/fipe/modelos?codigo_marca=${encodeURIComponent(marca.value)}&tipo=${encodeURIComponent(tipo)}`);
     const data = await resp.json();
     limparSelect(modelo, "Selecione");
     (data.modelos || []).forEach(item => {
@@ -120,8 +159,15 @@ async function carregarAnosFipe() {
     const url = `/api/fipe/anos?codigo_marca=${encodeURIComponent(marca.value)}&codigo_modelo=${encodeURIComponent(modelo.value)}`;
     const resp = await fetch(url);
     const anos = await resp.json();
-    limparSelect(ano, "Selecione");
-    anos.filter(anoPermitidoNaTela).forEach(item => {
+    const anosElegiveis = Array.isArray(anos) ? anos.filter(anoPermitidoNaTela) : [];
+    limparSelect(ano, anosElegiveis.length ? "Selecione" : "Sem anos elegíveis");
+
+    if (!anosElegiveis.length) {
+      await bloquearModeloAntigoSemAnoValido(marca, modelo, Array.isArray(anos) ? anos : []);
+      return;
+    }
+
+    anosElegiveis.forEach(item => {
       const opt = document.createElement("option");
       opt.value = item.codigo;
       opt.textContent = textoAnoFipeParaTela(item.codigo, item.nome);
@@ -182,7 +228,15 @@ function atualizarCardVeiculo(detalhe) {
 document.addEventListener("DOMContentLoaded", () => {
   carregarMarcasFipe();
 
-  document.getElementById("fipe_marca")?.addEventListener("change", carregarModelosFipe);
-  document.getElementById("fipe_modelo")?.addEventListener("change", carregarAnosFipe);
+  document.getElementById("fipe_marca")?.addEventListener("change", () => {
+    ultimoDetalheFipe = null;
+    if (typeof window.resetarFluxoDepreciacao === "function") window.resetarFluxoDepreciacao();
+    carregarModelosFipe();
+  });
+  document.getElementById("fipe_modelo")?.addEventListener("change", () => {
+    ultimoDetalheFipe = null;
+    if (typeof window.resetarFluxoDepreciacao === "function") window.resetarFluxoDepreciacao();
+    carregarAnosFipe();
+  });
   document.getElementById("fipe_ano")?.addEventListener("change", consultarPrecoFipe);
 });

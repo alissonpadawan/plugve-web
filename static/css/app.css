@@ -854,3 +854,78 @@ select, input {
     grid-template-columns: 1fr;
   }
 }
+
+/* V23.2 - gráficos estáveis e filtro progressivo FIPE */
+.auditoria-final .graph-grid {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+  gap: 22px;
+  align-items: stretch;
+}
+.auditoria-final .chart-card {
+  min-width: 0;
+  min-height: 560px;
+  display: flex;
+  flex-direction: column;
+}
+.auditoria-final .simple-chart {
+  width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
+  overflow: hidden !important;
+  flex: 1;
+}
+.auditoria-final #grafico_barras,
+.auditoria-final #grafico_projecao {
+  min-height: 420px;
+}
+.auditoria-final .bar-chart-grid {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: end;
+  justify-items: center;
+  gap: clamp(8px, 2vw, 24px);
+  width: 100%;
+  overflow: hidden !important;
+  padding: 10px 2px 0;
+}
+.auditoria-final .bar-chart-item {
+  min-width: 0 !important;
+  width: 100%;
+  max-width: none;
+  height: 300px;
+}
+.auditoria-final .bar-chart-value {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+}
+.auditoria-final .bar-chart-label {
+  max-width: 100%;
+  font-size: 13px;
+}
+.auditoria-final .bar-chart-bar {
+  width: clamp(42px, 42%, 76px) !important;
+}
+.auditoria-final .line-chart-svg {
+  width: 100%;
+  min-height: 315px;
+  max-height: 380px;
+}
+.auditoria-final .projection-summary {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.auditoria-final .projection-summary strong {
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 1180px) {
+  .auditoria-final .graph-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .auditoria-final .chart-card {
+    min-height: auto;
+  }
+}

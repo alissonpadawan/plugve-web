@@ -39,6 +39,25 @@ def anos():
         return jsonify({"erro": str(exc)}), 500
 
 
+@fipe_bp.route("/bloquear_modelo", methods=["POST"])
+def bloquear_modelo():
+    payload = request.get_json(silent=True) or {}
+    codigo_marca = str(payload.get("codigo_marca", "")).strip()
+    codigo_modelo = str(payload.get("codigo_modelo", "")).strip()
+    if not codigo_marca or not codigo_modelo:
+        return jsonify({"ok": False, "erro": "Parâmetros incompletos."}), 400
+    try:
+        return jsonify(fipe_service.bloquear_modelo_antigo(
+            codigo_marca=codigo_marca,
+            codigo_modelo=codigo_modelo,
+            nome_marca=str(payload.get("marca", "")).strip(),
+            nome_modelo=str(payload.get("modelo", "")).strip(),
+            motivo=str(payload.get("motivo", "sem_ano_2012_ou_zero_km")).strip(),
+        ))
+    except Exception as exc:
+        return jsonify({"ok": False, "erro": str(exc)}), 500
+
+
 @fipe_bp.route("/preco")
 def preco():
     codigo_marca = request.args.get("codigo_marca", "").strip()
