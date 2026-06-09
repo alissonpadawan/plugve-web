@@ -26,6 +26,21 @@ function textoAnoFipeParaTela(codigoAno, textoOriginal) {
   return textoOriginal || "";
 }
 
+
+function anoNumeroFipe(codigoAno, nomeAno) {
+  const bruto = String(codigoAno || nomeAno || "");
+  const m = bruto.match(/(19|20)\d{2}/);
+  return m ? Number(m[0]) : null;
+}
+
+function anoPermitidoNaTela(item) {
+  const tipo = document.getElementById("tipo_veiculo")?.value || "auto";
+  if (tipo !== "combustao") return true;
+  if (codigoAnoFipeZeroKm(item.codigo)) return true;
+  const ano = anoNumeroFipe(item.codigo, item.nome);
+  return ano === null || ano >= 2012;
+}
+
 function limparValorMonetario(valorBruto) {
   if (!valorBruto) return 0;
   let s = String(valorBruto).replace("R$", "").trim();
@@ -106,7 +121,7 @@ async function carregarAnosFipe() {
     const resp = await fetch(url);
     const anos = await resp.json();
     limparSelect(ano, "Selecione");
-    anos.forEach(item => {
+    anos.filter(anoPermitidoNaTela).forEach(item => {
       const opt = document.createElement("option");
       opt.value = item.codigo;
       opt.textContent = textoAnoFipeParaTela(item.codigo, item.nome);
@@ -150,13 +165,18 @@ async function consultarPrecoFipe() {
   }
 }
 
+function setTextoSeExistir(id, valor) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = valor;
+}
+
 function atualizarCardVeiculo(detalhe) {
-  document.getElementById("info_marca").textContent = detalhe.marca || "-";
-  document.getElementById("info_modelo").textContent = detalhe.modelo || "-";
-  document.getElementById("info_ano").textContent = detalhe.ano_modelo || "-";
-  document.getElementById("info_combustivel").textContent = detalhe.combustivel || "-";
-  document.getElementById("info_codigo_fipe").textContent = detalhe.codigo_fipe || "-";
-  document.getElementById("info_valor").textContent = detalhe.valor_texto || formatarMoedaBR(detalhe.valor_atual);
+  setTextoSeExistir("info_marca", detalhe.marca || "-");
+  setTextoSeExistir("info_modelo", detalhe.modelo || "-");
+  setTextoSeExistir("info_ano", detalhe.ano_modelo || "-");
+  setTextoSeExistir("info_combustivel", detalhe.combustivel || "-");
+  setTextoSeExistir("info_codigo_fipe", detalhe.codigo_fipe || "-");
+  setTextoSeExistir("info_valor", detalhe.valor_texto || formatarMoedaBR(detalhe.valor_atual));
 }
 
 document.addEventListener("DOMContentLoaded", () => {

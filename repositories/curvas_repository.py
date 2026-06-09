@@ -188,8 +188,10 @@ class CurvasRepository:
         horizonte = max(1, parse_int_seguro(resultado.get("horizonte_anos"), veiculo.horizonte_anos or 5))
         meses = horizonte * 12
         taxa_base = taxa_mensal / 100.0
-        valor_ot = valor_atual * ((1.0 - max(0.0, taxa_base * 0.85)) ** meses) if valor_atual > 0 else 0.0
-        valor_pe = valor_atual * ((1.0 - max(0.0, taxa_base * 1.20)) ** meses) if valor_atual > 0 else 0.0
+        valor_ot_resultado = parse_float_seguro(resultado.get("valor_futuro_otimista"), 0.0)
+        valor_pe_resultado = parse_float_seguro(resultado.get("valor_futuro_pessimista"), 0.0)
+        valor_ot = valor_ot_resultado if valor_ot_resultado > 0 else (valor_atual * ((1.0 - max(0.0, taxa_base * 0.85)) ** meses) if valor_atual > 0 else 0.0)
+        valor_pe = valor_pe_resultado if valor_pe_resultado > 0 else (valor_atual * ((1.0 - max(0.0, taxa_base * 1.20)) ** meses) if valor_atual > 0 else 0.0)
 
         nova_linha = {
             "titulo": resultado.get("veiculo_titulo") or f"{veiculo.marca} {veiculo.modelo} {veiculo.ano_modelo}".strip(),

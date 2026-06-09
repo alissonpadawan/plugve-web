@@ -539,13 +539,8 @@ async function carregarStatusBases() {
 }
 
 function renderizarGraficosDepreciacao(data) {
-  const atual = Number(data?.valor_atual || 0);
-  const futuro = Number(data?.valor_futuro || 0);
-  const taxa = Number(data?.taxa_anual_percentual || 0);
-  const horizonte = Number(data?.horizonte_anos || document.getElementById("horizonte_anos")?.value || 5);
-
-  renderizarGraficoBarras(atual, futuro);
-  renderizarGraficoProjecao(atual, taxa, horizonte);
+  renderizarGraficoBarrasResultado(data);
+  renderizarGraficoProjecaoResultado(data);
 }
 
 
@@ -564,6 +559,168 @@ function calcularCenarios(valorAtual, taxaAnual, horizonte) {
     taxaPessimista,
     horizonte: anos
   };
+}
+
+
+function extrairValorCenario(data, nomes) {
+  const detalhes = data?.detalhes || {};
+  const curva = detalhes.curva || {};
+  for (const nome of nomes) {
+    const valor = data?.[nome] ?? detalhes?.[nome] ?? curva?.[nome];
+    const n = Number(valor);
+    if (Number.isFinite(n) && n > 0) return n;
+  }
+  return 0;
+}
+
+function obterCenariosDoResultado(data) {
+  const atual = Number(data?.valor_atual || 0);
+  const base = Number(data?.valor_futuro || 0);
+  const taxa = Number(data?.taxa_anual_percentual || 0);
+  const horizonte = Number(data?.horizonte_anos || document.getElementById("horizonte_anos")?.value || 5);
+  const calculado = calcularCenarios(atual, taxa, horizonte);
+  return {
+    atual,
+    base: base || calculado.base,
+    otimista: extrairValorCenario(data, ["valor_futuro_otimista"]) || calculado.otimista,
+    pessimista: extrairValorCenario(data, ["valor_futuro_pessimista"]) || calculado.pessimista,
+    taxaBase: calculado.taxaBase,
+    taxaOtimista: calculado.taxaOtimista,
+    taxaPessimista: calculado.taxaPessimista,
+    horizonte
+  };
+}
+
+
+function renderizarGraficoBarrasResultado(data) {
+  const el = document.getElementById("grafico_barras");
+  if (!el) return;
+  el.classList.remove("empty-chart");
+  el.innerHTML = "";
+  const cen = obterCenariosDoResultado(data);
+  if (!cen.atual || !cen.base) {
+    el.classList.add("empty-chart");
+    el.textContent = "Valor futuro ainda não disponível.";
+    return;
+  }
+  const itens = [
+    { label: "Inicial", valor: cen.atual },
+    { label: "Base", valor: cen.base },
+    { label: "Otimista", valor: cen.otimista },
+    { label: "Pessimista", valor: cen.pessimista }
+  ];
+  const max = Math.max(...itens.map(i => i.valor), 1);
+  const chart = document.createElement("div");
+  chart.className = "bar-chart-grid";
+  itens.forEach(item => {
+    const wrap = document.createElement("div");
+    wrap.className = "bar-chart-item";
+    const value = document.createElement("div");
+    value.className = "bar-chart-value";
+    value.textContent = formatarMoedaBR(item.valor);
+    const bar = document.createElement("div");
+    bar.className = "bar-chart-bar";
+    bar.style.height = `${Math.max(12, (item.valor / max) * 230)}px`;
+    const label = document.createElement("div");
+    label.className = "bar-chart-label";
+    label.textContent = item.label;
+    wrap.appendChild(value);
+    wrap.appendChild(bar);
+    wrap.appendChild(label);
+    chart.appendChild(wrap);
+  });
+  el.appendChild(chart);
+}
+
+function renderizarGraficoProjecaoResultado(data) {
+  const el = document.getElementById("grafico_projecao");
+  if (!el) return;
+  el.classList.remove("empty-chart");
+  el.innerHTML = "";
+  const cen = obterCenariosDoResultado(data);
+  if (!cen.atual || !cen.base || !cen.horizonte) {
+    el.classList.add("empty-chart");
+    el.textContent = "Curva ainda não disponível.";
+    return;
+  }
+  const anos = Array.from({ length: Math.max(1, Math.round(cen.horizonte)) + 1 }, (_, i) => i);
+  const taxaBase = 1 - Math.pow(cen.base / cen.atual, 1 / Math.max(1, cen.horizonte));
+  const taxaOt = 1 - Math.pow(cen.otimista / cen.atual, 1 / Math.max(1, cen.horizonte));
+  const taxaPe = 1 - Math.pow(cen.pessimista / cen.atual, 1 / Math.max(1, cen.horizonte));
+  const series = [
+    { nome: "Base", taxa: taxaBase, classe: "base" },
+    { nome: "Otimista", taxa: taxaOt, classe: "otimista" },
+    { nome: "Pessimista", taxa: taxaPe, classe: "pessimista" }
+  ].map(serie => ({
+    ...serie,
+    pontos: anos.map(ano => ({ ano, valor: cen.atual * Math.pow(1 - serie.taxa, ano) }))
+  }));
+
+  const todos = series.flatMap(s => s.pontos.map(p => p.valor)).concat([cen.atual]);
+  const min = Math.min(...todos);
+  const max = Math.max(...todos);
+  const w = 900, h = 360, padL = 86, padR = 36, padT = 30, padB = 52;
+  const x = ano => padL + (ano / Math.max(1, cen.horizonte)) * (w - padL - padR);
+  const y = valor => padT + ((max - valor) / Math.max(1, max - min)) * (h - padT - padB);
+
+  const svgNS = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(svgNS, "svg");
+  svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+  svg.setAttribute("class", "line-chart-svg");
+
+  const axis = document.createElementNS(svgNS, "path");
+  axis.setAttribute("d", `M${padL} ${padT} V${h-padB} H${w-padR}`);
+  axis.setAttribute("class", "chart-axis");
+  svg.appendChild(axis);
+
+  [0, Math.ceil(cen.horizonte / 2), cen.horizonte].forEach(ano => {
+    const t = document.createElementNS(svgNS, "text");
+    t.setAttribute("x", x(ano));
+    t.setAttribute("y", h - 18);
+    t.setAttribute("text-anchor", "middle");
+    t.setAttribute("class", "chart-label-svg");
+    t.textContent = ano === 0 ? "Hoje" : `${ano} anos`;
+    svg.appendChild(t);
+  });
+
+  [max, min].forEach((valor, idx) => {
+    const t = document.createElementNS(svgNS, "text");
+    t.setAttribute("x", padL - 12);
+    t.setAttribute("y", idx === 0 ? padT + 4 : h - padB);
+    t.setAttribute("text-anchor", "end");
+    t.setAttribute("class", "chart-label-svg");
+    t.textContent = formatarMoedaBR(valor).replace(",00", "");
+    svg.appendChild(t);
+  });
+
+  series.forEach(serie => {
+    const d = serie.pontos.map((p, idx) => `${idx === 0 ? "M" : "L"}${x(p.ano).toFixed(1)} ${y(p.valor).toFixed(1)}`).join(" ");
+    const path = document.createElementNS(svgNS, "path");
+    path.setAttribute("d", d);
+    path.setAttribute("class", `line-series ${serie.classe}`);
+    svg.appendChild(path);
+  });
+
+  const legenda = document.createElement("div");
+  legenda.className = "chart-legend";
+  legenda.innerHTML = `
+    <span><b class="dot base"></b>Base</span>
+    <span><b class="dot otimista"></b>Otimista</span>
+    <span><b class="dot pessimista"></b>Pessimista</span>
+  `;
+
+  const tabela = document.createElement("div");
+  tabela.className = "projection-summary";
+  tabela.innerHTML = `
+    <div><span>Valor inicial</span><strong>${formatarMoedaBR(cen.atual)}</strong></div>
+    <div><span>Base final</span><strong>${formatarMoedaBR(cen.base)}</strong></div>
+    <div><span>Otimista final</span><strong>${formatarMoedaBR(cen.otimista)}</strong></div>
+    <div><span>Pessimista final</span><strong>${formatarMoedaBR(cen.pessimista)}</strong></div>
+  `;
+
+  el.appendChild(svg);
+  el.appendChild(legenda);
+  el.appendChild(tabela);
 }
 
 function renderizarGraficoBarras(atual, futuro) {

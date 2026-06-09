@@ -2,10 +2,13 @@ from __future__ import annotations
 
 from typing import Any
 from statistics import median
+import math
+from datetime import datetime
 
 from core.modelos import VeiculoSelecionado, ResumoDepreciacao
 from repositories.curvas_repository import CurvasRepository
 from repositories.historico_repository import HistoricoRepository
+from repositories.ipca_repository import IpcaRepository
 from core.motor_combustao_web import calcular_curva_combustao_por_historico, CalculoCombustaoInvalido
 from services.text_utils import detectar_eletrico, parse_float_seguro, parse_int_seguro
 from services.fipe_historico_service import FipeHistoricoService
@@ -15,6 +18,7 @@ class DepreciacaoService:
     def __init__(self) -> None:
         self.curvas = CurvasRepository()
         self.historico = HistoricoRepository()
+        self.ipca = IpcaRepository()
 
     def status_bases(self) -> dict[str, Any]:
         return self.curvas.status_bases()
@@ -250,7 +254,7 @@ class DepreciacaoService:
         aviso_tipo = self._montar_aviso_tipo(veiculo.tipo, tipo_detectado, tipo)
 
         if tipo == "eletrico":
-            resultado_motor = self._calcular_proxy_tecnico(veiculo, tipo="eletrico")
+            resultado_motor = self._calcular_eletrico_por_historico_ou_proxy(veiculo)
             curva_salva = self.curvas.salvar_curva_eletrica_calculada(veiculo, resultado_motor)
             resumo = self._montar_resumo_calculado(
                 veiculo=veiculo,
@@ -258,7 +262,7 @@ class DepreciacaoService:
                 curva_salva=curva_salva,
                 tipo="eletrico",
                 tipo_label="Elétrico ou híbrido",
-                origem="cálculo sob demanda EV por proxy técnico",
+                origem=str(resultado_motor.get("origem_curva") or "cálculo sob demanda EV"),
                 aviso_tipo=aviso_tipo,
             )
             return {
@@ -351,12 +355,297 @@ class DepreciacaoService:
                 "janela_historica_meses": resultado_motor.get("janela_historica_meses"),
                 "periodo_inicial": resultado_motor.get("periodo_inicial"),
                 "periodo_final": resultado_motor.get("periodo_final"),
+                "valor_futuro_otimista": resultado_motor.get("valor_futuro_otimista"),
+                "valor_futuro_pessimista": resultado_motor.get("valor_futuro_pessimista"),
                 "auditoria_historico": resultado_motor.get("auditoria_historico"),
                 "curva": self._filtrar_curva_para_detalhes(curva_salva),
                 "familia": None,
                 "aviso_tipo": aviso_tipo,
             },
         ).to_dict()
+
+
+    def _calcular_eletrico_por_historico_ou_proxy(self, veiculo: VeiculoSelecionado) -> dict[str, Any]:
+        """Motor EV V23 baseado no painel antigo.
+
+        Fluxo técnico:
+        1. tenta usar histórico próprio do modelo/ano selecionado;
+        2. se não existir série suficiente, usa uma curva EV salva tecnicamente similar;
+        3. aplica a taxa mensal sobre o valor FIPE atual do veículo selecionado;
+        4. considera idade de entrada para suavizar a depreciação ao longo do tempo;
+        5. marca claramente quando o cálculo é próprio ou proxy.
+        """
+        historico, origem_hist, ref = self._buscar_historico_ev_compativel(veiculo)
+        indices = self.ipca.carregar_indices()
+
+        if len(historico) >= 2 and indices:
+            return self._calcular_ev_v21_simplificado(
+                veiculo=veiculo,
+                historico=historico,
+                origem_hist=origem_hist,
+                referencia=ref,
+                indices_ipca=indices,
+            )
+
+        # Último fallback: curva EV salva similar. Não é apresentado como curva própria.
+        return self._calcular_proxy_tecnico(veiculo, tipo="eletrico", auditoria_origem={
+            "motivo": "histórico próprio/similar insuficiente para o motor EV V21",
+            "pontos_historicos_encontrados": len(historico),
+        })
+
+    def _buscar_historico_ev_compativel(self, veiculo: VeiculoSelecionado) -> tuple[list[dict[str, Any]], str, dict[str, Any] | None]:
+        linhas = self.historico.carregar_historico_eletrico()
+        curvas = self.curvas._ler_csv(self.curvas._arquivo_curvas_eletrico())
+        alvo_marca = self._normalizar_local(veiculo.marca)
+        alvo_modelo = self._normalizar_modelo_ev(veiculo.modelo)
+        alvo_tokens = self._tokens_modelo_ev(alvo_modelo)
+
+        def linha_texto(row: dict[str, Any]) -> str:
+            return self._normalizar_modelo_ev(" ".join(str(row.get(k, "") or "") for k in ["titulo", "marca", "modelo", "categoria"]))
+
+        # 1) Histórico próprio por código do modelo, quando existir.
+        codigo_modelo = str(veiculo.codigo_modelo or "").strip()
+        codigo_marca = str(veiculo.codigo_marca or "").strip()
+        proprios = []
+        if codigo_modelo:
+            for row in linhas:
+                if str(row.get("modelo_id", "") or "").strip().replace(".0", "") == codigo_modelo:
+                    if not codigo_marca or str(row.get("marca_id", "") or "").strip().replace(".0", "") == codigo_marca:
+                        proprios.append(row)
+        if len(proprios) >= 2:
+            return self._ordenar_historico_ev(proprios), "histórico próprio do modelo FIPE", None
+
+        # 2) Histórico próprio/aproximado por nome completo.
+        por_nome = []
+        for row in linhas:
+            texto = linha_texto(row)
+            if alvo_marca and alvo_marca not in texto:
+                continue
+            if alvo_modelo and (alvo_modelo in texto or texto in alvo_modelo):
+                por_nome.append(row)
+        if len(por_nome) >= 2:
+            return self._ordenar_historico_ev(por_nome), "histórico próprio por nome FIPE", None
+
+        # 3) Histórico similar por família/token, evitando usar Mini quando o alvo não é Mini.
+        melhor_score = 0
+        melhor_titulo = ""
+        for row in linhas:
+            texto = linha_texto(row)
+            score = self._score_similaridade_ev(alvo_marca, alvo_modelo, alvo_tokens, texto)
+            if score > melhor_score:
+                melhor_score = score
+                melhor_titulo = str(row.get("titulo", "") or "").strip()
+        if melhor_score >= 38 and melhor_titulo:
+            similares = [r for r in linhas if str(r.get("titulo", "") or "").strip() == melhor_titulo]
+            if len(similares) >= 2:
+                ref = {"titulo": melhor_titulo, "score": melhor_score}
+                return self._ordenar_historico_ev(similares), f"proxy por histórico EV similar: {melhor_titulo}", ref
+
+        # 4) Se não há histórico, usa a melhor curva salva como referência para extrair taxa.
+        referencia, score = self._escolher_curva_referencia(curvas, veiculo, "eletrico")
+        if referencia:
+            ref_titulo = str(referencia.get("titulo") or referencia.get("modelo") or "curva EV similar")
+            return [], f"proxy por curva EV similar: {ref_titulo}", {**referencia, "score": score}
+        return [], "histórico EV não encontrado", None
+
+    @staticmethod
+    def _ordenar_historico_ev(linhas: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        saida = []
+        for row in linhas:
+            data = str(row.get("data_referencia", "") or "").strip()[:7]
+            valor = parse_float_seguro(row.get("valor_fipe"), 0.0)
+            if data and valor > 0:
+                novo = dict(row)
+                novo["data_referencia"] = data
+                novo["valor_fipe"] = valor
+                saida.append(novo)
+        saida.sort(key=lambda r: r["data_referencia"])
+        return saida
+
+    @staticmethod
+    def _normalizar_modelo_ev(valor: Any) -> str:
+        texto = str(valor or "")
+        for termo in ["(elétrico)", "(eletrico)", "elétrico", "eletrico", "ev", "zero km", "0 km", "híbrido", "hibrido"]:
+            texto = texto.replace(termo, " ").replace(termo.upper(), " ").replace(termo.title(), " ")
+        try:
+            from services.text_utils import normalizar_texto
+            return normalizar_texto(texto)
+        except Exception:
+            return texto.lower().strip()
+
+    @staticmethod
+    def _tokens_modelo_ev(modelo_norm: str) -> set[str]:
+        stop = {"plus", "mini", "pro", "ev", "gl", "gs", "aut", "mec", "16v", "12v", "eletrico", "hibrido", "zero", "km"}
+        return {t for t in str(modelo_norm or "").split() if len(t) >= 3 and t not in stop}
+
+    def _score_similaridade_ev(self, marca: str, modelo: str, tokens: set[str], texto: str) -> int:
+        score = 0
+        if marca and marca in texto:
+            score += 25
+        if modelo and modelo in texto:
+            score += 70
+        if tokens:
+            score += min(45, sum(1 for t in tokens if t in texto) * 22)
+        # Penaliza família errada conhecida.
+        if "mini" in texto and "mini" not in modelo:
+            score -= 20
+        if "plus" in texto and "plus" not in modelo:
+            score -= 8
+        return score
+
+    @staticmethod
+    def _resolver_mes_ipca(data_ref: str, indices: dict[str, float]) -> str | None:
+        if data_ref in indices:
+            return data_ref
+        chaves = sorted(indices.keys())
+        anteriores = [k for k in chaves if k <= data_ref]
+        if anteriores:
+            return anteriores[-1]
+        return chaves[0] if chaves else None
+
+    @staticmethod
+    def _meses_entre(data_inicial: str, data_final: str) -> int:
+        d0 = datetime.strptime(str(data_inicial).strip()[:7], "%Y-%m")
+        d1 = datetime.strptime(str(data_final).strip()[:7], "%Y-%m")
+        return max(0, (d1.year - d0.year) * 12 + (d1.month - d0.month))
+
+    @staticmethod
+    def _taxa_mensal_por_intervalo(v0: float, v1: float, meses: int) -> float | None:
+        if v0 <= 0 or v1 <= 0 or meses <= 0:
+            return None
+        razao = v1 / v0
+        if razao <= 0:
+            return None
+        taxa = 1.0 - (razao ** (1.0 / meses))
+        if math.isnan(taxa) or math.isinf(taxa):
+            return None
+        return max(0.0, taxa * 100.0)
+
+    @staticmethod
+    def _fator_taper_idade(idade_meses: int) -> float:
+        idade_anos = max(0.0, float(idade_meses) / 12.0)
+        if idade_anos <= 1.0:
+            return 1.00
+        if idade_anos <= 3.0:
+            return 1.00 - ((idade_anos - 1.0) / 2.0) * 0.15
+        if idade_anos <= 5.0:
+            return 0.85 - ((idade_anos - 3.0) / 2.0) * 0.15
+        if idade_anos <= 8.0:
+            return 0.70 - ((idade_anos - 5.0) / 3.0) * 0.15
+        if idade_anos <= 12.0:
+            return 0.55 - ((idade_anos - 8.0) / 4.0) * 0.10
+        return 0.45
+
+    def _fator_cumulativo_por_idade(self, taxa_mensal_percentual: float, idade_entrada_meses: int, horizonte_meses: int) -> float:
+        taxa_base = max(0.0, float(taxa_mensal_percentual) / 100.0)
+        fator = 1.0
+        for passo in range(max(0, int(horizonte_meses))):
+            idade_mes_atual = max(0, int(idade_entrada_meses)) + passo
+            taxa_mes = max(0.0, taxa_base * self._fator_taper_idade(idade_mes_atual))
+            fator *= (1.0 - taxa_mes)
+        return fator
+
+    @staticmethod
+    def _taxa_anual_efetiva_do_fator(fator: float, horizonte_meses: int) -> float:
+        if horizonte_meses <= 0 or fator <= 0:
+            return 0.0
+        anos = horizonte_meses / 12.0
+        return max(0.0, (1.0 - (float(fator) ** (1.0 / anos))) * 100.0)
+
+    def _calcular_ev_v21_simplificado(
+        self,
+        *,
+        veiculo: VeiculoSelecionado,
+        historico: list[dict[str, Any]],
+        origem_hist: str,
+        referencia: dict[str, Any] | None,
+        indices_ipca: dict[str, float],
+    ) -> dict[str, Any]:
+        hist = self._ordenar_historico_ev(historico)
+        corrigido = []
+        meses_ipca = [self._resolver_mes_ipca(str(x["data_referencia"]), indices_ipca) for x in hist]
+        meses_ipca = [m for m in meses_ipca if m]
+        mes_base = min(meses_ipca) if meses_ipca else None
+        indice_base = indices_ipca.get(mes_base, 0.0) if mes_base else 0.0
+        for item in hist:
+            mes_ipca = self._resolver_mes_ipca(str(item["data_referencia"]), indices_ipca)
+            indice_ref = indices_ipca.get(mes_ipca, 0.0) if mes_ipca else 0.0
+            if not indice_base or not indice_ref:
+                continue
+            novo = dict(item)
+            novo["preco_corrigido"] = float(item["valor_fipe"]) * (indice_base / indice_ref)
+            corrigido.append(novo)
+
+        taxas = []
+        for ant, atual in zip(corrigido[:-1], corrigido[1:]):
+            meses = self._meses_entre(ant["data_referencia"], atual["data_referencia"])
+            taxa = self._taxa_mensal_por_intervalo(float(ant["preco_corrigido"]), float(atual["preco_corrigido"]), meses)
+            if taxa is not None:
+                taxas.append(taxa)
+        if not taxas:
+            return self._calcular_proxy_tecnico(veiculo, tipo="eletrico", auditoria_origem={"motivo": "histórico EV sem taxa válida"})
+
+        taxa_curva = float(median(taxas))
+        taxa_cauda = float(sum(taxas[-min(6, len(taxas)):]) / min(6, len(taxas)))
+        taxa_hibrida = (taxa_curva * 0.60) + (taxa_cauda * 0.40)
+
+        valor_atual = float(veiculo.valor_atual or 0.0)
+        horizonte_anos = max(1, int(veiculo.horizonte_anos or 5))
+        horizonte_meses = horizonte_anos * 12
+        janela_meses = self._meses_entre(hist[0]["data_referencia"], hist[-1]["data_referencia"])
+        data_origem_idade = str(hist[0]["data_referencia"])
+        idade_entrada_meses = self._meses_entre(data_origem_idade, hist[-1]["data_referencia"])
+
+        # Para seleção Zero km, a projeção começa da idade zero. Para usados, ela continua a curva histórica.
+        idade_projecao_meses = 0 if self._veiculo_zero_km(veiculo) or str(veiculo.ano_modelo).lower().startswith("zero") else idade_entrada_meses
+        fator_base = self._fator_cumulativo_por_idade(taxa_hibrida, idade_projecao_meses, horizonte_meses)
+        fator_ot = self._fator_cumulativo_por_idade(taxa_hibrida * 0.85, idade_projecao_meses, horizonte_meses)
+        fator_pe = self._fator_cumulativo_por_idade(taxa_hibrida * 1.25, idade_projecao_meses, horizonte_meses)
+
+        valor_futuro = max(0.0, valor_atual * fator_base)
+        dep_pct = ((valor_atual - valor_futuro) / valor_atual * 100.0) if valor_atual > 0 else 0.0
+        taxa_anual = self._taxa_anual_efetiva_do_fator(fator_base, horizonte_meses)
+
+        pontos = len(hist)
+        if origem_hist.startswith("histórico próprio") and pontos >= 24 and janela_meses >= 24:
+            confianca = "ALTA"
+        elif origem_hist.startswith("histórico próprio") and pontos >= 8:
+            confianca = "MÉDIA"
+        else:
+            confianca = "EXPLORATÓRIA"
+
+        return {
+            "status": "calculado_ev_v21_web",
+            "mensagem": "Curva EV calculada com motor de histórico e salva para reutilização.",
+            "veiculo_titulo": f"{veiculo.marca} {veiculo.modelo} {'Zero km' if self._veiculo_zero_km(veiculo) else veiculo.ano_modelo}".strip(),
+            "valor_atual": round(valor_atual, 2),
+            "valor_futuro": round(valor_futuro, 2),
+            "valor_futuro_otimista": round(max(0.0, valor_atual * fator_ot), 2),
+            "valor_futuro_pessimista": round(max(0.0, valor_atual * fator_pe), 2),
+            "depreciacao_percentual": round(max(0.0, dep_pct), 2),
+            "taxa_anual_percentual": round(taxa_anual, 2),
+            "taxa_mensal_percentual": round(taxa_hibrida, 6),
+            "pontos_historicos": pontos,
+            "janela_historica_meses": janela_meses,
+            "periodo_inicial": hist[0]["data_referencia"],
+            "periodo_final": hist[-1]["data_referencia"],
+            "confianca": confianca,
+            "origem_curva": origem_hist,
+            "tipo_match": "historico_ev_v21_web" if origem_hist.startswith("histórico próprio") else "proxy_ev_v21_web",
+            "horizonte_anos": horizonte_anos,
+            "auditoria_historico": {
+                "metodo_taxa": "motor_ev_v21_historico_ipca_taper_idade",
+                "taxa_mensal_curva_percentual": round(taxa_curva, 6),
+                "taxa_mensal_cauda_percentual": round(taxa_cauda, 6),
+                "taxa_mensal_hibrida_percentual": round(taxa_hibrida, 6),
+                "data_origem_idade": data_origem_idade,
+                "idade_entrada_meses": idade_entrada_meses,
+                "idade_projecao_meses": idade_projecao_meses,
+                "ipca_base": mes_base or "",
+                "referencia": referencia or {},
+                "observacao": "A curva foi estimada a partir de histórico FIPE corrigido por IPCA, com taxa mensal híbrida e suavização por idade conforme o painel EV original.",
+            },
+        }
 
     def _calcular_proxy_tecnico(self, veiculo: VeiculoSelecionado, tipo: str, auditoria_origem: dict[str, Any] | None = None, mensagem_origem: str = "") -> dict[str, Any]:
         """Cálculo seguro por proxy técnico usando as curvas já validadas no painel.

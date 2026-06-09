@@ -814,3 +814,43 @@ select, input {
     grid-template-columns: 1fr;
   }
 }
+
+/* V23.1 - ajuste de fluxo e área gráfica da depreciação */
+.single-summary {
+  display: block;
+}
+.single-summary.hidden {
+  display: none !important;
+}
+.single-summary #card_resultado {
+  width: 100%;
+}
+.resumo-inline {
+  max-width: 760px;
+}
+.auditoria-final .graph-grid {
+  display: grid;
+  grid-template-columns: minmax(360px, .85fr) minmax(520px, 1.35fr);
+  gap: 22px;
+}
+.auditoria-final .chart-card {
+  min-height: 500px;
+}
+.auditoria-final #grafico_projecao {
+  min-height: 430px;
+}
+.auditoria-final #grafico_barras {
+  min-height: 430px;
+}
+.auditoria-final .line-chart-svg {
+  min-height: 310px;
+  max-height: none;
+}
+.auditoria-final .projection-summary {
+  grid-template-columns: repeat(4, minmax(120px, 1fr));
+}
+@media (max-width: 1180px) {
+  .auditoria-final .graph-grid {
+    grid-template-columns: 1fr;
+  }
+}
