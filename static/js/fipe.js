@@ -111,6 +111,8 @@ async function bloquearModeloAntigoSemAnoValido(marca, modelo, anosOriginais) {
   if (!marca?.value || !modelo?.value) return;
   const nomeModelo = obterTextoSelecionado(modelo);
   const nomeMarca = obterTextoSelecionado(marca);
+  const indiceBloqueado = modelo.selectedIndex;
+
   try {
     const resp = await fetch("/api/fipe/bloquear_modelo", {
       method: "POST",
@@ -139,14 +141,33 @@ async function bloquearModeloAntigoSemAnoValido(marca, modelo, anosOriginais) {
     // Se não conseguir salvar o bloqueio, a tela ainda continua funcionando.
   }
 
-  const opt = modelo.options[modelo.selectedIndex];
+  const opt = modelo.options[indiceBloqueado];
   if (opt) opt.remove();
-  modelo.value = "";
-  limparSelect(document.getElementById("fipe_ano"), "Selecione outro modelo");
+
   ultimoDetalheFipe = null;
   if (typeof window.resetarFluxoDepreciacao === "function") window.resetarFluxoDepreciacao();
+
+  const ano = document.getElementById("fipe_ano");
+  const proximoIndice = Math.min(Math.max(indiceBloqueado, 1), modelo.options.length - 1);
+
+  if (modelo.options.length > 1 && proximoIndice >= 1) {
+    modelo.selectedIndex = proximoIndice;
+    limparSelect(ano, "Verificando próximo modelo...");
+    if (typeof atualizarStatusResultado === "function") {
+      atualizarStatusResultado(`Modelo ocultado. Avançando automaticamente para o próximo modelo da lista.`, "muted");
+      mostrarResultadoArea(true);
+    }
+    // Pequeno intervalo para a interface mostrar a mudança antes da próxima consulta.
+    await new Promise(resolve => setTimeout(resolve, 120));
+    await carregarAnosFipe();
+    modelo.focus();
+    return;
+  }
+
+  modelo.value = "";
+  limparSelect(ano, "Nenhum modelo elegível restante");
   if (typeof atualizarStatusResultado === "function") {
-    atualizarStatusResultado(`Modelo ocultado: não possui versão Zero km nem ano/modelo de 2012 em diante.`, "erro");
+    atualizarStatusResultado(`Modelo ocultado. Não há outro modelo elegível nesta marca.`, "erro");
     mostrarResultadoArea(true);
   }
 }
@@ -224,6 +245,7 @@ async function carregarModelosFipe() {
     if (!(data.modelos || []).length) {
       limparSelect(modelo, "Nenhum modelo elegível nesta marca");
     }
+    ultimoIndiceModeloNavegacao = -1;
     if (typeof window.aplicarChecksModelosFipe === "function") {
       window.aplicarChecksModelosFipe();
     }
@@ -314,6 +336,39 @@ function atualizarCardVeiculo(detalhe) {
   setTextoSeExistir("info_valor", detalhe.valor_texto || formatarMoedaBR(detalhe.valor_atual));
 }
 
+
+let timerNavegacaoModelo = null;
+let ultimoIndiceModeloNavegacao = -1;
+
+function agendarConsultaModeloSelecionado() {
+  const modelo = document.getElementById("fipe_modelo");
+  if (!modelo || !modelo.value) return;
+  const indiceAtual = modelo.selectedIndex;
+  if (indiceAtual === ultimoIndiceModeloNavegacao) return;
+  ultimoIndiceModeloNavegacao = indiceAtual;
+  clearTimeout(timerNavegacaoModelo);
+  timerNavegacaoModelo = setTimeout(() => {
+    ultimoDetalheFipe = null;
+    if (typeof window.resetarFluxoDepreciacao === "function") window.resetarFluxoDepreciacao();
+    carregarAnosFipe();
+  }, 180);
+}
+
+function habilitarNavegacaoPorSetasNoModelo() {
+  const modelo = document.getElementById("fipe_modelo");
+  if (!modelo) return;
+
+  modelo.addEventListener("keydown", (ev) => {
+    if (!["ArrowDown", "ArrowUp", "PageDown", "PageUp", "Home", "End"].includes(ev.key)) return;
+    setTimeout(agendarConsultaModeloSelecionado, 0);
+  });
+
+  modelo.addEventListener("keyup", (ev) => {
+    if (!["ArrowDown", "ArrowUp", "PageDown", "PageUp", "Home", "End"].includes(ev.key)) return;
+    agendarConsultaModeloSelecionado();
+  });
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   carregarMarcasFipe();
 
@@ -322,7 +377,11 @@ document.addEventListener("DOMContentLoaded", () => {
     if (typeof window.resetarFluxoDepreciacao === "function") window.resetarFluxoDepreciacao();
     carregarModelosFipe();
   });
+  habilitarNavegacaoPorSetasNoModelo();
+
   document.getElementById("fipe_modelo")?.addEventListener("change", () => {
+    const modelo = document.getElementById("fipe_modelo");
+    ultimoIndiceModeloNavegacao = modelo ? modelo.selectedIndex : -1;
     ultimoDetalheFipe = null;
     if (typeof window.resetarFluxoDepreciacao === "function") window.resetarFluxoDepreciacao();
     carregarAnosFipe();
