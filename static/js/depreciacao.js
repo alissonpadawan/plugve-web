@@ -1,4 +1,10 @@
 let ultimoResumoDepreciacao = null;
+let painelDepreciacaoDados = null;
+let modelosComCurva = new Set();
+
+function textoSeguro(valor) {
+  return valor === null || valor === undefined || valor === "" ? "-" : String(valor);
+}
 
 function atualizarStatusResultado(texto, classe) {
   const el = document.getElementById("resultado_status");
@@ -7,16 +13,30 @@ function atualizarStatusResultado(texto, classe) {
   el.className = classe || "muted";
 }
 
+function mostrarResultadoArea(mostrar = true) {
+  document.getElementById("resultado_area")?.classList.toggle("hidden", !mostrar);
+}
+
+function mostrarAuditoriaArea(mostrar = true) {
+  document.getElementById("auditoria_area")?.classList.toggle("hidden", !mostrar);
+}
+
+function atualizarFeedbackCalculo(texto, percentual, mostrar = true) {
+  const box = document.getElementById("calculo_feedback");
+  const txt = document.getElementById("progress_text");
+  const fill = document.getElementById("progress_fill");
+  if (box) box.classList.toggle("hidden", !mostrar);
+  if (txt) txt.textContent = texto || "";
+  if (fill) fill.style.width = `${Math.max(0, Math.min(100, Number(percentual || 0)))}%`;
+}
+
 function limparResumo() {
-  document.getElementById("res_valor_atual").textContent = "-";
-  document.getElementById("res_valor_futuro").textContent = "-";
-  document.getElementById("res_depreciacao").textContent = "-";
-  document.getElementById("res_taxa").textContent = "-";
-  document.getElementById("res_confianca").textContent = "-";
-  document.getElementById("res_origem").textContent = "-";
-  document.getElementById("res_tipo_usado").textContent = "-";
-  esconderDetalhes();
+  ["res_valor_atual", "res_valor_futuro", "res_depreciacao", "res_taxa", "res_confianca", "res_origem", "res_tipo_usado"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = "-";
+  });
   configurarBotoesResultado(false, false);
+  mostrarAuditoriaArea(false);
 }
 
 function configurarBotoesResultado(curvaEncontrada, podeCalcularFuturo) {
@@ -32,7 +52,7 @@ function configurarBotoesResultado(curvaEncontrada, podeCalcularFuturo) {
   if (btnCalcular) {
     btnCalcular.classList.toggle("hidden", !podeCalcularFuturo);
     btnCalcular.disabled = !podeCalcularFuturo;
-    if (podeCalcularFuturo) btnCalcular.textContent = "Calcular depreciação e salvar curva";
+    btnCalcular.textContent = "Calcular depreciação";
   }
 
   if (btnUsarTCO) {
@@ -57,59 +77,65 @@ function montarLinhaDetalhe(rotulo, valor) {
   const th = document.createElement("th");
   const td = document.createElement("td");
   th.textContent = rotulo;
-  td.textContent = valor || "-";
+  td.textContent = textoSeguro(valor);
   tr.appendChild(th);
   tr.appendChild(td);
   return tr;
 }
 
-function mostrarDetalhes() {
-  const box = document.getElementById("detalhes_resultado");
+function preencherRelatorio(data, origem = "curva") {
   const corpo = document.getElementById("detalhes_corpo");
-  if (!box || !corpo || !ultimoResumoDepreciacao) return;
+  if (!corpo) return;
 
-  const detalhes = ultimoResumoDepreciacao.detalhes || {};
+  const detalhes = data?.detalhes || {};
   const curva = detalhes.curva || {};
   const familia = detalhes.familia || {};
+  const auditoria = detalhes.auditoria_historico || data?.motor?.auditoria_historico || {};
 
   corpo.innerHTML = "";
-  corpo.appendChild(montarLinhaDetalhe("Tipo utilizado", detalhes.tipo_label || ultimoResumoDepreciacao.tipo_curva));
-  corpo.appendChild(montarLinhaDetalhe("Tipo de match", detalhes.tipo_match || curva.tipo_match));
-  corpo.appendChild(montarLinhaDetalhe("Ano usado como proxy", curva.ano_modelo_proxy || "-"));
-  corpo.appendChild(montarLinhaDetalhe("Código ano proxy", curva.codigo_ano_proxy || "-"));
-  corpo.appendChild(montarLinhaDetalhe("Nome proxy", curva.nome_proxy || "-"));
-  corpo.appendChild(montarLinhaDetalhe("Origem", ultimoResumoDepreciacao.origem_curva));
-  corpo.appendChild(montarLinhaDetalhe("Confiança", ultimoResumoDepreciacao.confianca));
-  corpo.appendChild(montarLinhaDetalhe("Pontos históricos", ultimoResumoDepreciacao.pontos_historicos));
-  corpo.appendChild(montarLinhaDetalhe("Janela histórica", ultimoResumoDepreciacao.janela_historica_meses ? `${ultimoResumoDepreciacao.janela_historica_meses} meses` : "-"));
+  corpo.appendChild(montarLinhaDetalhe("Resultado", data?.mensagem || "Curva carregada."));
+  corpo.appendChild(montarLinhaDetalhe("Tipo utilizado", detalhes.tipo_label || data?.tipo_label || data?.tipo_curva));
+  corpo.appendChild(montarLinhaDetalhe("Origem", data?.origem_curva || detalhes.origem_curva || origem));
+  corpo.appendChild(montarLinhaDetalhe("Confiança", data?.confianca || detalhes.confianca));
+  corpo.appendChild(montarLinhaDetalhe("Taxa anual", data?.taxa_anual_percentual ? `${Number(data.taxa_anual_percentual).toFixed(2).replace(".", ",")}% a.a.` : "-"));
+  corpo.appendChild(montarLinhaDetalhe("Pontos históricos", data?.pontos_historicos || detalhes.pontos_historicos));
+  corpo.appendChild(montarLinhaDetalhe("Janela histórica", data?.janela_historica_meses ? `${data.janela_historica_meses} meses` : detalhes.janela_historica_meses ? `${detalhes.janela_historica_meses} meses` : "-"));
   corpo.appendChild(montarLinhaDetalhe("Período inicial", detalhes.periodo_inicial || curva.periodo_inicial));
   corpo.appendChild(montarLinhaDetalhe("Período final", detalhes.periodo_final || curva.periodo_final));
   corpo.appendChild(montarLinhaDetalhe("Família", familia.family_nome || curva.family_nome || familia.family_id || curva.family_id));
   corpo.appendChild(montarLinhaDetalhe("Modelo base", curva.modelo_base_curva || familia.modelo_base_curva || familia.modelo_base_curva_eletrico || familia.modelo_base_curva_combustao));
   corpo.appendChild(montarLinhaDetalhe("Ano base", curva.ano_base_curva || familia.ano_base_curva || familia.ano_base_curva_eletrico || familia.ano_base_curva_combustao));
-  corpo.appendChild(montarLinhaDetalhe("Fonte de ajuste", curva.fonte_ajuste));
-  corpo.appendChild(montarLinhaDetalhe("Status da curva", curva.status_final || curva.confianca_ev));
+  corpo.appendChild(montarLinhaDetalhe("Ano usado como proxy", curva.ano_modelo_proxy || auditoria.ano_modelo_proxy));
+  corpo.appendChild(montarLinhaDetalhe("Código ano proxy", curva.codigo_ano_proxy || auditoria.codigo_ano_proxy));
+  corpo.appendChild(montarLinhaDetalhe("Nome proxy", curva.nome_proxy || auditoria.nome_proxy));
 
-  const auditoria = detalhes.auditoria_historico || {};
   if (Object.keys(auditoria).length > 0) {
     corpo.appendChild(montarLinhaDetalhe("Primeiro valor histórico", auditoria.primeiro_valor != null ? formatarMoedaBR(auditoria.primeiro_valor) : "-"));
     corpo.appendChild(montarLinhaDetalhe("Último valor histórico", auditoria.ultimo_valor != null ? formatarMoedaBR(auditoria.ultimo_valor) : "-"));
+    corpo.appendChild(montarLinhaDetalhe("Menor valor histórico", auditoria.menor_valor != null ? formatarMoedaBR(auditoria.menor_valor) : "-"));
+    corpo.appendChild(montarLinhaDetalhe("Maior valor histórico", auditoria.maior_valor != null ? formatarMoedaBR(auditoria.maior_valor) : "-"));
     corpo.appendChild(montarLinhaDetalhe("Variação total", auditoria.variacao_total_percentual != null ? `${Number(auditoria.variacao_total_percentual).toFixed(2).replace(".", ",")}%` : "-"));
+    corpo.appendChild(montarLinhaDetalhe("Zero km detectado", auditoria.zero_km_detectado || auditoria.zero_km_original ? "Sim" : "Não"));
+    corpo.appendChild(montarLinhaDetalhe("Proxy aplicado", auditoria.proxy_aplicado ? "Sim" : "Não"));
     corpo.appendChild(montarLinhaDetalhe("Método da taxa", auditoria.metodo_taxa));
     corpo.appendChild(montarLinhaDetalhe("Status da série", auditoria.status_serie));
   }
-
-  box.classList.remove("hidden");
 }
 
-function esconderDetalhes() {
-  const box = document.getElementById("detalhes_resultado");
-  if (box) box.classList.add("hidden");
+function mostrarDetalhes() {
+  if (!ultimoResumoDepreciacao) return;
+  mostrarAuditoriaArea(true);
+  preencherRelatorio(ultimoResumoDepreciacao, "curva salva");
+  renderizarGraficosDepreciacao(ultimoResumoDepreciacao);
+  document.getElementById("auditoria_area")?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 async function consultarResumoDepreciacao(detalheFipe) {
   if (!detalheFipe) return;
 
+  mostrarResultadoArea(true);
+  mostrarAuditoriaArea(false);
+  atualizarFeedbackCalculo("Buscando curva salva na base local...", 25, true);
   atualizarStatusResultado("Buscando curva salva...", "muted");
   limparResumo();
 
@@ -129,138 +155,28 @@ async function consultarResumoDepreciacao(detalheFipe) {
     ultimoResumoDepreciacao = data;
 
     if (data.encontrado) {
+      atualizarFeedbackCalculo("Curva salva encontrada. Gerando relatório técnico...", 100, false);
       atualizarStatusResultado(`✓ ${data.mensagem || "Curva salva encontrada."}`, "encontrado");
       preencherResumo(data);
       configurarBotoesResultado(true, false);
-      if (estaEmModoBridgeTCO()) {
-        definirAbaAtiva("auditoria");
-        mostrarDetalhes();
-      }
+      mostrarAuditoriaArea(true);
+      preencherRelatorio(data, "curva salva");
+      renderizarGraficosDepreciacao(data);
+      if (estaEmModoBridgeTCO()) mostrarDetalhes();
     } else {
-      atualizarStatusResultado((data.mensagem || "Curva não encontrada.") + " Clique em Calcular depreciação para gerar e salvar a curva quando houver histórico suficiente.", "nao-encontrado");
+      atualizarFeedbackCalculo("Curva não encontrada. Cálculo sob demanda liberado.", 100, false);
+      atualizarStatusResultado((data.mensagem || "Curva não encontrada.") + " Clique em Calcular depreciação para gerar e salvar a curva.", "nao-encontrado");
       document.getElementById("res_valor_atual").textContent = formatarMoedaBR(data.valor_atual || detalheFipe.valor_atual);
       document.getElementById("res_tipo_usado").textContent = data.detalhes?.tipo_label || data.tipo_curva || "-";
       configurarBotoesResultado(false, true);
     }
   } catch (e) {
     ultimoResumoDepreciacao = null;
+    atualizarFeedbackCalculo("Erro ao consultar depreciação.", 100, false);
     atualizarStatusResultado("Erro ao consultar depreciação.", "erro");
     configurarBotoesResultado(false, false);
   }
 }
-
-async function carregarStatusBases() {
-  const el = document.getElementById("status_bases");
-  if (!el) return;
-  try {
-    const resp = await fetch("/api/depreciacao/status");
-    const data = await resp.json();
-    el.textContent = `Bases: ${data.curvas_combustao || 0} curvas combustão, ${data.curvas_eletrico || 0} curvas elétricas.`;
-  } catch (e) {
-    el.textContent = "Não foi possível carregar o status das bases.";
-  }
-}
-
-
-function montarPayloadDepreciacao() {
-  if (!ultimoDetalheFipe) return null;
-  return {
-    ...ultimoDetalheFipe,
-    tipo: document.getElementById("tipo_veiculo")?.value || "auto",
-    horizonte_anos: document.getElementById("horizonte_anos")?.value || 5
-  };
-}
-
-function mostrarRetornoCalculo(data) {
-  const box = document.getElementById("detalhes_resultado");
-  const corpo = document.getElementById("detalhes_corpo");
-  if (!box || !corpo) return;
-
-  const motor = data.motor || {};
-  corpo.innerHTML = "";
-  corpo.appendChild(montarLinhaDetalhe("Status", data.status || "-"));
-  corpo.appendChild(montarLinhaDetalhe("Mensagem", data.mensagem || "-"));
-  corpo.appendChild(montarLinhaDetalhe("Tipo detectado", data.tipo_detectado || "-"));
-  corpo.appendChild(montarLinhaDetalhe("Tipo utilizado", data.tipo_label || data.tipo_utilizado || "-"));
-  corpo.appendChild(montarLinhaDetalhe("Taxa anual calculada", motor.taxa_anual_percentual != null ? `${Number(motor.taxa_anual_percentual).toFixed(2).replace(".", ",")}% a.a.` : "-"));
-  corpo.appendChild(montarLinhaDetalhe("Pontos históricos", motor.pontos_historicos));
-  corpo.appendChild(montarLinhaDetalhe("Janela histórica", motor.janela_historica_meses ? `${motor.janela_historica_meses} meses` : "-"));
-  corpo.appendChild(montarLinhaDetalhe("Período inicial", motor.periodo_inicial));
-  corpo.appendChild(montarLinhaDetalhe("Período final", motor.periodo_final));
-  const auditoria = motor.auditoria_historico || {};
-  if (Object.keys(auditoria).length > 0) {
-    corpo.appendChild(montarLinhaDetalhe("Primeiro valor histórico", auditoria.primeiro_valor != null ? formatarMoedaBR(auditoria.primeiro_valor) : "-"));
-    corpo.appendChild(montarLinhaDetalhe("Último valor histórico", auditoria.ultimo_valor != null ? formatarMoedaBR(auditoria.ultimo_valor) : "-"));
-    corpo.appendChild(montarLinhaDetalhe("Menor valor histórico", auditoria.menor_valor != null ? formatarMoedaBR(auditoria.menor_valor) : "-"));
-    corpo.appendChild(montarLinhaDetalhe("Maior valor histórico", auditoria.maior_valor != null ? formatarMoedaBR(auditoria.maior_valor) : "-"));
-    corpo.appendChild(montarLinhaDetalhe("Variação total", auditoria.variacao_total_percentual != null ? `${Number(auditoria.variacao_total_percentual).toFixed(2).replace(".", ",")}%` : "-"));
-    corpo.appendChild(montarLinhaDetalhe("Zero km detectado", auditoria.zero_km_detectado ? "Sim" : "Não"));
-    corpo.appendChild(montarLinhaDetalhe("Proxy aplicado", auditoria.proxy_aplicado ? "Sim" : "Não"));
-    corpo.appendChild(montarLinhaDetalhe("Ano usado como proxy", auditoria.ano_modelo_proxy || "-"));
-    corpo.appendChild(montarLinhaDetalhe("Código ano proxy", auditoria.codigo_ano_proxy || "-"));
-    corpo.appendChild(montarLinhaDetalhe("Nome proxy", auditoria.nome_proxy || "-"));
-    corpo.appendChild(montarLinhaDetalhe("Método da taxa", auditoria.metodo_taxa));
-    corpo.appendChild(montarLinhaDetalhe("Status da série", auditoria.status_serie));
-    corpo.appendChild(montarLinhaDetalhe("Intervalos com queda", auditoria.intervalos_queda));
-    corpo.appendChild(montarLinhaDetalhe("Intervalos com alta", auditoria.intervalos_alta));
-  }
-
-  corpo.appendChild(montarLinhaDetalhe("Próxima etapa", data.proxima_etapa || "-"));
-
-  if (Array.isArray(data.etapas_previstas)) {
-    corpo.appendChild(montarLinhaDetalhe("Fluxo preparado", data.etapas_previstas.join(" | ")));
-  }
-
-  box.classList.remove("hidden");
-}
-
-async function solicitarCalculoSobDemanda() {
-  const payload = montarPayloadDepreciacao();
-  if (!payload) {
-    atualizarStatusResultado("Selecione um veículo antes de calcular.", "erro");
-    return;
-  }
-
-  const btn = document.getElementById("btn_calcular_futuro");
-  if (btn) {
-    btn.disabled = true;
-    btn.textContent = "Preparando cálculo...";
-  }
-
-  atualizarStatusResultado("Preparando estrutura do cálculo sob demanda...", "muted");
-
-  try {
-    const resp = await fetch("/api/depreciacao/calcular", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
-
-    const data = await resp.json();
-
-    if (data.ok) {
-      atualizarStatusResultado(`✓ ${data.mensagem || "Curva calculada e salva."}`, "encontrado");
-      if (data.resultado) {
-        ultimoResumoDepreciacao = data.resultado;
-        preencherResumo(data.resultado);
-        configurarBotoesResultado(true, false);
-      }
-      definirAbaAtiva("auditoria");
-      mostrarRetornoCalculo(data);
-    } else {
-      atualizarStatusResultado(data.mensagem || "Falha ao calcular curva.", "erro");
-      mostrarRetornoCalculo(data);
-    }
-  } catch (e) {
-    atualizarStatusResultado("Erro ao chamar o cálculo sob demanda.", "erro");
-  } finally {
-    if (btn) {
-      btn.disabled = false;
-      btn.textContent = "Calcular depreciação e salvar curva";
-    }
-  }
-}
-
 
 function obterParametroUrl(nome) {
   return new URLSearchParams(window.location.search).get(nome);
@@ -320,28 +236,19 @@ async function inicializarBridgeTCO() {
   if (horizonte && payload.horizonte_anos) horizonte.value = String(payload.horizonte_anos);
 
   const temMarca = await aguardarOpcaoSelect("fipe_marca", payload.codigo_marca);
-  if (!temMarca) {
-    atualizarStatusResultado("Não encontrei a marca no seletor FIPE. Faça a seleção manualmente.", "erro");
-    return;
-  }
+  if (!temMarca) return atualizarStatusResultado("Não encontrei a marca no seletor FIPE. Faça a seleção manualmente.", "erro");
 
   document.getElementById("fipe_marca").value = payload.codigo_marca;
   await carregarModelosFipe();
 
   const temModelo = await aguardarOpcaoSelect("fipe_modelo", payload.codigo_modelo);
-  if (!temModelo) {
-    atualizarStatusResultado("Não encontrei o modelo no seletor FIPE. Faça a seleção manualmente.", "erro");
-    return;
-  }
+  if (!temModelo) return atualizarStatusResultado("Não encontrei o modelo no seletor FIPE. Faça a seleção manualmente.", "erro");
 
   document.getElementById("fipe_modelo").value = payload.codigo_modelo;
   await carregarAnosFipe();
 
   const temAno = await aguardarOpcaoSelect("fipe_ano", payload.codigo_ano);
-  if (!temAno) {
-    atualizarStatusResultado("Não encontrei o ano/combustível no seletor FIPE. Faça a seleção manualmente.", "erro");
-    return;
-  }
+  if (!temAno) return atualizarStatusResultado("Não encontrei o ano/combustível no seletor FIPE. Faça a seleção manualmente.", "erro");
 
   document.getElementById("fipe_ano").value = payload.codigo_ano;
   await consultarPrecoFipe();
@@ -373,57 +280,86 @@ function usarResultadoNoTCOEFechar() {
   localStorage.setItem(`plugve_depreciacao_validada_${prefixo}`, JSON.stringify(resultado));
 
   if (window.opener) {
-    window.opener.postMessage({
-      tipo: "plugve_depreciacao_validada",
-      prefixo: prefixo,
-      resultado: resultado
-    }, "*");
+    window.opener.postMessage({ tipo: "plugve_depreciacao_validada", prefixo, resultado }, "*");
   }
 
   window.close();
   atualizarStatusResultado("Resultado enviado ao TCO. Você pode fechar esta aba.", "encontrado");
 }
 
+function montarPayloadDepreciacao() {
+  if (!ultimoDetalheFipe) return null;
+  return {
+    ...ultimoDetalheFipe,
+    tipo: document.getElementById("tipo_veiculo")?.value || "auto",
+    horizonte_anos: document.getElementById("horizonte_anos")?.value || 5
+  };
+}
 
-document.addEventListener("DOMContentLoaded", () => {
-  carregarStatusBases();
+async function solicitarCalculoSobDemanda() {
+  const payload = montarPayloadDepreciacao();
+  if (!payload) {
+    atualizarStatusResultado("Selecione um veículo antes de calcular.", "erro");
+    return;
+  }
 
-  document.getElementById("tipo_veiculo")?.addEventListener("change", () => {
-    if (ultimoDetalheFipe) consultarResumoDepreciacao(ultimoDetalheFipe);
-  });
+  const btn = document.getElementById("btn_calcular_futuro");
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "Calculando...";
+  }
 
-  document.getElementById("horizonte_anos")?.addEventListener("change", () => {
-    if (ultimoDetalheFipe) consultarResumoDepreciacao(ultimoDetalheFipe);
-  });
+  mostrarResultadoArea(true);
+  mostrarAuditoriaArea(false);
+  atualizarFeedbackCalculo("Consultando histórico FIPE e preparando cálculo...", 18, true);
+  atualizarStatusResultado("Calculando depreciação sob demanda...", "muted");
 
-  document.getElementById("btn_ver_detalhes")?.addEventListener("click", mostrarDetalhes);
-  document.getElementById("btn_usar_no_tco")?.addEventListener("click", usarResultadoNoTCOEFechar);
-  document.getElementById("btn_calcular_futuro")?.addEventListener("click", solicitarCalculoSobDemanda);
-  document.getElementById("btn_fechar_detalhes")?.addEventListener("click", esconderDetalhes);
+  try {
+    setTimeout(() => atualizarFeedbackCalculo("Buscando série histórica compatível...", 45, true), 350);
+    setTimeout(() => atualizarFeedbackCalculo("Calculando taxa anual, valor futuro e confiança...", 72, true), 900);
 
-  setTimeout(inicializarBridgeTCO, 500);
-});
+    const resp = await fetch("/api/depreciacao/calcular", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
 
-// ============================================================
-// Painel web de depreciação - visão mais próxima do programa original
-// ============================================================
-let painelDepreciacaoDados = null;
+    const data = await resp.json();
+
+    if (data.ok) {
+      atualizarFeedbackCalculo("Curva calculada e salva. Montando relatório final...", 100, true);
+      if (data.resultado) {
+        ultimoResumoDepreciacao = data.resultado;
+        atualizarStatusResultado(`✓ ${data.mensagem || "Curva calculada e salva."}`, "encontrado");
+        preencherResumo(data.resultado);
+        configurarBotoesResultado(true, false);
+        mostrarAuditoriaArea(true);
+        preencherRelatorio({ ...data.resultado, motor: data.motor }, "cálculo sob demanda");
+        renderizarGraficosDepreciacao(data.resultado);
+      }
+      carregarStatusBases();
+      setTimeout(() => atualizarFeedbackCalculo("", 0, false), 1500);
+    } else {
+      atualizarFeedbackCalculo("Cálculo bloqueado. Verifique o relatório técnico abaixo.", 100, true);
+      atualizarStatusResultado(data.mensagem || "Falha ao calcular curva.", "erro");
+      mostrarAuditoriaArea(true);
+      preencherRelatorio({ ...(data.resultado || {}), mensagem: data.mensagem, detalhes: {}, motor: data.motor }, "cálculo bloqueado");
+    }
+  } catch (e) {
+    atualizarFeedbackCalculo("Erro ao chamar o cálculo sob demanda.", 100, true);
+    atualizarStatusResultado("Erro ao chamar o cálculo sob demanda.", "erro");
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = "Calcular depreciação";
+    }
+  }
+}
 
 function formatarPercentualBR(valor, casas = 2) {
   const n = Number(valor || 0);
   if (!Number.isFinite(n) || n <= 0) return "-";
   return `${n.toFixed(casas).replace(".", ",")}%`;
-}
-
-function definirAbaAtiva(nome) {
-  document.querySelectorAll(".tab-button").forEach(btn => {
-    btn.classList.toggle("active", btn.dataset.tab === nome);
-  });
-  document.querySelectorAll(".tab-panel").forEach(panel => {
-    panel.classList.add("hidden");
-  });
-  const alvo = document.getElementById(`tab_${nome}`);
-  if (alvo) alvo.classList.remove("hidden");
 }
 
 function atualizarKpisPainel(status) {
@@ -436,123 +372,85 @@ function atualizarKpisPainel(status) {
   set("kpi_curvas_eletrico", status.curvas_eletrico || 0);
   set("kpi_hist_combustao", status.historico_combustao || 0);
   set("kpi_hist_eletrico", status.historico_eletrico || 0);
+  set("side_marcas", status.marcas_cadastradas || 0);
+  set("side_familias", status.familias_cadastradas || 0);
+  set("side_curvas", (Number(status.curvas_combustao || 0) + Number(status.curvas_eletrico || 0)));
 
-  const texto = `Bases: ${status.curvas_combustao || 0} curvas combustão, ${status.curvas_eletrico || 0} curvas elétricas, ${status.modelos_cadastrados || 0} modelos cadastrados.`;
+  const texto = `Bases carregadas: ${status.curvas_combustao || 0} curvas combustão, ${status.curvas_eletrico || 0} curvas elétricas, ${status.modelos_cadastrados || 0} modelos cadastrados.`;
   const box = document.getElementById("status_bases");
-  const boxConsulta = document.getElementById("status_bases_consulta");
   if (box) box.textContent = texto;
-  if (boxConsulta) boxConsulta.textContent = texto;
 }
 
-function montarCelula(texto) {
-  const td = document.createElement("td");
-  td.textContent = texto || "-";
-  return td;
+function normalizarBusca(txt) {
+  return String(txt || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
 }
 
-function montarBadge(texto) {
-  const span = document.createElement("span");
-  span.className = "badge";
-  span.textContent = texto || "-";
-  return span;
+function registrarModelosComCurva(lista) {
+  modelosComCurva = new Set();
+  (lista || []).forEach(item => {
+    const modelo = normalizarBusca(item.modelo || item.titulo || "");
+    const titulo = normalizarBusca(item.titulo || "");
+    if (modelo) modelosComCurva.add(modelo);
+    if (titulo) modelosComCurva.add(titulo);
+  });
+  window.PLUGVE_MODELOS_COM_CURVA = modelosComCurva;
+  if (typeof window.aplicarChecksModelosFipe === "function") window.aplicarChecksModelosFipe();
 }
 
-function renderizarTabelaCurvas(lista) {
-  const tbody = document.getElementById("tabela_curvas_corpo");
-  if (!tbody) return;
-  tbody.innerHTML = "";
+function modeloTemCurva(textoModelo) {
+  const alvo = normalizarBusca(textoModelo);
+  if (!alvo) return false;
+  for (const salvo of modelosComCurva) {
+    if (alvo.includes(salvo) || salvo.includes(alvo)) return true;
+  }
+  return false;
+}
 
-  if (!lista || lista.length === 0) {
-    const tr = document.createElement("tr");
-    tr.appendChild(montarCelula("Nenhuma curva encontrada."));
-    tr.firstChild.colSpan = 8;
-    tbody.appendChild(tr);
+function renderizarListaCurvasLateral(lista) {
+  const box = document.getElementById("lista_curvas_lateral");
+  if (!box) return;
+  box.innerHTML = "";
+
+  const itens = (lista || []).slice(0, 180);
+  if (!itens.length) {
+    box.innerHTML = '<div class="muted">Nenhuma curva salva encontrada.</div>';
     return;
   }
 
-  lista.slice(0, 120).forEach(item => {
-    const tr = document.createElement("tr");
-    const tdTipo = document.createElement("td");
-    tdTipo.appendChild(montarBadge(item.tipo === "eletrico" ? "Elétrico" : "Combustão"));
-    tr.appendChild(tdTipo);
-    tr.appendChild(montarCelula(item.titulo));
-    tr.appendChild(montarCelula(item.ano_modelo));
-    tr.appendChild(montarCelula(formatarPercentualBR(item.taxa_anual_percentual)));
-    tr.appendChild(montarCelula(item.confianca));
-    tr.appendChild(montarCelula(item.pontos_historicos));
-    tr.appendChild(montarCelula(item.janela_historica_meses ? `${item.janela_historica_meses} meses` : "-"));
-    tr.appendChild(montarCelula(item.origem));
-    tr.dataset.busca = `${item.tipo} ${item.titulo} ${item.codigo_fipe} ${item.confianca} ${item.origem}`.toLowerCase();
-    tbody.appendChild(tr);
+  itens.forEach(item => {
+    const div = document.createElement("div");
+    div.className = "saved-item";
+    div.dataset.busca = normalizarBusca(`${item.tipo} ${item.titulo} ${item.codigo_fipe} ${item.confianca} ${item.origem}`);
+    div.innerHTML = `
+      <strong>✓ ${item.titulo || "Curva salva"}</strong>
+      <span>${item.tipo === "eletrico" ? "Elétrico" : "Combustão"} | ${item.ano_modelo || "-"} | ${formatarPercentualBR(item.taxa_anual_percentual)} a.a.</span>
+      <small>${item.confianca || "-"} | ${item.pontos_historicos || 0} pontos</small>
+    `;
+    box.appendChild(div);
   });
 }
 
-function renderizarTabelaHistoricos(lista) {
-  const tbody = document.getElementById("tabela_historicos_corpo");
-  if (!tbody) return;
-  tbody.innerHTML = "";
-
-  if (!lista || lista.length === 0) {
-    const tr = document.createElement("tr");
-    tr.appendChild(montarCelula("Nenhum histórico encontrado."));
-    tr.firstChild.colSpan = 8;
-    tbody.appendChild(tr);
-    return;
-  }
-
-  lista.slice(0, 120).forEach(item => {
-    const tr = document.createElement("tr");
-    const tdTipo = document.createElement("td");
-    tdTipo.appendChild(montarBadge(item.tipo === "eletrico" ? "Elétrico" : "Combustão"));
-    tr.appendChild(tdTipo);
-    tr.appendChild(montarCelula(item.titulo));
-    tr.appendChild(montarCelula(item.codigo_fipe));
-    tr.appendChild(montarCelula(item.codigo_ano));
-    tr.appendChild(montarCelula(item.pontos));
-    tr.appendChild(montarCelula(`${item.periodo_inicial || "-"} a ${item.periodo_final || "-"}`));
-    tr.appendChild(montarCelula(item.primeiro_valor ? formatarMoedaBR(item.primeiro_valor) : "-"));
-    tr.appendChild(montarCelula(item.ultimo_valor ? formatarMoedaBR(item.ultimo_valor) : "-"));
-    tbody.appendChild(tr);
-  });
-}
-
-function filtrarTabelaCurvas() {
-  const filtro = (document.getElementById("filtro_curvas")?.value || "").toLowerCase().trim();
-  document.querySelectorAll("#tabela_curvas_corpo tr").forEach(tr => {
-    if (!filtro) {
-      tr.classList.remove("hidden");
-      return;
-    }
-    tr.classList.toggle("hidden", !(tr.dataset.busca || "").includes(filtro));
+function filtrarListaCurvasLateral() {
+  const filtro = normalizarBusca(document.getElementById("filtro_curvas_lateral")?.value || "");
+  document.querySelectorAll("#lista_curvas_lateral .saved-item").forEach(item => {
+    item.classList.toggle("hidden", filtro && !(item.dataset.busca || "").includes(filtro));
   });
 }
 
 async function carregarStatusBases() {
   const statusEl = document.getElementById("status_bases");
-  const statusConsultaEl = document.getElementById("status_bases_consulta");
   try {
     const resp = await fetch("/api/depreciacao/painel");
     const data = await resp.json();
     painelDepreciacaoDados = data;
     const status = data.status || {};
+    const curvas = [...(data.curvas_combustao || []), ...(data.curvas_eletrico || [])];
     atualizarKpisPainel(status);
-    renderizarTabelaCurvas([...(data.curvas_combustao || []), ...(data.curvas_eletrico || [])]);
-    renderizarTabelaHistoricos([...(data.historico_combustao || []), ...(data.historico_eletrico || [])]);
+    registrarModelosComCurva(curvas);
+    renderizarListaCurvasLateral(curvas);
   } catch (e) {
-    if (statusEl) statusEl.textContent = "Não foi possível carregar o painel de bases.";
-    if (statusConsultaEl) statusConsultaEl.textContent = "Não foi possível carregar o painel de bases.";
+    if (statusEl) statusEl.textContent = "Não foi possível carregar o status das bases.";
   }
-}
-
-function preencherResumo(data) {
-  document.getElementById("res_valor_atual").textContent = formatarMoedaBR(data.valor_atual);
-  document.getElementById("res_valor_futuro").textContent = data.valor_futuro != null && Number(data.valor_futuro) > 0 ? formatarMoedaBR(data.valor_futuro) : "-";
-  document.getElementById("res_depreciacao").textContent = formatarPercentualBR(data.depreciacao_percentual);
-  document.getElementById("res_taxa").textContent = data.taxa_anual_percentual != null && Number(data.taxa_anual_percentual) > 0 ? `${Number(data.taxa_anual_percentual).toFixed(2).replace(".", ",")}% a.a.` : "-";
-  document.getElementById("res_confianca").textContent = data.confianca || "-";
-  document.getElementById("res_origem").textContent = data.origem_curva || "-";
-  document.getElementById("res_tipo_usado").textContent = data.detalhes?.tipo_label || data.tipo_curva || "-";
-  renderizarGraficosDepreciacao(data);
 }
 
 function renderizarGraficosDepreciacao(data) {
@@ -642,93 +540,49 @@ function renderizarGraficoProjecao(valorAtual, taxaAnual, horizonte) {
   el.appendChild(lista);
 }
 
-function mostrarDetalhes() {
-  const box = document.getElementById("detalhes_resultado");
-  const corpo = document.getElementById("detalhes_corpo");
-  if (!box || !corpo || !ultimoResumoDepreciacao) return;
-
-  const detalhes = ultimoResumoDepreciacao.detalhes || {};
-  const curva = detalhes.curva || {};
-  const familia = detalhes.familia || {};
-
-  corpo.innerHTML = "";
-  corpo.appendChild(montarLinhaDetalhe("Tipo utilizado", detalhes.tipo_label || ultimoResumoDepreciacao.tipo_curva));
-  corpo.appendChild(montarLinhaDetalhe("Tipo de match", detalhes.tipo_match || curva.tipo_match));
-  corpo.appendChild(montarLinhaDetalhe("Origem", ultimoResumoDepreciacao.origem_curva));
-  corpo.appendChild(montarLinhaDetalhe("Confiança", ultimoResumoDepreciacao.confianca));
-  corpo.appendChild(montarLinhaDetalhe("Taxa anual", ultimoResumoDepreciacao.taxa_anual_percentual ? `${Number(ultimoResumoDepreciacao.taxa_anual_percentual).toFixed(2).replace(".", ",")}% a.a.` : "-"));
-  corpo.appendChild(montarLinhaDetalhe("Pontos históricos", ultimoResumoDepreciacao.pontos_historicos));
-  corpo.appendChild(montarLinhaDetalhe("Janela histórica", ultimoResumoDepreciacao.janela_historica_meses ? `${ultimoResumoDepreciacao.janela_historica_meses} meses` : "-"));
-  corpo.appendChild(montarLinhaDetalhe("Período inicial", detalhes.periodo_inicial || curva.periodo_inicial));
-  corpo.appendChild(montarLinhaDetalhe("Período final", detalhes.periodo_final || curva.periodo_final));
-  corpo.appendChild(montarLinhaDetalhe("Família", familia.family_nome || curva.family_nome || familia.family_id || curva.family_id));
-  corpo.appendChild(montarLinhaDetalhe("Modelo base", curva.modelo_base_curva || familia.modelo_base_curva || familia.modelo_base_curva_eletrico || familia.modelo_base_curva_combustao));
-  corpo.appendChild(montarLinhaDetalhe("Ano base", curva.ano_base_curva || familia.ano_base_curva || familia.ano_base_curva_eletrico || familia.ano_base_curva_combustao));
-  corpo.appendChild(montarLinhaDetalhe("Ano usado como proxy", curva.ano_modelo_proxy || "-"));
-  corpo.appendChild(montarLinhaDetalhe("Código ano proxy", curva.codigo_ano_proxy || "-"));
-  corpo.appendChild(montarLinhaDetalhe("Nome proxy", curva.nome_proxy || "-"));
-  corpo.appendChild(montarLinhaDetalhe("Fonte de ajuste", curva.fonte_ajuste));
-  corpo.appendChild(montarLinhaDetalhe("Status da curva", curva.status_final || curva.confianca_ev));
-
-  const auditoria = detalhes.auditoria_historico || {};
-  if (Object.keys(auditoria).length > 0) {
-    corpo.appendChild(montarLinhaDetalhe("Primeiro valor histórico", auditoria.primeiro_valor != null ? formatarMoedaBR(auditoria.primeiro_valor) : "-"));
-    corpo.appendChild(montarLinhaDetalhe("Último valor histórico", auditoria.ultimo_valor != null ? formatarMoedaBR(auditoria.ultimo_valor) : "-"));
-    corpo.appendChild(montarLinhaDetalhe("Menor valor histórico", auditoria.menor_valor != null ? formatarMoedaBR(auditoria.menor_valor) : "-"));
-    corpo.appendChild(montarLinhaDetalhe("Maior valor histórico", auditoria.maior_valor != null ? formatarMoedaBR(auditoria.maior_valor) : "-"));
-    corpo.appendChild(montarLinhaDetalhe("Variação total", auditoria.variacao_total_percentual != null ? `${Number(auditoria.variacao_total_percentual).toFixed(2).replace(".", ",")}%` : "-"));
-    corpo.appendChild(montarLinhaDetalhe("Método da taxa", auditoria.metodo_taxa));
-    corpo.appendChild(montarLinhaDetalhe("Status da série", auditoria.status_serie));
-  }
-
-  box.classList.remove("hidden");
-  definirAbaAtiva("auditoria");
+function aplicarChecksModelosFipe() {
+  const select = document.getElementById("fipe_modelo");
+  if (!select) return;
+  Array.from(select.options || []).forEach(opt => {
+    if (!opt.value || opt.dataset.checkAplicado === "1") return;
+    const nomeOriginal = opt.dataset.nome || opt.textContent || "";
+    if (modeloTemCurva(nomeOriginal)) {
+      opt.textContent = `✓ ${nomeOriginal}`;
+      opt.dataset.checkAplicado = "1";
+    }
+  });
 }
+window.aplicarChecksModelosFipe = aplicarChecksModelosFipe;
 
-function mostrarRetornoCalculo(data) {
-  const box = document.getElementById("detalhes_resultado");
-  const corpo = document.getElementById("detalhes_corpo");
-  if (!box || !corpo) return;
-
-  const motor = data.motor || {};
-  corpo.innerHTML = "";
-  corpo.appendChild(montarLinhaDetalhe("Status", data.status || "-"));
-  corpo.appendChild(montarLinhaDetalhe("Mensagem", data.mensagem || "-"));
-  corpo.appendChild(montarLinhaDetalhe("Tipo detectado", data.tipo_detectado || "-"));
-  corpo.appendChild(montarLinhaDetalhe("Tipo utilizado", data.tipo_label || data.tipo_utilizado || "-"));
-  corpo.appendChild(montarLinhaDetalhe("Taxa anual calculada", motor.taxa_anual_percentual != null ? `${Number(motor.taxa_anual_percentual).toFixed(2).replace(".", ",")}% a.a.` : "-"));
-  corpo.appendChild(montarLinhaDetalhe("Pontos históricos", motor.pontos_historicos));
-  corpo.appendChild(montarLinhaDetalhe("Janela histórica", motor.janela_historica_meses ? `${motor.janela_historica_meses} meses` : "-"));
-  corpo.appendChild(montarLinhaDetalhe("Período inicial", motor.periodo_inicial));
-  corpo.appendChild(montarLinhaDetalhe("Período final", motor.periodo_final));
-  const auditoria = motor.auditoria_historico || {};
-  if (Object.keys(auditoria).length > 0) {
-    corpo.appendChild(montarLinhaDetalhe("Primeiro valor histórico", auditoria.primeiro_valor != null ? formatarMoedaBR(auditoria.primeiro_valor) : "-"));
-    corpo.appendChild(montarLinhaDetalhe("Último valor histórico", auditoria.ultimo_valor != null ? formatarMoedaBR(auditoria.ultimo_valor) : "-"));
-    corpo.appendChild(montarLinhaDetalhe("Menor valor histórico", auditoria.menor_valor != null ? formatarMoedaBR(auditoria.menor_valor) : "-"));
-    corpo.appendChild(montarLinhaDetalhe("Maior valor histórico", auditoria.maior_valor != null ? formatarMoedaBR(auditoria.maior_valor) : "-"));
-    corpo.appendChild(montarLinhaDetalhe("Variação total", auditoria.variacao_total_percentual != null ? `${Number(auditoria.variacao_total_percentual).toFixed(2).replace(".", ",")}%` : "-"));
-    corpo.appendChild(montarLinhaDetalhe("Zero km detectado", auditoria.zero_km_detectado ? "Sim" : "Não"));
-    corpo.appendChild(montarLinhaDetalhe("Proxy aplicado", auditoria.proxy_aplicado ? "Sim" : "Não"));
-    corpo.appendChild(montarLinhaDetalhe("Ano usado como proxy", auditoria.ano_modelo_proxy || "-"));
-    corpo.appendChild(montarLinhaDetalhe("Código ano proxy", auditoria.codigo_ano_proxy || "-"));
-    corpo.appendChild(montarLinhaDetalhe("Nome proxy", auditoria.nome_proxy || "-"));
-    corpo.appendChild(montarLinhaDetalhe("Método da taxa", auditoria.metodo_taxa));
-    corpo.appendChild(montarLinhaDetalhe("Status da série", auditoria.status_serie));
-    corpo.appendChild(montarLinhaDetalhe("Intervalos com queda", auditoria.intervalos_queda));
-    corpo.appendChild(montarLinhaDetalhe("Intervalos com alta", auditoria.intervalos_alta));
-  }
-  corpo.appendChild(montarLinhaDetalhe("Próxima etapa", data.proxima_etapa || "-"));
-
-  if (data.resultado) renderizarGraficosDepreciacao(data.resultado);
-  box.classList.remove("hidden");
-  definirAbaAtiva("auditoria");
-  carregarStatusBases();
+// Pequeno gancho para reaplicar os checks depois que o fipe.js carrega os modelos.
+const carregarModelosOriginalDep = window.carregarModelosFipe;
+if (typeof carregarModelosOriginalDep === "function") {
+  window.carregarModelosFipe = async function() {
+    const retorno = await carregarModelosOriginalDep.apply(this, arguments);
+    aplicarChecksModelosFipe();
+    return retorno;
+  };
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  document.querySelectorAll(".tab-button").forEach(btn => {
-    btn.addEventListener("click", () => definirAbaAtiva(btn.dataset.tab));
+  mostrarResultadoArea(false);
+  mostrarAuditoriaArea(false);
+  carregarStatusBases();
+
+  document.getElementById("tipo_veiculo")?.addEventListener("change", () => {
+    if (ultimoDetalheFipe) consultarResumoDepreciacao(ultimoDetalheFipe);
   });
-  document.getElementById("filtro_curvas")?.addEventListener("input", filtrarTabelaCurvas);
+
+  document.getElementById("horizonte_anos")?.addEventListener("change", () => {
+    const el = document.getElementById("horizonte_anos");
+    if (el && Number(el.value || 0) < 1) el.value = 1;
+    if (ultimoDetalheFipe) consultarResumoDepreciacao(ultimoDetalheFipe);
+  });
+
+  document.getElementById("btn_ver_detalhes")?.addEventListener("click", mostrarDetalhes);
+  document.getElementById("btn_usar_no_tco")?.addEventListener("click", usarResultadoNoTCOEFechar);
+  document.getElementById("btn_calcular_futuro")?.addEventListener("click", solicitarCalculoSobDemanda);
+  document.getElementById("filtro_curvas_lateral")?.addEventListener("input", filtrarListaCurvasLateral);
+
+  setTimeout(inicializarBridgeTCO, 500);
 });

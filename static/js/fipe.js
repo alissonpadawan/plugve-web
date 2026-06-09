@@ -82,6 +82,9 @@ async function carregarModelosFipe() {
       opt.dataset.nome = item.nome;
       modelo.appendChild(opt);
     });
+    if (typeof window.aplicarChecksModelosFipe === "function") {
+      window.aplicarChecksModelosFipe();
+    }
   } catch (e) {
     limparSelect(modelo, "Erro ao carregar modelos");
   }
