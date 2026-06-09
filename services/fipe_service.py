@@ -55,6 +55,19 @@ class FipeService:
         self._salvar_modelos_zero_km(dados)
         return {"ok": True, "modelo_zero_km": dados[marca_key][modelo_key]}
 
+    def desmarcar_modelo_zero_km(self, codigo_marca: str, codigo_modelo: str) -> dict:
+        dados = self._ler_modelos_zero_km()
+        marca_key = str(codigo_marca)
+        modelo_key = str(codigo_modelo)
+        removido = False
+        if marca_key in dados and modelo_key in dados.get(marca_key, {}):
+            dados[marca_key].pop(modelo_key, None)
+            removido = True
+            if not dados[marca_key]:
+                dados.pop(marca_key, None)
+            self._salvar_modelos_zero_km(dados)
+        return {"ok": True, "removido": removido}
+
     def _ler_marcas_bloqueadas(self) -> dict:
         path = self._marcas_bloqueadas_path()
         if not path.exists():

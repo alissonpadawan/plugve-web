@@ -76,6 +76,22 @@ def marcar_zero_km():
         return jsonify({"ok": False, "erro": str(exc)}), 500
 
 
+@fipe_bp.route("/desmarcar_zero_km", methods=["POST"])
+def desmarcar_zero_km():
+    payload = request.get_json(silent=True) or {}
+    codigo_marca = str(payload.get("codigo_marca", "")).strip()
+    codigo_modelo = str(payload.get("codigo_modelo", "")).strip()
+    if not codigo_marca or not codigo_modelo:
+        return jsonify({"ok": False, "erro": "Parâmetros incompletos."}), 400
+    try:
+        return jsonify(fipe_service.desmarcar_modelo_zero_km(
+            codigo_marca=codigo_marca,
+            codigo_modelo=codigo_modelo,
+        ))
+    except Exception as exc:
+        return jsonify({"ok": False, "erro": str(exc)}), 500
+
+
 @fipe_bp.route("/preco")
 def preco():
     codigo_marca = request.args.get("codigo_marca", "").strip()

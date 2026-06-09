@@ -49,18 +49,28 @@ function obterTextoSelecionado(select) {
 async function salvarModeloZeroKmSeEncontrado(marca, modelo, anosOriginais) {
   if (!marca?.value || !modelo?.value || !Array.isArray(anosOriginais)) return false;
   const temZero = anosOriginais.some(item => codigoAnoFipeZeroKm(item.codigo));
-  if (!temZero) return false;
-
   const nomeModelo = obterTextoSelecionado(modelo);
   const nomeMarca = obterTextoSelecionado(marca);
   const opt = modelo.options[modelo.selectedIndex];
-  if (opt) {
-    opt.dataset.temZeroKm = "1";
-    opt.style.fontWeight = "800";
-    if (!/^0 km • /.test(opt.textContent || "")) {
-      opt.textContent = `0 km • ${opt.dataset.nome || opt.textContent || nomeModelo}`;
-    }
+
+  if (!temZero) {
+    // Se a FIPE retornou anos e nenhum é 32000, o modelo não deve mais ficar destacado.
+    // Isso corrige marcações antigas salvas por engano no cache permanente.
+    if (opt) limparDestaqueModeloZeroKm(opt);
+    try {
+      await fetch("/api/fipe/desmarcar_zero_km", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          codigo_marca: marca.value,
+          codigo_modelo: modelo.value
+        })
+      });
+    } catch (e) {}
+    return false;
   }
+
+  if (opt) destacarOpcaoModeloZeroKm(opt);
 
   try {
     await fetch("/api/fipe/marcar_zero_km", {
@@ -79,15 +89,22 @@ async function salvarModeloZeroKmSeEncontrado(marca, modelo, anosOriginais) {
   return true;
 }
 
+function limparDestaqueModeloZeroKm(opt) {
+  if (!opt) return;
+  opt.dataset.temZeroKm = "0";
+  opt.style.fontWeight = "";
+  opt.title = "";
+  const nomeOriginal = opt.dataset.nome || (opt.textContent || "").replace(/^0 km\s*•\s*/i, "");
+  opt.textContent = nomeOriginal;
+}
+
 function destacarOpcaoModeloZeroKm(opt) {
   if (!opt || !opt.value) return;
   opt.dataset.temZeroKm = "1";
   opt.style.fontWeight = "800";
   opt.title = "Este modelo possui versão Zero km na FIPE";
-  const nomeOriginal = opt.dataset.nome || opt.textContent || "";
-  if (!/^0 km • /.test(opt.textContent || "")) {
-    opt.textContent = `0 km • ${nomeOriginal}`;
-  }
+  const nomeOriginal = opt.dataset.nome || (opt.textContent || "").replace(/^0 km\s*•\s*/i, "");
+  opt.textContent = nomeOriginal;
 }
 
 async function bloquearModeloAntigoSemAnoValido(marca, modelo, anosOriginais) {

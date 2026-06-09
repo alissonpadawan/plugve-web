@@ -896,8 +896,7 @@ function aplicarChecksModelosFipe() {
     if (!opt.value || opt.dataset.checkAplicado === "1") return;
     const nomeOriginal = opt.dataset.nome || opt.textContent || "";
     if (modeloTemCurva(nomeOriginal)) {
-      const prefixoZero = opt.dataset.temZeroKm === "1" ? "0 km • " : "";
-      opt.textContent = `${prefixoZero}✓ ${nomeOriginal}`;
+      opt.textContent = `✓ ${nomeOriginal}`;
       opt.style.fontWeight = opt.dataset.temZeroKm === "1" ? "800" : opt.style.fontWeight;
       opt.dataset.checkAplicado = "1";
     }
