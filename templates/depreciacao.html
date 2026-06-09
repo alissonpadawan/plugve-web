@@ -3,41 +3,24 @@
 {% block title %}Depreciação | PlugVE Web{% endblock %}
 
 {% block content %}
-<section class="depr-hero card">
-  <div class="section-header">
-    <div>
-      <p class="eyebrow">Módulo de depreciação veicular</p>
-      <h1>Painel de Depreciação</h1>
-      <p class="muted">
-        Selecione o veículo pela FIPE. Se existir curva salva, o relatório técnico aparece automaticamente. Se não existir, o sistema libera o cálculo sob demanda.
-      </p>
-    </div>
-    <div class="status-box" id="status_bases">Carregando bases...</div>
-  </div>
-
-  <div class="kpi-grid" id="painel_kpis">
-    <div class="kpi-card"><span>Modelos cadastrados</span><strong id="kpi_modelos">-</strong></div>
-    <div class="kpi-card"><span>Curvas combustão</span><strong id="kpi_curvas_combustao">-</strong></div>
-    <div class="kpi-card"><span>Curvas elétricas</span><strong id="kpi_curvas_eletrico">-</strong></div>
-    <div class="kpi-card"><span>Históricos combustão</span><strong id="kpi_hist_combustao">-</strong></div>
-    <div class="kpi-card"><span>Históricos elétricos</span><strong id="kpi_hist_eletrico">-</strong></div>
-  </div>
-</section>
-
-<section class="depr-workspace">
+<section class="depr-workspace depr-workspace-final">
   <aside class="card depr-sidebar">
     <h2>Base provisória</h2>
-    <p class="muted small-text">Consulta rápida das curvas salvas. Esse menu fica provisoriamente para validação técnica do painel.</p>
+    <p class="muted small-text">Consulta técnica das curvas já cadastradas. Este menu fica provisoriamente para conferência durante a validação do mestrado.</p>
 
     <div class="side-stats">
+      <div><span>Modelos cadastrados</span><strong id="side_modelos">-</strong></div>
       <div><span>Marcas</span><strong id="side_marcas">-</strong></div>
       <div><span>Famílias</span><strong id="side_familias">-</strong></div>
       <div><span>Curvas prontas</span><strong id="side_curvas">-</strong></div>
+      <div><span>Históricos</span><strong id="side_historicos">-</strong></div>
     </div>
 
-    <div class="field">
+    <div id="status_bases" class="status-box mini">Carregando bases...</div>
+
+    <div class="field side-filter">
       <label for="filtro_curvas_lateral">Carros salvos</label>
-      <input id="filtro_curvas_lateral" type="text" placeholder="Buscar modelo salvo">
+      <input id="filtro_curvas_lateral" type="text" placeholder="Buscar marca, modelo ou FIPE">
     </div>
 
     <div id="lista_curvas_lateral" class="saved-list">
@@ -46,13 +29,18 @@
   </aside>
 
   <main class="depr-main">
-    <section class="card">
-      <h2>Consulta de Depreciação</h2>
-      <p class="muted">
-        Escolha tipo, horizonte e veículo. O horizonte é livre para permitir análises intermediárias, como 7 anos.
-      </p>
+    <section class="card consulta-card">
+      <div class="section-header compact-header">
+        <div>
+          <p class="eyebrow">Módulo de depreciação veicular</p>
+          <h1>Consulta de Depreciação</h1>
+          <p class="muted">
+            Selecione o veículo pela FIPE. Se existir curva salva, o gráfico e o relatório técnico aparecem automaticamente. Se não existir, o sistema libera o cálculo sob demanda.
+          </p>
+        </div>
+      </div>
 
-      <div class="grid two">
+      <div class="grid two consulta-row">
         <div class="field">
           <label for="tipo_veiculo">Tipo</label>
           <select id="tipo_veiculo">
@@ -62,12 +50,12 @@
           </select>
         </div>
         <div class="field">
-          <label for="horizonte_anos">Horizonte da análise</label>
+          <label for="horizonte_anos">Horizonte da análise, em anos</label>
           <input id="horizonte_anos" type="number" min="1" max="20" step="1" value="5">
         </div>
       </div>
 
-      <div class="grid three">
+      <div class="grid three consulta-row">
         <div class="field">
           <label for="fipe_marca">Marca</label>
           <select id="fipe_marca"></select>
@@ -88,7 +76,7 @@
       </div>
     </section>
 
-    <section id="resultado_area" class="grid two hidden">
+    <section id="resultado_area" class="grid two hidden result-grid">
       <div class="card">
         <h2>Veículo selecionado</h2>
         <dl class="data-list">
@@ -105,12 +93,12 @@
         <h2>Resumo da depreciação</h2>
         <p id="resultado_status" class="muted">Aguardando seleção do veículo.</p>
         <dl class="data-list compact">
-          <dt>Valor atual</dt><dd id="res_valor_atual">-</dd>
-          <dt>Valor futuro</dt><dd id="res_valor_futuro">-</dd>
+          <dt>Valor inicial</dt><dd id="res_valor_atual">-</dd>
+          <dt>Valor ao fim do horizonte</dt><dd id="res_valor_futuro">-</dd>
           <dt>Depreciação acumulada</dt><dd id="res_depreciacao">-</dd>
-          <dt>Taxa anual</dt><dd id="res_taxa">-</dd>
+          <dt>Taxa anual média</dt><dd id="res_taxa">-</dd>
           <dt>Confiança</dt><dd id="res_confianca">-</dd>
-          <dt>Origem</dt><dd id="res_origem">-</dd>
+          <dt>Origem técnica</dt><dd id="res_origem">-</dd>
           <dt>Tipo usado</dt><dd id="res_tipo_usado">-</dd>
         </dl>
         <div class="actions">
@@ -121,28 +109,29 @@
       </div>
     </section>
 
-    <section id="auditoria_area" class="hidden">
-      <section class="grid two">
-        <div class="card">
-          <h2>Gráfico principal</h2>
-          <p class="muted">Comparação entre valor FIPE atual e valor futuro estimado.</p>
+    <section id="auditoria_area" class="hidden auditoria-final">
+      <section class="grid two graph-grid">
+        <div class="card chart-card">
+          <h2>Gráfico de barras</h2>
+          <p class="muted">Comparação entre valor inicial, cenário base, cenário otimista e cenário pessimista.</p>
           <div id="grafico_barras" class="simple-chart empty-chart">Selecione ou calcule um veículo.</div>
         </div>
-        <div class="card">
+        <div class="card chart-card">
           <h2>Curva de depreciação</h2>
-          <p class="muted">Projeção anual baseada na taxa técnica calculada ou carregada.</p>
+          <p class="muted">Evolução estimada do valor do veículo ao longo do horizonte selecionado.</p>
           <div id="grafico_projecao" class="simple-chart empty-chart">Selecione ou calcule um veículo.</div>
         </div>
       </section>
 
-      <section id="detalhes_resultado" class="card">
+      <section id="detalhes_resultado" class="card report-card">
         <div class="section-header">
           <div>
-            <h2>Relatório técnico da depreciação</h2>
-            <p class="muted">Auditoria da curva usada, histórico, proxy e origem do resultado.</p>
+            <h2>Relatório técnico final</h2>
+            <p class="muted">Síntese da curva usada, premissas, valor inicial, valor final e auditoria da base.</p>
           </div>
         </div>
-        <table class="details-table">
+        <div id="relatorio_textual" class="technical-report">Aguardando seleção do veículo.</div>
+        <table class="details-table compact-details">
           <tbody id="detalhes_corpo"></tbody>
         </table>
       </section>
