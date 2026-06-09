@@ -46,6 +46,50 @@ function obterTextoSelecionado(select) {
   return select.options[select.selectedIndex]?.dataset?.nome || select.options[select.selectedIndex]?.textContent || "";
 }
 
+async function salvarModeloZeroKmSeEncontrado(marca, modelo, anosOriginais) {
+  if (!marca?.value || !modelo?.value || !Array.isArray(anosOriginais)) return false;
+  const temZero = anosOriginais.some(item => codigoAnoFipeZeroKm(item.codigo));
+  if (!temZero) return false;
+
+  const nomeModelo = obterTextoSelecionado(modelo);
+  const nomeMarca = obterTextoSelecionado(marca);
+  const opt = modelo.options[modelo.selectedIndex];
+  if (opt) {
+    opt.dataset.temZeroKm = "1";
+    opt.style.fontWeight = "800";
+    if (!/^0 km • /.test(opt.textContent || "")) {
+      opt.textContent = `0 km • ${opt.dataset.nome || opt.textContent || nomeModelo}`;
+    }
+  }
+
+  try {
+    await fetch("/api/fipe/marcar_zero_km", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        codigo_marca: marca.value,
+        codigo_modelo: modelo.value,
+        marca: nomeMarca,
+        modelo: nomeModelo
+      })
+    });
+  } catch (e) {
+    // O destaque visual continua mesmo se o salvamento falhar.
+  }
+  return true;
+}
+
+function destacarOpcaoModeloZeroKm(opt) {
+  if (!opt || !opt.value) return;
+  opt.dataset.temZeroKm = "1";
+  opt.style.fontWeight = "800";
+  opt.title = "Este modelo possui versão Zero km na FIPE";
+  const nomeOriginal = opt.dataset.nome || opt.textContent || "";
+  if (!/^0 km • /.test(opt.textContent || "")) {
+    opt.textContent = `0 km • ${nomeOriginal}`;
+  }
+}
+
 async function bloquearModeloAntigoSemAnoValido(marca, modelo, anosOriginais) {
   if (!marca?.value || !modelo?.value) return;
   const nomeModelo = obterTextoSelecionado(modelo);
@@ -155,6 +199,9 @@ async function carregarModelosFipe() {
       opt.value = item.codigo;
       opt.textContent = item.nome;
       opt.dataset.nome = item.nome;
+      if (item.tem_zero_km) {
+        destacarOpcaoModeloZeroKm(opt);
+      }
       modelo.appendChild(opt);
     });
     if (!(data.modelos || []).length) {
@@ -184,6 +231,7 @@ async function carregarAnosFipe() {
     const resp = await fetch(url);
     const anos = await resp.json();
     const anosElegiveis = Array.isArray(anos) ? anos.filter(anoPermitidoNaTela) : [];
+    await salvarModeloZeroKmSeEncontrado(marca, modelo, Array.isArray(anos) ? anos : []);
     limparSelect(ano, anosElegiveis.length ? "Selecione" : "Sem anos elegíveis");
 
     if (!anosElegiveis.length) {

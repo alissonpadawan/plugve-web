@@ -21,6 +21,40 @@ class FipeService:
     def _marcas_bloqueadas_path(self) -> Path:
         return self._cache_dir() / "marcas_bloqueadas.json"
 
+    def _modelos_zero_km_path(self) -> Path:
+        return self._cache_dir() / "modelos_zero_km.json"
+
+    def _ler_modelos_zero_km(self) -> dict:
+        path = self._modelos_zero_km_path()
+        if not path.exists():
+            return {}
+        try:
+            return json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            return {}
+
+    def _salvar_modelos_zero_km(self, dados: dict) -> None:
+        path = self._modelos_zero_km_path()
+        path.write_text(json.dumps(dados, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    def modelo_tem_zero_km_salvo(self, codigo_marca: str, codigo_modelo: str) -> bool:
+        dados = self._ler_modelos_zero_km()
+        return str(codigo_modelo) in set(map(str, dados.get(str(codigo_marca), {}).keys()))
+
+    def marcar_modelo_zero_km(self, codigo_marca: str, codigo_modelo: str, nome_marca: str = "", nome_modelo: str = "") -> dict:
+        dados = self._ler_modelos_zero_km()
+        marca_key = str(codigo_marca)
+        modelo_key = str(codigo_modelo)
+        dados.setdefault(marca_key, {})[modelo_key] = {
+            "codigo_marca": marca_key,
+            "codigo_modelo": modelo_key,
+            "marca": nome_marca,
+            "modelo": nome_modelo,
+            "tem_zero_km": True,
+        }
+        self._salvar_modelos_zero_km(dados)
+        return {"ok": True, "modelo_zero_km": dados[marca_key][modelo_key]}
+
     def _ler_marcas_bloqueadas(self) -> dict:
         path = self._marcas_bloqueadas_path()
         if not path.exists():
@@ -122,11 +156,16 @@ class FipeService:
             return data
         bloqueados = self._ler_bloqueados().get(str(codigo_marca), {})
         modelos = data.get("modelos", []) if isinstance(data, dict) else []
+        zero_km = self._ler_modelos_zero_km().get(str(codigo_marca), {})
+        data = dict(data)
+        modelos_filtrados = [m for m in modelos if str(m.get("codigo")) not in bloqueados]
+        for modelo in modelos_filtrados:
+            if str(modelo.get("codigo")) in zero_km:
+                modelo["tem_zero_km"] = True
+        data["modelos"] = modelos_filtrados
+        data["modelos_bloqueados_ocultos"] = len(modelos) - len(modelos_filtrados)
         if not bloqueados:
             return data
-        data = dict(data)
-        data["modelos"] = [m for m in modelos if str(m.get("codigo")) not in bloqueados]
-        data["modelos_bloqueados_ocultos"] = len(modelos) - len(data["modelos"])
 
         # Se todos os modelos da marca já foram bloqueados por não terem Zero km
         # nem ano/modelo >= 2012, a própria marca vira ruído para o usuário.
