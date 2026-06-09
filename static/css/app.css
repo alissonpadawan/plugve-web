@@ -1028,3 +1028,28 @@ select, input {
     min-height: auto;
   }
 }
+
+/* Varredura provisória da FIPE */
+#fipe_marca option.marca-pendente-varredura,
+#fipe_marca option[data-varrida="0"] {
+  color: #b91c1c;
+  font-weight: 700;
+}
+#fipe_marca option.marca-varrida,
+#fipe_marca option[data-varrida="1"] {
+  color: var(--text);
+  font-weight: 500;
+}
+.sweep-button {
+  margin-top: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+}
+.sweep-status {
+  margin: 7px 0 0 0;
+  font-size: 13px;
+  line-height: 1.35;
+}
+.sweep-status.running { color: #92400e; font-weight: 700; }
+.sweep-status.ok { color: #166534; font-weight: 700; }
+.sweep-status.error { color: #991b1b; font-weight: 700; }

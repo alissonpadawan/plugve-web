@@ -92,6 +92,39 @@ def desmarcar_zero_km():
         return jsonify({"ok": False, "erro": str(exc)}), 500
 
 
+@fipe_bp.route("/marcar_marca_varrida", methods=["POST"])
+def marcar_marca_varrida():
+    payload = request.get_json(silent=True) or {}
+    codigo_marca = str(payload.get("codigo_marca", "")).strip()
+    if not codigo_marca:
+        return jsonify({"ok": False, "erro": "Parâmetros incompletos."}), 400
+    try:
+        return jsonify(fipe_service.marcar_marca_varrida(
+            codigo_marca=codigo_marca,
+            nome_marca=str(payload.get("marca", "")).strip(),
+            modelos_validos=int(payload.get("modelos_validos", 0) or 0),
+            modelos_bloqueados=int(payload.get("modelos_bloqueados", 0) or 0),
+        ))
+    except Exception as exc:
+        return jsonify({"ok": False, "erro": str(exc)}), 500
+
+
+@fipe_bp.route("/bloquear_marca", methods=["POST"])
+def bloquear_marca():
+    payload = request.get_json(silent=True) or {}
+    codigo_marca = str(payload.get("codigo_marca", "")).strip()
+    if not codigo_marca:
+        return jsonify({"ok": False, "erro": "Parâmetros incompletos."}), 400
+    try:
+        return jsonify(fipe_service.bloquear_marca_antiga(
+            codigo_marca=codigo_marca,
+            nome_marca=str(payload.get("marca", "")).strip(),
+            motivo=str(payload.get("motivo", "sem_modelos_2012_ou_zero_km")).strip(),
+        ))
+    except Exception as exc:
+        return jsonify({"ok": False, "erro": str(exc)}), 500
+
+
 @fipe_bp.route("/preco")
 def preco():
     codigo_marca = request.args.get("codigo_marca", "").strip()

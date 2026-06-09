@@ -24,6 +24,39 @@ class FipeService:
     def _modelos_zero_km_path(self) -> Path:
         return self._cache_dir() / "modelos_zero_km.json"
 
+    def _marcas_varridas_path(self) -> Path:
+        return self._cache_dir() / "marcas_varridas.json"
+
+
+    def _ler_marcas_varridas(self) -> dict:
+        path = self._marcas_varridas_path()
+        if not path.exists():
+            return {}
+        try:
+            return json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            return {}
+
+    def _salvar_marcas_varridas(self, dados: dict) -> None:
+        path = self._marcas_varridas_path()
+        path.write_text(json.dumps(dados, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    def marca_varrida(self, codigo_marca: str) -> bool:
+        return str(codigo_marca) in set(map(str, self._ler_marcas_varridas().keys()))
+
+    def marcar_marca_varrida(self, codigo_marca: str, nome_marca: str = "", modelos_validos: int = 0, modelos_bloqueados: int = 0) -> dict:
+        dados = self._ler_marcas_varridas()
+        marca_key = str(codigo_marca)
+        dados[marca_key] = {
+            "codigo_marca": marca_key,
+            "marca": nome_marca,
+            "modelos_validos": int(modelos_validos or 0),
+            "modelos_bloqueados": int(modelos_bloqueados or 0),
+            "status": "varrida",
+        }
+        self._salvar_marcas_varridas(dados)
+        return {"ok": True, "marca_varrida": dados[marca_key]}
+
     def _ler_modelos_zero_km(self) -> dict:
         path = self._modelos_zero_km_path()
         if not path.exists():
@@ -93,6 +126,11 @@ class FipeService:
             "motivo": motivo,
         }
         self._salvar_marcas_bloqueadas(dados)
+        # Marca bloqueada não deve permanecer como varrida/normal na lista.
+        varridas = self._ler_marcas_varridas()
+        if marca_key in varridas:
+            varridas.pop(marca_key, None)
+            self._salvar_marcas_varridas(varridas)
         return {"ok": True, "marca_bloqueada": dados[marca_key]}
 
     def _ler_bloqueados(self) -> dict:
@@ -159,9 +197,19 @@ class FipeService:
     def listar_marcas(self):
         marcas = self._get_json("marcas")
         bloqueadas = self._ler_marcas_bloqueadas()
-        if not bloqueadas or not isinstance(marcas, list):
+        varridas = self._ler_marcas_varridas()
+        if not isinstance(marcas, list):
             return marcas
-        return [m for m in marcas if str(m.get("codigo")) not in bloqueadas]
+
+        resultado = []
+        for marca in marcas:
+            codigo = str(marca.get("codigo"))
+            if codigo in bloqueadas:
+                continue
+            item = dict(marca)
+            item["marca_varrida"] = codigo in varridas
+            resultado.append(item)
+        return resultado
 
     def listar_modelos(self, codigo_marca: str, filtrar_bloqueados: bool = True):
         data = self._get_json(f"marcas/{codigo_marca}/modelos")

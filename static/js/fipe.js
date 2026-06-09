@@ -46,6 +46,176 @@ function obterTextoSelecionado(select) {
   return select.options[select.selectedIndex]?.dataset?.nome || select.options[select.selectedIndex]?.textContent || "";
 }
 
+function setStatusVarredura(texto, classe = "") {
+  const el = document.getElementById("status_varredura_marca");
+  if (!el) return;
+  el.textContent = texto || "";
+  el.className = `sweep-status ${classe}`.trim();
+}
+
+function nomeMarcaSelecionada() {
+  const marca = document.getElementById("fipe_marca");
+  return obterTextoSelecionado(marca);
+}
+
+async function marcarModeloZeroKmPorCodigo(codigoMarca, codigoModelo, nomeMarca, nomeModelo, temZero) {
+  try {
+    await fetch(temZero ? "/api/fipe/marcar_zero_km" : "/api/fipe/desmarcar_zero_km", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        codigo_marca: codigoMarca,
+        codigo_modelo: codigoModelo,
+        marca: nomeMarca || "",
+        modelo: nomeModelo || ""
+      })
+    });
+  } catch (e) {}
+}
+
+async function bloquearModeloPorCodigo(codigoMarca, codigoModelo, nomeMarca, nomeModelo, anosOriginais) {
+  try {
+    await fetch("/api/fipe/bloquear_modelo", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        codigo_marca: codigoMarca,
+        codigo_modelo: codigoModelo,
+        marca: nomeMarca || "",
+        modelo: nomeModelo || "",
+        motivo: "varredura_sem_ano_2012_ou_zero_km",
+        anos_encontrados: (anosOriginais || []).map(a => a.nome || a.codigo).slice(0, 80)
+      })
+    });
+  } catch (e) {}
+}
+
+async function marcarMarcaVarrida(codigoMarca, nomeMarca, modelosValidos, modelosBloqueados) {
+  try {
+    await fetch("/api/fipe/marcar_marca_varrida", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        codigo_marca: codigoMarca,
+        marca: nomeMarca || "",
+        modelos_validos: modelosValidos || 0,
+        modelos_bloqueados: modelosBloqueados || 0
+      })
+    });
+  } catch (e) {}
+}
+
+async function bloquearMarcaPorCodigo(codigoMarca, nomeMarca) {
+  try {
+    await fetch("/api/fipe/bloquear_marca", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        codigo_marca: codigoMarca,
+        marca: nomeMarca || "",
+        motivo: "varredura_sem_modelos_2012_ou_zero_km"
+      })
+    });
+  } catch (e) {}
+}
+
+async function varrerMarcaAtual() {
+  const marca = document.getElementById("fipe_marca");
+  const modeloSelect = document.getElementById("fipe_modelo");
+  const anoSelect = document.getElementById("fipe_ano");
+  const botao = document.getElementById("btn_varrer_marca");
+
+  if (!marca || !marca.value) {
+    setStatusVarredura("Selecione uma marca antes de varrer.", "error");
+    return;
+  }
+
+  const codigoMarca = marca.value;
+  const nomeMarca = obterTextoSelecionado(marca);
+
+  if (botao) botao.disabled = true;
+  setStatusVarredura(`Varrendo ${nomeMarca}... buscando modelos.`, "running");
+  limparSelect(anoSelect, "Varredura em andamento...");
+
+  try {
+    const tipo = document.getElementById("tipo_veiculo")?.value || "auto";
+    const resp = await fetch(`/api/fipe/modelos?codigo_marca=${encodeURIComponent(codigoMarca)}&tipo=${encodeURIComponent(tipo)}`);
+    const data = await resp.json();
+    const modelos = (data.modelos || []).filter(m => m && m.codigo);
+
+    if (!modelos.length) {
+      await bloquearMarcaPorCodigo(codigoMarca, nomeMarca);
+      setStatusVarredura(`${nomeMarca} ocultada: não há modelos elegíveis.`, "ok");
+      await carregarMarcasFipe();
+      limparSelect(modeloSelect, "Marca ocultada");
+      limparSelect(anoSelect, "Selecione outra marca");
+      return;
+    }
+
+    let validos = 0;
+    let bloqueados = 0;
+    let zeroKm = 0;
+
+    for (let i = 0; i < modelos.length; i++) {
+      const modelo = modelos[i];
+      const codigoModelo = String(modelo.codigo);
+      const nomeModelo = modelo.nome || "";
+      setStatusVarredura(`Varrendo ${nomeMarca}: ${i + 1}/${modelos.length} - ${nomeModelo}`, "running");
+
+      let anos = [];
+      try {
+        const anosResp = await fetch(`/api/fipe/anos?codigo_marca=${encodeURIComponent(codigoMarca)}&codigo_modelo=${encodeURIComponent(codigoModelo)}`);
+        anos = await anosResp.json();
+      } catch (e) {
+        anos = [];
+      }
+
+      const listaAnos = Array.isArray(anos) ? anos : [];
+      const temZero = listaAnos.some(item => codigoAnoFipeZeroKm(item.codigo));
+      const elegiveis = listaAnos.filter(anoPermitidoNaTela);
+
+      if (!elegiveis.length) {
+        bloqueados++;
+        await bloquearModeloPorCodigo(codigoMarca, codigoModelo, nomeMarca, nomeModelo, listaAnos);
+        await marcarModeloZeroKmPorCodigo(codigoMarca, codigoModelo, nomeMarca, nomeModelo, false);
+      } else {
+        validos++;
+        if (temZero) {
+          zeroKm++;
+          await marcarModeloZeroKmPorCodigo(codigoMarca, codigoModelo, nomeMarca, nomeModelo, true);
+        } else {
+          await marcarModeloZeroKmPorCodigo(codigoMarca, codigoModelo, nomeMarca, nomeModelo, false);
+        }
+      }
+
+      // Respira para a tela atualizar e não parecer travada.
+      await new Promise(resolve => setTimeout(resolve, 25));
+    }
+
+    if (validos <= 0) {
+      await bloquearMarcaPorCodigo(codigoMarca, nomeMarca);
+      setStatusVarredura(`${nomeMarca} ocultada: 100% dos modelos são antigos/sem Zero km.`, "ok");
+      await carregarMarcasFipe();
+      limparSelect(modeloSelect, "Marca ocultada");
+      limparSelect(anoSelect, "Selecione outra marca");
+      return;
+    }
+
+    await marcarMarcaVarrida(codigoMarca, nomeMarca, validos, bloqueados);
+    setStatusVarredura(`${nomeMarca} varrida: ${validos} modelos válidos, ${bloqueados} bloqueados, ${zeroKm} com Zero km.`, "ok");
+    await carregarMarcasFipe();
+    const marcaNova = document.getElementById("fipe_marca");
+    if (marcaNova) marcaNova.value = codigoMarca;
+    await carregarModelosFipe();
+  } catch (e) {
+    setStatusVarredura("Erro durante a varredura da marca. Tente novamente.", "error");
+  } finally {
+    if (botao) botao.disabled = false;
+  }
+}
+
+window.varrerMarcaAtual = varrerMarcaAtual;
+
 async function salvarModeloZeroKmSeEncontrado(marca, modelo, anosOriginais) {
   if (!marca?.value || !modelo?.value || !Array.isArray(anosOriginais)) return false;
   const temZero = anosOriginais.some(item => codigoAnoFipeZeroKm(item.codigo));
@@ -198,6 +368,9 @@ async function carregarMarcasFipe() {
       opt.value = item.codigo;
       opt.textContent = item.nome;
       opt.dataset.nome = item.nome;
+      opt.dataset.varrida = item.marca_varrida ? "1" : "0";
+      opt.className = item.marca_varrida ? "marca-varrida" : "marca-pendente-varredura";
+      opt.title = item.marca_varrida ? "Marca já varrida" : "Marca ainda não varrida: aparece em vermelho provisoriamente";
       marca.appendChild(opt);
     });
   } catch (e) {
@@ -372,7 +545,10 @@ function habilitarNavegacaoPorSetasNoModelo() {
 document.addEventListener("DOMContentLoaded", () => {
   carregarMarcasFipe();
 
+  document.getElementById("btn_varrer_marca")?.addEventListener("click", varrerMarcaAtual);
+
   document.getElementById("fipe_marca")?.addEventListener("change", () => {
+    setStatusVarredura("");
     ultimoDetalheFipe = null;
     if (typeof window.resetarFluxoDepreciacao === "function") window.resetarFluxoDepreciacao();
     carregarModelosFipe();
