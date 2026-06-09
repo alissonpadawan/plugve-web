@@ -929,3 +929,102 @@ select, input {
     min-height: auto;
   }
 }
+
+/* V23.3 - resultado: resumo + barras em cima; curva grande embaixo */
+.result-top-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 22px;
+  align-items: stretch;
+}
+.result-top-grid.hidden {
+  display: none !important;
+}
+.result-top-grid .result-card,
+.result-top-grid .chart-card-bars {
+  min-height: 420px;
+  height: 100%;
+  min-width: 0;
+}
+.result-top-grid #card_resultado {
+  width: auto !important;
+}
+.result-top-grid .resumo-inline {
+  max-width: 560px;
+}
+.chart-card-bars.hidden {
+  display: none !important;
+}
+.result-top-grid:has(.chart-card-bars.hidden) {
+  grid-template-columns: minmax(0, 1fr);
+}
+.result-top-grid:has(.chart-card-bars.hidden) .result-card {
+  min-height: 260px;
+}
+.result-top-grid .simple-chart {
+  min-height: 270px;
+  overflow: hidden !important;
+}
+.result-top-grid .bar-chart-grid {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: end;
+  justify-items: center;
+  gap: clamp(8px, 2vw, 24px);
+  width: 100%;
+  min-height: 255px;
+  overflow: hidden !important;
+  padding: 8px 2px 0;
+}
+.result-top-grid .bar-chart-item {
+  min-width: 0 !important;
+  width: 100%;
+  max-width: none;
+  height: 255px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+}
+.result-top-grid .bar-chart-bar {
+  width: clamp(42px, 42%, 76px) !important;
+  max-height: 210px;
+}
+.result-top-grid .bar-chart-value {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+}
+.result-top-grid .bar-chart-label {
+  max-width: 100%;
+  font-size: 13px;
+}
+.auditoria-final .chart-card-curve {
+  min-height: 650px;
+  width: 100%;
+}
+.auditoria-final .chart-card-curve #grafico_projecao {
+  min-height: 520px;
+  display: block;
+}
+.auditoria-final .chart-card-curve .line-chart-svg {
+  min-height: 390px;
+  max-height: none;
+}
+.auditoria-final .chart-card-curve .projection-summary {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+@media (max-width: 1100px) {
+  .result-top-grid {
+    grid-template-columns: 1fr;
+  }
+  .result-top-grid .result-card,
+  .result-top-grid .chart-card-bars {
+    min-height: auto;
+  }
+  .auditoria-final .chart-card-curve {
+    min-height: auto;
+  }
+}

@@ -74,8 +74,8 @@
       </div>
     </section>
 
-    <section id="resultado_area" class="hidden result-grid single-summary">
-      <div class="card" id="card_resultado">
+    <section id="resultado_area" class="hidden result-top-grid">
+      <div class="card result-card" id="card_resultado">
         <h2>Resumo da depreciação</h2>
         <p id="resultado_status" class="muted">Aguardando seleção do veículo.</p>
         <dl class="data-list compact resumo-inline">
@@ -93,20 +93,18 @@
           <button id="btn_calcular_futuro" class="button primary hidden" type="button" disabled>Calcular depreciação</button>
         </div>
       </div>
+      <div id="card_grafico_barras" class="card chart-card chart-card-bars hidden">
+        <h2>Gráfico de barras</h2>
+        <p class="muted">Comparação entre valor inicial, cenário base, cenário otimista e cenário pessimista.</p>
+        <div id="grafico_barras" class="simple-chart empty-chart">Selecione ou calcule um veículo.</div>
+      </div>
     </section>
 
     <section id="auditoria_area" class="hidden auditoria-final">
-      <section class="grid two graph-grid">
-        <div class="card chart-card">
-          <h2>Gráfico de barras</h2>
-          <p class="muted">Comparação entre valor inicial, cenário base, cenário otimista e cenário pessimista.</p>
-          <div id="grafico_barras" class="simple-chart empty-chart">Selecione ou calcule um veículo.</div>
-        </div>
-        <div class="card chart-card">
-          <h2>Curva de depreciação</h2>
-          <p class="muted">Evolução estimada do valor do veículo ao longo do horizonte selecionado.</p>
-          <div id="grafico_projecao" class="simple-chart empty-chart">Selecione ou calcule um veículo.</div>
-        </div>
+      <section class="card chart-card chart-card-curve">
+        <h2>Curva de depreciação</h2>
+        <p class="muted">Evolução estimada do valor do veículo ao longo do horizonte selecionado.</p>
+        <div id="grafico_projecao" class="simple-chart empty-chart">Selecione ou calcule um veículo.</div>
       </section>
 
       <section id="detalhes_resultado" class="card report-card">

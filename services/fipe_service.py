@@ -16,6 +16,36 @@ class FipeService:
     def _bloqueados_path(self) -> Path:
         return self._cache_dir() / "modelos_bloqueados.json"
 
+    def _marcas_bloqueadas_path(self) -> Path:
+        return self._cache_dir() / "marcas_bloqueadas.json"
+
+    def _ler_marcas_bloqueadas(self) -> dict:
+        path = self._marcas_bloqueadas_path()
+        if not path.exists():
+            return {}
+        try:
+            return json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            return {}
+
+    def _salvar_marcas_bloqueadas(self, dados: dict) -> None:
+        path = self._marcas_bloqueadas_path()
+        path.write_text(json.dumps(dados, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    def marca_bloqueada(self, codigo_marca: str) -> bool:
+        return str(codigo_marca) in set(map(str, self._ler_marcas_bloqueadas().keys()))
+
+    def bloquear_marca_antiga(self, codigo_marca: str, nome_marca: str = "", motivo: str = "sem_modelos_2012_ou_zero_km") -> dict:
+        dados = self._ler_marcas_bloqueadas()
+        marca_key = str(codigo_marca)
+        dados[marca_key] = {
+            "codigo_marca": marca_key,
+            "marca": nome_marca,
+            "motivo": motivo,
+        }
+        self._salvar_marcas_bloqueadas(dados)
+        return {"ok": True, "marca_bloqueada": dados[marca_key]}
+
     def _ler_bloqueados(self) -> dict:
         path = self._bloqueados_path()
         if not path.exists():
@@ -45,7 +75,20 @@ class FipeService:
             "motivo": motivo,
         }
         self._salvar_bloqueados(dados)
-        return {"ok": True, "bloqueado": dados[marca_key][modelo_key]}
+
+        marca_bloqueada = False
+        try:
+            modelos_data = self._get_json(f"marcas/{marca_key}/modelos")
+            modelos = modelos_data.get("modelos", []) if isinstance(modelos_data, dict) else []
+            codigos_modelos = {str(m.get("codigo")) for m in modelos if m.get("codigo") is not None}
+            bloqueados_marca = set(map(str, dados.get(marca_key, {}).keys()))
+            if codigos_modelos and codigos_modelos.issubset(bloqueados_marca):
+                self.bloquear_marca_antiga(marca_key, nome_marca, "todos_modelos_sem_ano_2012_ou_zero_km")
+                marca_bloqueada = True
+        except Exception:
+            marca_bloqueada = False
+
+        return {"ok": True, "bloqueado": dados[marca_key][modelo_key], "marca_bloqueada": marca_bloqueada}
 
     def _base_url(self) -> str:
         return current_app.config["FIPE_BASE_URL"]
@@ -65,19 +108,35 @@ class FipeService:
         return resp.json()
 
     def listar_marcas(self):
-        return self._get_json("marcas")
+        marcas = self._get_json("marcas")
+        bloqueadas = self._ler_marcas_bloqueadas()
+        if not bloqueadas or not isinstance(marcas, list):
+            return marcas
+        return [m for m in marcas if str(m.get("codigo")) not in bloqueadas]
 
     def listar_modelos(self, codigo_marca: str, filtrar_bloqueados: bool = True):
         data = self._get_json(f"marcas/{codigo_marca}/modelos")
         if not filtrar_bloqueados:
             return data
         bloqueados = self._ler_bloqueados().get(str(codigo_marca), {})
+        modelos = data.get("modelos", []) if isinstance(data, dict) else []
         if not bloqueados:
             return data
-        modelos = data.get("modelos", []) if isinstance(data, dict) else []
         data = dict(data)
         data["modelos"] = [m for m in modelos if str(m.get("codigo")) not in bloqueados]
         data["modelos_bloqueados_ocultos"] = len(modelos) - len(data["modelos"])
+
+        # Se todos os modelos da marca já foram bloqueados por não terem Zero km
+        # nem ano/modelo >= 2012, a própria marca vira ruído para o usuário.
+        # Ela é bloqueada para não aparecer mais no seletor de marcas.
+        if modelos and not data["modelos"]:
+            nome_marca = ""
+            for marca in self._get_json("marcas"):
+                if str(marca.get("codigo")) == str(codigo_marca):
+                    nome_marca = marca.get("nome", "")
+                    break
+            self.bloquear_marca_antiga(str(codigo_marca), nome_marca)
+            data["marca_bloqueada"] = True
         return data
 
     def listar_anos(self, codigo_marca: str, codigo_modelo: str):

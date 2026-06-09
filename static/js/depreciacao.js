@@ -17,6 +17,10 @@ function mostrarResultadoArea(mostrar = true) {
   document.getElementById("resultado_area")?.classList.toggle("hidden", !mostrar);
 }
 
+function mostrarGraficoBarrasArea(mostrar = true) {
+  document.getElementById("card_grafico_barras")?.classList.toggle("hidden", !mostrar);
+}
+
 function mostrarAuditoriaArea(mostrar = true) {
   document.getElementById("auditoria_area")?.classList.toggle("hidden", !mostrar);
 }
@@ -37,12 +41,14 @@ function limparResumo() {
   });
   configurarBotoesResultado(false, false);
   atualizarVisibilidadeResumo();
+  mostrarGraficoBarrasArea(false);
   mostrarAuditoriaArea(false);
 }
 
 function resetarFluxoDepreciacao() {
   ultimoResumoDepreciacao = null;
   mostrarResultadoArea(false);
+  mostrarGraficoBarrasArea(false);
   mostrarAuditoriaArea(false);
   atualizarFeedbackCalculo("", 0, false);
   atualizarStatusResultado("Aguardando seleção do veículo.", "muted");
@@ -218,6 +224,7 @@ function preencherRelatorio(data, origem = "curva") {
 
 function mostrarDetalhes() {
   if (!ultimoResumoDepreciacao) return;
+  mostrarGraficoBarrasArea(true);
   mostrarAuditoriaArea(true);
   preencherRelatorio(ultimoResumoDepreciacao, "curva salva");
   renderizarGraficosDepreciacao(ultimoResumoDepreciacao);
@@ -253,6 +260,7 @@ async function consultarResumoDepreciacao(detalheFipe) {
       atualizarStatusResultado(`✓ ${data.mensagem || "Curva salva encontrada."}`, "encontrado");
       preencherResumo(data);
       configurarBotoesResultado(true, false);
+      mostrarGraficoBarrasArea(true);
       mostrarAuditoriaArea(true);
       preencherRelatorio(data, "curva salva");
       renderizarGraficosDepreciacao(data);
@@ -261,6 +269,7 @@ async function consultarResumoDepreciacao(detalheFipe) {
       atualizarFeedbackCalculo("Curva não encontrada. Cálculo sob demanda liberado.", 100, false);
       atualizarStatusResultado((data.mensagem || "Curva não encontrada.") + " Clique em Calcular depreciação para gerar e salvar a curva.", "nao-encontrado");
       limparResumoParcialApenasValor(data.valor_atual || detalheFipe.valor_atual);
+      mostrarGraficoBarrasArea(false);
       mostrarAuditoriaArea(false);
       configurarBotoesResultado(false, true);
     }
@@ -427,6 +436,7 @@ async function solicitarCalculoSobDemanda() {
         atualizarStatusResultado(`✓ ${data.mensagem || "Curva calculada e salva."}`, "encontrado");
         preencherResumo(data.resultado);
         configurarBotoesResultado(true, false);
+        mostrarGraficoBarrasArea(true);
         mostrarAuditoriaArea(true);
         preencherRelatorio({ ...data.resultado, motor: data.motor }, "cálculo sob demanda");
         renderizarGraficosDepreciacao(data.resultado);
@@ -436,6 +446,7 @@ async function solicitarCalculoSobDemanda() {
     } else {
       atualizarFeedbackCalculo("Cálculo não concluído. Ajuste a seleção ou tente outro veículo.", 100, true);
       atualizarStatusResultado(data.mensagem || "Falha ao calcular curva.", "erro");
+      mostrarGraficoBarrasArea(false);
       mostrarAuditoriaArea(false);
     }
   } catch (e) {
@@ -915,6 +926,7 @@ function fecharBaseProvisoria() {
 
 document.addEventListener("DOMContentLoaded", () => {
   mostrarResultadoArea(false);
+  mostrarGraficoBarrasArea(false);
   mostrarAuditoriaArea(false);
   carregarStatusBases();
 

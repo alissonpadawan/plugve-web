@@ -51,7 +51,7 @@ async function bloquearModeloAntigoSemAnoValido(marca, modelo, anosOriginais) {
   const nomeModelo = obterTextoSelecionado(modelo);
   const nomeMarca = obterTextoSelecionado(marca);
   try {
-    await fetch("/api/fipe/bloquear_modelo", {
+    const resp = await fetch("/api/fipe/bloquear_modelo", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -63,6 +63,17 @@ async function bloquearModeloAntigoSemAnoValido(marca, modelo, anosOriginais) {
         anos_encontrados: (anosOriginais || []).map(a => a.nome || a.codigo).slice(0, 80)
       })
     });
+    const retorno = await resp.json().catch(() => ({}));
+    if (retorno.marca_bloqueada) {
+      await carregarMarcasFipe();
+      limparSelect(modelo, "Marca ocultada: sem modelos elegíveis");
+      limparSelect(document.getElementById("fipe_ano"), "Selecione outra marca");
+      if (typeof atualizarStatusResultado === "function") {
+        atualizarStatusResultado(`Marca ${nomeMarca} ocultada: nenhum modelo possui Zero km ou ano/modelo de 2012 em diante.`, "erro");
+        mostrarResultadoArea(true);
+      }
+      return;
+    }
   } catch (e) {
     // Se não conseguir salvar o bloqueio, a tela ainda continua funcionando.
   }
@@ -128,6 +139,16 @@ async function carregarModelosFipe() {
     const tipo = document.getElementById("tipo_veiculo")?.value || "auto";
     const resp = await fetch(`/api/fipe/modelos?codigo_marca=${encodeURIComponent(marca.value)}&tipo=${encodeURIComponent(tipo)}`);
     const data = await resp.json();
+    if (data.marca_bloqueada) {
+      await carregarMarcasFipe();
+      limparSelect(modelo, "Marca ocultada: sem modelos elegíveis");
+      limparSelect(ano, "Selecione outra marca");
+      if (typeof atualizarStatusResultado === "function") {
+        atualizarStatusResultado("Marca ocultada: nenhum modelo possui Zero km ou ano/modelo de 2012 em diante.", "erro");
+        mostrarResultadoArea(true);
+      }
+      return;
+    }
     limparSelect(modelo, "Selecione");
     (data.modelos || []).forEach(item => {
       const opt = document.createElement("option");
@@ -136,6 +157,9 @@ async function carregarModelosFipe() {
       opt.dataset.nome = item.nome;
       modelo.appendChild(opt);
     });
+    if (!(data.modelos || []).length) {
+      limparSelect(modelo, "Nenhum modelo elegível nesta marca");
+    }
     if (typeof window.aplicarChecksModelosFipe === "function") {
       window.aplicarChecksModelosFipe();
     }
