@@ -8,11 +8,13 @@ from routes.fipe_routes import fipe_bp
 from routes.depreciacao_routes import depreciacao_bp
 from routes.tco_routes import tco_bp
 from routes.utility_routes import utility_bp
+from services.persistent_storage import bootstrap_persistent_storage
 
 
 def create_app() -> Flask:
     app = Flask(__name__)
     app.config.from_object(Config)
+    bootstrap_persistent_storage(app)
 
     app.register_blueprint(main_bp)
     app.register_blueprint(fipe_bp, url_prefix="/api/fipe")

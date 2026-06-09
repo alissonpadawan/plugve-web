@@ -32,6 +32,8 @@ class CurvasRepository:
             "historico_eletrico": len(hist_e),
             "arquivo_curvas_combustao": str(self._arquivo_curvas_combustao()),
             "arquivo_curvas_eletrico": str(self._arquivo_curvas_eletrico()),
+            "persistent_dir": str(current_app.config.get("PERSISTENT_DIR", "")),
+            "fipe_cache_dir": str(current_app.config.get("FIPE_CACHE_DIR", "")),
         }
 
     def buscar_curva_combustao(self, veiculo: VeiculoSelecionado) -> dict[str, Any] | None:

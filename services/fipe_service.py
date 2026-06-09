@@ -9,7 +9,9 @@ from flask import current_app
 
 class FipeService:
     def _cache_dir(self) -> Path:
-        path = current_app.config["DATA_DIR"] / "fipe_cache"
+        # Cache permanente: no Render fica em /var/data/plugve/fipe_cache.
+        # Assim modelos/marcas bloqueados não voltam após redeploy/restart.
+        path = Path(current_app.config.get("FIPE_CACHE_DIR") or (current_app.config["PERSISTENT_DIR"] / "fipe_cache"))
         path.mkdir(parents=True, exist_ok=True)
         return path
 
