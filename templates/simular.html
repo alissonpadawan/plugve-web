@@ -618,8 +618,8 @@
 
     function textoAnoFipeParaTela(codigoAno, textoOriginal) {
       if (codigoAnoFipeZeroKm(codigoAno)) {
-        const partes = String(textoOriginal || "").split(" ").slice(1).join(" ");
-        return `0 km ${partes}`.trim();
+        const partes = String(textoOriginal || "").replace(/^32000\s*/i, "").replace(/^0\s*km\s*/i, "").trim();
+        return `Zero km ${partes}`.trim();
       }
       return textoOriginal || "";
     }
@@ -909,7 +909,8 @@
         anos.forEach(a => {
           const opt = document.createElement("option");
           opt.value = a.codigo;
-          opt.textContent = a.nome;
+          opt.textContent = textoAnoFipeParaTela(a.codigo, a.nome);
+          opt.dataset.nomeOriginal = a.nome;
           selectAno.appendChild(opt);
         });
       } catch (e) {
@@ -1062,12 +1063,17 @@
       status.className = `mt-2 text-xs ${classe || "text-gray-500"}`;
     }
 
-    function configurarBotaoDepreciacaoTCO(prefixo, mostrar, detalhe) {
+    function configurarBotaoDepreciacaoTCO(prefixo, mostrar, detalhe, modo) {
       const btn = botaoDepreciacaoPorPrefixo(prefixo);
       if (!btn) return;
       btn.classList.toggle("hidden", !mostrar);
       btn.disabled = !mostrar;
       if (mostrar) {
+        btn.textContent = modo === "relatorio" ? "Ver relatório da depreciação" : "Calcular depreciação";
+        btn.classList.toggle("bg-green-600", modo === "relatorio");
+        btn.classList.toggle("hover:bg-green-700", modo === "relatorio");
+        btn.classList.toggle("bg-blue-600", modo !== "relatorio");
+        btn.classList.toggle("hover:bg-blue-700", modo !== "relatorio");
         btn.onclick = function () {
           abrirDepreciacaoParaValidar(prefixo, detalhe);
         };
@@ -1099,21 +1105,25 @@
           preencherTaxaDepreciacaoTCO(prefixo, data.taxa_anual_percentual, data.origem_curva || "curva salva");
           escreverStatusDepreciacaoTCO(
             prefixo,
-            `Depreciação validada: ${Number(data.taxa_anual_percentual).toFixed(2).replace(".", ",")}% a.a. (${data.confianca || "sem classificação"}).`,
+            `✓ Depreciação pronta: ${Number(data.taxa_anual_percentual).toFixed(2).replace(".", ",")}% a.a. (${data.confianca || "sem classificação"}).`,
             "text-green-700 font-semibold"
           );
-          configurarBotaoDepreciacaoTCO(prefixo, false, detalhe);
+          configurarBotaoDepreciacaoTCO(prefixo, true, detalhe, "relatorio");
           return;
         }
 
-        const taxaFallback = detalhe.tipo === "eletrico" ? 9.00 : 10.00;
-        preencherTaxaDepreciacaoTCO(prefixo, taxaFallback, "premissa técnica provisória");
-        escreverStatusDepreciacaoTCO(prefixo, `Curva específica não encontrada. Aplicada premissa técnica provisória de ${taxaFallback.toFixed(2).replace(".", ",")}% a.a.; abra o módulo para validar.`, "text-yellow-700 font-semibold");
-        configurarBotaoDepreciacaoTCO(prefixo, true, detalhe);
+        const campo = campoDepreciacaoPorPrefixo(prefixo);
+        if (campo) {
+          campo.value = "";
+          campo.dataset.depreciacaoValidada = "0";
+          campo.dataset.origemDepreciacao = "";
+        }
+        escreverStatusDepreciacaoTCO(prefixo, "Curva salva não encontrada. Clique em Calcular depreciação para abrir o relatório técnico, calcular e salvar na tabela.", "text-yellow-700 font-semibold");
+        configurarBotaoDepreciacaoTCO(prefixo, true, detalhe, "calcular");
       } catch (e) {
         console.error("Erro ao consultar depreciação no TCO:", e);
         escreverStatusDepreciacaoTCO(prefixo, "Erro ao consultar depreciação. Você pode preencher manualmente ou abrir o módulo.", "text-red-700 font-semibold");
-        configurarBotaoDepreciacaoTCO(prefixo, true, detalhe);
+        configurarBotaoDepreciacaoTCO(prefixo, true, detalhe, "calcular");
       }
     }
 
@@ -1139,7 +1149,7 @@
         `Depreciação calculada e validada: ${Number(taxa).toFixed(2).replace(".", ",")}% a.a.`,
         "text-green-700 font-semibold"
       );
-      configurarBotaoDepreciacaoTCO(prefixo, false, memoriaDepreciacaoTCO[prefixo]);
+      configurarBotaoDepreciacaoTCO(prefixo, true, memoriaDepreciacaoTCO[prefixo], "relatorio");
     }
 
     function verificarRetornoDepreciacaoTCO() {
@@ -1255,6 +1265,25 @@
       });
     }
 
+
+    const TARIFA_FALLBACK_JS_UF = {
+      AC: 0.95, AL: 0.88, AP: 0.78, AM: 0.88, BA: 0.91, CE: 0.86, DF: 0.84, ES: 0.82, GO: 0.86,
+      MA: 0.83, MT: 0.89, MS: 0.84, MG: 0.90, PA: 0.93, PB: 0.84, PR: 0.82, PE: 0.87, PI: 0.86,
+      RJ: 0.98, RN: 0.86, RS: 0.88, RO: 0.85, RR: 0.78, SC: 0.78, SP: 0.82, SE: 0.88, TO: 0.83
+    };
+
+    function aplicarFallbackEnergiaLocal(uf, motivo) {
+      const energiaInput = document.getElementById("energia_input");
+      const status = document.getElementById("status_energia");
+      const vig = document.getElementById("status_energia_vigencia");
+      const valor = TARIFA_FALLBACK_JS_UF[String(uf || "").toUpperCase()] || 0.80;
+      if (energiaInput) energiaInput.value = formatarNumero5(valor);
+      if (status) status.textContent = `${motivo || "Consulta ANEEL indisponível"}. Valor preenchido por estimativa local para ${uf}. Pode ajustar manualmente.`;
+      if (vig) vig.textContent = "Estimativa local usada como fallback técnico.";
+      renderEnergiaBreakdown(0, null);
+      setBreakdownDisabled(true);
+    }
+
     async function atualizarPrecoEnergiaAutomatico() {
       const uf = document.getElementById("estado_uf").value;
       const municipio = document.getElementById("municipio_select").value;
@@ -1300,18 +1329,12 @@
           renderEnergiaBreakdown(Number(data.tarifa_kwh), data.detalhe || null);
 
         } else {
-          status.textContent = "Não foi possível obter a tarifa automática. Mantenha ou ajuste manualmente.";
-          if (vig) vig.textContent = "";
-          renderEnergiaBreakdown(0, null);
-          setBreakdownDisabled(true);
+          aplicarFallbackEnergiaLocal(uf, data?.mensagem || "Não foi possível obter a tarifa automática pela ANEEL");
         }
 
       } catch (e) {
         console.error("Erro ao buscar tarifa da energia:", e);
-        status.textContent = "Erro ao consultar a ANEEL. Mantenha ou ajuste manualmente.";
-        if (vig) vig.textContent = "";
-        renderEnergiaBreakdown(0, null);
-        setBreakdownDisabled(true);
+        aplicarFallbackEnergiaLocal(uf, "Erro ao consultar a ANEEL");
       }
     }
 

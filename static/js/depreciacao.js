@@ -32,7 +32,7 @@ function configurarBotoesResultado(curvaEncontrada, podeCalcularFuturo) {
   if (btnCalcular) {
     btnCalcular.classList.toggle("hidden", !podeCalcularFuturo);
     btnCalcular.disabled = !podeCalcularFuturo;
-    if (podeCalcularFuturo) btnCalcular.textContent = "Calcular curva de combustão";
+    if (podeCalcularFuturo) btnCalcular.textContent = "Calcular depreciação e salvar curva";
   }
 
   if (btnUsarTCO) {
@@ -129,11 +129,15 @@ async function consultarResumoDepreciacao(detalheFipe) {
     ultimoResumoDepreciacao = data;
 
     if (data.encontrado) {
-      atualizarStatusResultado(data.mensagem || "Curva salva encontrada.", "encontrado");
+      atualizarStatusResultado(`✓ ${data.mensagem || "Curva salva encontrada."}`, "encontrado");
       preencherResumo(data);
       configurarBotoesResultado(true, false);
+      if (estaEmModoBridgeTCO()) {
+        definirAbaAtiva("auditoria");
+        mostrarDetalhes();
+      }
     } else {
-      atualizarStatusResultado(data.mensagem || "Curva não encontrada.", "nao-encontrado");
+      atualizarStatusResultado((data.mensagem || "Curva não encontrada.") + " Clique em Calcular depreciação para gerar e salvar a curva quando houver histórico suficiente.", "nao-encontrado");
       document.getElementById("res_valor_atual").textContent = formatarMoedaBR(data.valor_atual || detalheFipe.valor_atual);
       document.getElementById("res_tipo_usado").textContent = data.detalhes?.tipo_label || data.tipo_curva || "-";
       configurarBotoesResultado(false, true);
@@ -235,12 +239,13 @@ async function solicitarCalculoSobDemanda() {
     const data = await resp.json();
 
     if (data.ok) {
-      atualizarStatusResultado(data.mensagem || "Curva calculada.", "encontrado");
+      atualizarStatusResultado(`✓ ${data.mensagem || "Curva calculada e salva."}`, "encontrado");
       if (data.resultado) {
         ultimoResumoDepreciacao = data.resultado;
         preencherResumo(data.resultado);
         configurarBotoesResultado(true, false);
       }
+      definirAbaAtiva("auditoria");
       mostrarRetornoCalculo(data);
     } else {
       atualizarStatusResultado(data.mensagem || "Falha ao calcular curva.", "erro");
@@ -251,7 +256,7 @@ async function solicitarCalculoSobDemanda() {
   } finally {
     if (btn) {
       btn.disabled = false;
-      btn.textContent = "Calcular curva de combustão";
+      btn.textContent = "Calcular depreciação e salvar curva";
     }
   }
 }

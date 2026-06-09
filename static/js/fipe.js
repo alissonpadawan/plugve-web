@@ -13,6 +13,19 @@ function formatarMoedaBR(valor) {
   return numero.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
+
+function codigoAnoFipeZeroKm(codigoAno) {
+  return String(codigoAno || "").startsWith("32000");
+}
+
+function textoAnoFipeParaTela(codigoAno, textoOriginal) {
+  if (codigoAnoFipeZeroKm(codigoAno)) {
+    const partes = String(textoOriginal || "").replace(/^32000\s*/i, "").replace(/^0\s*km\s*/i, "").trim();
+    return `Zero km ${partes}`.trim();
+  }
+  return textoOriginal || "";
+}
+
 function limparValorMonetario(valorBruto) {
   if (!valorBruto) return 0;
   let s = String(valorBruto).replace("R$", "").trim();
@@ -93,7 +106,7 @@ async function carregarAnosFipe() {
     anos.forEach(item => {
       const opt = document.createElement("option");
       opt.value = item.codigo;
-      opt.textContent = item.nome;
+      opt.textContent = textoAnoFipeParaTela(item.codigo, item.nome);
       opt.dataset.nome = item.nome;
       ano.appendChild(opt);
     });
@@ -119,7 +132,7 @@ async function consultarPrecoFipe() {
       codigo_ano: ano.value,
       marca: data.Marca || marca.options[marca.selectedIndex].text,
       modelo: data.Modelo || modelo.options[modelo.selectedIndex].text,
-      ano_modelo: data.AnoModelo || "",
+      ano_modelo: codigoAnoFipeZeroKm(ano.value) ? "Zero km" : (data.AnoModelo || ""),
       combustivel: data.Combustivel || ano.options[ano.selectedIndex].text,
       codigo_fipe: data.CodigoFipe || "",
       valor_atual: limparValorMonetario(data.Valor),
