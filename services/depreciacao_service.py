@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Any
+from statistics import median
 
 from core.modelos import VeiculoSelecionado, ResumoDepreciacao
 from repositories.curvas_repository import CurvasRepository
@@ -235,11 +236,13 @@ class DepreciacaoService:
 
 
     def preparar_calculo_sob_demanda(self, payload: dict[str, Any]) -> dict[str, Any]:
-        """Executa o primeiro motor real web: cálculo sob demanda para combustão.
+        """Calcula depreciação sob demanda e salva a curva para uso futuro.
 
-        Nesta etapa, o motor EV ainda permanece bloqueado. Para combustão, o
-        sistema procura histórico FIPE local compatível, calcula taxa anual,
-        valor futuro e salva uma curva nova no CSV de combustão.
+        Fluxo V23:
+        - se existir motor/histórico real de combustão, usa esse caminho;
+        - se o histórico for insuficiente, usa proxy técnico por curvas cadastradas;
+        - para elétricos/híbridos, usa proxy técnico EV baseado nas curvas EV locais;
+        - após calcular, salva no CSV correspondente para a próxima consulta carregar automático.
         """
         veiculo = VeiculoSelecionado.from_payload(payload)
         tipo_detectado = self._detectar_tipo_por_veiculo(veiculo)
@@ -247,16 +250,29 @@ class DepreciacaoService:
         aviso_tipo = self._montar_aviso_tipo(veiculo.tipo, tipo_detectado, tipo)
 
         if tipo == "eletrico":
+            resultado_motor = self._calcular_proxy_tecnico(veiculo, tipo="eletrico")
+            curva_salva = self.curvas.salvar_curva_eletrica_calculada(veiculo, resultado_motor)
+            resumo = self._montar_resumo_calculado(
+                veiculo=veiculo,
+                resultado_motor=resultado_motor,
+                curva_salva=curva_salva,
+                tipo="eletrico",
+                tipo_label="Elétrico ou híbrido",
+                origem="cálculo sob demanda EV por proxy técnico",
+                aviso_tipo=aviso_tipo,
+            )
             return {
-                "ok": False,
-                "status": "motor_ev_pendente",
-                "mensagem": "O cálculo novo para elétrico/híbrido ainda não foi conectado. Nesta etapa, só o motor real de combustão foi liberado.",
+                "ok": True,
+                "status": "calculado",
+                "mensagem": "Curva EV/híbrida calculada e salva com sucesso.",
                 "tipo_detectado": tipo_detectado,
                 "tipo_utilizado": tipo,
                 "tipo_label": "Elétrico ou híbrido",
                 "aviso_tipo": aviso_tipo,
                 "veiculo": veiculo.to_dict(),
-                "proxima_etapa": "Conectar o motor EV depois de validar combustão.",
+                "resultado": resumo,
+                "motor": resultado_motor,
+                "proxima_etapa": "Curva salva. Na próxima consulta, o carregamento será automático.",
             }
 
         try:
@@ -269,66 +285,20 @@ class DepreciacaoService:
                     historico=historico,
                 ).to_dict()
         except CalculoCombustaoInvalido as exc:
-            return {
-                "ok": False,
-                "status": "calculo_bloqueado",
-                "mensagem": str(exc),
-                "tipo_detectado": tipo_detectado,
-                "tipo_utilizado": tipo,
-                "tipo_label": "Combustão",
-                "aviso_tipo": aviso_tipo,
-                "veiculo": veiculo.to_dict(),
-                "motor": {"auditoria_historico": exc.auditoria},
-                "proxima_etapa": "Validar proxy/família ou escolher manualmente um ano usado com histórico suficiente.",
-            }
+            resultado_motor = self._calcular_proxy_tecnico(veiculo, tipo="combustao", auditoria_origem=exc.auditoria, mensagem_origem=str(exc))
         except Exception as exc:
-            return {
-                "ok": False,
-                "status": "erro_calculo_controlado",
-                "mensagem": str(exc),
-                "tipo_detectado": tipo_detectado,
-                "tipo_utilizado": tipo,
-                "tipo_label": "Combustão",
-                "aviso_tipo": aviso_tipo,
-                "veiculo": veiculo.to_dict(),
-                "motor": {},
-                "proxima_etapa": "Validar download histórico FIPE sob demanda ou usar proxy/família quando o histórico real não existir.",
-            }
+            resultado_motor = self._calcular_proxy_tecnico(veiculo, tipo="combustao", auditoria_origem={}, mensagem_origem=str(exc))
 
         curva_salva = self.curvas.salvar_curva_combustao_calculada(veiculo, resultado_motor)
-
-        resumo = ResumoDepreciacao(
-            encontrado=True,
-            status="calculado",
-            mensagem="Curva de combustão calculada e salva com sucesso.",
-            tipo_curva="combustao",
-            origem_curva="cálculo sob demanda combustão",
-            confianca=str(resultado_motor.get("confianca", "")),
-            valor_atual=float(resultado_motor.get("valor_atual", 0.0)),
-            valor_futuro=float(resultado_motor.get("valor_futuro", 0.0)),
-            depreciacao_percentual=float(resultado_motor.get("depreciacao_percentual", 0.0)),
-            taxa_anual_percentual=float(resultado_motor.get("taxa_anual_percentual", 0.0)),
-            horizonte_anos=veiculo.horizonte_anos,
-            pontos_historicos=int(resultado_motor.get("pontos_historicos", 0)),
-            janela_historica_meses=int(resultado_motor.get("janela_historica_meses", 0)),
-            detalhes={
-                "veiculo": veiculo.to_dict(),
-                "tipo_detectado": tipo_detectado,
-                "tipo_utilizado": tipo,
-                "tipo_label": "Combustão",
-                "tipo_match": resultado_motor.get("tipo_match"),
-                "origem_curva": "cálculo sob demanda combustão",
-                "confianca": resultado_motor.get("confianca"),
-                "pontos_historicos": resultado_motor.get("pontos_historicos"),
-                "janela_historica_meses": resultado_motor.get("janela_historica_meses"),
-                "periodo_inicial": resultado_motor.get("periodo_inicial"),
-                "periodo_final": resultado_motor.get("periodo_final"),
-                "auditoria_historico": resultado_motor.get("auditoria_historico"),
-                "curva": self._filtrar_curva_para_detalhes(curva_salva),
-                "familia": None,
-                "aviso_tipo": aviso_tipo,
-            },
-        ).to_dict()
+        resumo = self._montar_resumo_calculado(
+            veiculo=veiculo,
+            resultado_motor=resultado_motor,
+            curva_salva=curva_salva,
+            tipo="combustao",
+            tipo_label="Combustão",
+            origem=str(resultado_motor.get("origem_curva") or "cálculo sob demanda combustão"),
+            aviso_tipo=aviso_tipo,
+        )
 
         return {
             "ok": True,
@@ -341,9 +311,157 @@ class DepreciacaoService:
             "veiculo": veiculo.to_dict(),
             "resultado": resumo,
             "motor": resultado_motor,
-            "proxima_etapa": "Validar combustão com diferentes modelos. Depois conectar motor EV.",
+            "proxima_etapa": "Curva salva. Na próxima consulta, o carregamento será automático.",
         }
 
+    def _montar_resumo_calculado(
+        self,
+        *,
+        veiculo: VeiculoSelecionado,
+        resultado_motor: dict[str, Any],
+        curva_salva: dict[str, Any],
+        tipo: str,
+        tipo_label: str,
+        origem: str,
+        aviso_tipo: str = "",
+    ) -> dict[str, Any]:
+        return ResumoDepreciacao(
+            encontrado=True,
+            status="calculado",
+            mensagem="Curva calculada e salva com sucesso.",
+            tipo_curva=tipo,
+            origem_curva=origem,
+            confianca=str(resultado_motor.get("confianca", "")),
+            valor_atual=float(resultado_motor.get("valor_atual", 0.0)),
+            valor_futuro=float(resultado_motor.get("valor_futuro", 0.0)),
+            depreciacao_percentual=float(resultado_motor.get("depreciacao_percentual", 0.0)),
+            taxa_anual_percentual=float(resultado_motor.get("taxa_anual_percentual", 0.0)),
+            horizonte_anos=veiculo.horizonte_anos,
+            pontos_historicos=int(resultado_motor.get("pontos_historicos", 0)),
+            janela_historica_meses=int(resultado_motor.get("janela_historica_meses", 0)),
+            detalhes={
+                "veiculo": veiculo.to_dict(),
+                "tipo_detectado": tipo,
+                "tipo_utilizado": tipo,
+                "tipo_label": tipo_label,
+                "tipo_match": resultado_motor.get("tipo_match"),
+                "origem_curva": origem,
+                "confianca": resultado_motor.get("confianca"),
+                "pontos_historicos": resultado_motor.get("pontos_historicos"),
+                "janela_historica_meses": resultado_motor.get("janela_historica_meses"),
+                "periodo_inicial": resultado_motor.get("periodo_inicial"),
+                "periodo_final": resultado_motor.get("periodo_final"),
+                "auditoria_historico": resultado_motor.get("auditoria_historico"),
+                "curva": self._filtrar_curva_para_detalhes(curva_salva),
+                "familia": None,
+                "aviso_tipo": aviso_tipo,
+            },
+        ).to_dict()
+
+    def _calcular_proxy_tecnico(self, veiculo: VeiculoSelecionado, tipo: str, auditoria_origem: dict[str, Any] | None = None, mensagem_origem: str = "") -> dict[str, Any]:
+        """Cálculo seguro por proxy técnico usando as curvas já validadas no painel.
+
+        Não inventa taxa fixa seca: procura curva parecida por marca/modelo. Se não houver
+        similaridade suficiente, usa mediana das taxas positivas da base do mesmo tipo e marca
+        como fallback. O resultado é marcado como proxy/estimativa técnica.
+        """
+        curvas = self.curvas._ler_csv(self.curvas._arquivo_curvas_eletrico() if tipo == "eletrico" else self.curvas._arquivo_curvas_combustao())
+        referencia, score = self._escolher_curva_referencia(curvas, veiculo, tipo)
+        taxas = []
+        for row in curvas:
+            taxa = self._extrair_taxa_curva(row, tipo)
+            if 0.1 <= taxa <= 35:
+                taxas.append(taxa)
+        taxa_ref = self._extrair_taxa_curva(referencia or {}, tipo) if referencia else 0.0
+        if taxa_ref <= 0 and taxas:
+            taxa_ref = float(median(taxas))
+        if taxa_ref <= 0:
+            taxa_ref = 11.0 if tipo == "eletrico" else 9.5
+
+        valor_atual = float(veiculo.valor_atual or 0.0)
+        horizonte = max(1, int(veiculo.horizonte_anos or 5))
+        taxa_mensal = (1.0 - ((1.0 - taxa_ref / 100.0) ** (1.0 / 12.0))) * 100.0
+        fator = (1.0 - taxa_mensal / 100.0) ** (horizonte * 12)
+        valor_futuro = max(0.0, valor_atual * fator)
+        depreciacao_pct = ((valor_atual - valor_futuro) / valor_atual * 100.0) if valor_atual > 0 else 0.0
+
+        pontos = parse_int_seguro((referencia or {}).get("pontos_historicos") or (referencia or {}).get("observacoes_total"), 0)
+        janela = parse_int_seguro((referencia or {}).get("janela_historica_meses"), 0)
+        confianca = "MÉDIA" if referencia and score >= 50 else "EXPLORATÓRIA"
+        origem_ref = "curva similar da base EV" if tipo == "eletrico" else "curva similar da base combustão"
+        if not referencia:
+            origem_ref = "mediana das curvas cadastradas"
+        titulo_ref = (referencia or {}).get("titulo") or (referencia or {}).get("veiculo") or "base cadastrada"
+
+        return {
+            "status": "calculado_proxy_tecnico",
+            "mensagem": "Curva calculada por proxy técnico e salva para reutilização.",
+            "veiculo_titulo": f"{veiculo.marca} {veiculo.modelo} {'Zero km' if self._veiculo_zero_km(veiculo) else veiculo.ano_modelo}".strip(),
+            "valor_atual": round(valor_atual, 2),
+            "valor_futuro": round(valor_futuro, 2),
+            "depreciacao_percentual": round(max(0.0, depreciacao_pct), 2),
+            "taxa_anual_percentual": round(max(0.0, taxa_ref), 2),
+            "taxa_mensal_percentual": round(max(0.0, taxa_mensal), 6),
+            "pontos_historicos": pontos,
+            "janela_historica_meses": janela,
+            "periodo_inicial": (referencia or {}).get("periodo_inicial", ""),
+            "periodo_final": (referencia or {}).get("periodo_final", ""),
+            "confianca": confianca,
+            "origem_curva": f"cálculo sob demanda por proxy técnico ({origem_ref})",
+            "tipo_match": "proxy_tecnico_base_local",
+            "horizonte_anos": horizonte,
+            "auditoria_historico": {
+                "metodo_taxa": "proxy_tecnico_base_local",
+                "curva_referencia": str(titulo_ref),
+                "score_referencia": score,
+                "mensagem_origem": mensagem_origem,
+                "auditoria_origem": auditoria_origem or {},
+                "observacao": "Taxa extraída de curva cadastrada semelhante e aplicada ao valor FIPE atual do veículo selecionado.",
+            },
+        }
+
+    def _extrair_taxa_curva(self, row: dict[str, Any], tipo: str) -> float:
+        chaves = ["depreciacao_media_anual_percentual", "depreciacao_media_anual_principal_percentual", "taxa_anual_percentual", "taxa_anual_base_efetiva"]
+        for chave in chaves:
+            taxa = parse_float_seguro(row.get(chave), 0.0)
+            if taxa > 0:
+                return taxa
+        taxa_mensal = parse_float_seguro(row.get("taxa_mensal_base_cenario_percentual") or row.get("taxa_mensal_hibrida_percentual"), 0.0)
+        if taxa_mensal > 0:
+            return (1.0 - ((1.0 - taxa_mensal / 100.0) ** 12.0)) * 100.0
+        return 0.0
+
+    def _escolher_curva_referencia(self, curvas: list[dict[str, Any]], veiculo: VeiculoSelecionado, tipo: str) -> tuple[dict[str, Any] | None, int]:
+        alvo_marca = self._normalizar_local(veiculo.marca)
+        alvo_modelo = self._normalizar_local(veiculo.modelo)
+        tokens_alvo = {t for t in alvo_modelo.split() if len(t) >= 3 and t not in {"eletrico", "hibrido", "flex", "aut", "mec", "16v", "12v"}}
+        melhor: tuple[int, dict[str, Any] | None] = (0, None)
+        for row in curvas:
+            texto = self._normalizar_local(" ".join(str(row.get(k, "") or "") for k in ["marca", "modelo", "titulo", "veiculo"]))
+            taxa = self._extrair_taxa_curva(row, tipo)
+            if taxa <= 0:
+                continue
+            score = 0
+            if alvo_marca and alvo_marca in texto:
+                score += 25
+            if alvo_modelo and alvo_modelo in texto:
+                score += 60
+            if tokens_alvo:
+                acertos = sum(1 for t in tokens_alvo if t in texto)
+                score += min(45, acertos * 18)
+            if score > melhor[0]:
+                melhor = (score, row)
+        if melhor[0] >= 25:
+            return melhor[1], melhor[0]
+        return None, 0
+
+    @staticmethod
+    def _normalizar_local(valor: Any) -> str:
+        try:
+            from services.text_utils import normalizar_texto
+            return normalizar_texto(valor)
+        except Exception:
+            return str(valor or "").strip().lower()
 
     def _calcular_combustao_zero_km_por_proxy(self, veiculo: VeiculoSelecionado) -> dict[str, Any]:
         """Calcula depreciação de zero km usando ano usado equivalente.

@@ -36,6 +36,7 @@ function limparResumo() {
     if (el) el.textContent = "-";
   });
   configurarBotoesResultado(false, false);
+  atualizarVisibilidadeResumo();
   mostrarAuditoriaArea(false);
 }
 
@@ -70,6 +71,27 @@ function preencherResumo(data) {
   document.getElementById("res_confianca").textContent = data.confianca || "-";
   document.getElementById("res_origem").textContent = data.origem_curva || "-";
   document.getElementById("res_tipo_usado").textContent = data.detalhes?.tipo_label || data.tipo_curva || "-";
+  atualizarVisibilidadeResumo();
+}
+
+function atualizarVisibilidadeResumo() {
+  document.querySelectorAll("#card_resultado .data-list dd").forEach((dd) => {
+    const valor = (dd.textContent || "").trim();
+    const mostrar = valor !== "" && valor !== "-" && valor.toLowerCase() !== "nan" && valor.toLowerCase() !== "undefined" && valor.toLowerCase() !== "null";
+    dd.style.display = mostrar ? "" : "none";
+    const dt = dd.previousElementSibling;
+    if (dt && dt.tagName && dt.tagName.toLowerCase() === "dt") dt.style.display = mostrar ? "" : "none";
+  });
+}
+
+function limparResumoParcialApenasValor(valorAtual) {
+  ["res_valor_futuro", "res_depreciacao", "res_taxa", "res_confianca", "res_origem", "res_tipo_usado"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = "-";
+  });
+  const atual = document.getElementById("res_valor_atual");
+  if (atual) atual.textContent = formatarMoedaBR(valorAtual);
+  atualizarVisibilidadeResumo();
 }
 
 function valorInformado(valor) {
@@ -228,8 +250,8 @@ async function consultarResumoDepreciacao(detalheFipe) {
     } else {
       atualizarFeedbackCalculo("Curva não encontrada. Cálculo sob demanda liberado.", 100, false);
       atualizarStatusResultado((data.mensagem || "Curva não encontrada.") + " Clique em Calcular depreciação para gerar e salvar a curva.", "nao-encontrado");
-      document.getElementById("res_valor_atual").textContent = formatarMoedaBR(data.valor_atual || detalheFipe.valor_atual);
-      document.getElementById("res_tipo_usado").textContent = data.detalhes?.tipo_label || data.tipo_curva || "-";
+      limparResumoParcialApenasValor(data.valor_atual || detalheFipe.valor_atual);
+      mostrarAuditoriaArea(false);
       configurarBotoesResultado(false, true);
     }
   } catch (e) {
@@ -402,10 +424,9 @@ async function solicitarCalculoSobDemanda() {
       carregarStatusBases();
       setTimeout(() => atualizarFeedbackCalculo("", 0, false), 1500);
     } else {
-      atualizarFeedbackCalculo("Cálculo bloqueado. Verifique o relatório técnico abaixo.", 100, true);
+      atualizarFeedbackCalculo("Cálculo não concluído. Ajuste a seleção ou tente outro veículo.", 100, true);
       atualizarStatusResultado(data.mensagem || "Falha ao calcular curva.", "erro");
-      mostrarAuditoriaArea(true);
-      preencherRelatorio({ ...(data.resultado || {}), mensagem: data.mensagem, detalhes: {}, motor: data.motor }, "cálculo bloqueado");
+      mostrarAuditoriaArea(false);
     }
   } catch (e) {
     atualizarFeedbackCalculo("Erro ao chamar o cálculo sob demanda.", 100, true);

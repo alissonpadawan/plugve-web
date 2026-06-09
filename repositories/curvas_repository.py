@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+from datetime import datetime
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -144,6 +145,102 @@ class CurvasRepository:
         for linha in linhas:
             mesma_curva = codigo and str(linha.get("codigo_fipe", "") or "").strip() == codigo and str(linha.get("fonte_ajuste", "")) == "calculadora_depreciacao_v2_sob_demanda"
             if not mesma_curva:
+                linhas_filtradas.append(linha)
+        linhas_filtradas.append(nova_linha)
+
+        with open(caminho, mode="w", encoding="utf-8-sig", newline="") as arquivo:
+            escritor = csv.DictWriter(arquivo, fieldnames=campos, extrasaction="ignore")
+            escritor.writeheader()
+            for linha in linhas_filtradas:
+                escritor.writerow({campo: linha.get(campo, "") for campo in campos})
+
+        try:
+            self._ler_csv_cache.cache_clear()
+        except Exception:
+            pass
+
+        return nova_linha
+
+
+    def salvar_curva_eletrica_calculada(self, veiculo: VeiculoSelecionado, resultado: dict[str, Any]) -> dict[str, Any]:
+        """Salva curva EV/híbrida calculada sob demanda no CSV elétrico.
+
+        O objetivo é transformar uma consulta sem curva em dado reutilizável:
+        calculou uma vez, nas próximas consultas o painel carrega como curva salva.
+        """
+        caminho = self._arquivo_curvas_eletrico()
+        caminho.parent.mkdir(parents=True, exist_ok=True)
+
+        linhas = self._ler_csv(caminho)
+        campos_existentes: list[str] = []
+        if caminho.exists():
+            try:
+                with open(caminho, mode="r", encoding="utf-8-sig", newline="") as arquivo:
+                    leitor = csv.DictReader(arquivo)
+                    campos_existentes = list(leitor.fieldnames or [])
+            except Exception:
+                campos_existentes = []
+
+        taxa_anual = parse_float_seguro(resultado.get("taxa_anual_percentual"), 0.0)
+        taxa_mensal = parse_float_seguro(resultado.get("taxa_mensal_percentual"), 0.0)
+        valor_atual = parse_float_seguro(resultado.get("valor_atual"), 0.0)
+        valor_futuro = parse_float_seguro(resultado.get("valor_futuro"), 0.0)
+        horizonte = max(1, parse_int_seguro(resultado.get("horizonte_anos"), veiculo.horizonte_anos or 5))
+        meses = horizonte * 12
+        taxa_base = taxa_mensal / 100.0
+        valor_ot = valor_atual * ((1.0 - max(0.0, taxa_base * 0.85)) ** meses) if valor_atual > 0 else 0.0
+        valor_pe = valor_atual * ((1.0 - max(0.0, taxa_base * 1.20)) ** meses) if valor_atual > 0 else 0.0
+
+        nova_linha = {
+            "titulo": resultado.get("veiculo_titulo") or f"{veiculo.marca} {veiculo.modelo} {veiculo.ano_modelo}".strip(),
+            "marca_id": veiculo.codigo_marca,
+            "modelo_id": veiculo.codigo_modelo,
+            "ano_fipe_codigo": veiculo.codigo_ano,
+            "marca": veiculo.marca,
+            "modelo": veiculo.modelo,
+            "ano_modelo": "Zero km" if str(veiculo.ano_modelo) == "32000" else veiculo.ano_modelo,
+            "categoria": "EV_HIBRIDO",
+            "modo_pandemia": "Excluir",
+            "preco_zero_km_base": valor_atual,
+            "data_preco_zero_km_base": datetime.now().strftime("%Y-%m"),
+            "data_origem_idade": datetime.now().strftime("%Y-%m"),
+            "garantia_bateria_anos": "8.00",
+            "valor_fipe_atual": valor_atual,
+            "valor_futuro_base": valor_futuro,
+            "valor_futuro_otimista": round(valor_ot, 2),
+            "valor_futuro_pessimista": round(valor_pe, 2),
+            "taxa_mensal_base_cenario_percentual": taxa_mensal,
+            "taxa_mensal_otimista_percentual": round(taxa_mensal * 0.85, 6),
+            "taxa_mensal_pessimista_percentual": round(taxa_mensal * 1.20, 6),
+            "depreciacao_media_anual_percentual": taxa_anual,
+            "confianca_ev": resultado.get("confianca", "MÉDIA"),
+            "janela_historica_meses": resultado.get("janela_historica_meses", 0),
+            "pontos_historicos": resultado.get("pontos_historicos", 0),
+            "zona_bateria": "VALIDACAO_WEB",
+            "camada_ev_status": "CALCULADA_WEB",
+            "data_salvamento": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "origem_curva": resultado.get("origem_curva", "cálculo sob demanda EV"),
+        }
+
+        campos_padrao = list(nova_linha.keys())
+        campos = list(campos_existentes or campos_padrao)
+        for campo in campos_padrao:
+            if campo not in campos:
+                campos.append(campo)
+
+        marca_id = str(veiculo.codigo_marca or "").strip()
+        modelo_id = str(veiculo.codigo_modelo or "").strip()
+        codigo_ano = str(veiculo.codigo_ano or "").strip()
+        linhas_filtradas = []
+        for linha in linhas:
+            mesma = (
+                marca_id and modelo_id
+                and str(linha.get("marca_id", "") or "").strip() == marca_id
+                and str(linha.get("modelo_id", "") or "").strip() == modelo_id
+                and (not codigo_ano or str(linha.get("ano_fipe_codigo", "") or "").strip() == codigo_ano)
+                and str(linha.get("camada_ev_status", "") or "") == "CALCULADA_WEB"
+            )
+            if not mesma:
                 linhas_filtradas.append(linha)
         linhas_filtradas.append(nova_linha)
 
