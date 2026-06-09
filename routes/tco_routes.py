@@ -1155,17 +1155,28 @@ def preco_energia():
 
     dados_aneel = obter_tarifa_energia_por_distribuidora(dist)
     if dados_aneel is None:
+        tarifa_fallback = {
+            "AC": 0.95, "AL": 0.88, "AP": 0.78, "AM": 0.88, "BA": 0.91,
+            "CE": 0.86, "DF": 0.84, "ES": 0.82, "GO": 0.86, "MA": 0.83,
+            "MT": 0.89, "MS": 0.84, "MG": 0.90, "PA": 0.93, "PB": 0.84,
+            "PR": 0.82, "PE": 0.87, "PI": 0.86, "RJ": 0.98, "RN": 0.86,
+            "RS": 0.88, "RO": 0.85, "RR": 0.78, "SC": 0.78, "SP": 0.82,
+            "SE": 0.88, "TO": 0.83,
+        }.get(uf, 0.80)
         return jsonify({
-            "tarifa_kwh": None,
-            "tarifa_base_kwh": None,
+            "tarifa_kwh": round(float(tarifa_fallback), 5),
+            "tarifa_base_kwh": round(float(tarifa_fallback), 5),
             "distribuidora": dist,
             "vigencia_inicio": None,
             "vigencia_fim": None,
-            "detalhe": None,
-            "mensagem": (
-                "Não consegui pegar a tarifa na ANEEL. "
-                "Veja o console: se aparecer lista de sugestões, me mande."
-            )
+            "detalhe": {
+                "tusd_kwh": 0, "te_kwh": 0, "icms_kwh": 0, "pis_kwh": 0, "cofins_kwh": 0,
+                "icms_pct": 0, "pis_pct": 0, "cofins_pct": 0,
+                "base_tarifaria": "Estimativa local",
+                "sigagente": mapear_para_sigagente(dist),
+                "detalhe_aneel": "Fallback usado porque a consulta ANEEL falhou",
+            },
+            "mensagem": f"Tarifa preenchida por estimativa local para {uf}, pois a ANEEL não retornou. Você pode ajustar manualmente."
         })
 
     base_kwh = float(dados_aneel["tarifa_base_kwh"])
@@ -1206,12 +1217,16 @@ def preco_energia():
 # ============================================================
 FIPE_BASE = "https://parallelum.com.br/fipe/api/v1/carros"
 
+@lru_cache(maxsize=512)
+def _fipe_get_json_cache(endpoint: str):
+    resp = requests.get(f"{FIPE_BASE}/{endpoint.lstrip('/')}", timeout=20)
+    resp.raise_for_status()
+    return resp.json()
+
 @tco_bp.route("/fipe/marcas")
 def fipe_marcas():
     try:
-        resp = requests.get(f"{FIPE_BASE}/marcas", timeout=10)
-        resp.raise_for_status()
-        return jsonify(resp.json())
+        return jsonify(_fipe_get_json_cache("marcas"))
     except Exception as e:
         print("Erro FIPE /marcas:", e)
         return jsonify([]), 500
@@ -1222,9 +1237,7 @@ def fipe_modelos():
     if not codigo_marca:
         return jsonify({"modelos": []})
     try:
-        resp = requests.get(f"{FIPE_BASE}/marcas/{codigo_marca}/modelos", timeout=10)
-        resp.raise_for_status()
-        return jsonify(resp.json())
+        return jsonify(_fipe_get_json_cache(f"marcas/{codigo_marca}/modelos"))
     except Exception as e:
         print("Erro FIPE /modelos:", e)
         return jsonify({"modelos": []}), 500
@@ -1236,12 +1249,7 @@ def fipe_anos():
     if not codigo_marca or not codigo_modelo:
         return jsonify([])
     try:
-        resp = requests.get(
-            f"{FIPE_BASE}/marcas/{codigo_marca}/modelos/{codigo_modelo}/anos",
-            timeout=10,
-        )
-        resp.raise_for_status()
-        return jsonify(resp.json())
+        return jsonify(_fipe_get_json_cache(f"marcas/{codigo_marca}/modelos/{codigo_modelo}/anos"))
     except Exception as e:
         print("Erro FIPE /anos:", e)
         return jsonify([]), 500
@@ -1254,12 +1262,7 @@ def fipe_preco():
     if not (codigo_marca and codigo_modelo and codigo_ano):
         return jsonify({"erro": "Parâmetros incompletos"}), 400
     try:
-        resp = requests.get(
-            f"{FIPE_BASE}/marcas/{codigo_marca}/modelos/{codigo_modelo}/anos/{codigo_ano}",
-            timeout=10,
-        )
-        resp.raise_for_status()
-        return jsonify(resp.json())
+        return jsonify(_fipe_get_json_cache(f"marcas/{codigo_marca}/modelos/{codigo_modelo}/anos/{codigo_ano}"))
     except Exception as e:
         print("Erro FIPE /preco:", e)
         return jsonify({"erro": "Erro ao consultar FIPE"}), 500

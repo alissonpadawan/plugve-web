@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import requests
+from functools import lru_cache
 from flask import current_app
 
 
@@ -12,8 +13,13 @@ class FipeService:
         return int(current_app.config.get("REQUEST_TIMEOUT", 15))
 
     def _get_json(self, endpoint: str):
-        url = f"{self._base_url().rstrip('/')}/{endpoint.lstrip('/')}"
-        resp = requests.get(url, timeout=self._timeout())
+        return self._get_json_cached(self._base_url(), endpoint, self._timeout())
+
+    @staticmethod
+    @lru_cache(maxsize=512)
+    def _get_json_cached(base_url: str, endpoint: str, timeout: int):
+        url = f"{base_url.rstrip('/')}/{endpoint.lstrip('/')}"
+        resp = requests.get(url, timeout=timeout)
         resp.raise_for_status()
         return resp.json()
 

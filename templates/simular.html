@@ -462,12 +462,18 @@
 
             <div>
               <label class="block text-sm font-medium">Aumento anual energia (%)</label>
-              <input type="text" name="aumento_energia" value="0" class="mt-1 p-2 border rounded w-full" required>
+              <input type="text" name="aumento_energia" id="aumento_energia_input" value="4,50" class="mt-1 p-2 border rounded w-full" required>
+              <p id="status_aumento_energia" class="text-[11px] text-gray-500 mt-1">
+                Preenchido automaticamente por premissa técnica inicial. Você pode ajustar.
+              </p>
             </div>
 
             <div>
               <label class="block text-sm font-medium">Aumento anual combustível (%)</label>
-              <input type="text" name="aumento_combustivel" value="0" class="mt-1 p-2 border rounded w-full" required>
+              <input type="text" name="aumento_combustivel" id="aumento_combustivel_input" value="5,00" class="mt-1 p-2 border rounded w-full" required>
+              <p id="status_aumento_combustivel" class="text-[11px] text-gray-500 mt-1">
+                Preenchido automaticamente por premissa técnica inicial. Você pode ajustar.
+              </p>
             </div>
 
             <div>
@@ -598,6 +604,37 @@
     function formatarNumero5(valor) {
       if (valor == null || isNaN(valor)) return "";
       return Number(valor).toFixed(5).replace(".", ",");
+    }
+
+    function codigoAnoFipeZeroKm(codigoAno) {
+      return String(codigoAno || "").startsWith("32000");
+    }
+
+    function anoModeloParaCalculo(codigoAno, anoModeloFipe) {
+      if (codigoAnoFipeZeroKm(codigoAno)) return new Date().getFullYear();
+      const n = parseInt(anoModeloFipe, 10);
+      return Number.isFinite(n) && n > 1900 ? n : "";
+    }
+
+    function textoAnoFipeParaTela(codigoAno, textoOriginal) {
+      if (codigoAnoFipeZeroKm(codigoAno)) {
+        const partes = String(textoOriginal || "").split(" ").slice(1).join(" ");
+        return `0 km ${partes}`.trim();
+      }
+      return textoOriginal || "";
+    }
+
+    function aplicarPremissasInflacaoAutomaticas() {
+      const campoEnergia = document.getElementById("aumento_energia_input");
+      const campoCombustivel = document.getElementById("aumento_combustivel_input");
+      const statusEnergia = document.getElementById("status_aumento_energia");
+      const statusCombustivel = document.getElementById("status_aumento_combustivel");
+
+      if (campoEnergia && !campoEnergia.dataset.editado) campoEnergia.value = "4,50";
+      if (campoCombustivel && !campoCombustivel.dataset.editado) campoCombustivel.value = "5,00";
+
+      if (statusEnergia) statusEnergia.textContent = "Premissa automática inicial: 4,50% a.a. Pode ajustar manualmente.";
+      if (statusCombustivel) statusCombustivel.textContent = "Premissa automática inicial: 5,00% a.a. Pode ajustar manualmente.";
     }
 
     function mostrarElemento(id, mostrar) {
@@ -775,6 +812,7 @@
           if (uf && municipioSelect.value) {
             atualizarPrecoCombustivelAutomatico();
             atualizarPrecoEnergiaAutomatico();
+            aplicarPremissasInflacaoAutomaticas();
             atualizarIpva("ve");
             atualizarIpva("icev");
             atualizarIpva("atual");
@@ -821,14 +859,20 @@
       if (!marcaEl || !selectModelo || !selectAno) return;
 
       const marca = marcaEl.value;
-      selectModelo.innerHTML = "<option value=''>Selecione</option>";
+      selectModelo.innerHTML = "<option value=''>Carregando modelos...</option>";
+      selectModelo.disabled = true;
       selectAno.innerHTML = "<option value=''>Selecione</option>";
 
-      if (!marca) return;
+      if (!marca) {
+        selectModelo.disabled = false;
+        selectModelo.innerHTML = "<option value=''>Selecione</option>";
+        return;
+      }
 
       try {
         const resp = await fetch(`/fipe/modelos?codigo_marca=${marca}`);
         const data = await resp.json();
+        selectModelo.innerHTML = "<option value=''>Selecione</option>";
         (data.modelos || []).forEach(mod => {
           const opt = document.createElement("option");
           opt.value = mod.codigo;
@@ -837,6 +881,9 @@
         });
       } catch (e) {
         console.error("Erro ao carregar modelos FIPE:", e);
+        selectModelo.innerHTML = "<option value=''>Erro ao carregar modelos</option>";
+      } finally {
+        selectModelo.disabled = false;
       }
     }
 
@@ -928,9 +975,11 @@
 
         const valor = limparValorMonetario(data.Valor);
         const nomeModelo = data.Modelo || modeloSelect.options[modeloSelect.selectedIndex].text;
-        const anoModeloStr = data.AnoModelo || data.Ano || "";
-        const combustivelStr = data.Combustivel || anoSelect.options[anoSelect.selectedIndex].text;
-        const nomeCompleto = nomeModelo + " " + anoSelect.options[anoSelect.selectedIndex].text;
+        const textoAnoOriginal = anoSelect.options[anoSelect.selectedIndex].text;
+        const anoModeloStr = anoModeloParaCalculo(ano, data.AnoModelo || data.Ano || "");
+        const combustivelStr = data.Combustivel || textoAnoOriginal;
+        const textoAnoTela = textoAnoFipeParaTela(ano, textoAnoOriginal);
+        const nomeCompleto = `${nomeModelo} ${textoAnoTela}`.trim();
 
         if (prefixo === "ve") {
           document.getElementById("modelo_ve").value = nomeCompleto;
@@ -1057,7 +1106,9 @@
           return;
         }
 
-        escreverStatusDepreciacaoTCO(prefixo, "Curva não encontrada. Use o módulo de depreciação para calcular/validar.", "text-yellow-700 font-semibold");
+        const taxaFallback = detalhe.tipo === "eletrico" ? 9.00 : 10.00;
+        preencherTaxaDepreciacaoTCO(prefixo, taxaFallback, "premissa técnica provisória");
+        escreverStatusDepreciacaoTCO(prefixo, `Curva específica não encontrada. Aplicada premissa técnica provisória de ${taxaFallback.toFixed(2).replace(".", ",")}% a.a.; abra o módulo para validar.`, "text-yellow-700 font-semibold");
         configurarBotaoDepreciacaoTCO(prefixo, true, detalhe);
       } catch (e) {
         console.error("Erro ao consultar depreciação no TCO:", e);
@@ -1328,6 +1379,7 @@
         if (localizacaoValida()) {
           atualizarPrecoCombustivelAutomatico();
           atualizarPrecoEnergiaAutomatico();
+          aplicarPremissasInflacaoAutomaticas();
           atualizarIpva("ve");
           atualizarIpva("icev");
           atualizarIpva("atual");
@@ -1359,6 +1411,14 @@
       document.getElementById("energia_manual_checkbox")?.addEventListener("change", function () {
         atualizarPrecoEnergiaAutomatico();
       });
+
+      document.getElementById("aumento_energia_input")?.addEventListener("input", function () {
+        this.dataset.editado = "1";
+      });
+      document.getElementById("aumento_combustivel_input")?.addEventListener("input", function () {
+        this.dataset.editado = "1";
+      });
+      aplicarPremissasInflacaoAutomaticas();
 
       renderEnergiaBreakdown(0, null);
       setBreakdownDisabled(true);
