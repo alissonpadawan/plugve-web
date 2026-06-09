@@ -1,0 +1,63 @@
+RELATÓRIO TÉCNICO DE AUDITORIA DA DEPRECIAÇÃO - V19.17
+
+1. VEÍCULO CONSULTADO
+- Veículo FIPE: Hyundai Creta Comfort 1.0 TB 12V Flex Aut. Zero km
+- Código FIPE: 015200-5
+- Modo pandemia: Excluir
+- Data-base da análise: 2026-05
+
+2. CURVA UTILIZADA
+- Origem da curva: coleta FIPE sob demanda V19.15 (curva própria do modelo)
+- Modelo base usado como referência: Creta Comfort 1.0 TB 12V Flex Aut.
+- Ano âncora/coorte usada: 2022
+- Descrição da estratégia: curva própria do modelo
+- Pontos históricos: 28
+- Janela histórica: 54 meses
+
+3. PREÇO BASE DA COORTE
+- Preço zero km base: R$ 0.00
+- Data do zero km base: -
+
+4. PROGRESSÃO HISTÓRICA UTILIZADA
+- 2021-05: R$ 83,154.00 (zero_km)
+- 2021-07: R$ 78,658.00 (usado)
+- 2021-09: R$ 83,590.00 (usado)
+- 2021-11: R$ 86,366.00 (usado)
+- 2022-01: R$ 89,695.00 (usado)
+- 2022-03: R$ 90,535.00 (usado)
+- 2022-05: R$ 95,920.00 (usado)
+- 2022-07: R$ 89,973.00 (usado)
+- 2022-09: R$ 90,262.00 (usado)
+- 2022-11: R$ 90,364.00 (usado)
+- 2023-01: R$ 88,976.00 (usado)
+- 2023-03: R$ 88,649.00 (usado)
+- 2023-05: R$ 88,108.00 (usado)
+- 2023-07: R$ 85,807.00 (usado)
+- 2023-09: R$ 84,693.00 (usado)
+- 2023-11: R$ 82,453.00 (usado)
+- 2024-01: R$ 80,986.00 (usado)
+- 2024-03: R$ 81,259.00 (usado)
+- 2024-05: R$ 80,989.00 (usado)
+- 2024-07: R$ 79,972.00 (usado)
+- 2024-09: R$ 79,374.00 (usado)
+- 2024-11: R$ 80,788.00 (usado)
+- 2025-01: R$ 79,854.00 (usado)
+- 2025-03: R$ 81,160.00 (usado)
+- 2025-05: R$ 80,537.00 (usado)
+- 2025-07: R$ 80,684.00 (usado)
+- 2025-09: R$ 80,690.00 (usado)
+- 2025-11: R$ 80,889.00 (usado)
+
+5. FUNÇÃO DE DEPRECIAÇÃO
+- Taxa mensal híbrida base: 0.2760%
+- Taxa anual equivalente de referência: 3.26% a.a.
+- Idade de entrada aplicada: 0.00 ano(s)
+- Função aplicada: VF = VA × (1 - 0.002760)^m com taper por idade
+
+6. RESULTADO
+- Valor FIPE atual: R$ 147,707.00
+- Valor futuro base: R$ 127,599.16
+- Valor futuro otimista: R$ 131,392.63
+- Valor futuro pessimista: R$ 123,913.41
+- Taxa para a plataforma principal: 2.88% a.a.
+- Confiança da base: ALTA

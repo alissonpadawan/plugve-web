@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}PlugVE Web{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+</head>
+<body>
+  <header class="topbar">
+    <div class="container nav">
+      <a class="brand" href="/">PlugVE Web</a>
+      <nav>
+        <a href="/">Início</a>
+        <a href="/simular">Simulador TCO</a>
+        <a href="/depreciacao">Depreciação</a>
+        <a href="/metodologia">Metodologia</a>
+        <a href="/sobre">Sobre</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container page">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="footer">
+    <div class="container">PlugVE Web - TCO e Depreciação Veicular</div>
+  </footer>
+
+  {% block scripts %}{% endblock %}
+</body>
+</html>

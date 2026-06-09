@@ -1,0 +1,15 @@
+{
+  "codigo_marca": "25",
+  "codigo_modelo": "6535",
+  "data_cache": "2026-05-12 23:33:44",
+  "anos": [
+    {
+      "codigo": "2014-5",
+      "nome": "2014 Flex"
+    },
+    {
+      "codigo": "2013-5",
+      "nome": "2013 Flex"
+    }
+  ]
+}

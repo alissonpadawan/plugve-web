@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Consulta FIPE</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #0b0f17;
+            color: white;
+            padding: 40px;
+        }
+
+        .container {
+            max-width: 1080px;
+        }
+
+        h1 {
+            margin-bottom: 10px;
+        }
+
+        p {
+            color: #d8d8d8;
+        }
+
+        .bloco {
+            background: #151b26;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            margin-top: 14px;
+            font-weight: bold;
+        }
+
+        select, input, button {
+            width: 100%;
+            max-width: 520px;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #2b3240;
+            background: #1d2430;
+            color: white;
+            font-size: 15px;
+            box-sizing: border-box;
+        }
+
+        button {
+            cursor: pointer;
+            margin-top: 20px;
+            background: #2d6cdf;
+            border: none;
+            font-weight: bold;
+            margin-right: 12px;
+        }
+
+        button:hover {
+            background: #2459b8;
+        }
+
+        .erro {
+            background: #4a2020;
+            color: #ffb3b3;
+            padding: 14px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+
+        .ok {
+            background: #153d24;
+            color: #9ff0b0;
+            padding: 14px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+
+        .info {
+            margin-top: 20px;
+            line-height: 1.9;
+        }
+
+        .valor-box {
+            background: #10151f;
+            border: 1px solid #2b3240;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 24px;
+        }
+
+        .valor-box h2 {
+            margin-top: 0;
+        }
+
+        .valor-box h3 {
+            margin-top: 26px;
+            margin-bottom: 12px;
+            color: #8cd3ff;
+        }
+
+        .codigo {
+            color: #8cd3ff;
+        }
+
+        .linha-botoes {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+
+        .linha-botoes button {
+            max-width: 260px;
+            margin-top: 0;
+        }
+
+        .secundario {
+            background: #3b4d6b;
+        }
+
+        .secundario:hover {
+            background: #31415a;
+        }
+
+        .resultado-grid {
+            line-height: 1.9;
+        }
+
+        .destaque {
+            color: #ffd166;
+            font-weight: bold;
+        }
+
+        .positivo {
+            color: #9ff0b0;
+            font-weight: bold;
+        }
+
+        .negativo {
+            color: #ffb3b3;
+            font-weight: bold;
+        }
+
+        hr {
+            margin: 20px 0;
+            border-color: #2b3240;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Consulta FIPE</h1>
+        <p>Protótipo simples para seleção de veículo e projeção de depreciação com base em proxy histórico.</p>
+
+        {% if erro %}
+            <div class="erro">{{ erro }}</div>
+        {% endif %}
+
+        <div class="bloco">
+            <form method="POST">
+                <label>Tabela de referência</label>
+                <div class="info">
+                    Código: <span class="codigo">{{ codigo_tabela }}</span><br>
+                    Mês: {{ mes_referencia }}
+                </div>
+
+                <label for="marca">Marca</label>
+                <select name="marca" id="marca" onchange="this.form.submit()">
+                    <option value="">Selecione</option>
+                    {% for marca in marcas %}
+                        <option value="{{ marca.Value }}" {% if marca.Value == marca_selecionada %}selected{% endif %}>
+                            {{ marca.Label }}
+                        </option>
+                    {% endfor %}
+                </select>
+
+                {% if modelos %}
+                    <label for="modelo">Modelo</label>
+                    <select name="modelo" id="modelo" onchange="this.form.submit()">
+                        <option value="">Selecione</option>
+                        {% for modelo in modelos %}
+                            <option value="{{ modelo.Value }}" {% if modelo.Value|string == modelo_selecionado|string %}selected{% endif %}>
+                                {{ modelo.Label }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                {% endif %}
+
+                {% if anos %}
+                    <label for="ano">Ano / Combustível</label>
+                    <select name="ano" id="ano">
+                        <option value="">Selecione</option>
+                        {% for ano in anos %}
+                            <option value="{{ ano.Value }}" {% if ano.Value == ano_selecionado %}selected{% endif %}>
+                                {{ ano.Label }}
+                            </option>
+                        {% endfor %}
+                    </select>
+
+                    <label for="tempo_com_carro">Quantos anos você pretende ficar com o carro?</label>
+                    <input
+                        type="number"
+                        name="tempo_com_carro"
+                        id="tempo_com_carro"
+                        min="1"
+                        max="20"
+                        step="1"
+                        placeholder="Ex.: 5"
+                        value="{{ tempo_com_carro }}"
+                    >
+
+                    <div class="linha-botoes">
+                        <button type="submit" name="acao" value="consultar_valor" class="secundario">
+                            Consultar valor FIPE
+                        </button>
+
+                        <button type="submit" name="acao" value="calcular_depreciacao">
+                            Calcular depreciação
+                        </button>
+                    </div>
+                {% endif %}
+            </form>
+        </div>
+
+        {% if valor_fipe %}
+            <div class="ok">Veículo consultado com sucesso.</div>
+
+            <div class="valor-box">
+                <h2>Resultado da consulta</h2>
+                <div class="resultado-grid">
+                    <strong>Valor:</strong> {{ valor_fipe.Valor }}<br>
+                    <strong>Marca:</strong> {{ valor_fipe.Marca }}<br>
+                    <strong>Modelo:</strong> {{ valor_fipe.Modelo }}<br>
+                    <strong>Ano modelo:</strong> {{ valor_fipe.AnoModelo }}<br>
+                    <strong>Combustível:</strong> {{ valor_fipe.Combustivel }}<br>
+                    <strong>Código FIPE:</strong> {{ valor_fipe.CodigoFipe }}<br>
+                    <strong>Mês de referência:</strong> {{ valor_fipe.MesReferencia }}<br>
+                    <strong>Tipo de veículo:</strong> {{ valor_fipe.TipoVeiculo }}<br>
+                    <strong>Sigla combustível:</strong> {{ valor_fipe.SiglaCombustivel }}<br>
+                    <strong>Tempo pretendido com o carro:</strong>
+                    {% if tempo_com_carro %}
+                        {{ tempo_com_carro }} ano(s)
+                    {% else %}
+                        Não informado
+                    {% endif %}
+                </div>
+            </div>
+        {% endif %}
+
+        {% if resultado_depreciacao %}
+            <div class="valor-box">
+                <h2>Depreciação calculada - Cenário 1</h2>
+
+                <div class="resultado-grid">
+                    <strong>Modelo atual selecionado:</strong> {{ modelo_nome_selecionado }}<br>
+                    <strong>Valor atual do 0 km selecionado:</strong>
+                    <span class="destaque">
+                        R$ {{ "{:,.2f}".format(resultado_depreciacao.valor_zero_km_atual).replace(",", "X").replace(".", ",").replace("X", ".") }}
+                    </span><br>
+                    <strong>Prazo simulado:</strong> {{ resultado_depreciacao.anos_uso }} ano(s)<br>
+
+                    <hr>
+
+                    <strong>Proxy histórico usado como base:</strong>
+                    {{ resultado_depreciacao.modelo_base_nome }} — {{ resultado_depreciacao.label_proxy }}<br>
+                    <strong>Ano proxy usado:</strong> {{ resultado_depreciacao.ano_proxy }}<br>
+                    <strong>Score de similaridade:</strong> {{ resultado_depreciacao.score_similaridade }}<br>
+                </div>
+
+                <h3>1) Histórico do carro proxy</h3>
+                <div class="resultado-grid">
+                    <strong>Primeira aparição histórica do proxy:</strong>
+                    {{ resultado_depreciacao.proxy_primeiro_ponto.mes_referencia }}
+                    — R$ {{ "{:,.2f}".format(resultado_depreciacao.proxy_valor_inicial).replace(",", "X").replace(".", ",").replace("X", ".") }}<br>
+
+                    <strong>Ponto final usado no proxy:</strong>
+                    {{ resultado_depreciacao.proxy_ponto_final.mes_referencia }}
+                    — R$ {{ "{:,.2f}".format(resultado_depreciacao.proxy_valor_final).replace(",", "X").replace(".", ",").replace("X", ".") }}<br>
+
+                    <hr>
+
+                    <strong>Valor inicial nominal do proxy:</strong>
+                    R$ {{ "{:,.2f}".format(resultado_depreciacao.proxy_valor_inicial).replace(",", "X").replace(".", ",").replace("X", ".") }}<br>
+
+                    <strong>Valor final nominal do proxy:</strong>
+                    R$ {{ "{:,.2f}".format(resultado_depreciacao.proxy_valor_final).replace(",", "X").replace(".", ",").replace("X", ".") }}<br>
+
+                    <strong>Residual nominal do proxy:</strong>
+                    {{ "%.2f"|format(resultado_depreciacao.proxy_residual_nominal_pct) }}%<br>
+
+                    <strong>Depreciação nominal do proxy:</strong>
+                    {% if resultado_depreciacao.proxy_depreciacao_nominal_pct >= 0 %}
+                        {{ "%.2f"|format(resultado_depreciacao.proxy_depreciacao_nominal_pct) }}%
+                    {% else %}
+                        <span class="positivo">
+                            valorização de {{ "%.2f"|format((resultado_depreciacao.proxy_depreciacao_nominal_pct * -1)) }}%
+                        </span>
+                    {% endif %}
+                    <br>
+
+                    <strong>Taxa nominal anual equivalente do proxy:</strong>
+                    {% if resultado_depreciacao.proxy_taxa_nominal_anual_pct is not none %}
+                        {{ "%.2f"|format(resultado_depreciacao.proxy_taxa_nominal_anual_pct) }}% a.a.
+                    {% else %}
+                        -
+                    {% endif %}
+                    <br>
+
+                    <hr>
+
+                    <strong>Inflação acumulada no período do proxy (IPCA):</strong>
+                    {{ "%.2f"|format(resultado_depreciacao.proxy_inflacao_acumulada_pct) }}%<br>
+
+                    <strong>Valor inicial real do proxy:</strong>
+                    R$ {{ "{:,.2f}".format(resultado_depreciacao.proxy_valor_inicial_real).replace(",", "X").replace(".", ",").replace("X", ".") }}<br>
+
+                    <strong>Valor final real do proxy:</strong>
+                    R$ {{ "{:,.2f}".format(resultado_depreciacao.proxy_valor_final_real).replace(",", "X").replace(".", ",").replace("X", ".") }}<br>
+
+                    <strong>Residual real do proxy:</strong>
+                    {{ "%.2f"|format(resultado_depreciacao.proxy_residual_real_pct) }}%<br>
+
+                    <strong>Depreciação real do proxy:</strong>
+                    {% if resultado_depreciacao.proxy_depreciacao_real_pct >= 0 %}
+                        {{ "%.2f"|format(resultado_depreciacao.proxy_depreciacao_real_pct) }}%
+                    {% else %}
+                        <span class="positivo">
+                            valorização real de {{ "%.2f"|format((resultado_depreciacao.proxy_depreciacao_real_pct * -1)) }}%
+                        </span>
+                    {% endif %}
+                    <br>
+
+                    <strong>Taxa real anual equivalente do proxy:</strong>
+                    {% if resultado_depreciacao.proxy_taxa_real_anual_pct is not none %}
+                        {{ "%.2f"|format(resultado_depreciacao.proxy_taxa_real_anual_pct) }}% a.a.
+                    {% else %}
+                        -
+                    {% endif %}
+                </div>
+
+                <h3>2) Projeção para o carro 0 km atual selecionado</h3>
+                <div class="resultado-grid">
+                    <strong>Valor atual do 0 km:</strong>
+                    <span class="destaque">
+                        R$ {{ "{:,.2f}".format(resultado_depreciacao.valor_zero_km_atual).replace(",", "X").replace(".", ",").replace("X", ".") }}
+                    </span><br>
+
+                    <strong>Residual nominal projetado:</strong>
+                    {{ "%.2f"|format(resultado_depreciacao.residual_nominal_projetado_pct) }}%<br>
+
+                    <strong>Valor nominal projetado após {{ resultado_depreciacao.anos_uso }} ano(s):</strong>
+                    <span class="destaque">
+                        R$ {{ "{:,.2f}".format(resultado_depreciacao.valor_zero_km_projetado_nominal).replace(",", "X").replace(".", ",").replace("X", ".") }}
+                    </span><br>
+
+                    <strong>Depreciação nominal projetada:</strong>
+                    {% if resultado_depreciacao.depreciacao_nominal_projetada_pct >= 0 %}
+                        <span class="negativo">
+                            {{ "%.2f"|format(resultado_depreciacao.depreciacao_nominal_projetada_pct) }}%
+                        </span>
+                    {% else %}
+                        <span class="positivo">
+                            valorização de {{ "%.2f"|format((resultado_depreciacao.depreciacao_nominal_projetada_pct * -1)) }}%
+                        </span>
+                    {% endif %}
+                    <br>
+
+                    <hr>
+
+                    <strong>Residual real projetado:</strong>
+                    {{ "%.2f"|format(resultado_depreciacao.residual_real_projetado_pct) }}%<br>
+
+                    <strong>Valor real projetado após {{ resultado_depreciacao.anos_uso }} ano(s):</strong>
+                    <span class="destaque">
+                        R$ {{ "{:,.2f}".format(resultado_depreciacao.valor_zero_km_projetado_real).replace(",", "X").replace(".", ",").replace("X", ".") }}
+                    </span><br>
+
+                    <strong>Depreciação real projetada:</strong>
+                    {% if resultado_depreciacao.depreciacao_real_projetada_pct >= 0 %}
+                        <span class="negativo">
+                            {{ "%.2f"|format(resultado_depreciacao.depreciacao_real_projetada_pct) }}%
+                        </span>
+                    {% else %}
+                        <span class="positivo">
+                            valorização real de {{ "%.2f"|format((resultado_depreciacao.depreciacao_real_projetada_pct * -1)) }}%
+                        </span>
+                    {% endif %}
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</body>
+</html>

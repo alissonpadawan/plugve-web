@@ -1,0 +1,19 @@
+{
+  "codigo_marca": "25",
+  "codigo_modelo": "8282",
+  "data_cache": "2026-05-12 23:33:34",
+  "anos": [
+    {
+      "codigo": "2021-1",
+      "nome": "2021 Gasolina"
+    },
+    {
+      "codigo": "2019-1",
+      "nome": "2019 Gasolina"
+    },
+    {
+      "codigo": "2018-1",
+      "nome": "2018 Gasolina"
+    }
+  ]
+}

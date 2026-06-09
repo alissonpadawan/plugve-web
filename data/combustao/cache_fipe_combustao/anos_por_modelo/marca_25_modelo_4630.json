@@ -1,0 +1,39 @@
+{
+  "codigo_marca": "25",
+  "codigo_modelo": "4630",
+  "data_cache": "2026-05-12 23:33:39",
+  "anos": [
+    {
+      "codigo": "2015-1",
+      "nome": "2015 Gasolina"
+    },
+    {
+      "codigo": "2014-1",
+      "nome": "2014 Gasolina"
+    },
+    {
+      "codigo": "2013-1",
+      "nome": "2013 Gasolina"
+    },
+    {
+      "codigo": "2012-1",
+      "nome": "2012 Gasolina"
+    },
+    {
+      "codigo": "2011-1",
+      "nome": "2011 Gasolina"
+    },
+    {
+      "codigo": "2010-1",
+      "nome": "2010 Gasolina"
+    },
+    {
+      "codigo": "2009-1",
+      "nome": "2009 Gasolina"
+    },
+    {
+      "codigo": "2008-1",
+      "nome": "2008 Gasolina"
+    }
+  ]
+}

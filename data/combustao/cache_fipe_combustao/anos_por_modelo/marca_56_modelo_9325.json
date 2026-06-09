@@ -1,0 +1,31 @@
+{
+  "codigo_marca": "56",
+  "codigo_modelo": "9325",
+  "data_cache": "2026-05-07 13:08:45",
+  "anos": [
+    {
+      "codigo": "32000-5",
+      "nome": "32000 Flex"
+    },
+    {
+      "codigo": "2026-5",
+      "nome": "2026 Flex"
+    },
+    {
+      "codigo": "2025-5",
+      "nome": "2025 Flex"
+    },
+    {
+      "codigo": "2024-5",
+      "nome": "2024 Flex"
+    },
+    {
+      "codigo": "2023-5",
+      "nome": "2023 Flex"
+    },
+    {
+      "codigo": "2022-5",
+      "nome": "2022 Flex"
+    }
+  ]
+}

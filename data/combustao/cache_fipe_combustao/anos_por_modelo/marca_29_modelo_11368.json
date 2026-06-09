@@ -1,0 +1,23 @@
+{
+  "codigo_marca": "29",
+  "codigo_modelo": "11368",
+  "data_cache": "2026-05-05 13:29:23",
+  "anos": [
+    {
+      "codigo": "32000-3",
+      "nome": "32000 Diesel"
+    },
+    {
+      "codigo": "2027-3",
+      "nome": "2027 Diesel"
+    },
+    {
+      "codigo": "2026-3",
+      "nome": "2026 Diesel"
+    },
+    {
+      "codigo": "2025-3",
+      "nome": "2025 Diesel"
+    }
+  ]
+}

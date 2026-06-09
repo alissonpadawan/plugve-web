@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block title %}Início | PlugVE Web{% endblock %}
+
+{% block content %}
+<section class="hero card">
+  <h1>PlugVE Web</h1>
+  <p>
+    Plataforma web para comparação de Custo Total de Propriedade (TCO) e análise de depreciação veicular com base em dados FIPE, energia, combustível e curvas técnicas.
+  </p>
+  <div class="actions">
+    <a class="button primary" href="/simular">Abrir Simulador TCO</a>
+    <a class="button secondary" href="/depreciacao">Abrir Depreciação</a>
+  </div>
+</section>
+
+<section class="grid two">
+  <div class="card">
+    <h2>Simulador TCO</h2>
+    <p>Compara veículos elétricos e a combustão considerando aquisição, energia, combustível, IPVA, seguro, manutenção e depreciação.</p>
+    <a class="button primary" href="/simular">Simular TCO</a>
+  </div>
+  <div class="card">
+    <h2>Depreciação veicular</h2>
+    <p>Consulta FIPE, localiza curvas salvas, calcula curva sob demanda para combustão e apresenta auditoria inicial do resultado.</p>
+    <a class="button primary" href="/depreciacao">Calcular depreciação</a>
+  </div>
+</section>
+
+<section class="card">
+  <h2>Versão online de apresentação</h2>
+  <p class="muted">
+    Sistema integrado para apoiar a análise técnico-econômica entre veículos elétricos e a combustão, reunindo calculadora TCO, consulta FIPE e módulo de depreciação em uma única aplicação web.
+  </p>
+</section>
+{% endblock %}

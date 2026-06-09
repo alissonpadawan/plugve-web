@@ -1,0 +1,54 @@
+RELATÓRIO TÉCNICO DE AUDITORIA DA DEPRECIAÇÃO - V19.17
+
+1. VEÍCULO CONSULTADO
+- Veículo FIPE: Honda HR-V EXL 1.5 Flex Sensing 16V 5p Aut. Zero km
+- Código FIPE: 014110-0
+- Modo pandemia: Excluir
+- Data-base da análise: 2026-05
+
+2. CURVA UTILIZADA
+- Origem da curva: coleta FIPE sob demanda V19.15 (curva própria do modelo)
+- Modelo base usado como referência: HR-V EXL 1.5 Flex Sensing 16V 5p Aut.
+- Ano âncora/coorte usada: 2023
+- Descrição da estratégia: curva própria do modelo
+- Pontos históricos: 19
+- Janela histórica: 36 meses
+
+3. PREÇO BASE DA COORTE
+- Preço zero km base: R$ 0.00
+- Data do zero km base: -
+
+4. PROGRESSÃO HISTÓRICA UTILIZADA
+- 2022-08: R$ 151,989.00 (zero_km)
+- 2022-10: R$ 143,936.00 (usado)
+- 2022-12: R$ 143,417.00 (usado)
+- 2023-02: R$ 138,286.00 (usado)
+- 2023-04: R$ 142,696.00 (usado)
+- 2023-06: R$ 147,680.00 (usado)
+- 2023-08: R$ 150,530.00 (usado)
+- 2023-10: R$ 149,396.00 (usado)
+- 2023-12: R$ 150,862.00 (usado)
+- 2024-02: R$ 149,341.00 (usado)
+- 2024-04: R$ 149,170.00 (usado)
+- 2024-06: R$ 149,358.00 (usado)
+- 2024-08: R$ 149,084.00 (usado)
+- 2024-10: R$ 148,078.00 (usado)
+- 2024-12: R$ 144,715.00 (usado)
+- 2025-02: R$ 145,228.00 (usado)
+- 2025-04: R$ 144,825.00 (usado)
+- 2025-06: R$ 143,622.00 (usado)
+- 2025-08: R$ 142,577.00 (usado)
+
+5. FUNÇÃO DE DEPRECIAÇÃO
+- Taxa mensal híbrida base: 0.5248%
+- Taxa anual equivalente de referência: 6.12% a.a.
+- Idade de entrada aplicada: 0.00 ano(s)
+- Função aplicada: VF = VA × (1 - 0.005248)^m com taper por idade
+
+6. RESULTADO
+- Valor FIPE atual: R$ 173,361.00
+- Valor futuro base: R$ 109,053.24
+- Valor futuro otimista: R$ 119,664.88
+- Valor futuro pessimista: R$ 99,375.10
+- Taxa para a plataforma principal: 4.53% a.a. (exploratória)
+- Confiança da base: MÉDIA

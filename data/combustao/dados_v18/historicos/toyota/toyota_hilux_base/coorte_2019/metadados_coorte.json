@@ -1,0 +1,16 @@
+{
+  "marca": "Toyota",
+  "modelo_consultado": "Hilux CD SRX 4x4 2.8 TDI 16V Diesel Aut.",
+  "codigo_fipe": "002141-5",
+  "ano_modelo_consultado": "Zero km",
+  "contexto_curva": {
+    "tipo_base": "familia_madura",
+    "descricao": "curva histórica da família com coorte de ~7 anos",
+    "modelo_base": "Hilux CD SRX 4x4 2.8 TDI 16V Diesel Aut.",
+    "historico_meses_estimado": 120,
+    "ano_base": 2019,
+    "span_anos_disponivel": 10
+  },
+  "pontos_historicos": 42,
+  "data_base_operacao": "2026-05"
+}

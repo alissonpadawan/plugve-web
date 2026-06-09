@@ -1,0 +1,52 @@
+from __future__ import annotations
+
+from flask import Blueprint, jsonify, request
+
+from services.fipe_service import FipeService
+
+fipe_bp = Blueprint("fipe", __name__)
+fipe_service = FipeService()
+
+
+@fipe_bp.route("/marcas")
+def marcas():
+    try:
+        return jsonify(fipe_service.listar_marcas())
+    except Exception as exc:
+        return jsonify({"erro": str(exc)}), 500
+
+
+@fipe_bp.route("/modelos")
+def modelos():
+    codigo_marca = request.args.get("codigo_marca", "").strip()
+    if not codigo_marca:
+        return jsonify({"modelos": []})
+    try:
+        return jsonify(fipe_service.listar_modelos(codigo_marca))
+    except Exception as exc:
+        return jsonify({"erro": str(exc), "modelos": []}), 500
+
+
+@fipe_bp.route("/anos")
+def anos():
+    codigo_marca = request.args.get("codigo_marca", "").strip()
+    codigo_modelo = request.args.get("codigo_modelo", "").strip()
+    if not codigo_marca or not codigo_modelo:
+        return jsonify([])
+    try:
+        return jsonify(fipe_service.listar_anos(codigo_marca, codigo_modelo))
+    except Exception as exc:
+        return jsonify({"erro": str(exc)}), 500
+
+
+@fipe_bp.route("/preco")
+def preco():
+    codigo_marca = request.args.get("codigo_marca", "").strip()
+    codigo_modelo = request.args.get("codigo_modelo", "").strip()
+    codigo_ano = request.args.get("codigo_ano", "").strip()
+    if not codigo_marca or not codigo_modelo or not codigo_ano:
+        return jsonify({"erro": "Parâmetros incompletos."}), 400
+    try:
+        return jsonify(fipe_service.consultar_preco(codigo_marca, codigo_modelo, codigo_ano))
+    except Exception as exc:
+        return jsonify({"erro": str(exc)}), 500

@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+
+{% block title %}Depreciação | PlugVE Web{% endblock %}
+
+{% block content %}
+<section class="depr-hero card">
+  <div class="section-header">
+    <div>
+      <p class="eyebrow">Módulo de depreciação veicular</p>
+      <h1>Painel de Depreciação</h1>
+      <p class="muted">
+        Consulte veículos pela FIPE, reutilize curvas salvas, calcule curvas sob demanda e valide a taxa que será enviada ao Simulador TCO.
+      </p>
+    </div>
+    <div class="status-box" id="status_bases">Carregando bases...</div>
+  </div>
+
+  <div class="kpi-grid" id="painel_kpis">
+    <div class="kpi-card"><span>Modelos cadastrados</span><strong id="kpi_modelos">-</strong></div>
+    <div class="kpi-card"><span>Curvas combustão</span><strong id="kpi_curvas_combustao">-</strong></div>
+    <div class="kpi-card"><span>Curvas elétricas</span><strong id="kpi_curvas_eletrico">-</strong></div>
+    <div class="kpi-card"><span>Históricos combustão</span><strong id="kpi_hist_combustao">-</strong></div>
+    <div class="kpi-card"><span>Históricos elétricos</span><strong id="kpi_hist_eletrico">-</strong></div>
+  </div>
+</section>
+
+<section class="panel-tabs card compact-card">
+  <button type="button" class="tab-button active" data-tab="consulta">Consulta FIPE</button>
+  <button type="button" class="tab-button" data-tab="curvas">Curvas salvas</button>
+  <button type="button" class="tab-button" data-tab="historicos">Históricos baixados</button>
+  <button type="button" class="tab-button" data-tab="auditoria">Auditoria e gráficos</button>
+</section>
+
+<section id="tab_consulta" class="tab-panel">
+  <section class="card">
+    <h2>Consulta de Depreciação</h2>
+    <p class="muted">
+      Selecione o veículo pela FIPE. O sistema buscará curva salva de combustão ou elétrico e mostrará o resumo.
+    </p>
+
+    <div class="grid three">
+      <div class="field">
+        <label for="tipo_veiculo">Tipo</label>
+        <select id="tipo_veiculo">
+          <option value="auto">Detectar automaticamente</option>
+          <option value="combustao">Combustão</option>
+          <option value="eletrico">Elétrico ou híbrido</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="horizonte_anos">Horizonte</label>
+        <select id="horizonte_anos">
+          <option value="1">1 ano</option>
+          <option value="2">2 anos</option>
+          <option value="3">3 anos</option>
+          <option value="4">4 anos</option>
+          <option value="5" selected>5 anos</option>
+          <option value="10">10 anos</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Origem da base</label>
+        <div class="status-box mini" id="status_bases_consulta">Carregando bases...</div>
+      </div>
+    </div>
+
+    <div class="grid three">
+      <div class="field">
+        <label for="fipe_marca">Marca</label>
+        <select id="fipe_marca"></select>
+      </div>
+      <div class="field">
+        <label for="fipe_modelo">Modelo</label>
+        <select id="fipe_modelo"></select>
+      </div>
+      <div class="field">
+        <label for="fipe_ano">Ano/Combustível</label>
+        <select id="fipe_ano"></select>
+      </div>
+    </div>
+  </section>
+
+  <section class="grid two">
+    <div class="card">
+      <h2>Veículo selecionado</h2>
+      <dl class="data-list">
+        <dt>Marca</dt><dd id="info_marca">-</dd>
+        <dt>Modelo</dt><dd id="info_modelo">-</dd>
+        <dt>Ano</dt><dd id="info_ano">-</dd>
+        <dt>Combustível</dt><dd id="info_combustivel">-</dd>
+        <dt>Código FIPE</dt><dd id="info_codigo_fipe">-</dd>
+        <dt>Valor FIPE</dt><dd id="info_valor">-</dd>
+      </dl>
+    </div>
+
+    <div class="card" id="card_resultado">
+      <h2>Resumo da depreciação</h2>
+      <p id="resultado_status" class="muted">Aguardando seleção do veículo.</p>
+      <dl class="data-list compact">
+        <dt>Valor atual</dt><dd id="res_valor_atual">-</dd>
+        <dt>Valor futuro</dt><dd id="res_valor_futuro">-</dd>
+        <dt>Depreciação acumulada</dt><dd id="res_depreciacao">-</dd>
+        <dt>Taxa anual</dt><dd id="res_taxa">-</dd>
+        <dt>Confiança</dt><dd id="res_confianca">-</dd>
+        <dt>Origem</dt><dd id="res_origem">-</dd>
+        <dt>Tipo usado</dt><dd id="res_tipo_usado">-</dd>
+      </dl>
+      <div class="actions">
+        <button id="btn_ver_detalhes" class="button primary hidden" type="button" disabled>Ver detalhes</button>
+        <button id="btn_usar_no_tco" class="button primary hidden" type="button" disabled>Usar no TCO e fechar</button>
+        <button id="btn_calcular_futuro" class="button secondary hidden" type="button" disabled>Calcular curva de combustão</button>
+      </div>
+    </div>
+  </section>
+</section>
+
+<section id="tab_curvas" class="tab-panel hidden">
+  <section class="card">
+    <div class="section-header">
+      <div>
+        <h2>Curvas salvas</h2>
+        <p class="muted">Lista resumida das curvas disponíveis para carregamento automático no TCO e na consulta de depreciação.</p>
+      </div>
+      <div class="field small-field">
+        <label for="filtro_curvas">Filtro</label>
+        <input id="filtro_curvas" type="text" placeholder="Buscar marca, modelo ou código FIPE">
+      </div>
+    </div>
+    <div class="table-wrapper">
+      <table class="details-table data-table">
+        <thead>
+          <tr>
+            <th>Tipo</th>
+            <th>Veículo</th>
+            <th>Ano</th>
+            <th>Taxa anual</th>
+            <th>Confiança</th>
+            <th>Pontos</th>
+            <th>Janela</th>
+            <th>Origem</th>
+          </tr>
+        </thead>
+        <tbody id="tabela_curvas_corpo">
+          <tr><td colspan="8">Carregando curvas...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</section>
+
+<section id="tab_historicos" class="tab-panel hidden">
+  <section class="card">
+    <h2>Históricos baixados</h2>
+    <p class="muted">Resumo das séries históricas FIPE já armazenadas localmente.</p>
+    <div class="table-wrapper">
+      <table class="details-table data-table">
+        <thead>
+          <tr>
+            <th>Tipo</th>
+            <th>Veículo</th>
+            <th>Código FIPE</th>
+            <th>Código ano</th>
+            <th>Pontos</th>
+            <th>Período</th>
+            <th>Primeiro valor</th>
+            <th>Último valor</th>
+          </tr>
+        </thead>
+        <tbody id="tabela_historicos_corpo">
+          <tr><td colspan="8">Carregando históricos...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</section>
+
+<section id="tab_auditoria" class="tab-panel hidden">
+  <section class="grid two">
+    <div class="card">
+      <h2>Gráfico de valor</h2>
+      <p class="muted">Comparação entre valor FIPE atual e valor futuro estimado.</p>
+      <div id="grafico_barras" class="simple-chart empty-chart">Selecione ou calcule um veículo.</div>
+    </div>
+    <div class="card">
+      <h2>Projeção simplificada</h2>
+      <p class="muted">Projeção anual baseada na taxa anual calculada ou carregada.</p>
+      <div id="grafico_projecao" class="simple-chart empty-chart">Selecione ou calcule um veículo.</div>
+    </div>
+  </section>
+
+  <section id="detalhes_resultado" class="card hidden">
+    <div class="section-header">
+      <div>
+        <h2>Detalhes técnicos da curva</h2>
+        <p class="muted">Auditoria resumida da curva usada, proxy, histórico e origem do resultado.</p>
+      </div>
+      <button id="btn_fechar_detalhes" class="button secondary" type="button">Fechar detalhes</button>
+    </div>
+
+    <table class="details-table">
+      <tbody id="detalhes_corpo"></tbody>
+    </table>
+  </section>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/fipe.js') }}"></script>
+<script src="{{ url_for('static', filename='js/depreciacao.js') }}"></script>
+{% endblock %}

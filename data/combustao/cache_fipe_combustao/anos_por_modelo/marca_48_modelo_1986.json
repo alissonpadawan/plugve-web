@@ -1,0 +1,19 @@
+{
+  "codigo_marca": "48",
+  "codigo_modelo": "1986",
+  "data_cache": "2026-05-04 23:30:37",
+  "anos": [
+    {
+      "codigo": "1996-1",
+      "nome": "1996 Gasolina"
+    },
+    {
+      "codigo": "1995-1",
+      "nome": "1995 Gasolina"
+    },
+    {
+      "codigo": "1994-1",
+      "nome": "1994 Gasolina"
+    }
+  ]
+}

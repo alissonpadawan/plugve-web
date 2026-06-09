@@ -1,0 +1,47 @@
+{
+  "codigo_marca": "48",
+  "codigo_modelo": "8023",
+  "data_cache": "2026-05-04 23:30:58",
+  "anos": [
+    {
+      "codigo": "32000-5",
+      "nome": "32000 Flex"
+    },
+    {
+      "codigo": "2026-5",
+      "nome": "2026 Flex"
+    },
+    {
+      "codigo": "2025-5",
+      "nome": "2025 Flex"
+    },
+    {
+      "codigo": "2024-5",
+      "nome": "2024 Flex"
+    },
+    {
+      "codigo": "2023-5",
+      "nome": "2023 Flex"
+    },
+    {
+      "codigo": "2022-5",
+      "nome": "2022 Flex"
+    },
+    {
+      "codigo": "2021-5",
+      "nome": "2021 Flex"
+    },
+    {
+      "codigo": "2020-5",
+      "nome": "2020 Flex"
+    },
+    {
+      "codigo": "2019-5",
+      "nome": "2019 Flex"
+    },
+    {
+      "codigo": "2018-5",
+      "nome": "2018 Flex"
+    }
+  ]
+}

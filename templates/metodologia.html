@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block title %}Metodologia | PlugVE Web{% endblock %}
+
+{% block content %}
+<section class="card">
+  <h1>Metodologia</h1>
+  <p>
+    A plataforma PlugVE Web foi estruturada para comparar o Custo Total de Propriedade entre veículos elétricos e veículos a combustão, incorporando consulta FIPE, custos energéticos, custos de combustível, IPVA, seguro, manutenção e depreciação.
+  </p>
+  <h2>Camada de TCO</h2>
+  <p>
+    O simulador TCO calcula o custo acumulado com e sem valor de revenda, permitindo comparar cenários de troca de veículo e alternativas entre VE e ICEV.
+  </p>
+  <h2>Camada de depreciação</h2>
+  <p>
+    O módulo de depreciação consulta veículos pela FIPE, procura curvas salvas, calcula curvas sob demanda para combustão e apresenta uma primeira camada de auditoria técnica.
+  </p>
+  <h2>Arquitetura</h2>
+  <p>
+    O projeto foi organizado em rotas, serviços, repositórios, núcleo de cálculo, templates e arquivos estáticos, evitando concentração de regras em um único arquivo principal.
+  </p>
+</section>
+{% endblock %}

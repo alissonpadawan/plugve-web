@@ -1,0 +1,1370 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <!-- =========================================================
+    0) HEAD
+  ========================================================= -->
+  <meta charset="UTF-8">
+  <title>Simulador TCO | PlugVE</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+</head>
+
+<body class="bg-gray-50 text-gray-800">
+
+  <!-- =========================================================
+    1) HEADER
+  ========================================================= -->
+  <header class="bg-white shadow-md sticky top-0 z-50">
+    <nav class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        <div class="flex items-center space-x-2">
+          <img src="{{ url_for('static', filename='img/carro.png') }}" alt="Logo" class="h-6 w-6">
+          <span class="text-xl font-bold text-blue-600">PlugVE</span>
+        </div>
+        <div class="hidden md:flex space-x-6">
+          <a href="/home" class="text-gray-700 hover:text-blue-600 font-medium">Início</a>
+          <a href="/simular" class="text-blue-600 font-semibold">Simular</a>
+          <a href="/depreciacao" class="text-gray-700 hover:text-blue-600 font-medium">Depreciação</a>
+          <a href="/metodologia" class="text-gray-700 hover:text-blue-600 font-medium">Metodologia</a>
+          <a href="/sobre" class="text-gray-700 hover:text-blue-600 font-medium">Sobre</a>
+          <a href="/contato" class="text-gray-700 hover:text-blue-600 font-medium">Contato</a>
+        </div>
+      </div>
+    </nav>
+  </header>
+
+  <!-- =========================================================
+    2) MAIN
+  ========================================================= -->
+  <main class="max-w-6xl mx-auto p-6 bg-white shadow mt-6 rounded-xl">
+
+    <!-- =========================================================
+      2.1) FLASH MESSAGES
+    ========================================================= -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="mb-4">
+          {% for category, message in messages %}
+            <div class="p-2 rounded text-white font-bold bg-red-500 mb-2">{{ message }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    <h1 class="text-2xl font-bold mb-4 text-blue-600">
+      Simulador de Custo Total de Propriedade (TCO)
+    </h1>
+
+    <p class="mb-6 text-gray-700 text-sm">
+      Escolha primeiro o tipo de comparação. Depois informe sua localização. Só então os campos da simulação serão liberados.
+    </p>
+
+    <!-- =========================================================
+      3) FORMULÁRIO
+    ========================================================= -->
+    <form method="POST" action="/simular" class="space-y-6">
+
+      <!-- =========================================================
+        3.0) CAMPO OCULTO DO TIPO DE COMPARAÇÃO
+      ========================================================= -->
+      <input
+        type="hidden"
+        name="tipo_comparacao"
+        id="tipo_comparacao"
+        value="{{ request.form.get('tipo_comparacao', 'dois_carros_novos') }}"
+      >
+
+      <!-- =========================================================
+        3.1) CARDS DE COMPARAÇÃO
+      ========================================================= -->
+      <section class="border rounded-lg p-4 bg-blue-50">
+        <h2 class="font-semibold text-lg mb-3 text-blue-700">Escolha o tipo de comparação</h2>
+        <p class="text-sm text-gray-600 mb-4">
+          Clique em uma opção abaixo para começar. Depois disso, informe sua localização para liberar o restante da simulação.
+        </p>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <button
+            type="button"
+            class="card-cenario text-left border rounded-xl p-4 bg-white hover:border-blue-500 hover:shadow transition"
+            data-cenario="dois_carros_novos"
+            id="card_dois_carros_novos"
+          >
+            <h3 class="font-semibold text-blue-700 text-base mb-2">Comparar dois carros</h3>
+            <p class="text-sm text-gray-600">
+              Ideal para comparar diretamente um carro elétrico com um carro a combustão.
+            </p>
+          </button>
+
+          <button
+            type="button"
+            class="card-cenario text-left border rounded-xl p-4 bg-white hover:border-blue-500 hover:shadow transition"
+            data-cenario="trocar_por_eletrico"
+            id="card_trocar_por_eletrico"
+          >
+            <h3 class="font-semibold text-blue-700 text-base mb-2">Trocar meu carro atual por um elétrico</h3>
+            <p class="text-sm text-gray-600">
+              Compare seu carro atual com a opção de migrar para um veículo elétrico.
+            </p>
+          </button>
+
+          <button
+            type="button"
+            class="card-cenario text-left border rounded-xl p-4 bg-white hover:border-blue-500 hover:shadow transition"
+            data-cenario="trocar_e_comparar_opcoes"
+            id="card_trocar_e_comparar_opcoes"
+          >
+            <h3 class="font-semibold text-blue-700 text-base mb-2">Trocar meu carro atual e comparar opções</h3>
+            <p class="text-sm text-gray-600">
+              Compare seu carro atual com duas possibilidades futuras: um elétrico e outro a combustão.
+            </p>
+          </button>
+        </div>
+
+        <p id="descricao_tipo_comparacao" class="text-xs text-gray-500 mt-4">
+          Selecione uma das opções acima.
+        </p>
+      </section>
+
+      <!-- =========================================================
+        3.2) LOCALIZAÇÃO
+      ========================================================= -->
+      <section class="border rounded-lg p-4">
+        <h2 class="font-semibold text-lg mb-3 text-gray-800">Localização</h2>
+        <p class="text-xs text-gray-500 mb-3">
+          Informe o estado e o município onde o veículo será utilizado. Isso será usado para calcular IPVA, preço médio da gasolina e tarifa de energia.
+        </p>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+          <div>
+            <label class="block text-sm font-medium">Estado (UF)</label>
+            <select name="estado_uf" id="estado_uf" class="mt-1 p-2 border rounded w-full" required>
+              <option value="">Selecione</option>
+              <option value="AC">AC</option><option value="AL">AL</option><option value="AP">AP</option><option value="AM">AM</option>
+              <option value="BA">BA</option><option value="CE">CE</option><option value="DF">DF</option><option value="ES">ES</option>
+              <option value="GO">GO</option><option value="MA">MA</option><option value="MT">MT</option><option value="MS">MS</option>
+              <option value="MG">MG</option><option value="PA">PA</option><option value="PB">PB</option><option value="PR">PR</option>
+              <option value="PE">PE</option><option value="PI">PI</option><option value="RJ">RJ</option><option value="RN">RN</option>
+              <option value="RS">RS</option><option value="RO">RO</option><option value="RR">RR</option><option value="SC">SC</option>
+              <option value="SP">SP</option><option value="SE">SE</option><option value="TO">TO</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium">Município</label>
+            <select name="municipio" id="municipio_select" class="mt-1 p-2 border rounded w-full" required>
+              <option value="">Selecione o estado primeiro</option>
+            </select>
+          </div>
+
+          <div class="flex md:justify-end">
+            <button type="button" id="btn_localizacao" class="mt-4 md:mt-0 px-3 py-2 bg-blue-500 text-white text-sm rounded hover:bg-blue-600">
+              Usar minha localização
+            </button>
+          </div>
+        </div>
+
+        <p id="status_liberacao" class="text-[11px] text-gray-500 mt-3">
+          Preencha UF e município para liberar os campos da simulação.
+        </p>
+
+        <p class="text-[11px] text-gray-400 mt-2">
+          O botão de localização usa o GPS do navegador e serviços públicos (IBGE / OpenStreetMap). Pode falhar se o navegador bloquear a permissão ou se o serviço estiver fora do ar.
+        </p>
+      </section>
+
+      <!-- =========================================================
+        3.3) ÁREA LIBERADA APÓS LOCALIZAÇÃO
+      ========================================================= -->
+      <div id="area_simulacao" class="hidden space-y-6">
+
+        <!-- =========================================================
+          3.3.1) CARRO ATUAL
+        ========================================================= -->
+        <section id="bloco_carro_atual" class="border rounded-lg p-4 hidden">
+          <h2 class="font-semibold text-lg mb-3 text-gray-800">Meu carro atual</h2>
+          <p class="text-xs text-gray-500 mb-3">
+            Esse bloco aparece apenas nos cenários de troca.
+          </p>
+
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="border rounded-lg p-4">
+              <h3 class="font-semibold text-base mb-3 text-gray-700">Busca FIPE - carro atual</h3>
+
+              <div class="space-y-2">
+                <div>
+                  <label class="block text-xs font-medium">Marca</label>
+                  <select id="atual_marca" class="mt-1 p-2 border rounded w-full"></select>
+                </div>
+                <div>
+                  <label class="block text-xs font-medium">Modelo</label>
+                  <select id="atual_modelo" class="mt-1 p-2 border rounded w-full"></select>
+                </div>
+                <div>
+                  <label class="block text-xs font-medium">Ano/Combustível</label>
+                  <select id="atual_ano" class="mt-1 p-2 border rounded w-full"></select>
+                </div>
+              </div>
+            </div>
+
+            <div class="border rounded-lg p-4">
+              <h3 class="font-semibold text-base mb-3 text-gray-700">Dados do carro atual</h3>
+
+              <div class="space-y-2">
+                <div>
+                  <label class="block text-sm font-medium">Modelo do carro atual</label>
+                  <input type="text" name="modelo_atual" id="modelo_atual" class="mt-1 p-2 border rounded w-full" placeholder="Ex: Onix 1.0 Turbo">
+                </div>
+
+                <input type="hidden" name="ano_modelo_atual" id="ano_modelo_atual">
+                <input type="hidden" name="combustivel_atual" id="combustivel_atual">
+
+                <div>
+                  <label class="block text-sm font-medium">Preço atual do veículo (R$)</label>
+                  <input type="text" name="preco_atual" id="preco_atual" class="mt-1 p-2 border rounded w-full" placeholder="ex: 65000">
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium">Consumo atual (km/l)</label>
+                  <input type="text" name="consumo_atual" id="consumo_atual" class="mt-1 p-2 border rounded w-full" placeholder="ex: 12,5">
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium">Manutenção anual (R$)</label>
+                  <input type="text" name="manut_atual" id="manut_atual" class="mt-1 p-2 border rounded w-full" placeholder="ex: 1800">
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium">IPVA atual (anual)</label>
+                  <input type="text" name="ipva_atual" id="ipva_atual_input" class="mt-1 p-2 border rounded w-full bg-gray-100" placeholder="Calculado automaticamente" readonly>
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium">Seguro atual (anual)</label>
+                  <input type="text" name="seguro_atual" id="seguro_atual" class="mt-1 p-2 border rounded w-full" placeholder="ex: 2800">
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium">Depreciação atual (%)</label>
+                  <input type="text" name="depreciacao_atual" id="depreciacao_atual" class="mt-1 p-2 border rounded w-full" placeholder="ex: 10">
+                  <div id="depreciacao_status_atual" class="mt-2 text-xs text-gray-500">Aguardando seleção FIPE para buscar depreciação.</div>
+                  <button type="button" id="btn_depreciacao_atual" class="mt-2 px-3 py-2 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 hidden">
+                    Calcular/validar depreciação
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- =========================================================
+          3.3.2) BLOCO PRINCIPAL DE VEÍCULOS
+        ========================================================= -->
+        <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+          <!-- =========================
+            VE
+          ========================= -->
+          <div id="coluna_ve" class="border rounded-lg p-4">
+            <h2 id="titulo_ve" class="font-semibold text-lg mb-3 text-blue-700">Veículo Elétrico (VE)</h2>
+
+            <div class="bg-blue-50 border border-blue-100 rounded-lg p-3 mb-4">
+              <p class="text-sm font-semibold mb-2">Busca FIPE - VE</p>
+              <div class="space-y-2">
+                <div>
+                  <label class="block text-xs font-medium">Marca</label>
+                  <select id="ve_marca" class="mt-1 p-2 border rounded w-full"></select>
+                </div>
+                <div>
+                  <label class="block text-xs font-medium">Modelo</label>
+                  <select id="ve_modelo" class="mt-1 p-2 border rounded w-full"></select>
+                </div>
+                <div>
+                  <label class="block text-xs font-medium">Ano/Combustível</label>
+                  <select id="ve_ano" class="mt-1 p-2 border rounded w-full"></select>
+                </div>
+                <p class="text-[11px] text-gray-500">
+                  Assim que você escolher o ano/combustível, o preço e o IPVA do VE serão preenchidos automaticamente.
+                </p>
+              </div>
+            </div>
+
+            <div class="space-y-2">
+              <div>
+                <label class="block text-sm font-medium">Modelo do VE</label>
+                <input type="text" name="modelo_ve" id="modelo_ve" class="mt-1 p-2 border rounded w-full" placeholder="Ex: BYD Dolphin Plus">
+              </div>
+
+              <input type="hidden" name="ano_modelo_ve" id="ano_modelo_ve">
+              <input type="hidden" name="combustivel_ve" id="combustivel_ve">
+
+              <div>
+                <label class="block text-sm font-medium">Preço do VE (R$)</label>
+                <input type="text" name="preco_ve" id="preco_ve" class="mt-1 p-2 border rounded w-full" placeholder="ex: 150000">
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium">Consumo VE (kWh/km)</label>
+                <input type="text" name="consumo_ve" id="consumo_ve" class="mt-1 p-2 border rounded w-full" placeholder="ex: 0,15">
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium">Manutenção anual VE (R$)</label>
+                <input type="text" name="manut_ve" id="manut_ve" class="mt-1 p-2 border rounded w-full" placeholder="ex: 800">
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium">IPVA VE (anual)</label>
+                <input type="text" name="ipva_ve" id="ipva_ve_input" class="mt-1 p-2 border rounded w-full bg-gray-100" placeholder="Calculado automaticamente" readonly>
+
+                <label class="flex items-center mt-2 text-xs">
+                  <input type="checkbox" name="isencao_ipva_ve" id="isencao_ipva_checkbox" class="mr-2">
+                  Isenção de IPVA para VE (forçar IPVA = 0)
+                </label>
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium">Seguro VE (anual)</label>
+                <input type="text" name="seguro_ve" id="seguro_ve" class="mt-1 p-2 border rounded w-full" placeholder="ex: 4000">
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium">Depreciação VE (%)</label>
+                <input type="text" name="depreciacao_ve" id="depreciacao_ve" class="mt-1 p-2 border rounded w-full" placeholder="ex: 8">
+                <div id="depreciacao_status_ve" class="mt-2 text-xs text-gray-500">Aguardando seleção FIPE para buscar depreciação.</div>
+                <button type="button" id="btn_depreciacao_ve" class="mt-2 px-3 py-2 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 hidden">
+                  Calcular/validar depreciação
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- =========================
+            ICEV
+          ========================= -->
+          <div id="coluna_icev" class="border rounded-lg p-4">
+            <h2 id="titulo_icev" class="font-semibold text-lg mb-3 text-gray-800">Veículo a Combustão (ICEV)</h2>
+
+            <div class="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-4">
+              <p class="text-sm font-semibold mb-2">Busca FIPE - ICEV</p>
+              <div class="space-y-2">
+                <div>
+                  <label class="block text-xs font-medium">Marca</label>
+                  <select id="icev_marca" class="mt-1 p-2 border rounded w-full"></select>
+                </div>
+                <div>
+                  <label class="block text-xs font-medium">Modelo</label>
+                  <select id="icev_modelo" class="mt-1 p-2 border rounded w-full"></select>
+                </div>
+                <div>
+                  <label class="block text-xs font-medium">Ano/Combustível</label>
+                  <select id="icev_ano" class="mt-1 p-2 border rounded w-full"></select>
+                </div>
+                <p class="text-[11px] text-gray-500">
+                  Ao escolher o ano/combustível, o preço e o IPVA do ICEV também serão preenchidos automaticamente.
+                </p>
+              </div>
+            </div>
+
+            <div class="space-y-2">
+              <div>
+                <label class="block text-sm font-medium">Modelo do ICEV</label>
+                <input type="text" name="modelo_icev" id="modelo_icev" class="mt-1 p-2 border rounded w-full" placeholder="Ex: Corolla 2.0 Flex">
+              </div>
+
+              <input type="hidden" name="ano_modelo_icev" id="ano_modelo_icev">
+              <input type="hidden" name="combustivel_icev" id="combustivel_icev">
+
+              <div>
+                <label class="block text-sm font-medium">Preço do ICEV (R$)</label>
+                <input type="text" name="preco_icev" id="preco_icev" class="mt-1 p-2 border rounded w-full" placeholder="ex: 85000">
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium">Consumo ICEV (km/l)</label>
+                <input type="text" name="consumo_icev" id="consumo_icev" class="mt-1 p-2 border rounded w-full" placeholder="ex: 13,5">
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium">Manutenção anual ICEV (R$)</label>
+                <input type="text" name="manut_icev" id="manut_icev" class="mt-1 p-2 border rounded w-full" placeholder="ex: 1200">
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium">IPVA ICEV (anual)</label>
+                <input type="text" name="ipva_icev" id="ipva_icev_input" class="mt-1 p-2 border rounded w-full bg-gray-100" placeholder="Calculado automaticamente" readonly>
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium">Seguro ICEV (anual)</label>
+                <input type="text" name="seguro_icev" id="seguro_icev" class="mt-1 p-2 border rounded w-full" placeholder="ex: 3000">
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium">Depreciação ICEV (%)</label>
+                <input type="text" name="depreciacao_icev" id="depreciacao_icev" class="mt-1 p-2 border rounded w-full" placeholder="ex: 10">
+                <div id="depreciacao_status_icev" class="mt-2 text-xs text-gray-500">Aguardando seleção FIPE para buscar depreciação.</div>
+                <button type="button" id="btn_depreciacao_icev" class="mt-2 px-3 py-2 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 hidden">
+                  Calcular/validar depreciação
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- =========================================================
+          3.3.3) ENERGIA / COMBUSTÍVEL / USO
+        ========================================================= -->
+        <section class="border rounded-lg p-4">
+          <h2 class="font-semibold text-lg mb-3 text-gray-800">Energia, Combustível e Uso</h2>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+            <div>
+              <div class="flex items-center justify-between">
+                <label class="block text-sm font-medium">Custo energia (R$/kWh)</label>
+
+                <label class="flex items-center text-xs text-gray-600 select-none">
+                  <input type="checkbox" id="energia_manual_checkbox" class="mr-2">
+                  Usar valor manual
+                </label>
+              </div>
+
+              <input
+                type="text"
+                name="energia"
+                id="energia_input"
+                value="0,80"
+                class="mt-1 p-2 border rounded w-full"
+                required
+              >
+
+              <p id="status_energia" class="text-[11px] text-gray-500 mt-1">
+                Pode ajustar manualmente. Ao escolher UF e município, o valor será atualizado com a tarifa da ANEEL (com impostos).
+              </p>
+
+              <p id="status_energia_vigencia" class="text-[11px] text-gray-400 mt-1"></p>
+
+              <div id="energia_breakdown_wrap" class="mt-3">
+                <div class="w-full h-3 rounded overflow-hidden bg-gray-200 flex" id="energia_bar"></div>
+                <div class="mt-2 space-y-1 text-[11px]" id="energia_legenda"></div>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium">Custo combustível (R$/l)</label>
+              <input type="text" name="combustivel" value="5,80" class="mt-1 p-2 border rounded w-full" required>
+              <p id="status_combustivel" class="text-[11px] text-gray-500 mt-1">
+                Pode ajustar manualmente. Ao escolher UF e município, o valor será atualizado com o último dado da ANP.
+              </p>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium">Aumento anual energia (%)</label>
+              <input type="text" name="aumento_energia" value="0" class="mt-1 p-2 border rounded w-full" required>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium">Aumento anual combustível (%)</label>
+              <input type="text" name="aumento_combustivel" value="0" class="mt-1 p-2 border rounded w-full" required>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium">Anos de uso</label>
+              <input type="number" name="anos" value="10" class="mt-1 p-2 border rounded w-full" required>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium">KM por ano</label>
+              <input type="number" name="km_ano" value="15000" class="mt-1 p-2 border rounded w-full" required>
+            </div>
+
+          </div>
+        </section>
+
+        <div class="mt-4">
+          <button id="btn_simular" type="submit" class="w-full bg-blue-600 text-white p-3 rounded hover:bg-blue-700">
+            Simular
+          </button>
+        </div>
+      </div>
+    </form>
+
+    <!-- =========================================================
+      4) RESULTADOS
+    ========================================================= -->
+    {% if resultado and resultado.comparacoes %}
+      <section class="mt-10">
+        <div class="bg-white rounded-xl shadow-md p-6">
+          <h2 class="text-2xl font-bold text-blue-700 mb-6">Resumo dos Resultados</h2>
+
+          {% for comp in resultado.comparacoes %}
+            <div class="mb-12">
+              <h3 class="font-semibold text-xl mb-4 text-gray-800">{{ comp.titulo }}</h3>
+
+              <div class="mb-8">
+                <h4 class="font-semibold text-lg mb-2 text-gray-700">
+                  Cenário 1: Com depreciação (considerando valor de revenda)
+                </h4>
+
+                <ul class="list-disc list-inside mb-2 text-base space-y-1">
+                  {% for item in comp.resumo_com %}
+                    <li>
+                      <b>{{ item.nome }}:</b>
+                      TCO final = {{ item.tco_final }} |
+                      Custo por km = {{ item.custo_km }}
+                    </li>
+                  {% endfor %}
+                </ul>
+
+                {% if comp.grafico_custo_km %}
+                  <div class="my-6 flex justify-center">
+                    {{ comp.grafico_custo_km | safe }}
+                  </div>
+                {% endif %}
+
+                <div class="mb-4">
+                  <span class="text-sm text-gray-500">Gráfico TCO acumulado com depreciação:</span>
+                  <div class="mt-2 flex justify-center">
+                    {{ comp.grafico | safe }}
+                  </div>
+                </div>
+              </div>
+
+              <hr class="my-6 border-gray-300">
+
+              <div class="mb-4">
+                <h4 class="font-semibold text-lg mb-2 text-gray-700">
+                  Cenário 2: Sem depreciação (sem considerar valor de revenda)
+                </h4>
+
+                <ul class="list-disc list-inside mb-2 text-base space-y-1">
+                  {% for item in comp.resumo_sem %}
+                    <li>
+                      <b>{{ item.nome }}:</b>
+                      TCO final = {{ item.tco_final }} |
+                      Custo por km = {{ item.custo_km }}
+                    </li>
+                  {% endfor %}
+                </ul>
+
+                <div class="mb-4">
+                  <span class="text-sm text-gray-500">Gráfico TCO acumulado sem depreciação:</span>
+                  <div class="mt-2 flex justify-center">
+                    {{ comp.grafico_sem_depreciacao | safe }}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {% if not loop.last %}
+              <hr class="my-8 border-gray-400">
+            {% endif %}
+          {% endfor %}
+        </div>
+      </section>
+    {% endif %}
+
+  </main>
+
+  <!-- =========================================================
+    5) FOOTER
+  ========================================================= -->
+  <footer class="bg-white shadow text-center p-4 mt-6">
+    <p class="text-sm text-gray-500">&copy; 2025 PlugVE. Todos os direitos reservados.</p>
+  </footer>
+
+  <!-- =========================================================
+    6) SCRIPTS
+  ========================================================= -->
+  <script>
+    // =========================================================
+    // 6.1) FUNÇÕES AUXILIARES
+    // =========================================================
+    function limparValorMonetario(valorBruto) {
+      if (!valorBruto) return "";
+      let s = String(valorBruto);
+      s = s.replace("R$", "").trim();
+      s = s.replace(/\./g, "").replace(",", ".");
+      return s;
+    }
+
+    function formatarMoedaBR(valor) {
+      if (valor == null || isNaN(valor)) return "";
+      return valor.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function formatarNumero5(valor) {
+      if (valor == null || isNaN(valor)) return "";
+      return Number(valor).toFixed(5).replace(".", ",");
+    }
+
+    function mostrarElemento(id, mostrar) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      if (mostrar) {
+        el.classList.remove("hidden");
+      } else {
+        el.classList.add("hidden");
+      }
+    }
+
+    function setRequired(ids, required) {
+      ids.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.required = required;
+      });
+    }
+
+    // =========================================================
+    // 6.2) CONTROLE DE CENÁRIO
+    // =========================================================
+    function atualizarCardsCenario() {
+      const tipo = document.getElementById("tipo_comparacao").value;
+      document.querySelectorAll(".card-cenario").forEach(card => {
+        const ativo = card.dataset.cenario === tipo;
+        if (ativo) {
+          card.classList.add("border-blue-600", "bg-blue-100", "shadow-md");
+          card.classList.remove("border-gray-200");
+        } else {
+          card.classList.remove("border-blue-600", "bg-blue-100", "shadow-md");
+          card.classList.add("border-gray-200");
+        }
+      });
+    }
+
+    function localizacaoValida() {
+      const uf = document.getElementById("estado_uf").value;
+      const municipio = document.getElementById("municipio_select").value;
+      return !!(uf && municipio);
+    }
+
+    function atualizarInterfacePorCenario() {
+      const tipo = document.getElementById("tipo_comparacao").value;
+      const tituloIcev = document.getElementById("titulo_icev");
+      const descricao = document.getElementById("descricao_tipo_comparacao");
+
+      if (tipo === "dois_carros_novos") {
+        mostrarElemento("bloco_carro_atual", false);
+        mostrarElemento("coluna_icev", true);
+        tituloIcev.textContent = "Veículo a Combustão (ICEV)";
+        descricao.textContent = "Você está comparando diretamente dois carros: um elétrico e um a combustão.";
+        setRequired(["modelo_atual", "preco_atual", "consumo_atual"], false);
+        setRequired(["modelo_icev", "preco_icev", "consumo_icev"], true);
+      }
+
+      if (tipo === "trocar_por_eletrico") {
+        mostrarElemento("bloco_carro_atual", true);
+        mostrarElemento("coluna_icev", false);
+        descricao.textContent = "Você vai comparar seu carro atual com um carro elétrico.";
+        setRequired(["modelo_atual", "preco_atual", "consumo_atual"], true);
+        setRequired(["modelo_icev", "preco_icev", "consumo_icev"], false);
+      }
+
+      if (tipo === "trocar_e_comparar_opcoes") {
+        mostrarElemento("bloco_carro_atual", true);
+        mostrarElemento("coluna_icev", true);
+        tituloIcev.textContent = "Outra opção a combustão";
+        descricao.textContent = "Você vai comparar seu carro atual com duas opções futuras: um elétrico e outro carro a combustão.";
+        setRequired(["modelo_atual", "preco_atual", "consumo_atual"], true);
+        setRequired(["modelo_icev", "preco_icev", "consumo_icev"], true);
+      }
+
+      atualizarCardsCenario();
+      atualizarLiberacaoAreaSimulacao();
+    }
+
+    function atualizarLiberacaoAreaSimulacao() {
+      const liberado = localizacaoValida();
+      const status = document.getElementById("status_liberacao");
+
+      mostrarElemento("area_simulacao", liberado);
+
+      if (liberado) {
+        status.textContent = "Localização preenchida. Os campos da simulação foram liberados.";
+      } else {
+        status.textContent = "Preencha UF e município para liberar os campos da simulação.";
+      }
+    }
+
+    function selecionarCenario(tipo) {
+      document.getElementById("tipo_comparacao").value = tipo;
+      atualizarInterfacePorCenario();
+    }
+
+    // =========================================================
+    // 6.3) MUNICÍPIOS (IBGE) + GEOLOCALIZAÇÃO
+    // =========================================================
+    async function carregarMunicipiosPorUF(uf) {
+      const municipioSelect = document.getElementById("municipio_select");
+      municipioSelect.innerHTML = "<option value=''>Carregando...</option>";
+
+      if (!uf) {
+        municipioSelect.innerHTML = "<option value=''>Selecione o estado primeiro</option>";
+        atualizarLiberacaoAreaSimulacao();
+        return;
+      }
+
+      try {
+        const resp = await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${uf}/municipios`);
+        const lista = await resp.json();
+        municipioSelect.innerHTML = "<option value=''>Selecione o município</option>";
+        lista.forEach(m => {
+          const opt = document.createElement("option");
+          opt.value = m.nome;
+          opt.textContent = m.nome;
+          municipioSelect.appendChild(opt);
+        });
+      } catch (e) {
+        console.error("Erro ao carregar municípios do IBGE:", e);
+        municipioSelect.innerHTML = "<option value=''>Erro ao carregar municípios</option>";
+      }
+
+      atualizarLiberacaoAreaSimulacao();
+    }
+
+    const MAPA_ESTADO_NOME_PARA_UF = {
+      "Acre": "AC", "Alagoas": "AL", "Amapá": "AP", "Amazonas": "AM",
+      "Bahia": "BA", "Ceará": "CE", "Distrito Federal": "DF", "Espírito Santo": "ES",
+      "Goiás": "GO", "Maranhão": "MA", "Mato Grosso": "MT", "Mato Grosso do Sul": "MS",
+      "Minas Gerais": "MG", "Pará": "PA", "Paraíba": "PB", "Paraná": "PR",
+      "Pernambuco": "PE", "Piauí": "PI", "Rio de Janeiro": "RJ", "Rio Grande do Norte": "RN",
+      "Rio Grande do Sul": "RS", "Rondônia": "RO", "Roraima": "RR", "Santa Catarina": "SC",
+      "São Paulo": "SP", "Sergipe": "SE", "Tocantins": "TO",
+    };
+
+    async function usarMinhaLocalizacao() {
+      if (!navigator.geolocation) {
+        alert("Seu navegador não permite geolocalização automática.");
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(async (pos) => {
+        try {
+          const lat = pos.coords.latitude;
+          const lon = pos.coords.longitude;
+          const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=10&addressdetails=1`;
+          const resp = await fetch(url, { headers: { "Accept-Language": "pt-BR" } });
+          const data = await resp.json();
+          const address = data.address || {};
+          const nomeEstado = address.state || address.region || "";
+          const uf = MAPA_ESTADO_NOME_PARA_UF[nomeEstado] || address.state_code || "";
+          const cidade = address.city || address.town || address.village || address.municipality || "";
+
+          if (!uf) {
+            alert("Não foi possível identificar o estado automaticamente.");
+            return;
+          }
+
+          const ufSelect = document.getElementById("estado_uf");
+          const municipioSelect = document.getElementById("municipio_select");
+
+          ufSelect.value = uf;
+          await carregarMunicipiosPorUF(uf);
+
+          if (cidade) {
+            const alvo = Array.from(municipioSelect.options).find(
+              opt => opt.text.toLowerCase() === cidade.toLowerCase()
+            );
+            if (alvo) municipioSelect.value = alvo.value;
+          }
+
+          atualizarLiberacaoAreaSimulacao();
+
+          if (uf && municipioSelect.value) {
+            atualizarPrecoCombustivelAutomatico();
+            atualizarPrecoEnergiaAutomatico();
+            atualizarIpva("ve");
+            atualizarIpva("icev");
+            atualizarIpva("atual");
+          }
+
+        } catch (e) {
+          console.error("Erro na geolocalização:", e);
+          alert("Não foi possível obter a sua localização automaticamente.");
+        }
+      }, (err) => {
+        console.error("Erro do GPS:", err);
+        alert("Permita o acesso à localização no navegador para usar este recurso.");
+      });
+    }
+
+    // =========================================================
+    // 6.4) FIPE
+    // =========================================================
+    async function carregarMarcas(selectId) {
+      const select = document.getElementById(selectId);
+      if (!select) return;
+
+      select.innerHTML = "<option value=''>Carregando...</option>";
+      try {
+        const resp = await fetch("/fipe/marcas");
+        const marcas = await resp.json();
+        select.innerHTML = "<option value=''>Selecione</option>";
+        marcas.forEach(m => {
+          const opt = document.createElement("option");
+          opt.value = m.codigo;
+          opt.textContent = m.nome;
+          select.appendChild(opt);
+        });
+      } catch (e) {
+        console.error("Erro ao carregar marcas FIPE:", e);
+        select.innerHTML = "<option value=''>Erro ao carregar</option>";
+      }
+    }
+
+    async function carregarModelos(selectMarcaId, selectModeloId, selectAnoId) {
+      const marcaEl = document.getElementById(selectMarcaId);
+      const selectModelo = document.getElementById(selectModeloId);
+      const selectAno = document.getElementById(selectAnoId);
+      if (!marcaEl || !selectModelo || !selectAno) return;
+
+      const marca = marcaEl.value;
+      selectModelo.innerHTML = "<option value=''>Selecione</option>";
+      selectAno.innerHTML = "<option value=''>Selecione</option>";
+
+      if (!marca) return;
+
+      try {
+        const resp = await fetch(`/fipe/modelos?codigo_marca=${marca}`);
+        const data = await resp.json();
+        (data.modelos || []).forEach(mod => {
+          const opt = document.createElement("option");
+          opt.value = mod.codigo;
+          opt.textContent = mod.nome;
+          selectModelo.appendChild(opt);
+        });
+      } catch (e) {
+        console.error("Erro ao carregar modelos FIPE:", e);
+      }
+    }
+
+    async function carregarAnos(selectMarcaId, selectModeloId, selectAnoId) {
+      const marcaEl = document.getElementById(selectMarcaId);
+      const modeloEl = document.getElementById(selectModeloId);
+      const selectAno = document.getElementById(selectAnoId);
+      if (!marcaEl || !modeloEl || !selectAno) return;
+
+      const marca = marcaEl.value;
+      const modelo = modeloEl.value;
+      selectAno.innerHTML = "<option value=''>Carregando...</option>";
+
+      if (!marca || !modelo) {
+        selectAno.innerHTML = "<option value=''>Selecione o modelo</option>";
+        return;
+      }
+
+      try {
+        const resp = await fetch(`/fipe/anos?codigo_marca=${marca}&codigo_modelo=${modelo}`);
+        const anos = await resp.json();
+        selectAno.innerHTML = "<option value=''>Selecione</option>";
+        anos.forEach(a => {
+          const opt = document.createElement("option");
+          opt.value = a.codigo;
+          opt.textContent = a.nome;
+          selectAno.appendChild(opt);
+        });
+      } catch (e) {
+        console.error("Erro ao carregar anos FIPE:", e);
+        selectAno.innerHTML = "<option value=''>Erro ao carregar</option>";
+      }
+    }
+
+    async function atualizarIpva(prefixo) {
+      const uf = document.getElementById("estado_uf").value;
+      if (!uf) return;
+
+      let valor, ano, combustivel, ipvaInput;
+
+      if (prefixo === "ve") {
+        valor = document.getElementById("preco_ve")?.value;
+        ano = document.getElementById("ano_modelo_ve")?.value;
+        combustivel = document.getElementById("combustivel_ve")?.value;
+        ipvaInput = document.getElementById("ipva_ve_input");
+      } else if (prefixo === "icev") {
+        valor = document.getElementById("preco_icev")?.value;
+        ano = document.getElementById("ano_modelo_icev")?.value;
+        combustivel = document.getElementById("combustivel_icev")?.value;
+        ipvaInput = document.getElementById("ipva_icev_input");
+      } else {
+        valor = document.getElementById("preco_atual")?.value;
+        ano = document.getElementById("ano_modelo_atual")?.value;
+        combustivel = document.getElementById("combustivel_atual")?.value;
+        ipvaInput = document.getElementById("ipva_atual_input");
+      }
+
+      if (!valor || !ipvaInput) return;
+
+      try {
+        const params = new URLSearchParams({ uf: uf, valor: valor, ano: ano || "", combustivel: combustivel || "" });
+        const resp = await fetch(`/ipva_estimado?${params.toString()}`);
+        const data = await resp.json();
+
+        if (data && typeof data.ipva === "number") {
+          ipvaInput.value = formatarMoedaBR(data.ipva);
+        }
+      } catch (e) {
+        console.error("Erro ao calcular IPVA estimado:", e);
+      }
+    }
+
+    async function preencherPorFipe(prefixo) {
+      const marcaSelect = document.getElementById(prefixo + "_marca");
+      const modeloSelect = document.getElementById(prefixo + "_modelo");
+      const anoSelect = document.getElementById(prefixo + "_ano");
+
+      if (!marcaSelect || !modeloSelect || !anoSelect) return;
+
+      const marca = marcaSelect.value;
+      const modelo = modeloSelect.value;
+      const ano = anoSelect.value;
+
+      if (!marca || !modelo || !ano) return;
+
+      try {
+        const resp = await fetch(`/fipe/preco?codigo_marca=${marca}&codigo_modelo=${modelo}&codigo_ano=${ano}`);
+        const data = await resp.json();
+
+        const valor = limparValorMonetario(data.Valor);
+        const nomeModelo = data.Modelo || modeloSelect.options[modeloSelect.selectedIndex].text;
+        const anoModeloStr = data.AnoModelo || data.Ano || "";
+        const combustivelStr = data.Combustivel || anoSelect.options[anoSelect.selectedIndex].text;
+        const nomeCompleto = nomeModelo + " " + anoSelect.options[anoSelect.selectedIndex].text;
+
+        if (prefixo === "ve") {
+          document.getElementById("modelo_ve").value = nomeCompleto;
+          document.getElementById("preco_ve").value = valor;
+          document.getElementById("ano_modelo_ve").value = anoModeloStr;
+          document.getElementById("combustivel_ve").value = combustivelStr;
+        } else if (prefixo === "icev") {
+          document.getElementById("modelo_icev").value = nomeCompleto;
+          document.getElementById("preco_icev").value = valor;
+          document.getElementById("ano_modelo_icev").value = anoModeloStr;
+          document.getElementById("combustivel_icev").value = combustivelStr;
+        } else if (prefixo === "atual") {
+          document.getElementById("modelo_atual").value = nomeCompleto;
+          document.getElementById("preco_atual").value = valor;
+          document.getElementById("ano_modelo_atual").value = anoModeloStr;
+          document.getElementById("combustivel_atual").value = combustivelStr;
+        }
+
+        atualizarIpva(prefixo);
+
+        const detalheDepreciacao = montarDetalheDepreciacaoTCO(prefixo, data, marcaSelect, modeloSelect, anoSelect, valor, nomeModelo, anoModeloStr, combustivelStr);
+        await consultarDepreciacaoTCO(prefixo, detalheDepreciacao);
+      } catch (e) {
+        console.error("Erro ao buscar preço FIPE:", e);
+        alert("Erro ao consultar FIPE.");
+      }
+    }
+
+
+
+    // =========================================================
+    // 6.4.1) PONTE TCO <-> DEPRECIAÇÃO
+    // =========================================================
+    const memoriaDepreciacaoTCO = {};
+
+    function campoDepreciacaoPorPrefixo(prefixo) {
+      if (prefixo === "ve") return document.getElementById("depreciacao_ve");
+      if (prefixo === "icev") return document.getElementById("depreciacao_icev");
+      return document.getElementById("depreciacao_atual");
+    }
+
+    function statusDepreciacaoPorPrefixo(prefixo) {
+      return document.getElementById(`depreciacao_status_${prefixo}`);
+    }
+
+    function botaoDepreciacaoPorPrefixo(prefixo) {
+      return document.getElementById(`btn_depreciacao_${prefixo}`);
+    }
+
+    function tipoPreferencialDepreciacao(prefixo, combustivel, modelo) {
+      const texto = `${combustivel || ""} ${modelo || ""}`.toLowerCase();
+      if (texto.includes("elétr") || texto.includes("eletr") || texto.includes("híbr") || texto.includes("hibr")) return "eletrico";
+      if (prefixo === "ve") return "eletrico";
+      return "combustao";
+    }
+
+    function montarDetalheDepreciacaoTCO(prefixo, data, marcaSelect, modeloSelect, anoSelect, valor, nomeModelo, anoModeloStr, combustivelStr) {
+      return {
+        origem_tco: true,
+        prefixo_tco: prefixo,
+        tipo: tipoPreferencialDepreciacao(prefixo, combustivelStr, nomeModelo),
+        horizonte_anos: document.querySelector("input[name='anos']")?.value || document.getElementById("anos")?.value || 5,
+        codigo_marca: marcaSelect.value,
+        codigo_modelo: modeloSelect.value,
+        codigo_ano: anoSelect.value,
+        marca: data.Marca || marcaSelect.options[marcaSelect.selectedIndex]?.text || "",
+        modelo: data.Modelo || nomeModelo || modeloSelect.options[modeloSelect.selectedIndex]?.text || "",
+        ano_modelo: anoModeloStr || "",
+        combustivel: combustivelStr || "",
+        codigo_fipe: data.CodigoFipe || "",
+        valor_atual: Number(valor || 0),
+        valor_texto: data.Valor || ""
+      };
+    }
+
+    function escreverStatusDepreciacaoTCO(prefixo, texto, classe) {
+      const status = statusDepreciacaoPorPrefixo(prefixo);
+      if (!status) return;
+      status.textContent = texto;
+      status.className = `mt-2 text-xs ${classe || "text-gray-500"}`;
+    }
+
+    function configurarBotaoDepreciacaoTCO(prefixo, mostrar, detalhe) {
+      const btn = botaoDepreciacaoPorPrefixo(prefixo);
+      if (!btn) return;
+      btn.classList.toggle("hidden", !mostrar);
+      btn.disabled = !mostrar;
+      if (mostrar) {
+        btn.onclick = function () {
+          abrirDepreciacaoParaValidar(prefixo, detalhe);
+        };
+      }
+    }
+
+    function preencherTaxaDepreciacaoTCO(prefixo, taxa, origem) {
+      const campo = campoDepreciacaoPorPrefixo(prefixo);
+      if (!campo || taxa == null || isNaN(Number(taxa))) return;
+      campo.value = Number(taxa).toFixed(2).replace(".", ",");
+      campo.dataset.depreciacaoValidada = "1";
+      campo.dataset.origemDepreciacao = origem || "módulo de depreciação";
+    }
+
+    async function consultarDepreciacaoTCO(prefixo, detalhe) {
+      memoriaDepreciacaoTCO[prefixo] = detalhe;
+      configurarBotaoDepreciacaoTCO(prefixo, false, detalhe);
+      escreverStatusDepreciacaoTCO(prefixo, "Buscando depreciação no módulo de curvas...", "text-gray-500");
+
+      try {
+        const resp = await fetch("/api/depreciacao/resumo", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(detalhe)
+        });
+        const data = await resp.json();
+
+        if (data && data.encontrado && Number(data.taxa_anual_percentual) > 0) {
+          preencherTaxaDepreciacaoTCO(prefixo, data.taxa_anual_percentual, data.origem_curva || "curva salva");
+          escreverStatusDepreciacaoTCO(
+            prefixo,
+            `Depreciação validada: ${Number(data.taxa_anual_percentual).toFixed(2).replace(".", ",")}% a.a. (${data.confianca || "sem classificação"}).`,
+            "text-green-700 font-semibold"
+          );
+          configurarBotaoDepreciacaoTCO(prefixo, false, detalhe);
+          return;
+        }
+
+        escreverStatusDepreciacaoTCO(prefixo, "Curva não encontrada. Use o módulo de depreciação para calcular/validar.", "text-yellow-700 font-semibold");
+        configurarBotaoDepreciacaoTCO(prefixo, true, detalhe);
+      } catch (e) {
+        console.error("Erro ao consultar depreciação no TCO:", e);
+        escreverStatusDepreciacaoTCO(prefixo, "Erro ao consultar depreciação. Você pode preencher manualmente ou abrir o módulo.", "text-red-700 font-semibold");
+        configurarBotaoDepreciacaoTCO(prefixo, true, detalhe);
+      }
+    }
+
+    function abrirDepreciacaoParaValidar(prefixo, detalhe) {
+      if (!detalhe) detalhe = memoriaDepreciacaoTCO[prefixo];
+      if (!detalhe) {
+        alert("Selecione o veículo pela FIPE antes de abrir a depreciação.");
+        return;
+      }
+      const chave = `plugve_tco_depreciacao_${prefixo}`;
+      sessionStorage.setItem(chave, JSON.stringify(detalhe));
+      const url = `/depreciacao?bridge=tco&prefixo=${encodeURIComponent(prefixo)}`;
+      window.open(url, "_blank");
+    }
+
+    function aplicarRetornoDepreciacaoTCO(prefixo, dados) {
+      if (!prefixo || !dados) return;
+      const taxa = dados.taxa_anual_percentual ?? dados.taxa;
+      if (taxa == null || isNaN(Number(taxa))) return;
+      preencherTaxaDepreciacaoTCO(prefixo, taxa, dados.origem_curva || "depreciação validada");
+      escreverStatusDepreciacaoTCO(
+        prefixo,
+        `Depreciação calculada e validada: ${Number(taxa).toFixed(2).replace(".", ",")}% a.a.`,
+        "text-green-700 font-semibold"
+      );
+      configurarBotaoDepreciacaoTCO(prefixo, false, memoriaDepreciacaoTCO[prefixo]);
+    }
+
+    function verificarRetornoDepreciacaoTCO() {
+      ["ve", "icev", "atual"].forEach(prefixo => {
+        const chave = `plugve_depreciacao_validada_${prefixo}`;
+        const bruto = localStorage.getItem(chave);
+        if (!bruto) return;
+        try {
+          const dados = JSON.parse(bruto);
+          aplicarRetornoDepreciacaoTCO(prefixo, dados);
+          localStorage.removeItem(chave);
+        } catch (e) {
+          console.error("Erro ao ler retorno da depreciação:", e);
+        }
+      });
+    }
+
+    window.addEventListener("focus", verificarRetornoDepreciacaoTCO);
+    window.addEventListener("storage", verificarRetornoDepreciacaoTCO);
+    window.addEventListener("message", function (event) {
+      const data = event.data || {};
+      if (data.tipo !== "plugve_depreciacao_validada") return;
+      aplicarRetornoDepreciacaoTCO(data.prefixo, data.resultado);
+    });
+
+    // =========================================================
+    // 6.5) ANP
+    // =========================================================
+    async function atualizarPrecoCombustivelAutomatico() {
+      const uf = document.getElementById("estado_uf").value;
+      const municipio = document.getElementById("municipio_select").value;
+      const campoComb = document.querySelector("input[name='combustivel']");
+      const status = document.getElementById("status_combustivel");
+
+      if (!uf || !municipio || !campoComb) return;
+
+      if (status) status.textContent = "Buscando preço médio da gasolina na ANP...";
+
+      try {
+        const params = new URLSearchParams({ uf, municipio });
+        const resp = await fetch(`/preco_combustivel?${params.toString()}`);
+        const data = await resp.json();
+
+        if (data && data.preco) {
+          campoComb.value = data.preco.toFixed(3).replace(".", ",");
+          if (status) {
+            status.textContent = "Valor preenchido com o último preço médio de gasolina da ANP para esse município/estado. Você pode ajustar se quiser.";
+          }
+        } else {
+          if (status) status.textContent = "Não foi possível obter o preço na ANP. Mantenha ou ajuste o valor manualmente.";
+        }
+      } catch (e) {
+        console.error("Erro ao buscar preço da gasolina:", e);
+        if (status) status.textContent = "Erro ao consultar a ANP. Mantenha ou ajuste o valor manualmente.";
+      }
+    }
+
+    // =========================================================
+    // 6.6) ANEEL
+    // =========================================================
+    function setBreakdownDisabled(disabled) {
+      const wrap = document.getElementById("energia_breakdown_wrap");
+      if (!wrap) return;
+      if (disabled) {
+        wrap.classList.add("opacity-40", "filter", "grayscale");
+      } else {
+        wrap.classList.remove("opacity-40", "filter", "grayscale");
+      }
+    }
+
+    function renderEnergiaBreakdown(tarifaTotal, detalhe) {
+      const bar = document.getElementById("energia_bar");
+      const legenda = document.getElementById("energia_legenda");
+      if (!bar || !legenda) return;
+
+      bar.innerHTML = "";
+      legenda.innerHTML = "";
+
+      if (!detalhe || !tarifaTotal || tarifaTotal <= 0) {
+        legenda.innerHTML = "<div class='text-gray-400'>Detalhamento indisponível.</div>";
+        return;
+      }
+
+      const itens = [
+        { nome: "TUSD (Distribuição)", valor: Number(detalhe.tusd_kwh || 0), cor: "bg-purple-600" },
+        { nome: "TE (Energia)", valor: Number(detalhe.te_kwh || 0), cor: "bg-green-500" },
+        { nome: `ICMS (${detalhe.icms_pct ?? "?"}%)`, valor: Number(detalhe.icms_kwh || 0), cor: "bg-yellow-500" },
+        { nome: `PIS (${detalhe.pis_pct ?? "?"}%)`, valor: Number(detalhe.pis_kwh || 0), cor: "bg-pink-500" },
+        { nome: `COFINS (${detalhe.cofins_pct ?? "?"}%)`, valor: Number(detalhe.cofins_kwh || 0), cor: "bg-blue-500" },
+      ];
+
+      itens.forEach(it => {
+        const pct = (it.valor / tarifaTotal) * 100;
+        if (!isFinite(pct) || pct <= 0) return;
+        const seg = document.createElement("div");
+        seg.className = it.cor;
+        seg.style.width = pct.toFixed(2) + "%";
+        bar.appendChild(seg);
+      });
+
+      itens.forEach(it => {
+        if (it.valor <= 0) return;
+        const row = document.createElement("div");
+        row.className = "flex items-center justify-between";
+        row.innerHTML = `
+          <div class="flex items-center space-x-2">
+            <span class="inline-block w-2 h-2 rounded-full ${it.cor}"></span>
+            <span class="text-gray-700">${it.nome}</span>
+          </div>
+          <span class="font-semibold text-gray-700">R$ ${formatarNumero5(it.valor)}</span>
+        `;
+        legenda.appendChild(row);
+      });
+    }
+
+    async function atualizarPrecoEnergiaAutomatico() {
+      const uf = document.getElementById("estado_uf").value;
+      const municipio = document.getElementById("municipio_select").value;
+      const energiaInput = document.getElementById("energia_input");
+      const status = document.getElementById("status_energia");
+      const vig = document.getElementById("status_energia_vigencia");
+      const manual = document.getElementById("energia_manual_checkbox").checked;
+
+      if (!energiaInput || !status) return;
+      if (!uf || !municipio) return;
+
+      if (manual) {
+        status.textContent = "Modo manual ativo: o valor não será atualizado automaticamente e o detalhamento fica desativado.";
+        if (vig) vig.textContent = "";
+        setBreakdownDisabled(true);
+        return;
+      }
+
+      status.textContent = "Buscando tarifa de energia na ANEEL (com impostos)...";
+      if (vig) vig.textContent = "";
+      setBreakdownDisabled(false);
+
+      try {
+        const params = new URLSearchParams({ uf, municipio });
+        const resp = await fetch(`/preco_energia?${params.toString()}`);
+        const data = await resp.json();
+
+        if (data && data.tarifa_kwh !== null && data.tarifa_kwh !== undefined && !isNaN(Number(data.tarifa_kwh))) {
+          energiaInput.value = formatarNumero5(Number(data.tarifa_kwh));
+
+          status.textContent = data.mensagem
+            ? data.mensagem
+            : `Tarifa obtida para ${data.distribuidora || "distribuidora"} (com impostos).`;
+
+          if (vig) {
+            if (data.vigencia_inicio || data.vigencia_fim) {
+              vig.textContent = `Vigência: ${data.vigencia_inicio || "?"} até ${data.vigencia_fim || "?"}`;
+            } else {
+              vig.textContent = "";
+            }
+          }
+
+          renderEnergiaBreakdown(Number(data.tarifa_kwh), data.detalhe || null);
+
+        } else {
+          status.textContent = "Não foi possível obter a tarifa automática. Mantenha ou ajuste manualmente.";
+          if (vig) vig.textContent = "";
+          renderEnergiaBreakdown(0, null);
+          setBreakdownDisabled(true);
+        }
+
+      } catch (e) {
+        console.error("Erro ao buscar tarifa da energia:", e);
+        status.textContent = "Erro ao consultar a ANEEL. Mantenha ou ajuste manualmente.";
+        if (vig) vig.textContent = "";
+        renderEnergiaBreakdown(0, null);
+        setBreakdownDisabled(true);
+      }
+    }
+
+    // =========================================================
+    // 6.7) DOMContentLoaded
+    // =========================================================
+    document.addEventListener("DOMContentLoaded", function () {
+      // cards
+      document.querySelectorAll(".card-cenario").forEach(card => {
+        card.addEventListener("click", function () {
+          selecionarCenario(this.dataset.cenario);
+        });
+      });
+
+      // cenário inicial
+      atualizarCardsCenario();
+      atualizarInterfacePorCenario();
+
+      // fipe
+      carregarMarcas("ve_marca");
+      carregarMarcas("icev_marca");
+      carregarMarcas("atual_marca");
+
+      document.getElementById("ve_marca")?.addEventListener("change", function () {
+        carregarModelos("ve_marca", "ve_modelo", "ve_ano");
+      });
+      document.getElementById("ve_modelo")?.addEventListener("change", function () {
+        carregarAnos("ve_marca", "ve_modelo", "ve_ano");
+      });
+      document.getElementById("ve_ano")?.addEventListener("change", function () {
+        preencherPorFipe("ve");
+      });
+
+      document.getElementById("icev_marca")?.addEventListener("change", function () {
+        carregarModelos("icev_marca", "icev_modelo", "icev_ano");
+      });
+      document.getElementById("icev_modelo")?.addEventListener("change", function () {
+        carregarAnos("icev_marca", "icev_modelo", "icev_ano");
+      });
+      document.getElementById("icev_ano")?.addEventListener("change", function () {
+        preencherPorFipe("icev");
+      });
+
+      document.getElementById("atual_marca")?.addEventListener("change", function () {
+        carregarModelos("atual_marca", "atual_modelo", "atual_ano");
+      });
+      document.getElementById("atual_modelo")?.addEventListener("change", function () {
+        carregarAnos("atual_marca", "atual_modelo", "atual_ano");
+      });
+      document.getElementById("atual_ano")?.addEventListener("change", function () {
+        preencherPorFipe("atual");
+      });
+
+      // localização
+      document.getElementById("estado_uf")?.addEventListener("change", function () {
+        carregarMunicipiosPorUF(this.value);
+        atualizarIpva("ve");
+        atualizarIpva("icev");
+        atualizarIpva("atual");
+      });
+
+      document.getElementById("municipio_select")?.addEventListener("change", function () {
+        atualizarLiberacaoAreaSimulacao();
+
+        if (localizacaoValida()) {
+          atualizarPrecoCombustivelAutomatico();
+          atualizarPrecoEnergiaAutomatico();
+          atualizarIpva("ve");
+          atualizarIpva("icev");
+          atualizarIpva("atual");
+        }
+      });
+
+      document.getElementById("btn_localizacao")?.addEventListener("click", usarMinhaLocalizacao);
+
+      // isenção ve
+      const isencaoCheckbox = document.getElementById("isencao_ipva_checkbox");
+      const ipvaVeInput = document.getElementById("ipva_ve_input");
+
+      function toggleIpvaField() {
+        if (!isencaoCheckbox || !ipvaVeInput) return;
+
+        if (isencaoCheckbox.checked) {
+          ipvaVeInput.value = "0,00";
+          ipvaVeInput.style.backgroundColor = "#e9ecef";
+        } else {
+          ipvaVeInput.style.backgroundColor = "#f3f4f6";
+          atualizarIpva("ve");
+        }
+      }
+
+      isencaoCheckbox?.addEventListener("click", toggleIpvaField);
+      toggleIpvaField();
+
+      // energia manual
+      document.getElementById("energia_manual_checkbox")?.addEventListener("change", function () {
+        atualizarPrecoEnergiaAutomatico();
+      });
+
+      renderEnergiaBreakdown(0, null);
+      setBreakdownDisabled(true);
+      atualizarLiberacaoAreaSimulacao();
+    });
+  </script>
+
+</body>
+</html>

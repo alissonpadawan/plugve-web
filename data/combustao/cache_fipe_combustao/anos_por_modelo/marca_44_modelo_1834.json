@@ -1,0 +1,15 @@
+{
+  "codigo_marca": "44",
+  "codigo_modelo": "1834",
+  "data_cache": "2026-05-04 23:21:03",
+  "anos": [
+    {
+      "codigo": "1995-1",
+      "nome": "1995 Gasolina"
+    },
+    {
+      "codigo": "1994-1",
+      "nome": "1994 Gasolina"
+    }
+  ]
+}

@@ -1,0 +1,79 @@
+RELATÓRIO TÉCNICO DE AUDITORIA DA DEPRECIAÇÃO - V19.17
+
+1. VEÍCULO CONSULTADO
+- Veículo FIPE: Renault KWID Zen 1.0 Flex 12V 5p Mec. Zero km
+- Código FIPE: 025266-2
+- Modo pandemia: Excluir
+- Data-base da análise: 2026-05
+
+2. CURVA UTILIZADA
+- Origem da curva: coleta FIPE sob demanda V19.15 (curva histórica da família com coorte de ~7 anos)
+- Modelo base usado como referência: KWID Zen 1.0 Flex 12V 5p Mec.
+- Ano âncora/coorte usada: 2019
+- Descrição da estratégia: curva histórica da família com coorte de ~7 anos
+- Pontos históricos: 44
+- Janela histórica: 96 meses
+
+3. PREÇO BASE DA COORTE
+- Preço zero km base: R$ 0.00
+- Data do zero km base: -
+
+4. PROGRESSÃO HISTÓRICA UTILIZADA
+- 2018-05: R$ 36,966.00 (zero_km)
+- 2019-05: R$ 34,201.00 (usado)
+- 2019-07: R$ 34,232.00 (usado)
+- 2019-09: R$ 34,588.00 (usado)
+- 2019-11: R$ 34,789.00 (usado)
+- 2020-01: R$ 34,436.00 (usado)
+- 2020-03: R$ 33,928.00 (usado)
+- 2020-05: R$ 33,710.00 (usado)
+- 2020-07: R$ 33,406.00 (usado)
+- 2020-09: R$ 33,240.00 (usado)
+- 2020-11: R$ 33,672.00 (usado)
+- 2021-01: R$ 34,410.00 (usado)
+- 2021-03: R$ 35,366.00 (usado)
+- 2021-05: R$ 37,621.00 (usado)
+- 2021-07: R$ 39,780.00 (usado)
+- 2021-09: R$ 41,756.00 (usado)
+- 2021-11: R$ 43,281.00 (usado)
+- 2022-01: R$ 45,071.00 (usado)
+- 2022-03: R$ 45,865.00 (usado)
+- 2022-05: R$ 46,588.00 (usado)
+- 2022-07: R$ 45,609.00 (usado)
+- 2022-09: R$ 45,555.00 (usado)
+- 2022-11: R$ 45,897.00 (usado)
+- 2023-01: R$ 45,394.00 (usado)
+- 2023-03: R$ 44,856.00 (usado)
+- 2023-05: R$ 44,562.00 (usado)
+- 2023-07: R$ 43,404.00 (usado)
+- 2023-09: R$ 42,391.00 (usado)
+- 2023-11: R$ 41,601.00 (usado)
+- 2024-01: R$ 40,987.00 (usado)
+- 2024-03: R$ 41,021.00 (usado)
+- 2024-05: R$ 40,612.00 (usado)
+- 2024-07: R$ 39,885.00 (usado)
+- 2024-09: R$ 39,795.00 (usado)
+- 2024-11: R$ 39,152.00 (usado)
+- 2025-01: R$ 39,040.00 (usado)
+- 2025-03: R$ 38,966.00 (usado)
+- 2025-05: R$ 38,747.00 (usado)
+- 2025-07: R$ 38,414.00 (usado)
+- 2025-09: R$ 37,903.00 (usado)
+- 2025-11: R$ 37,525.00 (usado)
+- 2026-01: R$ 36,931.00 (usado)
+- 2026-03: R$ 36,235.00 (usado)
+- 2026-05: R$ 37,254.00 (usado)
+
+5. FUNÇÃO DE DEPRECIAÇÃO
+- Taxa mensal híbrida base: 0.5309%
+- Taxa anual equivalente de referência: 6.19% a.a.
+- Idade de entrada aplicada: 0.00 ano(s)
+- Função aplicada: VF = VA × (1 - 0.005309)^m com taper por idade
+
+6. RESULTADO
+- Valor FIPE atual: R$ 69,396.00
+- Valor futuro base: R$ 52,354.65
+- Valor futuro otimista: R$ 55,395.91
+- Valor futuro pessimista: R$ 49,477.70
+- Taxa para a plataforma principal: 5.48% a.a.
+- Confiança da base: ALTA
