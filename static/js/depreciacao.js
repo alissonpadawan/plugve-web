@@ -72,15 +72,27 @@ function preencherResumo(data) {
   document.getElementById("res_tipo_usado").textContent = data.detalhes?.tipo_label || data.tipo_curva || "-";
 }
 
+function valorInformado(valor) {
+  if (valor === null || valor === undefined) return false;
+  const txt = String(valor).trim();
+  return txt !== "" && txt !== "-" && txt.toLowerCase() !== "nan" && txt.toLowerCase() !== "null" && txt.toLowerCase() !== "undefined";
+}
+
 function montarLinhaDetalhe(rotulo, valor) {
+  if (!valorInformado(valor)) return null;
   const tr = document.createElement("tr");
   const th = document.createElement("th");
   const td = document.createElement("td");
   th.textContent = rotulo;
-  td.textContent = textoSeguro(valor);
+  td.textContent = String(valor);
   tr.appendChild(th);
   tr.appendChild(td);
   return tr;
+}
+
+function adicionarDetalhe(corpo, rotulo, valor) {
+  const linha = montarLinhaDetalhe(rotulo, valor);
+  if (linha) corpo.appendChild(linha);
 }
 
 
@@ -94,27 +106,33 @@ function montarRelatorioTextual(data, origem = "curva") {
   const valorFuturo = Number(data?.valor_futuro || 0);
   const taxa = Number(data?.taxa_anual_percentual || 0);
   const dep = Number(data?.depreciacao_percentual || 0);
-  const confianca = data?.confianca || detalhes.confianca || "-";
-  const pontos = data?.pontos_historicos || detalhes.pontos_historicos || "-";
-  const janela = data?.janela_historica_meses || detalhes.janela_historica_meses || "-";
+  const confianca = data?.confianca || detalhes.confianca;
+  const pontos = data?.pontos_historicos || detalhes.pontos_historicos;
+  const janela = data?.janela_historica_meses || detalhes.janela_historica_meses;
   const origemFinal = data?.origem_curva || detalhes.origem_curva || origem || "curva cadastrada";
-
   const perda = valorAtual && valorFuturo ? valorAtual - valorFuturo : 0;
+
   const linhas = [];
   linhas.push("RELATÓRIO TÉCNICO DE AUDITORIA DA DEPRECIAÇÃO");
   linhas.push("");
   linhas.push(`Veículo analisado: ${[marca, modelo].filter(Boolean).join(" ") || "veículo selecionado"}.`);
   linhas.push(`Horizonte da análise: ${horizonte} ano(s).`);
-  linhas.push(`Valor FIPE inicial: ${valorAtual ? formatarMoedaBR(valorAtual) : "não informado"}.`);
-  linhas.push(`Valor estimado ao final do horizonte: ${valorFuturo ? formatarMoedaBR(valorFuturo) : "não disponível"}.`);
-  linhas.push(`Perda econômica estimada no período: ${perda > 0 ? formatarMoedaBR(perda) : "não disponível"}.`);
-  linhas.push(`Depreciação acumulada: ${dep ? dep.toFixed(2).replace(".", ",") + "%" : "não disponível"}.`);
-  linhas.push(`Taxa média anual utilizada: ${taxa ? taxa.toFixed(2).replace(".", ",") + "% a.a." : "não disponível"}.`);
-  linhas.push("");
-  linhas.push(`Origem técnica da curva: ${origemFinal}.`);
-  linhas.push(`Nível de confiança: ${confianca}.`);
-  linhas.push(`Pontos históricos considerados: ${pontos}.`);
-  linhas.push(`Janela histórica observada: ${janela !== "-" ? janela + " meses" : "não informada"}.`);
+  if (valorAtual) linhas.push(`Valor FIPE inicial: ${formatarMoedaBR(valorAtual)}.`);
+  if (valorFuturo) linhas.push(`Valor estimado ao final do horizonte: ${formatarMoedaBR(valorFuturo)}.`);
+  if (perda > 0) linhas.push(`Perda econômica estimada no período: ${formatarMoedaBR(perda)}.`);
+  if (dep) linhas.push(`Depreciação acumulada: ${dep.toFixed(2).replace(".", ",")}%.`);
+  if (taxa) linhas.push(`Taxa média anual utilizada: ${taxa.toFixed(2).replace(".", ",")}% a.a.`);
+
+  const auditoria = [];
+  if (valorInformado(origemFinal)) auditoria.push(`Origem técnica da curva: ${origemFinal}.`);
+  if (valorInformado(confianca)) auditoria.push(`Nível de confiança: ${confianca}.`);
+  if (valorInformado(pontos)) auditoria.push(`Pontos históricos considerados: ${pontos}.`);
+  if (valorInformado(janela)) auditoria.push(`Janela histórica observada: ${janela} meses.`);
+  if (auditoria.length) {
+    linhas.push("");
+    linhas.push(...auditoria);
+  }
+
   linhas.push("");
   linhas.push("Interpretação: o gráfico de barras compara o valor inicial do veículo com os valores futuros estimados nos cenários base, otimista e pessimista. A curva de depreciação mostra a evolução do valor ao longo do tempo, permitindo validar visualmente a taxa aplicada antes de transportar a informação para o TCO.");
   return linhas.join("\n");
@@ -137,32 +155,32 @@ function preencherRelatorio(data, origem = "curva") {
   const auditoria = detalhes.auditoria_historico || data?.motor?.auditoria_historico || {};
 
   corpo.innerHTML = "";
-  corpo.appendChild(montarLinhaDetalhe("Resultado", data?.mensagem || "Curva carregada."));
-  corpo.appendChild(montarLinhaDetalhe("Tipo utilizado", detalhes.tipo_label || data?.tipo_label || data?.tipo_curva));
-  corpo.appendChild(montarLinhaDetalhe("Origem", data?.origem_curva || detalhes.origem_curva || origem));
-  corpo.appendChild(montarLinhaDetalhe("Confiança", data?.confianca || detalhes.confianca));
-  corpo.appendChild(montarLinhaDetalhe("Taxa anual", data?.taxa_anual_percentual ? `${Number(data.taxa_anual_percentual).toFixed(2).replace(".", ",")}% a.a.` : "-"));
-  corpo.appendChild(montarLinhaDetalhe("Pontos históricos", data?.pontos_historicos || detalhes.pontos_historicos));
-  corpo.appendChild(montarLinhaDetalhe("Janela histórica", data?.janela_historica_meses ? `${data.janela_historica_meses} meses` : detalhes.janela_historica_meses ? `${detalhes.janela_historica_meses} meses` : "-"));
-  corpo.appendChild(montarLinhaDetalhe("Período inicial", detalhes.periodo_inicial || curva.periodo_inicial));
-  corpo.appendChild(montarLinhaDetalhe("Período final", detalhes.periodo_final || curva.periodo_final));
-  corpo.appendChild(montarLinhaDetalhe("Família", familia.family_nome || curva.family_nome || familia.family_id || curva.family_id));
-  corpo.appendChild(montarLinhaDetalhe("Modelo base", curva.modelo_base_curva || familia.modelo_base_curva || familia.modelo_base_curva_eletrico || familia.modelo_base_curva_combustao));
-  corpo.appendChild(montarLinhaDetalhe("Ano base", curva.ano_base_curva || familia.ano_base_curva || familia.ano_base_curva_eletrico || familia.ano_base_curva_combustao));
-  corpo.appendChild(montarLinhaDetalhe("Ano usado como proxy", curva.ano_modelo_proxy || auditoria.ano_modelo_proxy));
-  corpo.appendChild(montarLinhaDetalhe("Código ano proxy", curva.codigo_ano_proxy || auditoria.codigo_ano_proxy));
-  corpo.appendChild(montarLinhaDetalhe("Nome proxy", curva.nome_proxy || auditoria.nome_proxy));
+  adicionarDetalhe(corpo, "Resultado", data?.mensagem || "Curva carregada.");
+  adicionarDetalhe(corpo, "Tipo utilizado", detalhes.tipo_label || data?.tipo_label || data?.tipo_curva);
+  adicionarDetalhe(corpo, "Origem", data?.origem_curva || detalhes.origem_curva || origem);
+  adicionarDetalhe(corpo, "Confiança", data?.confianca || detalhes.confianca);
+  adicionarDetalhe(corpo, "Taxa anual", data?.taxa_anual_percentual ? `${Number(data.taxa_anual_percentual).toFixed(2).replace(".", ",")}% a.a.` : "-");
+  adicionarDetalhe(corpo, "Pontos históricos", data?.pontos_historicos || detalhes.pontos_historicos);
+  adicionarDetalhe(corpo, "Janela histórica", data?.janela_historica_meses ? `${data.janela_historica_meses} meses` : detalhes.janela_historica_meses ? `${detalhes.janela_historica_meses} meses` : "-");
+  adicionarDetalhe(corpo, "Período inicial", detalhes.periodo_inicial || curva.periodo_inicial);
+  adicionarDetalhe(corpo, "Período final", detalhes.periodo_final || curva.periodo_final);
+  adicionarDetalhe(corpo, "Família", familia.family_nome || curva.family_nome || familia.family_id || curva.family_id);
+  adicionarDetalhe(corpo, "Modelo base", curva.modelo_base_curva || familia.modelo_base_curva || familia.modelo_base_curva_eletrico || familia.modelo_base_curva_combustao);
+  adicionarDetalhe(corpo, "Ano base", curva.ano_base_curva || familia.ano_base_curva || familia.ano_base_curva_eletrico || familia.ano_base_curva_combustao);
+  adicionarDetalhe(corpo, "Ano usado como proxy", curva.ano_modelo_proxy || auditoria.ano_modelo_proxy);
+  adicionarDetalhe(corpo, "Código ano proxy", curva.codigo_ano_proxy || auditoria.codigo_ano_proxy);
+  adicionarDetalhe(corpo, "Nome proxy", curva.nome_proxy || auditoria.nome_proxy);
 
   if (Object.keys(auditoria).length > 0) {
-    corpo.appendChild(montarLinhaDetalhe("Primeiro valor histórico", auditoria.primeiro_valor != null ? formatarMoedaBR(auditoria.primeiro_valor) : "-"));
-    corpo.appendChild(montarLinhaDetalhe("Último valor histórico", auditoria.ultimo_valor != null ? formatarMoedaBR(auditoria.ultimo_valor) : "-"));
-    corpo.appendChild(montarLinhaDetalhe("Menor valor histórico", auditoria.menor_valor != null ? formatarMoedaBR(auditoria.menor_valor) : "-"));
-    corpo.appendChild(montarLinhaDetalhe("Maior valor histórico", auditoria.maior_valor != null ? formatarMoedaBR(auditoria.maior_valor) : "-"));
-    corpo.appendChild(montarLinhaDetalhe("Variação total", auditoria.variacao_total_percentual != null ? `${Number(auditoria.variacao_total_percentual).toFixed(2).replace(".", ",")}%` : "-"));
-    corpo.appendChild(montarLinhaDetalhe("Zero km detectado", auditoria.zero_km_detectado || auditoria.zero_km_original ? "Sim" : "Não"));
-    corpo.appendChild(montarLinhaDetalhe("Proxy aplicado", auditoria.proxy_aplicado ? "Sim" : "Não"));
-    corpo.appendChild(montarLinhaDetalhe("Método da taxa", auditoria.metodo_taxa));
-    corpo.appendChild(montarLinhaDetalhe("Status da série", auditoria.status_serie));
+    adicionarDetalhe(corpo, "Primeiro valor histórico", auditoria.primeiro_valor != null ? formatarMoedaBR(auditoria.primeiro_valor) : "-");
+    adicionarDetalhe(corpo, "Último valor histórico", auditoria.ultimo_valor != null ? formatarMoedaBR(auditoria.ultimo_valor) : "-");
+    adicionarDetalhe(corpo, "Menor valor histórico", auditoria.menor_valor != null ? formatarMoedaBR(auditoria.menor_valor) : "-");
+    adicionarDetalhe(corpo, "Maior valor histórico", auditoria.maior_valor != null ? formatarMoedaBR(auditoria.maior_valor) : "-");
+    adicionarDetalhe(corpo, "Variação total", auditoria.variacao_total_percentual != null ? `${Number(auditoria.variacao_total_percentual).toFixed(2).replace(".", ",")}%` : "-");
+    adicionarDetalhe(corpo, "Zero km detectado", auditoria.zero_km_detectado || auditoria.zero_km_original ? "Sim" : "Não");
+    adicionarDetalhe(corpo, "Proxy aplicado", auditoria.proxy_aplicado ? "Sim" : "Não");
+    adicionarDetalhe(corpo, "Método da taxa", auditoria.metodo_taxa);
+    adicionarDetalhe(corpo, "Status da série", auditoria.status_serie);
   }
 }
 
@@ -696,6 +714,17 @@ if (typeof carregarModelosOriginalDep === "function") {
   };
 }
 
+
+function abrirBaseProvisoria() {
+  document.getElementById("base_provisoria_drawer")?.classList.remove("hidden-drawer");
+  document.getElementById("base_drawer_backdrop")?.classList.remove("hidden");
+}
+
+function fecharBaseProvisoria() {
+  document.getElementById("base_provisoria_drawer")?.classList.add("hidden-drawer");
+  document.getElementById("base_drawer_backdrop")?.classList.add("hidden");
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   mostrarResultadoArea(false);
   mostrarAuditoriaArea(false);
@@ -715,6 +744,9 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("btn_usar_no_tco")?.addEventListener("click", usarResultadoNoTCOEFechar);
   document.getElementById("btn_calcular_futuro")?.addEventListener("click", solicitarCalculoSobDemanda);
   document.getElementById("filtro_curvas_lateral")?.addEventListener("input", filtrarListaCurvasLateral);
+  document.getElementById("btn_toggle_base_provisoria")?.addEventListener("click", abrirBaseProvisoria);
+  document.getElementById("btn_fechar_base_provisoria")?.addEventListener("click", fecharBaseProvisoria);
+  document.getElementById("base_drawer_backdrop")?.addEventListener("click", fecharBaseProvisoria);
 
   setTimeout(inicializarBridgeTCO, 500);
 });

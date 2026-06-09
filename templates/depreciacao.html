@@ -3,9 +3,11 @@
 {% block title %}Depreciação | PlugVE Web{% endblock %}
 
 {% block content %}
+<button id="btn_toggle_base_provisoria" class="button secondary base-drawer-toggle" type="button">Mostrar base provisória</button>
+<div id="base_drawer_backdrop" class="base-drawer-backdrop hidden"></div>
 <section class="depr-workspace depr-workspace-final">
-  <aside class="card depr-sidebar">
-    <h2>Base provisória</h2>
+  <aside id="base_provisoria_drawer" class="card depr-sidebar base-drawer hidden-drawer">
+    <div class="drawer-header"><h2>Base provisória</h2><button id="btn_fechar_base_provisoria" class="drawer-close" type="button">×</button></div>
     <p class="muted small-text">Consulta técnica das curvas já cadastradas. Este menu fica provisoriamente para conferência durante a validação do mestrado.</p>
 
     <div class="side-stats">
