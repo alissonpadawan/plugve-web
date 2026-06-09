@@ -1040,8 +1040,13 @@ select, input {
   color: var(--text);
   font-weight: 500;
 }
-.sweep-button {
+.sweep-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
   margin-top: 8px;
+}
+.sweep-button {
   padding: 8px 12px;
   font-size: 13px;
 }

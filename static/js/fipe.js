@@ -58,6 +58,57 @@ function nomeMarcaSelecionada() {
   return obterTextoSelecionado(marca);
 }
 
+function modeloProtegidoContraBloqueioAutomatico(nomeModelo) {
+  const n = String(nomeModelo || "").toLowerCase();
+  // Lista conservadora de modelos atuais/relevantes que não devem sumir
+  // por falha temporária da API ou por variação de nome na FIPE.
+  const termos = [
+    "pulse", "fastback", "toro", "strada", "mobi", "argo", "cronos",
+    "titano", "500e", "500 e", "renegade", "compass", "commander",
+    "corolla", "hilux", "sw4", "onix", "tracker", "s10", "montana",
+    "hb20", "creta", "hr-v", "city", "civic", "dolphin", "seal",
+    "song", "yuan", "ora", "haval", "kwid", "captur", "kicks"
+  ];
+  return termos.some(t => n.includes(t));
+}
+
+function anosVieramValidosDaApi(listaAnos) {
+  return Array.isArray(listaAnos) && listaAnos.length > 0 && !listaAnos.erro;
+}
+
+async function desbloquearMarcaAtual() {
+  const marca = document.getElementById("fipe_marca");
+  const modelo = document.getElementById("fipe_modelo");
+  const ano = document.getElementById("fipe_ano");
+  if (!marca || !marca.value) {
+    setStatusVarredura("Selecione uma marca para restaurar os bloqueios.", "error");
+    return;
+  }
+  const nomeMarca = obterTextoSelecionado(marca);
+  const codigoMarca = marca.value;
+  if (!confirm(`Restaurar bloqueios provisórios da marca ${nomeMarca}? Os modelos antigos podem reaparecer até uma nova varredura segura.`)) return;
+
+  setStatusVarredura(`Restaurando ${nomeMarca}...`, "running");
+  try {
+    const resp = await fetch("/api/fipe/desbloquear_marca", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ codigo_marca: codigoMarca })
+    });
+    const data = await resp.json();
+    await carregarMarcasFipe();
+    const marcaNova = document.getElementById("fipe_marca");
+    if (marcaNova) marcaNova.value = codigoMarca;
+    await carregarModelosFipe();
+    limparSelect(ano, "Selecione o modelo primeiro");
+    setStatusVarredura(`${nomeMarca} restaurada: ${data.modelos_bloqueados_removidos || 0} modelos desbloqueados. Agora faça nova varredura segura.`, "ok");
+  } catch (e) {
+    setStatusVarredura("Erro ao restaurar bloqueios da marca.", "error");
+  }
+}
+
+window.desbloquearMarcaAtual = desbloquearMarcaAtual;
+
 async function marcarModeloZeroKmPorCodigo(codigoMarca, codigoModelo, nomeMarca, nomeModelo, temZero) {
   try {
     await fetch(temZero ? "/api/fipe/marcar_zero_km" : "/api/fipe/desmarcar_zero_km", {
@@ -175,9 +226,16 @@ async function varrerMarcaAtual() {
       const elegiveis = listaAnos.filter(anoPermitidoNaTela);
 
       if (!elegiveis.length) {
-        bloqueados++;
-        await bloquearModeloPorCodigo(codigoMarca, codigoModelo, nomeMarca, nomeModelo, listaAnos);
-        await marcarModeloZeroKmPorCodigo(codigoMarca, codigoModelo, nomeMarca, nomeModelo, false);
+        const podeBloquearComSeguranca = listaAnos.length > 0 && !modeloProtegidoContraBloqueioAutomatico(nomeModelo);
+        if (podeBloquearComSeguranca) {
+          bloqueados++;
+          await bloquearModeloPorCodigo(codigoMarca, codigoModelo, nomeMarca, nomeModelo, listaAnos);
+          await marcarModeloZeroKmPorCodigo(codigoMarca, codigoModelo, nomeMarca, nomeModelo, false);
+        } else {
+          // Não bloqueia modelo relevante/atual ou resposta vazia da API.
+          // Mantém na lista para revisão manual e evita sumir com Pulse, Strada, Toro etc.
+          validos++;
+        }
       } else {
         validos++;
         if (temZero) {
@@ -282,6 +340,16 @@ async function bloquearModeloAntigoSemAnoValido(marca, modelo, anosOriginais) {
   const nomeModelo = obterTextoSelecionado(modelo);
   const nomeMarca = obterTextoSelecionado(marca);
   const indiceBloqueado = modelo.selectedIndex;
+
+  if (!Array.isArray(anosOriginais) || !anosOriginais.length || modeloProtegidoContraBloqueioAutomatico(nomeModelo)) {
+    const ano = document.getElementById("fipe_ano");
+    limparSelect(ano, "Sem ano elegível; mantido para revisão");
+    if (typeof atualizarStatusResultado === "function") {
+      atualizarStatusResultado(`Modelo mantido para revisão: não foi bloqueado automaticamente por segurança.`, "muted");
+      mostrarResultadoArea(true);
+    }
+    return;
+  }
 
   try {
     const resp = await fetch("/api/fipe/bloquear_modelo", {
@@ -546,6 +614,7 @@ document.addEventListener("DOMContentLoaded", () => {
   carregarMarcasFipe();
 
   document.getElementById("btn_varrer_marca")?.addEventListener("click", varrerMarcaAtual);
+  document.getElementById("btn_restaurar_marca")?.addEventListener("click", desbloquearMarcaAtual);
 
   document.getElementById("fipe_marca")?.addEventListener("change", () => {
     setStatusVarredura("");

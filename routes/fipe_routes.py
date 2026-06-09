@@ -125,6 +125,18 @@ def bloquear_marca():
         return jsonify({"ok": False, "erro": str(exc)}), 500
 
 
+@fipe_bp.route("/desbloquear_marca", methods=["POST"])
+def desbloquear_marca():
+    payload = request.get_json(silent=True) or {}
+    codigo_marca = str(payload.get("codigo_marca", "")).strip()
+    if not codigo_marca:
+        return jsonify({"ok": False, "erro": "Parâmetros incompletos."}), 400
+    try:
+        return jsonify(fipe_service.desbloquear_marca(codigo_marca))
+    except Exception as exc:
+        return jsonify({"ok": False, "erro": str(exc)}), 500
+
+
 @fipe_bp.route("/preco")
 def preco():
     codigo_marca = request.args.get("codigo_marca", "").strip()

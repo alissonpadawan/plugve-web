@@ -133,6 +133,39 @@ class FipeService:
             self._salvar_marcas_varridas(varridas)
         return {"ok": True, "marca_bloqueada": dados[marca_key]}
 
+
+    def desbloquear_marca(self, codigo_marca: str) -> dict:
+        """Remove bloqueios provisórios de uma marca para permitir nova varredura segura.
+
+        Mantém o cache de Zero km, porque ele ajuda a destacar modelos novos.
+        Remove:
+        - marca bloqueada
+        - modelos bloqueados da marca
+        - status de marca varrida
+        """
+        marca_key = str(codigo_marca)
+
+        marcas_bloq = self._ler_marcas_bloqueadas()
+        marca_removida = marcas_bloq.pop(marca_key, None) is not None
+        self._salvar_marcas_bloqueadas(marcas_bloq)
+
+        modelos_bloq = self._ler_bloqueados()
+        modelos_removidos = len(modelos_bloq.get(marca_key, {}) or {})
+        modelos_bloq.pop(marca_key, None)
+        self._salvar_bloqueados(modelos_bloq)
+
+        varridas = self._ler_marcas_varridas()
+        varrida_removida = varridas.pop(marca_key, None) is not None
+        self._salvar_marcas_varridas(varridas)
+
+        return {
+            "ok": True,
+            "codigo_marca": marca_key,
+            "marca_bloqueada_removida": marca_removida,
+            "modelos_bloqueados_removidos": modelos_removidos,
+            "status_varrida_removido": varrida_removida,
+        }
+
     def _ler_bloqueados(self) -> dict:
         path = self._bloqueados_path()
         if not path.exists():
