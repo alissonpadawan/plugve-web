@@ -1,0 +1,12 @@
+HOTFIX V23 - DIAGNÓSTICO DE AMOSTRAGEM ADAPTATIVA
+
+Este arquivo foi adicionado apenas para forçar o GitHub Desktop a detectar mudança.
+
+Correção aplicada:
+- adiciona o método _coletar_amostragem_referencias em services/coorte_diagnostico_service.py
+- o diagnóstico técnico passa a consultar referências FIPE v2 com amostragem adaptativa
+- limita a coleta a no máximo 50 pontos
+- ignora 404 de referências antigas
+- interrompe com segurança em erro 429
+
+Data: 2026-06-10

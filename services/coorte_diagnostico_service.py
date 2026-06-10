@@ -239,6 +239,152 @@ class CoorteDiagnosticoService:
             "ipca": "corrigir série histórica antes de ajustar curva",
         }
 
+
+    def _coletar_amostragem_referencias(self, *, veiculo: VeiculoSelecionado, coorte_base: dict[str, Any], historico_plano: dict[str, Any]) -> dict[str, Any]:
+        """Coleta controlada de histórico FIPE por referências mensais.
+
+        Esta função é apenas diagnóstica: consulta a API v2 com amostragem
+        adaptativa, não salva curva e não altera bases. O objetivo é mostrar se
+        existe massa histórica suficiente para o motor definitivo por coorte.
+        """
+        codigo_ano = str(coorte_base.get("codigo") or "").strip()
+        if not codigo_ano:
+            return {
+                "ok": False,
+                "erro": "coorte_base_sem_codigo_ano",
+                "criterio_passo": "não executado",
+                "pontos_planejados": 0,
+                "pontos_validos": 0,
+            }
+
+        janela_meses = int(historico_plano.get("janela_teorica_meses") or 0)
+        if janela_meses <= 0:
+            return {
+                "ok": False,
+                "erro": "janela_historica_zero",
+                "criterio_passo": "não executado",
+                "pontos_planejados": 0,
+                "pontos_validos": 0,
+            }
+
+        if janela_meses <= 36:
+            passo = 1
+            criterio = "modelo recente: coleta mensal"
+        elif janela_meses <= 84:
+            passo = 2
+            criterio = "modelo intermediário: coleta a cada 2 meses"
+        else:
+            passo = 3
+            criterio = "modelo antigo: coleta a cada 3 meses"
+
+        try:
+            referencias = self.fipe.listar_referencias()
+        except FipeApiError as exc:
+            return {
+                "ok": False,
+                "erro": exc.message,
+                "erro_tipo": exc.tipo,
+                "criterio_passo": criterio,
+                "pontos_planejados": 0,
+                "pontos_validos": 0,
+                "limite_interrompeu": exc.status_code == 429,
+            }
+        except Exception as exc:
+            return {
+                "ok": False,
+                "erro": str(exc)[:240],
+                "criterio_passo": criterio,
+                "pontos_planejados": 0,
+                "pontos_validos": 0,
+            }
+
+        if not referencias:
+            return {
+                "ok": False,
+                "erro": "nenhuma_referencia_fipe_retornada",
+                "criterio_passo": criterio,
+                "pontos_planejados": 0,
+                "pontos_validos": 0,
+            }
+
+        # A API retorna códigos de referência crescentes. Usamos a janela mais
+        # recente equivalente à janela teórica da coorte e amostramos do mais
+        # antigo para o mais recente.
+        janela_refs = referencias[-max(1, min(janela_meses, len(referencias))):]
+        planejadas = janela_refs[::passo]
+        if janela_refs and planejadas[-1].get("code") != janela_refs[-1].get("code"):
+            planejadas.append(janela_refs[-1])
+
+        # Segurança contra estouro de requisições: no máximo 50 pontos por diagnóstico.
+        if len(planejadas) > 50:
+            fator = max(1, round(len(planejadas) / 50))
+            reduzidas = planejadas[::fator]
+            if reduzidas[-1].get("code") != planejadas[-1].get("code"):
+                reduzidas.append(planejadas[-1])
+            planejadas = reduzidas[:50]
+
+        pontos: list[dict[str, Any]] = []
+        erros_404 = 0
+        erros_outros = 0
+        limite_interrompeu = False
+        ultimo_erro = None
+
+        for ref in planejadas:
+            try:
+                detalhe = self.fipe.consultar_preco_referencia(
+                    veiculo.codigo_marca,
+                    veiculo.codigo_modelo,
+                    codigo_ano,
+                    str(ref.get("code")),
+                )
+                valor_txt = detalhe.get("Valor") or detalhe.get("price") or ""
+                valor = parse_float_seguro(valor_txt)
+                if valor and valor > 0:
+                    pontos.append({
+                        "reference": str(ref.get("code")),
+                        "mes": ref.get("month") or detalhe.get("MesReferencia") or "",
+                        "valor": float(valor),
+                        "valor_formatado": valor_txt if isinstance(valor_txt, str) and valor_txt else f"R$ {valor:,.2f}",
+                    })
+            except FipeApiError as exc:
+                ultimo_erro = exc.message
+                if exc.status_code == 404:
+                    erros_404 += 1
+                    continue
+                if exc.status_code == 429:
+                    limite_interrompeu = True
+                    break
+                erros_outros += 1
+                continue
+            except Exception as exc:
+                ultimo_erro = str(exc)[:240]
+                erros_outros += 1
+                continue
+
+        variacao = None
+        if len(pontos) >= 2 and pontos[0].get("valor"):
+            variacao = ((pontos[-1]["valor"] - pontos[0]["valor"]) / pontos[0]["valor"]) * 100
+            variacao = round(variacao, 2)
+
+        return {
+            "ok": True,
+            "criterio_passo": criterio,
+            "passo_meses": passo,
+            "janela_teorica_meses": janela_meses,
+            "referencias_disponiveis": len(referencias),
+            "pontos_planejados": len(planejadas),
+            "pontos_validos": len(pontos),
+            "erros_404_ignorados": erros_404,
+            "erros_outros": erros_outros,
+            "limite_interrompeu": limite_interrompeu,
+            "primeiro_ponto": pontos[0] if pontos else None,
+            "ultimo_ponto": pontos[-1] if pontos else None,
+            "variacao_percentual_observada": variacao,
+            "amostra": pontos[:8],
+            "ultimo_erro": ultimo_erro,
+            "erro": ultimo_erro if not pontos and ultimo_erro else None,
+        }
+
     @staticmethod
     def _classificar_qualidade(pontos: int, janela_meses: int) -> str:
         if pontos >= 24 and janela_meses >= 36:
