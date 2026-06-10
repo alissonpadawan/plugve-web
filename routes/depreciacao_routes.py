@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from flask import Blueprint, jsonify, request
+import traceback
 
 from services.depreciacao_service import DepreciacaoService
 from services.coorte_diagnostico_service import CoorteDiagnosticoService
@@ -58,6 +59,15 @@ def diagnostico_coorte():
     payload = request.get_json(silent=True) or {}
     try:
         resultado = coorte_diagnostico_service.diagnosticar(payload)
-        return jsonify(resultado)
+        return jsonify(resultado), 200
     except Exception as exc:
-        return jsonify({"ok": False, "status": "erro_diagnostico", "mensagem": str(exc)}), 200
+        return jsonify({
+            "ok": False,
+            "status": "erro_diagnostico",
+            "mensagem": f"Erro interno no diagnóstico: {type(exc).__name__}: {exc}",
+            "traceback_resumo": traceback.format_exc(limit=4),
+        }), 200
+
+@depreciacao_bp.route("/diagnostico", methods=["POST"])
+def diagnostico_coorte_alias():
+    return diagnostico_coorte()

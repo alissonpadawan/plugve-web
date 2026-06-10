@@ -1,0 +1,1 @@
+Hotfix: diagnóstico técnico agora mostra erro real, força cache bust do JS e adiciona alias de rota.

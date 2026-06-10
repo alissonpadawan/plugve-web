@@ -480,7 +480,22 @@ async function solicitarDiagnosticoCoorte() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
     });
-    const data = await resp.json();
+    const rawText = await resp.text();
+    let data = null;
+    try {
+      data = JSON.parse(rawText);
+    } catch (parseError) {
+      const msg = `Resposta não-JSON do servidor no diagnóstico. HTTP ${resp.status}. ${rawText.slice(0, 300)}`;
+      atualizarStatusResultado(msg, "erro");
+      atualizarFeedbackCalculo(msg, 100, true);
+      return;
+    }
+    if (!resp.ok) {
+      const msg = data.mensagem || data.erro || `Erro HTTP ${resp.status} no diagnóstico.`;
+      atualizarStatusResultado(msg, "erro");
+      atualizarFeedbackCalculo(msg, 100, true);
+      return;
+    }
     const rel = document.getElementById("relatorio_textual");
     const corpo = document.getElementById("detalhes_corpo");
     if (rel) rel.textContent = data.relatorio_textual || data.mensagem || "Diagnóstico concluído.";
@@ -512,8 +527,9 @@ async function solicitarDiagnosticoCoorte() {
     atualizarFeedbackCalculo("Diagnóstico concluído. Nenhuma curva foi salva.", 100, true);
     setTimeout(() => atualizarFeedbackCalculo("", 0, false), 1800);
   } catch (e) {
-    atualizarStatusResultado("Erro ao montar diagnóstico técnico.", "erro");
-    atualizarFeedbackCalculo("Erro ao montar diagnóstico técnico.", 100, true);
+    const msg = `Erro ao montar diagnóstico técnico: ${e && e.message ? e.message : e}`;
+    atualizarStatusResultado(msg, "erro");
+    atualizarFeedbackCalculo(msg, 100, true);
   } finally {
     if (btn) {
       btn.disabled = false;
