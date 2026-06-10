@@ -1,11 +1,13 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@500;600;700;800&display=swap');
+
 :root {
   --bg: #f5f7fb;
   --card: #ffffff;
-  --text: #1f2937;
-  --muted: #6b7280;
+  --text: #0f172a;
+  --muted: #64748b;
   --line: #dbe1ea;
-  --primary: #1d4ed8;
-  --primary-dark: #1e40af;
+  --primary: #2f5bff;
+  --primary-dark: #1d3fd8;
   --soft: #eef4ff;
 }
 
@@ -13,9 +15,12 @@
 
 body {
   margin: 0;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
   background: var(--bg);
   color: var(--text);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 .container {
@@ -40,11 +45,14 @@ body {
 
 .brand {
   color: var(--primary);
-  font-weight: 700;
+  font-family: 'Sora', 'Inter', system-ui, sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.04em;
   text-decoration: none;
 }
 
 nav a {
+  font-family: 'Sora', 'Inter', system-ui, sans-serif;
   color: var(--text);
   text-decoration: none;
   margin-left: 18px;
@@ -66,7 +74,30 @@ nav a:hover { color: var(--primary); }
 
 .hero { background: linear-gradient(180deg, #ffffff, var(--soft)); }
 
-h1, h2, h3 { margin-top: 0; }
+h1, h2, h3 {
+  margin-top: 0;
+  font-family: 'Sora', 'Inter', system-ui, sans-serif;
+  letter-spacing: -0.045em;
+  color: #0f172a;
+}
+
+h1 {
+  font-size: clamp(2.2rem, 4vw, 4.2rem);
+  line-height: 0.98;
+  font-weight: 800;
+}
+
+h2 {
+  font-size: clamp(1.55rem, 2.4vw, 2.35rem);
+  line-height: 1.08;
+  font-weight: 750;
+}
+
+h3 {
+  font-size: clamp(1.1rem, 1.6vw, 1.45rem);
+  line-height: 1.14;
+  font-weight: 700;
+}
 
 .muted { color: var(--muted); }
 
@@ -86,6 +117,7 @@ h1, h2, h3 { margin-top: 0; }
 }
 
 select, input {
+  font: inherit;
   width: 100%;
   min-height: 42px;
   padding: 9px 10px;
@@ -106,6 +138,7 @@ select, input {
 }
 
 .button {
+  font-family: 'Sora', 'Inter', system-ui, sans-serif;
   display: inline-block;
   border: none;
   border-radius: 9px;
@@ -622,7 +655,7 @@ select, input {
   padding: 16px;
   line-height: 1.45;
   color: var(--text);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-weight: 600;
   margin: 12px 0 16px;
 }
