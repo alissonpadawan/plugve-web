@@ -39,3 +39,13 @@ def calcular():
         return jsonify(resultado)
     except Exception as exc:
         return jsonify({"ok": False, "status": "erro_controlado", "mensagem": str(exc)}), 200
+
+
+@depreciacao_bp.route("/apagar_curva", methods=["POST"])
+def apagar_curva():
+    payload = request.get_json(silent=True) or {}
+    try:
+        resultado = depreciacao_service.apagar_curva_manual(payload)
+        return jsonify(resultado)
+    except Exception as exc:
+        return jsonify({"ok": False, "mensagem": str(exc)}), 200

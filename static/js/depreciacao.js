@@ -60,6 +60,7 @@ function configurarBotoesResultado(curvaEncontrada, podeCalcularFuturo) {
   const btnDetalhes = document.getElementById("btn_ver_detalhes");
   const btnCalcular = document.getElementById("btn_calcular_futuro");
   const btnUsarTCO = document.getElementById("btn_usar_no_tco");
+  const btnApagar = document.getElementById("btn_apagar_curva");
 
   if (btnDetalhes) {
     btnDetalhes.classList.toggle("hidden", !curvaEncontrada);
@@ -76,6 +77,11 @@ function configurarBotoesResultado(curvaEncontrada, podeCalcularFuturo) {
     const modoTCO = estaEmModoBridgeTCO();
     btnUsarTCO.classList.toggle("hidden", !(modoTCO && curvaEncontrada));
     btnUsarTCO.disabled = !(modoTCO && curvaEncontrada);
+  }
+
+  if (btnApagar) {
+    btnApagar.classList.toggle("hidden", !curvaEncontrada);
+    btnApagar.disabled = !curvaEncontrada;
   }
 }
 
@@ -148,6 +154,7 @@ function montarRelatorioTextual(data, origem = "curva") {
   const pontos = data?.pontos_historicos || detalhes.pontos_historicos;
   const janela = data?.janela_historica_meses || detalhes.janela_historica_meses;
   const origemFinal = data?.origem_curva || detalhes.origem_curva || origem || "curva cadastrada";
+  const auditoria = detalhes.auditoria_historico || data?.motor?.auditoria_historico || {};
   const perda = valorAtual && valorFuturo ? valorAtual - valorFuturo : 0;
 
   const linhas = [];
@@ -160,12 +167,23 @@ function montarRelatorioTextual(data, origem = "curva") {
   if (perda > 0) linhas.push(`Perda econômica estimada no período: ${formatarMoedaBR(perda)}.`);
   if (dep) linhas.push(`Depreciação acumulada: ${dep.toFixed(2).replace(".", ",")}%.`);
   if (taxa) linhas.push(`Taxa média anual utilizada: ${taxa.toFixed(2).replace(".", ",")}% a.a.`);
+  if (valorInformado(auditoria.modo_calculo)) {
+    if (String(auditoria.modo_calculo).includes("usado")) {
+      linhas.push("Critério de projeção: veículo usado; a projeção parte do valor FIPE atual e continua a curva no ponto de idade observado, em vez de reiniciar a depreciação como zero km.");
+    } else if (String(auditoria.modo_calculo).includes("zero")) {
+      linhas.push("Critério de projeção: veículo zero km; a projeção inicia na idade zero da curva de depreciação.");
+    }
+  }
 
   const auditoria = [];
   if (valorInformado(origemFinal)) auditoria.push(`Origem técnica da curva: ${origemFinal}.`);
   if (valorInformado(confianca)) auditoria.push(`Nível de confiança: ${confianca}.`);
   if (valorInformado(pontos)) auditoria.push(`Pontos históricos considerados: ${pontos}.`);
   if (valorInformado(janela)) auditoria.push(`Janela histórica observada: ${janela} meses.`);
+  if (valorInformado(auditoria.fonte_historico)) auditoria.push(`Fonte do histórico: ${auditoria.fonte_historico}.`);
+  if (valorInformado(auditoria.curva_referencia)) auditoria.push(`Curva/modelo de referência: ${auditoria.curva_referencia}.`);
+  const proxyTxt = String(origemFinal || "").toLowerCase().includes("proxy") || auditoria.proxy_aplicado;
+  auditoria.push(`Proxy aplicado: ${proxyTxt ? "Sim" : "Não"}.`);
   if (auditoria.length) {
     linhas.push("");
     linhas.push(...auditoria);
@@ -215,10 +233,42 @@ function preencherRelatorio(data, origem = "curva") {
     adicionarDetalhe(corpo, "Menor valor histórico", auditoria.menor_valor != null ? formatarMoedaBR(auditoria.menor_valor) : "-");
     adicionarDetalhe(corpo, "Maior valor histórico", auditoria.maior_valor != null ? formatarMoedaBR(auditoria.maior_valor) : "-");
     adicionarDetalhe(corpo, "Variação total", auditoria.variacao_total_percentual != null ? `${Number(auditoria.variacao_total_percentual).toFixed(2).replace(".", ",")}%` : "-");
+    const origemTexto = String(data?.origem_curva || detalhes.origem_curva || origem || "").toLowerCase();
+    const proxyAplicado = Boolean(auditoria.proxy_aplicado) || origemTexto.includes("proxy");
     adicionarDetalhe(corpo, "Zero km detectado", auditoria.zero_km_detectado || auditoria.zero_km_original ? "Sim" : "Não");
-    adicionarDetalhe(corpo, "Proxy aplicado", auditoria.proxy_aplicado ? "Sim" : "Não");
+    adicionarDetalhe(corpo, "Proxy aplicado", proxyAplicado ? "Sim" : "Não");
+    adicionarDetalhe(corpo, "Fonte do histórico", auditoria.fonte_historico || curva.fonte_historico);
+    adicionarDetalhe(corpo, "Curva/modelo referência", auditoria.curva_referencia || (auditoria.referencia && (auditoria.referencia.titulo || auditoria.referencia.modelo)));
+    adicionarDetalhe(corpo, "Ano usado como proxy", auditoria.ano_modelo_proxy);
     adicionarDetalhe(corpo, "Método da taxa", auditoria.metodo_taxa);
     adicionarDetalhe(corpo, "Status da série", auditoria.status_serie);
+  }
+}
+
+
+async function apagarCurvaAtual() {
+  if (!ultimoDetalheFipe) return;
+  const ok = window.confirm("Apagar a curva calculada deste veículo? A base original será preservada; apenas curva criada pela web será removida.");
+  if (!ok) return;
+  atualizarFeedbackCalculo("Apagando curva calculada...", 40, true);
+  try {
+    const payload = {
+      ...ultimoDetalheFipe,
+      tipo: document.getElementById("tipo_veiculo")?.value || "auto",
+      horizonte_anos: document.getElementById("horizonte_anos")?.value || 5
+    };
+    const resp = await fetch("/api/depreciacao/apagar_curva", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    const data = await resp.json();
+    atualizarFeedbackCalculo(data.mensagem || "Curva apagada.", 100, true);
+    setTimeout(() => atualizarFeedbackCalculo("", 0, false), 1200);
+    await carregarStatusBases();
+    await consultarResumoDepreciacao(ultimoDetalheFipe);
+  } catch (e) {
+    atualizarFeedbackCalculo("Erro ao apagar curva. Tente novamente.", 100, true);
   }
 }
 
@@ -944,6 +994,7 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("btn_ver_detalhes")?.addEventListener("click", mostrarDetalhes);
   document.getElementById("btn_usar_no_tco")?.addEventListener("click", usarResultadoNoTCOEFechar);
   document.getElementById("btn_calcular_futuro")?.addEventListener("click", solicitarCalculoSobDemanda);
+  document.getElementById("btn_apagar_curva")?.addEventListener("click", apagarCurvaAtual);
   document.getElementById("filtro_curvas_lateral")?.addEventListener("input", filtrarListaCurvasLateral);
   document.getElementById("btn_toggle_base_provisoria")?.addEventListener("click", abrirBaseProvisoria);
   document.getElementById("btn_fechar_base_provisoria")?.addEventListener("click", fecharBaseProvisoria);

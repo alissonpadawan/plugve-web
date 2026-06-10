@@ -18,3 +18,8 @@ def depreciacao():
 @main_bp.route("/metodologia")
 def metodologia():
     return render_template("metodologia.html")
+
+
+@main_bp.route("/financiamento")
+def financiamento():
+    return render_template("financiamento.html")

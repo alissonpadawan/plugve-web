@@ -1107,3 +1107,6 @@ select, input {
   margin-top: .75rem;
 }
 .hidden { display: none !important; }
+
+.button.danger { background: #fff1f2; color: #be123c; border: 1px solid #fecdd3; }
+.button.danger:hover { background: #ffe4e6; }

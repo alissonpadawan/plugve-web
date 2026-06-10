@@ -12,6 +12,7 @@ from repositories.ipca_repository import IpcaRepository
 from core.motor_combustao_web import calcular_curva_combustao_por_historico, CalculoCombustaoInvalido
 from services.text_utils import detectar_eletrico, parse_float_seguro, parse_int_seguro
 from services.fipe_historico_service import FipeHistoricoService
+from services.fipe_service import FipeService, FipeApiError
 
 
 class DepreciacaoService:
@@ -19,6 +20,7 @@ class DepreciacaoService:
         self.curvas = CurvasRepository()
         self.historico = HistoricoRepository()
         self.ipca = IpcaRepository()
+        self.fipe = FipeService()
 
     def status_bases(self) -> dict[str, Any]:
         return self.curvas.status_bases()
@@ -96,6 +98,13 @@ class DepreciacaoService:
             },
         )
         return resumo.to_dict()
+
+
+    def apagar_curva_manual(self, payload: dict[str, Any]) -> dict[str, Any]:
+        veiculo = VeiculoSelecionado.from_payload(payload)
+        tipo_detectado = self._detectar_tipo_por_veiculo(veiculo)
+        tipo = self._resolver_tipo(veiculo, tipo_detectado)
+        return self.curvas.apagar_curva_calculada(veiculo, tipo)
 
 
     def painel_dados(self) -> dict[str, Any]:
@@ -283,11 +292,20 @@ class DepreciacaoService:
             if self._veiculo_zero_km(veiculo):
                 resultado_motor = self._calcular_combustao_zero_km_por_proxy(veiculo)
             else:
-                historico = self.historico.buscar_historico_combustao_veiculo(veiculo)
+                historico_api, origem_api, ref_api = self._historico_api_v2_price_history(veiculo)
+                historico = historico_api if len(historico_api) >= 2 else self.historico.buscar_historico_combustao_veiculo(veiculo)
                 resultado_motor = calcular_curva_combustao_por_historico(
                     veiculo=veiculo,
                     historico=historico,
                 ).to_dict()
+                if len(historico_api) >= 2:
+                    resultado_motor["origem_curva"] = origem_api
+                    resultado_motor["tipo_match"] = "historico_fipe_api_v2_price_history"
+                    auditoria = dict(resultado_motor.get("auditoria_historico") or {})
+                    auditoria.update(ref_api or {})
+                    auditoria["proxy_aplicado"] = False
+                    auditoria["fonte_historico"] = "priceHistory API v2"
+                    resultado_motor["auditoria_historico"] = auditoria
         except CalculoCombustaoInvalido as exc:
             resultado_motor = self._calcular_proxy_tecnico(veiculo, tipo="combustao", auditoria_origem=exc.auditoria, mensagem_origem=str(exc))
         except Exception as exc:
@@ -365,6 +383,115 @@ class DepreciacaoService:
         ).to_dict()
 
 
+
+    def _historico_api_v2_price_history(self, veiculo: VeiculoSelecionado) -> tuple[list[dict[str, Any]], str, dict[str, Any] | None]:
+        """Busca histórico mensal retornado pela API FIPE v2/fipe.online.
+
+        A API nova pode devolver priceHistory junto com o detalhe do veículo.
+        Para seleção Zero km, preferimos usar o ano usado mais recente do mesmo
+        modelo como curva histórica e aplicar essa curva ao valor zero km atual.
+        Isso evita tratar variação de preço de tabela do carro novo como
+        depreciação real.
+        """
+        if not veiculo.codigo_marca or not veiculo.codigo_modelo or not veiculo.codigo_ano:
+            return [], "histórico FIPE API v2 não consultado: códigos incompletos", None
+
+        codigo_ano_original = str(veiculo.codigo_ano or "").strip()
+        codigo_ano_consulta = codigo_ano_original
+        proxy_ano = None
+
+        try:
+            if self._veiculo_zero_km(veiculo):
+                anos = self.fipe.listar_anos(str(veiculo.codigo_marca), str(veiculo.codigo_modelo))
+                candidatos = []
+                for item in anos or []:
+                    cod = str(item.get("codigo", "") or "").strip()
+                    nome = str(item.get("nome", "") or "").strip()
+                    ano_txt = cod.split("-", 1)[0]
+                    if ano_txt == "32000" or not ano_txt.isdigit():
+                        continue
+                    ano_int = int(ano_txt)
+                    if ano_int >= 2012:
+                        candidatos.append((ano_int, cod, nome))
+                if candidatos:
+                    candidatos.sort(reverse=True)
+                    ano_int, cod, nome = candidatos[0]
+                    codigo_ano_consulta = cod
+                    proxy_ano = {"codigo_ano_proxy": cod, "ano_modelo_proxy": ano_int, "nome_proxy": nome}
+
+            detalhe = self.fipe.consultar_preco(str(veiculo.codigo_marca), str(veiculo.codigo_modelo), codigo_ano_consulta)
+        except Exception as exc:
+            return [], f"histórico FIPE API v2 indisponível: {exc}", None
+
+        historico_bruto = detalhe.get("HistoricoPreco") or detalhe.get("priceHistory") or []
+        saida = []
+        vistos = set()
+        for row in historico_bruto if isinstance(historico_bruto, list) else []:
+            data_ref = self._parse_mes_referencia_api(row.get("month") or row.get("mes") or row.get("referenceMonth") or "")
+            if not data_ref:
+                ref_num = str(row.get("reference") or row.get("referencia") or "").strip()
+                if ref_num.isdigit():
+                    # Sem mês legível, não força data falsa para não contaminar IPCA.
+                    continue
+            valor = parse_float_seguro(row.get("price") or row.get("preco") or row.get("Valor"), 0.0)
+            if not data_ref or valor <= 0:
+                continue
+            if data_ref in vistos:
+                continue
+            vistos.add(data_ref)
+            saida.append({
+                "data_referencia": data_ref,
+                "valor_fipe": round(float(valor), 2),
+                "codigo_fipe": str(detalhe.get("CodigoFipe") or detalhe.get("codeFipe") or veiculo.codigo_fipe or "").strip(),
+                "marca": str(detalhe.get("Marca") or detalhe.get("brand") or veiculo.marca or "").strip(),
+                "modelo": str(detalhe.get("Modelo") or detalhe.get("model") or veiculo.modelo or "").strip(),
+                "ano_modelo": str(detalhe.get("AnoModelo") or detalhe.get("modelYear") or veiculo.ano_modelo or "").strip(),
+                "combustivel": str(detalhe.get("Combustivel") or detalhe.get("fuel") or veiculo.combustivel or "").strip(),
+                "codigo_marca": str(veiculo.codigo_marca),
+                "codigo_modelo": str(veiculo.codigo_modelo),
+                "codigo_ano": codigo_ano_consulta,
+                "origem": "fipe_api_v2_price_history",
+            })
+
+        saida.sort(key=lambda x: str(x.get("data_referencia", "")))
+        if len(saida) >= 2:
+            if proxy_ano:
+                origem = f"histórico FIPE API v2 do ano {proxy_ano.get('ano_modelo_proxy')} aplicado ao zero km"
+                return saida, origem, {**proxy_ano, "fonte": "priceHistory API v2", "codigo_ano_original": codigo_ano_original, "proxy_aplicado": True}
+            return saida, "histórico próprio FIPE API v2 (priceHistory)", {"fonte": "priceHistory API v2", "proxy_aplicado": False}
+        return [], "histórico FIPE API v2 sem pontos suficientes", {"pontos_api": len(saida), "proxy_aplicado": bool(proxy_ano), **(proxy_ano or {})}
+
+    @staticmethod
+    def _parse_mes_referencia_api(texto: Any) -> str | None:
+        txt = str(texto or "").strip().lower()
+        if not txt:
+            return None
+        trocas = {
+            "á": "a", "à": "a", "ã": "a", "â": "a",
+            "é": "e", "ê": "e",
+            "í": "i",
+            "ó": "o", "ô": "o", "õ": "o",
+            "ú": "u", "ç": "c",
+        }
+        for a, b in trocas.items():
+            txt = txt.replace(a, b)
+        meses = {
+            "janeiro": 1, "fevereiro": 2, "marco": 3, "abril": 4,
+            "maio": 5, "junho": 6, "julho": 7, "agosto": 8,
+            "setembro": 9, "outubro": 10, "novembro": 11, "dezembro": 12,
+        }
+        import re
+        m = re.search(r"(janeiro|fevereiro|marco|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)\s+de\s+(\d{4})", txt)
+        if not m:
+            m = re.search(r"(janeiro|fevereiro|marco|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)[/\s-]+(\d{4})", txt)
+        if not m:
+            return None
+        mes = meses.get(m.group(1))
+        ano = int(m.group(2))
+        if not mes:
+            return None
+        return f"{ano:04d}-{mes:02d}"
+
     def _calcular_eletrico_por_historico_ou_proxy(self, veiculo: VeiculoSelecionado) -> dict[str, Any]:
         """Motor EV V23 baseado no painel antigo.
 
@@ -399,6 +526,11 @@ class DepreciacaoService:
         alvo_marca = self._normalizar_local(veiculo.marca)
         alvo_modelo = self._normalizar_modelo_ev(veiculo.modelo)
         alvo_tokens = self._tokens_modelo_ev(alvo_modelo)
+
+        # 0) Primeiro tenta o histórico real retornado pela API FIPE v2/fipe.online.
+        historico_api, origem_api, ref_api = self._historico_api_v2_price_history(veiculo)
+        if len(historico_api) >= 2:
+            return self._ordenar_historico_ev(historico_api), origem_api, ref_api
 
         def linha_texto(row: dict[str, Any]) -> str:
             return self._normalizar_modelo_ev(" ".join(str(row.get(k, "") or "") for k in ["titulo", "marca", "modelo", "categoria"]))
@@ -607,6 +739,12 @@ class DepreciacaoService:
         taxa_anual = self._taxa_anual_efetiva_do_fator(fator_base, horizonte_meses)
 
         pontos = len(hist)
+        primeiro_valor = float(hist[0].get("valor_fipe") or 0.0) if hist else 0.0
+        ultimo_valor = float(hist[-1].get("valor_fipe") or 0.0) if hist else 0.0
+        valores_hist = [float(x.get("valor_fipe") or 0.0) for x in hist if float(x.get("valor_fipe") or 0.0) > 0]
+        variacao_total = ((ultimo_valor - primeiro_valor) / primeiro_valor * 100.0) if primeiro_valor > 0 else 0.0
+        modo_calculo = "zero_km_curva_desde_idade_zero" if self._veiculo_zero_km(veiculo) or str(veiculo.ano_modelo).lower().startswith("zero") else "usado_continua_curva_a_partir_da_idade_atual"
+
         if origem_hist.startswith("histórico próprio") and pontos >= 24 and janela_meses >= 24:
             confianca = "ALTA"
         elif origem_hist.startswith("histórico próprio") and pontos >= 8:
@@ -635,6 +773,12 @@ class DepreciacaoService:
             "horizonte_anos": horizonte_anos,
             "auditoria_historico": {
                 "metodo_taxa": "motor_ev_v21_historico_ipca_taper_idade",
+                "modo_calculo": modo_calculo,
+                "primeiro_valor": round(primeiro_valor, 2),
+                "ultimo_valor": round(ultimo_valor, 2),
+                "menor_valor": round(min(valores_hist), 2) if valores_hist else 0,
+                "maior_valor": round(max(valores_hist), 2) if valores_hist else 0,
+                "variacao_total_percentual": round(variacao_total, 2),
                 "taxa_mensal_curva_percentual": round(taxa_curva, 6),
                 "taxa_mensal_cauda_percentual": round(taxa_cauda, 6),
                 "taxa_mensal_hibrida_percentual": round(taxa_hibrida, 6),
@@ -643,7 +787,9 @@ class DepreciacaoService:
                 "idade_projecao_meses": idade_projecao_meses,
                 "ipca_base": mes_base or "",
                 "referencia": referencia or {},
-                "observacao": "A curva foi estimada a partir de histórico FIPE corrigido por IPCA, com taxa mensal híbrida e suavização por idade conforme o painel EV original.",
+                "proxy_aplicado": not origem_hist.startswith("histórico próprio"),
+                "fonte_historico": "priceHistory API v2" if "API v2" in origem_hist else "base local",
+                "observacao": "Para veículo usado, a curva histórica é entendida como trajetória já percorrida; a projeção parte do valor FIPE atual e continua a curva no ponto de idade estimado. Para zero km, a projeção começa na idade zero.",
             },
         }
 
@@ -701,6 +847,7 @@ class DepreciacaoService:
             "horizonte_anos": horizonte,
             "auditoria_historico": {
                 "metodo_taxa": "proxy_tecnico_base_local",
+                "proxy_aplicado": True,
                 "curva_referencia": str(titulo_ref),
                 "score_referencia": score,
                 "mensagem_origem": mensagem_origem,
@@ -882,5 +1029,16 @@ class DepreciacaoService:
             "confianca_ev",
             "status_final",
             "data_salvamento",
+            "fonte_historico",
+            "proxy_aplicado",
+            "metodo_taxa",
+            "modo_calculo",
+            "idade_entrada_meses",
+            "idade_projecao_meses",
+            "primeiro_valor_historico",
+            "ultimo_valor_historico",
+            "variacao_total_percentual",
+            "observacao_metodologica",
+            "tipo_match",
         ]
         return {campo: curva.get(campo, "") for campo in campos if campo in curva and str(curva.get(campo, "")).strip()}

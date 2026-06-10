@@ -224,6 +224,17 @@ class CurvasRepository:
             "camada_ev_status": "CALCULADA_WEB",
             "data_salvamento": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "origem_curva": resultado.get("origem_curva", "cálculo sob demanda EV"),
+            "tipo_match": resultado.get("tipo_match", ""),
+            "fonte_historico": (resultado.get("auditoria_historico") or {}).get("fonte_historico", ""),
+            "proxy_aplicado": "Sim" if (resultado.get("auditoria_historico") or {}).get("proxy_aplicado") else "Não",
+            "metodo_taxa": (resultado.get("auditoria_historico") or {}).get("metodo_taxa", ""),
+            "modo_calculo": (resultado.get("auditoria_historico") or {}).get("modo_calculo", ""),
+            "idade_entrada_meses": (resultado.get("auditoria_historico") or {}).get("idade_entrada_meses", ""),
+            "idade_projecao_meses": (resultado.get("auditoria_historico") or {}).get("idade_projecao_meses", ""),
+            "primeiro_valor_historico": (resultado.get("auditoria_historico") or {}).get("primeiro_valor", ""),
+            "ultimo_valor_historico": (resultado.get("auditoria_historico") or {}).get("ultimo_valor", ""),
+            "variacao_total_percentual": (resultado.get("auditoria_historico") or {}).get("variacao_total_percentual", ""),
+            "observacao_metodologica": (resultado.get("auditoria_historico") or {}).get("observacao", ""),
         }
 
         campos_padrao = list(nova_linha.keys())
@@ -260,6 +271,81 @@ class CurvasRepository:
             pass
 
         return nova_linha
+
+
+    def apagar_curva_calculada(self, veiculo: VeiculoSelecionado, tipo: str) -> dict[str, Any]:
+        """Remove manualmente uma curva criada pela calculadora web.
+
+        Segurança: remove apenas curvas geradas pela camada web/sob demanda,
+        preservando as bases originais importadas do painel técnico.
+        """
+        tipo_norm = str(tipo or "").strip().lower()
+        caminho = self._arquivo_curvas_eletrico() if tipo_norm == "eletrico" else self._arquivo_curvas_combustao()
+        linhas = self._ler_csv(caminho)
+        if not linhas:
+            return {"ok": True, "removidas": 0, "mensagem": "Nenhuma curva encontrada."}
+
+        campos = []
+        try:
+            with open(caminho, mode="r", encoding="utf-8-sig", newline="") as arquivo:
+                leitor = csv.DictReader(arquivo)
+                campos = list(leitor.fieldnames or [])
+        except Exception:
+            campos = list(linhas[0].keys()) if linhas else []
+
+        codigo_fipe = str(veiculo.codigo_fipe or "").strip()
+        marca_id = str(veiculo.codigo_marca or "").strip()
+        modelo_id = str(veiculo.codigo_modelo or "").strip()
+        ano_codigo = str(veiculo.codigo_ano or "").strip()
+
+        def eh_calculada_web(row: dict[str, Any]) -> bool:
+            fonte = str(row.get("fonte_ajuste", "") or "").lower()
+            camada = str(row.get("camada_ev_status", "") or "").lower()
+            origem = str(row.get("origem_curva", "") or "").lower()
+            return (
+                "calculadora_depreciacao_v2" in fonte
+                or "calculada_web" in camada
+                or "cálculo sob demanda" in origem
+                or "calculo sob demanda" in origem
+            )
+
+        def mesma_curva(row: dict[str, Any]) -> bool:
+            if not eh_calculada_web(row):
+                return False
+            if tipo_norm == "eletrico":
+                if marca_id and modelo_id:
+                    if str(row.get("marca_id", "") or "").strip() == marca_id and str(row.get("modelo_id", "") or "").strip() == modelo_id:
+                        # Se tiver ano salvo, respeita o ano; se não, remove a curva web do modelo.
+                        row_ano = str(row.get("ano_fipe_codigo", "") or "").strip()
+                        return not ano_codigo or not row_ano or row_ano == ano_codigo
+                return bool(codigo_fipe and str(row.get("codigo_fipe", "") or "").strip() == codigo_fipe)
+            return bool(codigo_fipe and str(row.get("codigo_fipe", "") or "").strip() == codigo_fipe)
+
+        mantidas = []
+        removidas = 0
+        for row in linhas:
+            if mesma_curva(row):
+                removidas += 1
+            else:
+                mantidas.append(row)
+
+        if removidas:
+            caminho.parent.mkdir(parents=True, exist_ok=True)
+            with open(caminho, mode="w", encoding="utf-8-sig", newline="") as arquivo:
+                escritor = csv.DictWriter(arquivo, fieldnames=campos, extrasaction="ignore")
+                escritor.writeheader()
+                for linha in mantidas:
+                    escritor.writerow({campo: linha.get(campo, "") for campo in campos})
+            try:
+                self._ler_csv_cache.cache_clear()
+            except Exception:
+                pass
+
+        return {
+            "ok": True,
+            "removidas": removidas,
+            "mensagem": "Curva calculada removida." if removidas else "Nenhuma curva calculada pela web foi encontrada para remover.",
+        }
 
     def _arquivo_curvas_combustao(self) -> Path:
         return Path(current_app.config["ARQUIVO_CURVAS_COMBUSTAO"])
@@ -412,7 +498,9 @@ class CurvasRepository:
         valor_futuro = parse_float_seguro(curva.get("valor_futuro_base"), 0.0)
         taxa_anual = parse_float_seguro(curva.get("depreciacao_media_anual_percentual"), 0.0)
 
-        if horizonte != 5 and taxa_anual > 0 and valor_atual > 0:
+        if taxa_anual > 0 and valor_atual > 0:
+            # Recalcula sempre a partir do valor FIPE atual selecionado e do horizonte do usuário.
+            # A curva salva fornece a taxa; o valor projetado precisa respeitar a seleção atual.
             valor_futuro = valor_atual * ((1.0 - taxa_anual / 100.0) ** horizonte)
 
         pontos = parse_int_seguro(curva.get("pontos_historicos"), 0)
@@ -430,5 +518,5 @@ class CurvasRepository:
             "confianca": classificar_confianca_eletrico(curva.get("confianca_ev", ""), pontos, janela),
             "pontos_historicos": pontos,
             "janela_historica_meses": janela,
-            "origem_curva": "curva EV salva",
+            "origem_curva": str(curva.get("origem_curva", "curva EV salva") or "curva EV salva"),
         }
