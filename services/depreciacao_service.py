@@ -21,6 +21,7 @@ class DepreciacaoService:
         self.historico = HistoricoRepository()
         self.ipca = IpcaRepository()
         self.fipe = FipeService()
+        self.fipe_historico = FipeHistoricoService()
 
     def status_bases(self) -> dict[str, Any]:
         return self.curvas.status_bases()
@@ -292,24 +293,49 @@ class DepreciacaoService:
             if self._veiculo_zero_km(veiculo):
                 resultado_motor = self._calcular_combustao_zero_km_por_proxy(veiculo)
             else:
-                historico_api, origem_api, ref_api = self._historico_api_v2_price_history(veiculo)
-                historico = historico_api if len(historico_api) >= 2 else self.historico.buscar_historico_combustao_veiculo(veiculo)
-                resultado_motor = calcular_curva_combustao_por_historico(
-                    veiculo=veiculo,
-                    historico=historico,
-                ).to_dict()
-                if len(historico_api) >= 2:
-                    resultado_motor["origem_curva"] = origem_api
-                    resultado_motor["tipo_match"] = "historico_fipe_api_v2_price_history"
-                    auditoria = dict(resultado_motor.get("auditoria_historico") or {})
-                    auditoria.update(ref_api or {})
-                    auditoria["proxy_aplicado"] = False
-                    auditoria["fonte_historico"] = "priceHistory API v2"
-                    resultado_motor["auditoria_historico"] = auditoria
+                resultado_motor = self._calcular_combustao_usado_com_historico_prioritario(veiculo)
         except CalculoCombustaoInvalido as exc:
-            resultado_motor = self._calcular_proxy_tecnico(veiculo, tipo="combustao", auditoria_origem=exc.auditoria, mensagem_origem=str(exc))
+            # Regra V23: não salvar curva automática com zero ponto histórico.
+            # Se o histórico real não veio, a tela deve avisar em vez de gravar uma curva ruim.
+            auditoria = exc.auditoria or {}
+            pontos = parse_int_seguro(auditoria.get("pontos_historicos"), 0)
+            if pontos <= 0:
+                return {
+                    "ok": False,
+                    "status": "historico_insuficiente",
+                    "mensagem": "Não encontrei histórico FIPE suficiente para este modelo. Nenhuma curva foi salva. Tente novamente mais tarde ou use outro ano/modelo.",
+                    "tipo_detectado": tipo_detectado,
+                    "tipo_utilizado": tipo,
+                    "tipo_label": "Combustão",
+                    "aviso_tipo": aviso_tipo,
+                    "veiculo": veiculo.to_dict(),
+                    "auditoria": auditoria,
+                }
+            resultado_motor = self._calcular_proxy_tecnico(veiculo, tipo="combustao", auditoria_origem=auditoria, mensagem_origem=str(exc))
         except Exception as exc:
-            resultado_motor = self._calcular_proxy_tecnico(veiculo, tipo="combustao", auditoria_origem={}, mensagem_origem=str(exc))
+            return {
+                "ok": False,
+                "status": "erro_historico_fipe",
+                "mensagem": f"Não foi possível montar histórico FIPE confiável agora. Nenhuma curva foi salva. Detalhe: {str(exc)[:180]}",
+                "tipo_detectado": tipo_detectado,
+                "tipo_utilizado": tipo,
+                "tipo_label": "Combustão",
+                "aviso_tipo": aviso_tipo,
+                "veiculo": veiculo.to_dict(),
+            }
+
+        if parse_int_seguro(resultado_motor.get("pontos_historicos"), 0) <= 0 and "proxy" in str(resultado_motor.get("tipo_match") or resultado_motor.get("origem_curva") or "").lower():
+            return {
+                "ok": False,
+                "status": "historico_insuficiente",
+                "mensagem": "Cálculo bloqueado: a curva resultaria em zero ponto histórico. Nenhuma curva foi salva.",
+                "tipo_detectado": tipo_detectado,
+                "tipo_utilizado": tipo,
+                "tipo_label": "Combustão",
+                "aviso_tipo": aviso_tipo,
+                "veiculo": veiculo.to_dict(),
+                "motor": resultado_motor,
+            }
 
         curva_salva = self.curvas.salvar_curva_combustao_calculada(veiculo, resultado_motor)
         resumo = self._montar_resumo_calculado(
@@ -335,6 +361,88 @@ class DepreciacaoService:
             "motor": resultado_motor,
             "proxima_etapa": "Curva salva. Na próxima consulta, o carregamento será automático.",
         }
+
+    def _calcular_combustao_usado_com_historico_prioritario(self, veiculo: VeiculoSelecionado) -> dict[str, Any]:
+        """Calcula usado de combustão priorizando histórico real do próprio modelo.
+
+        Ordem metodológica:
+        1. priceHistory da API v2/fipe.online, quando vier suficiente;
+        2. histórico mensal direto da FIPE web para o mesmo código marca/modelo/ano;
+        3. base local previamente baixada;
+        4. só então proxy, e nunca salvando curva com zero pontos.
+        """
+        tentativas: list[dict[str, Any]] = []
+
+        historico_api, origem_api, ref_api = self._historico_api_v2_price_history(veiculo)
+        if len(historico_api) >= 3:
+            try:
+                resultado = calcular_curva_combustao_por_historico(veiculo=veiculo, historico=historico_api).to_dict()
+                resultado["origem_curva"] = origem_api
+                resultado["tipo_match"] = "historico_fipe_api_v2_price_history"
+                auditoria = dict(resultado.get("auditoria_historico") or {})
+                auditoria.update(ref_api or {})
+                auditoria["proxy_aplicado"] = False
+                auditoria["fonte_historico"] = "priceHistory API v2"
+                auditoria["observacao_metodologica"] = "Histórico próprio retornado pela API v2. Para veículo usado, a projeção parte do valor FIPE atual e continua a depreciação futura a partir da idade atual do veículo."
+                resultado["auditoria_historico"] = auditoria
+                return resultado
+            except CalculoCombustaoInvalido as exc:
+                tentativas.append({"fonte": "priceHistory API v2", "pontos": len(historico_api), "erro": str(exc), "auditoria": exc.auditoria})
+        else:
+            tentativas.append({"fonte": "priceHistory API v2", "pontos": len(historico_api), "erro": "histórico insuficiente", "auditoria": ref_api or {}})
+
+        # Painel antigo: baixa o histórico mês a mês do próprio ano/modelo. Essa é a rota
+        # mais importante para carros usados como Etios 2013, porque não devemos cair
+        # direto em proxy se existe trajetória FIPE do próprio veículo.
+        try:
+            historico_web = self.fipe_historico.montar_historico_mensal(veiculo, limite_meses=84)
+        except Exception as exc:
+            historico_web = []
+            tentativas.append({"fonte": "FIPE web mensal", "pontos": 0, "erro": str(exc)})
+
+        if len(historico_web) >= 3:
+            try:
+                resultado = calcular_curva_combustao_por_historico(veiculo=veiculo, historico=historico_web).to_dict()
+                auditoria = dict(resultado.get("auditoria_historico") or {})
+                auditoria["proxy_aplicado"] = False
+                auditoria["fonte_historico"] = "FIPE web mensal - mesmo modelo/ano"
+                auditoria["tentativas_historico"] = tentativas[:5]
+                auditoria["observacao_metodologica"] = "Curva calculada com histórico mensal real do mesmo modelo/ano FIPE. Para veículo usado, o valor atual já incorpora a depreciação passada; a projeção estima apenas a depreciação futura no horizonte informado."
+                resultado["auditoria_historico"] = auditoria
+                resultado["origem_curva"] = "histórico mensal FIPE do mesmo modelo/ano"
+                resultado["tipo_match"] = "historico_fipe_web_mesmo_modelo_ano"
+                resultado["pontos_historicos"] = int(resultado.get("pontos_historicos") or len(historico_web))
+                return resultado
+            except CalculoCombustaoInvalido as exc:
+                tentativas.append({"fonte": "FIPE web mensal", "pontos": len(historico_web), "erro": str(exc), "auditoria": exc.auditoria})
+
+        historico_local = self.historico.buscar_historico_combustao_veiculo(veiculo)
+        if len(historico_local) >= 3:
+            try:
+                resultado = calcular_curva_combustao_por_historico(veiculo=veiculo, historico=historico_local).to_dict()
+                auditoria = dict(resultado.get("auditoria_historico") or {})
+                auditoria["proxy_aplicado"] = False
+                auditoria["fonte_historico"] = "base local - mesmo veículo"
+                auditoria["tentativas_historico"] = tentativas[:5]
+                resultado["auditoria_historico"] = auditoria
+                resultado["origem_curva"] = "histórico local do mesmo veículo"
+                resultado["tipo_match"] = "historico_local_mesmo_veiculo"
+                return resultado
+            except CalculoCombustaoInvalido as exc:
+                tentativas.append({"fonte": "base local", "pontos": len(historico_local), "erro": str(exc), "auditoria": exc.auditoria})
+
+        auditoria = {
+            "pontos_historicos": max(len(historico_api), len(historico_web), len(historico_local)),
+            "tentativas_historico": tentativas[:8],
+            "mensagem_auditoria": "Nenhum histórico próprio suficiente foi encontrado. Proxy só pode ser usado se houver curva similar tecnicamente compatível.",
+        }
+        proxy = self._calcular_proxy_tecnico(veiculo, tipo="combustao", auditoria_origem=auditoria, mensagem_origem="histórico próprio insuficiente")
+        if parse_int_seguro(proxy.get("pontos_historicos"), 0) <= 0:
+            raise CalculoCombustaoInvalido(
+                "Histórico próprio insuficiente e proxy sem pontos históricos. Nenhuma curva deve ser salva.",
+                auditoria,
+            )
+        return proxy
 
     def _montar_resumo_calculado(
         self,
