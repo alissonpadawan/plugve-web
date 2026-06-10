@@ -45,6 +45,10 @@ class CurvasRepository:
         if curva:
             return self._montar_resultado_combustao(curva, veiculo, tipo_match="codigo_fipe")
 
+        curva = self._buscar_por_chave_familia_modelo(curvas, veiculo)
+        if curva:
+            return self._montar_resultado_combustao(curva, veiculo, tipo_match="familia_modelo")
+
         familia = self.familias.buscar_familia(veiculo.codigo_marca, veiculo.codigo_modelo, veiculo.marca, veiculo.modelo)
         if familia:
             curva = self._buscar_curva_combustao_por_familia(curvas, familia)
@@ -67,6 +71,10 @@ class CurvasRepository:
         curva = self._buscar_ev_por_codigos(curvas, veiculo.codigo_marca, veiculo.codigo_modelo)
         if curva:
             return self._montar_resultado_eletrico(curva, veiculo, tipo_match="codigo_modelo")
+
+        curva = self._buscar_por_chave_familia_modelo(curvas, veiculo)
+        if curva:
+            return self._montar_resultado_eletrico(curva, veiculo, tipo_match="familia_modelo")
 
         curva = self._buscar_por_nome(curvas, veiculo.marca, veiculo.modelo)
         if curva:
@@ -126,6 +134,10 @@ class CurvasRepository:
             "codigo_ano_proxy": resultado.get("codigo_ano_proxy", ""),
             "ano_modelo_proxy": resultado.get("ano_modelo_proxy", ""),
             "nome_proxy": resultado.get("nome_proxy", ""),
+            "familia_modelo_key": resultado.get("familia_modelo_key") or self._familia_modelo_key(veiculo.marca, veiculo.modelo),
+            "ano_coorte_usado": (resultado.get("auditoria_historico") or {}).get("ano_coorte_usado", ""),
+            "idade_entrada_meses": (resultado.get("auditoria_historico") or {}).get("idade_entrada_meses", ""),
+            "metodo_taxa": (resultado.get("auditoria_historico") or {}).get("metodo_taxa", ""),
         }
 
         campos_padrao = [
@@ -135,6 +147,7 @@ class CurvasRepository:
             "observacoes_total", "observacoes_utilizadas", "janela_historica_meses",
             "periodo_inicial", "periodo_final", "fonte_ajuste", "origem_curva", "confianca", "status",
             "tipo_match", "codigo_ano_proxy", "ano_modelo_proxy", "nome_proxy",
+            "familia_modelo_key", "ano_coorte_usado", "idade_entrada_meses", "metodo_taxa",
         ]
         campos = list(campos_existentes or campos_padrao)
         for campo in campos_padrao:
@@ -419,6 +432,72 @@ class CurvasRepository:
                         return row
         return None
 
+
+    def _buscar_por_chave_familia_modelo(self, curvas: list[dict[str, Any]], veiculo: VeiculoSelecionado) -> dict[str, Any] | None:
+        chave = self._familia_modelo_key(veiculo.marca, veiculo.modelo)
+        if not chave:
+            return None
+        candidatos = []
+        for row in curvas:
+            row_chave = str(row.get("familia_modelo_key", "") or "").strip()
+            if row_chave and row_chave == chave:
+                if self._curva_combustao_v2_invalida(row):
+                    continue
+                candidatos.append(row)
+        if not candidatos:
+            return None
+        candidatos.sort(key=lambda r: parse_int_seguro(r.get("observacoes_total") or r.get("pontos_historicos"), 0), reverse=True)
+        return candidatos[0]
+
+    @staticmethod
+    def _familia_modelo_key(marca: str, modelo: str) -> str:
+        texto = normalizar_texto(f"{marca} {modelo}")
+        stop = {
+            "flex", "aut", "automatico", "mec", "manual", "16v", "12v", "8v", "20v",
+            "turbo", "tb", "tsi", "tdi", "diesel", "gasolina", "eletrico", "hibrido", "hev", "mhev",
+            "sedan", "hatch", "plus", "mini", "pro", "limited", "comfort", "comfortline", "highline",
+            "xle", "xls", "gli", "xrei", "xre", "lt", "ltz", "premier", "exclusive", "evolution",
+            "cv", "cvvt", "at", "mt", "ed", "edicao", "especial", "4p", "5p", "2p", "4x2", "4x4",
+        }
+        tokens = [t for t in texto.replace(".", " ").replace("/", " ").split() if len(t) >= 2 and t not in stop and not t.isdigit()]
+        if not tokens:
+            return ""
+        marca_token = tokens[0]
+        # Usa marca + primeiro token forte do modelo. Exemplos: hyundai_hb20, toyota_etios, byd_dolphin.
+        modelo_token = tokens[1] if len(tokens) > 1 else tokens[0]
+        return f"{marca_token}_{modelo_token}"
+
+    @staticmethod
+    def _ano_modelo_int(valor: Any) -> int | None:
+        import re
+        m = re.search(r"(19|20)\d{2}", str(valor or ""))
+        return int(m.group(0)) if m else None
+
+    @staticmethod
+    def _fator_taper_idade(idade_meses: int) -> float:
+        idade_anos = max(0.0, float(idade_meses) / 12.0)
+        if idade_anos <= 1.0:
+            return 1.0
+        if idade_anos <= 3.0:
+            return 1.0 - ((idade_anos - 1.0) / 2.0) * 0.15
+        if idade_anos <= 5.0:
+            return 0.85 - ((idade_anos - 3.0) / 2.0) * 0.15
+        if idade_anos <= 8.0:
+            return 0.70 - ((idade_anos - 5.0) / 3.0) * 0.15
+        if idade_anos <= 12.0:
+            return 0.55 - ((idade_anos - 8.0) / 4.0) * 0.10
+        return 0.45
+
+    @classmethod
+    def _fator_cumulativo_idade(cls, taxa_mensal_percentual: float, idade_entrada_meses: int, horizonte_meses: int) -> float:
+        taxa_base = max(0.0, float(taxa_mensal_percentual or 0.0) / 100.0)
+        fator = 1.0
+        for passo in range(max(0, int(horizonte_meses))):
+            idade = max(0, int(idade_entrada_meses or 0)) + passo
+            taxa_mes = max(0.0, taxa_base * cls._fator_taper_idade(idade))
+            fator *= (1.0 - taxa_mes)
+        return fator
+
     def _buscar_por_nome(self, curvas: list[dict[str, Any]], marca: str, modelo: str) -> dict[str, Any] | None:
         alvo_modelo = normalizar_texto(modelo)
         alvo_marca = normalizar_texto(marca)
@@ -469,7 +548,14 @@ class CurvasRepository:
         valor_atual = veiculo.valor_atual or parse_float_seguro(curva.get("valor_fipe_atual"), 0.0)
         valor_futuro = parse_float_seguro(curva.get(f"valor_{horizonte}ano"), 0.0)
 
-        if valor_futuro <= 0:
+        taxa_mensal_salva = parse_float_seguro(curva.get("taxa_mensal_hibrida_percentual"), 0.0)
+        usa_curva_familia = str(tipo_match) == "familia_modelo" or str(curva.get("tipo_match", "")).startswith("familia_coorte")
+        if taxa_mensal_salva > 0 and valor_atual > 0 and usa_curva_familia:
+            ano_sel = self._ano_modelo_int(veiculo.ano_modelo)
+            from datetime import datetime as _dt
+            idade = 0 if str(veiculo.codigo_ano).startswith("32000") else max(0, (_dt.now().year - int(ano_sel or _dt.now().year)) * 12)
+            valor_futuro = valor_atual * self._fator_cumulativo_idade(taxa_mensal_salva, idade, int(horizonte) * 12)
+        elif valor_futuro <= 0:
             taxa = parse_float_seguro(curva.get("depreciacao_media_anual_principal_percentual"), 0.0) / 100.0
             valor_futuro = valor_atual * ((1.0 - taxa) ** horizonte) if valor_atual > 0 else 0.0
 
@@ -498,7 +584,15 @@ class CurvasRepository:
         valor_futuro = parse_float_seguro(curva.get("valor_futuro_base"), 0.0)
         taxa_anual = parse_float_seguro(curva.get("depreciacao_media_anual_percentual"), 0.0)
 
-        if taxa_anual > 0 and valor_atual > 0:
+        taxa_mensal_salva = parse_float_seguro(curva.get("taxa_mensal_hibrida_percentual"), 0.0)
+        usa_curva_familia = str(tipo_match) == "familia_modelo" or str(curva.get("tipo_match", "")).startswith("familia_coorte")
+        if taxa_mensal_salva > 0 and valor_atual > 0 and usa_curva_familia:
+            ano_sel = self._ano_modelo_int(veiculo.ano_modelo)
+            from datetime import datetime as _dt
+            idade = 0 if str(veiculo.codigo_ano).startswith("32000") else max(0, (_dt.now().year - int(ano_sel or _dt.now().year)) * 12)
+            valor_futuro = valor_atual * self._fator_cumulativo_idade(taxa_mensal_salva, idade, int(horizonte) * 12)
+            taxa_anual = (1.0 - ((valor_futuro / valor_atual) ** (1.0 / max(1, int(horizonte))))) * 100.0 if valor_atual > 0 and valor_futuro > 0 else taxa_anual
+        elif taxa_anual > 0 and valor_atual > 0:
             # Recalcula sempre a partir do valor FIPE atual selecionado e do horizonte do usuário.
             # A curva salva fornece a taxa; o valor projetado precisa respeitar a seleção atual.
             valor_futuro = valor_atual * ((1.0 - taxa_anual / 100.0) ** horizonte)

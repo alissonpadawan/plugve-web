@@ -362,6 +362,348 @@ class DepreciacaoService:
             "proxima_etapa": "Curva salva. Na próxima consulta, o carregamento será automático.",
         }
 
+
+
+    # ------------------------------------------------------------------
+    # V23.1 - Motor por família/coorte
+    # ------------------------------------------------------------------
+    def _calcular_por_familia_coorte(self, veiculo: VeiculoSelecionado, tipo: str) -> dict[str, Any]:
+        """Calcula curva-mãe da família/modelo e aplica ao veículo selecionado.
+
+        Ideia recuperada do painel antigo:
+        - a curva não é do ano selecionado isoladamente;
+        - a curva é da família/modelo, construída a partir de uma coorte base;
+        - preferência: ano atual - 7 anos;
+        - se o modelo saiu de linha, usa o último ano disponível mais próximo;
+        - se o modelo é recente, usa o primeiro ano disponível;
+        - o veículo usado entra na curva na idade atual e projeta só a depreciação futura.
+        """
+        anos_disponiveis = self._listar_anos_usados_validos(veiculo)
+        if not anos_disponiveis:
+            raise CalculoCombustaoInvalido(
+                "Não há anos usados válidos para montar a curva de família.",
+                {"pontos_historicos": 0, "proxy_aplicado": False, "motivo": "sem_anos_usados_validos"},
+            )
+
+        ano_atual = datetime.now().year
+        ano_alvo_coorte = max(2012, ano_atual - 7)
+        ano_selecionado = self._ano_modelo_int(veiculo.ano_modelo) or self._ano_codigo_int(veiculo.codigo_ano)
+        zero_km = self._veiculo_zero_km(veiculo)
+        idade_entrada_meses = 0 if zero_km else max(0, (ano_atual - int(ano_selecionado or ano_atual)) * 12)
+
+        candidatos = self._ordenar_candidatos_coorte(anos_disponiveis, ano_alvo_coorte)
+        tentativas = []
+        melhor_resultado = None
+
+        # Consulta poucos candidatos, na ordem metodológica. Evita queimar a API.
+        for cand in candidatos[:5]:
+            veic_coorte = self._clonar_veiculo_com_ano(veiculo, cand)
+            historico, fonte, auditoria_fonte = self._baixar_historico_coorte(veic_coorte, limite_meses=96)
+            pontos = len(historico)
+            janela = self._janela_historico(historico)
+            tentativas.append({
+                "codigo_ano": cand.get("codigo_ano"),
+                "ano_modelo": cand.get("ano_modelo"),
+                "fonte": fonte,
+                "pontos": pontos,
+                "janela_meses": janela,
+                "auditoria": auditoria_fonte or {},
+            })
+            if pontos < 6 or janela < 12:
+                continue
+            try:
+                melhor_resultado = self._calcular_curva_familia_a_partir_historico(
+                    veiculo_original=veiculo,
+                    veiculo_coorte=veic_coorte,
+                    historico=historico,
+                    tipo=tipo,
+                    fonte=fonte,
+                    ano_alvo_coorte=ano_alvo_coorte,
+                    idade_entrada_meses=idade_entrada_meses,
+                    tentativas=tentativas,
+                    auditoria_fonte=auditoria_fonte or {},
+                )
+                break
+            except CalculoCombustaoInvalido as exc:
+                tentativas[-1]["erro_calculo"] = str(exc)
+                tentativas[-1]["auditoria_calculo"] = exc.auditoria
+                continue
+
+        if melhor_resultado:
+            return melhor_resultado
+
+        raise CalculoCombustaoInvalido(
+            "Não foi possível montar curva de família/coorte com histórico mínimo confiável. Nenhuma curva foi salva.",
+            {
+                "pontos_historicos": max([t.get("pontos", 0) for t in tentativas] or [0]),
+                "proxy_aplicado": False,
+                "ano_alvo_coorte": ano_alvo_coorte,
+                "tentativas_coorte": tentativas,
+                "metodologia": "familia_coorte",
+            },
+        )
+
+    def _listar_anos_usados_validos(self, veiculo: VeiculoSelecionado) -> list[dict[str, Any]]:
+        try:
+            anos = self.fipe.listar_anos(str(veiculo.codigo_marca), str(veiculo.codigo_modelo))
+        except Exception:
+            anos = []
+        saida = []
+        combustivel_alvo = ""
+        partes_atual = str(veiculo.codigo_ano or "").split("-", 1)
+        if len(partes_atual) == 2:
+            combustivel_alvo = partes_atual[1].strip()
+        for item in anos or []:
+            codigo = str(item.get("codigo") or item.get("code") or "").strip()
+            nome = str(item.get("nome") or item.get("name") or "").strip()
+            ano = self._ano_codigo_int(codigo)
+            if not ano or ano < 2012:
+                continue
+            cod_comb = codigo.split("-", 1)[1].strip() if "-" in codigo else ""
+            saida.append({
+                "codigo_ano": codigo,
+                "nome": nome,
+                "ano_modelo": int(ano),
+                "codigo_combustivel": cod_comb,
+                "mesmo_combustivel": bool(combustivel_alvo and cod_comb == combustivel_alvo),
+            })
+        saida.sort(key=lambda x: x["ano_modelo"])
+        return saida
+
+    def _ordenar_candidatos_coorte(self, candidatos: list[dict[str, Any]], ano_alvo: int) -> list[dict[str, Any]]:
+        if not candidatos:
+            return []
+        # Preferir o ano mais próximo do alvo, depois mesmo combustível, depois mais antigo/recente útil.
+        return sorted(
+            candidatos,
+            key=lambda c: (
+                abs(int(c.get("ano_modelo") or 0) - int(ano_alvo)),
+                0 if c.get("mesmo_combustivel") else 1,
+                -int(c.get("ano_modelo") or 0),
+            ),
+        )
+
+    def _clonar_veiculo_com_ano(self, veiculo: VeiculoSelecionado, cand: dict[str, Any]) -> VeiculoSelecionado:
+        ano = str(cand.get("ano_modelo") or "")
+        nome = str(cand.get("nome") or "")
+        combustivel = veiculo.combustivel
+        if nome:
+            partes = nome.split(maxsplit=1)
+            if len(partes) == 2:
+                combustivel = partes[1]
+        return VeiculoSelecionado(
+            tipo=veiculo.tipo,
+            codigo_marca=veiculo.codigo_marca,
+            codigo_modelo=veiculo.codigo_modelo,
+            codigo_ano=str(cand.get("codigo_ano") or ""),
+            codigo_fipe=veiculo.codigo_fipe,
+            marca=veiculo.marca,
+            modelo=veiculo.modelo,
+            ano_modelo=ano,
+            combustivel=combustivel,
+            valor_atual=veiculo.valor_atual,
+            horizonte_anos=veiculo.horizonte_anos,
+        )
+
+    def _baixar_historico_coorte(self, veiculo_coorte: VeiculoSelecionado, limite_meses: int = 96) -> tuple[list[dict[str, Any]], str, dict[str, Any]]:
+        # 1) priceHistory direto do detalhe v2, barato quando disponível.
+        try:
+            detalhe = self.fipe.consultar_preco(str(veiculo_coorte.codigo_marca), str(veiculo_coorte.codigo_modelo), str(veiculo_coorte.codigo_ano))
+            hist = self._extrair_price_history_api(veiculo_coorte, detalhe, str(veiculo_coorte.codigo_ano))
+            if len(hist) >= 6 and self._janela_historico(hist) >= 12:
+                return hist, "priceHistory API v2 - coorte da família", {"modo": "priceHistory", "codigo_ano_coorte": veiculo_coorte.codigo_ano}
+        except Exception as exc:
+            erro_price = str(exc)[:180]
+        else:
+            erro_price = "priceHistory insuficiente"
+
+        # 2) Histórico mensal por referências v2, mais caro, mas confiável para montar a curva-mãe.
+        try:
+            hist = self.fipe_historico.montar_historico_mensal(veiculo_coorte, limite_meses=limite_meses)
+            if hist:
+                return hist, "histórico mensal FIPE v2 - coorte da família", {"modo": "referencias_mensais", "codigo_ano_coorte": veiculo_coorte.codigo_ano, "erro_price_history": erro_price}
+        except Exception as exc:
+            return [], "histórico mensal FIPE v2 indisponível", {"erro_price_history": erro_price, "erro_mensal": str(exc)[:180]}
+
+        return [], "histórico FIPE insuficiente", {"erro_price_history": erro_price}
+
+    def _calcular_curva_familia_a_partir_historico(
+        self,
+        *,
+        veiculo_original: VeiculoSelecionado,
+        veiculo_coorte: VeiculoSelecionado,
+        historico: list[dict[str, Any]],
+        tipo: str,
+        fonte: str,
+        ano_alvo_coorte: int,
+        idade_entrada_meses: int,
+        tentativas: list[dict[str, Any]],
+        auditoria_fonte: dict[str, Any],
+    ) -> dict[str, Any]:
+        hist = self._normalizar_historico_valores(historico)
+        if len(hist) < 6:
+            raise CalculoCombustaoInvalido("Histórico de coorte com menos de 6 pontos.", {"pontos_historicos": len(hist)})
+        janela = self._meses_entre(hist[0]["data_referencia"], hist[-1]["data_referencia"])
+        if janela < 12:
+            raise CalculoCombustaoInvalido("Janela da coorte inferior a 12 meses.", {"pontos_historicos": len(hist), "janela_historica_meses": janela})
+
+        hist_corr = self._corrigir_hist_ipca(hist)
+        hist_util = self._aplicar_pandemia(hist_corr, modo="reduzir_peso")
+        taxas = []
+        taxas_cauda = []
+        for ant, atual in zip(hist_util[:-1], hist_util[1:]):
+            meses = self._meses_entre(ant["data_referencia"], atual["data_referencia"])
+            taxa = self._taxa_mensal_por_intervalo(float(ant["valor_corrigido"]), float(atual["valor_corrigido"]), meses)
+            if taxa is None:
+                continue
+            peso = min(float(ant.get("peso", 1.0)), float(atual.get("peso", 1.0)))
+            # Não deixamos altas de mercado virarem depreciação negativa, mas usamos peso menor.
+            taxas.append((max(0.0, taxa), peso))
+        if not taxas:
+            raise CalculoCombustaoInvalido("Não foi possível extrair taxas da coorte.", {"pontos_historicos": len(hist), "janela_historica_meses": janela})
+
+        valores_taxa = [t for t, p in taxas for _ in range(max(1, int(round(p * 10))))]
+        taxa_curva = float(median(valores_taxa)) if valores_taxa else 0.0
+        ultimas = taxas[-min(8, len(taxas)):]
+        if ultimas:
+            vals_cauda = [t for t, p in ultimas for _ in range(max(1, int(round(p * 10))))]
+            taxa_cauda = float(median(vals_cauda)) if vals_cauda else taxa_curva
+        else:
+            taxa_cauda = taxa_curva
+        taxa_hibrida = (taxa_curva * 0.60) + (taxa_cauda * 0.40)
+        if taxa_hibrida <= 0.0001:
+            raise CalculoCombustaoInvalido("Taxa da coorte ficou praticamente zero.", {"pontos_historicos": len(hist), "janela_historica_meses": janela})
+
+        valor_atual = float(veiculo_original.valor_atual or 0.0)
+        horizonte_meses = max(1, int(veiculo_original.horizonte_anos or 5)) * 12
+        fator_base = self._fator_cumulativo_por_idade(taxa_hibrida, idade_entrada_meses, horizonte_meses)
+        fator_ot = self._fator_cumulativo_por_idade(taxa_hibrida * 0.80, idade_entrada_meses, horizonte_meses)
+        fator_pe = self._fator_cumulativo_por_idade(taxa_hibrida * 1.20, idade_entrada_meses, horizonte_meses)
+        valor_futuro = max(0.0, valor_atual * fator_base)
+        dep_pct = ((valor_atual - valor_futuro) / valor_atual * 100.0) if valor_atual > 0 else 0.0
+        taxa_anual = self._taxa_anual_efetiva_do_fator(fator_base, horizonte_meses)
+        ano_sel = self._ano_modelo_int(veiculo_original.ano_modelo) or self._ano_codigo_int(veiculo_original.codigo_ano)
+        modo = "zero_km_curva_familia_desde_idade_zero" if self._veiculo_zero_km(veiculo_original) else "usado_curva_familia_a_partir_da_idade_atual"
+        if len(hist) >= 36 and janela >= 36:
+            confianca = "ALTA"
+        elif len(hist) >= 12 and janela >= 18:
+            confianca = "MÉDIA"
+        else:
+            confianca = "EXPLORATÓRIA"
+
+        titulo = f"{veiculo_original.marca} {veiculo_original.modelo} {'Zero km' if self._veiculo_zero_km(veiculo_original) else veiculo_original.ano_modelo}".strip()
+        return {
+            "status": "calculado_familia_coorte",
+            "mensagem": "Curva de família/coorte calculada e salva para reutilização.",
+            "veiculo_titulo": titulo,
+            "valor_atual": round(valor_atual, 2),
+            "valor_futuro": round(valor_futuro, 2),
+            "valor_futuro_otimista": round(max(0.0, valor_atual * fator_ot), 2),
+            "valor_futuro_pessimista": round(max(0.0, valor_atual * fator_pe), 2),
+            "depreciacao_percentual": round(max(0.0, dep_pct), 2),
+            "taxa_anual_percentual": round(max(0.0, taxa_anual), 2),
+            "taxa_mensal_percentual": round(max(0.0, taxa_hibrida), 6),
+            "pontos_historicos": len(hist),
+            "janela_historica_meses": janela,
+            "periodo_inicial": hist[0]["data_referencia"],
+            "periodo_final": hist[-1]["data_referencia"],
+            "confianca": confianca,
+            "origem_curva": "curva de família/coorte FIPE",
+            "tipo_match": "familia_coorte_fipe",
+            "familia_modelo_key": self.curvas._familia_modelo_key(veiculo_original.marca, veiculo_original.modelo),
+            "horizonte_anos": max(1, int(veiculo_original.horizonte_anos or 5)),
+            "historico_utilizado": [{"data_referencia": x["data_referencia"], "valor_fipe": x["valor_fipe"], "valor_corrigido": x.get("valor_corrigido", x["valor_fipe"])} for x in hist],
+            "auditoria_historico": {
+                "metodo_taxa": "familia_coorte_ipca_pandemia_taper_idade",
+                "modo_calculo": modo,
+                "proxy_aplicado": False,
+                "fonte_historico": fonte,
+                "ano_alvo_coorte": ano_alvo_coorte,
+                "ano_coorte_usado": veiculo_coorte.ano_modelo,
+                "codigo_ano_coorte": veiculo_coorte.codigo_ano,
+                "ano_modelo_selecionado": ano_sel or "Zero km",
+                "idade_entrada_meses": idade_entrada_meses,
+                "idade_entrada_anos": round(idade_entrada_meses / 12.0, 2),
+                "taxa_mensal_curva_percentual": round(taxa_curva, 6),
+                "taxa_mensal_cauda_percentual": round(taxa_cauda, 6),
+                "taxa_mensal_hibrida_percentual": round(taxa_hibrida, 6),
+                "modo_pandemia": "reduzir_peso",
+                "pontos_historicos": len(hist),
+                "janela_historica_meses": janela,
+                "primeiro_valor": round(float(hist[0]["valor_fipe"]), 2),
+                "ultimo_valor": round(float(hist[-1]["valor_fipe"]), 2),
+                "curva_referencia": f"{veiculo_original.marca} {veiculo_original.modelo} coorte {veiculo_coorte.ano_modelo}",
+                "tentativas_coorte": tentativas[:6],
+                "auditoria_fonte": auditoria_fonte,
+                "observacao_metodologica": "A curva foi construída para a família/modelo a partir de uma coorte FIPE. O veículo selecionado entra na curva conforme sua idade atual; a projeção parte do valor FIPE atual e estima apenas a depreciação futura no horizonte informado.",
+            },
+        }
+
+    def _normalizar_historico_valores(self, historico: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        saida = []
+        vistos = set()
+        for row in historico or []:
+            data = str(row.get("data_referencia") or row.get("mes_referencia") or row.get("referencia") or "")[:7]
+            try:
+                datetime.strptime(data, "%Y-%m")
+            except Exception:
+                continue
+            valor = parse_float_seguro(row.get("valor_fipe") or row.get("preco_fipe") or row.get("price") or row.get("valor"), 0.0)
+            if valor <= 0 or data in vistos:
+                continue
+            vistos.add(data)
+            saida.append({"data_referencia": data, "valor_fipe": float(valor)})
+        saida.sort(key=lambda x: x["data_referencia"])
+        return saida
+
+    def _corrigir_hist_ipca(self, hist: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        indices = self.ipca.carregar_indices()
+        if not indices or not hist:
+            return [dict(x, valor_corrigido=float(x["valor_fipe"])) for x in hist]
+        mes_base = self._resolver_mes_ipca(hist[0]["data_referencia"], indices) or hist[0]["data_referencia"]
+        indice_base = indices.get(mes_base, 0.0)
+        out = []
+        for x in hist:
+            mes = self._resolver_mes_ipca(x["data_referencia"], indices) or x["data_referencia"]
+            idx = indices.get(mes, 0.0)
+            novo = dict(x)
+            if indice_base and idx:
+                novo["valor_corrigido"] = float(x["valor_fipe"]) * (indice_base / idx)
+            else:
+                novo["valor_corrigido"] = float(x["valor_fipe"])
+            out.append(novo)
+        return out
+
+    def _aplicar_pandemia(self, hist: list[dict[str, Any]], modo: str = "reduzir_peso") -> list[dict[str, Any]]:
+        out = []
+        for x in hist:
+            data = str(x.get("data_referencia", ""))
+            pandemia = "2020-03" <= data <= "2021-12"
+            if modo == "excluir" and pandemia:
+                continue
+            novo = dict(x)
+            novo["flag_pandemia"] = pandemia
+            novo["peso"] = 0.30 if pandemia and modo == "reduzir_peso" else 1.0
+            out.append(novo)
+        return out if len(out) >= 3 else hist
+
+    @staticmethod
+    def _janela_historico(historico: list[dict[str, Any]]) -> int:
+        vals = []
+        for row in historico or []:
+            data = str(row.get("data_referencia") or row.get("mes_referencia") or row.get("referencia") or "")[:7]
+            try:
+                datetime.strptime(data, "%Y-%m")
+                vals.append(data)
+            except Exception:
+                continue
+        if len(vals) < 2:
+            return 0
+        vals = sorted(set(vals))
+        d0 = datetime.strptime(vals[0], "%Y-%m")
+        d1 = datetime.strptime(vals[-1], "%Y-%m")
+        return max(0, (d1.year - d0.year) * 12 + d1.month - d0.month)
+
     def _calcular_combustao_usado_com_historico_prioritario(self, veiculo: VeiculoSelecionado) -> dict[str, Any]:
         """Calcula usado de combustão priorizando histórico real do próprio modelo.
 
@@ -372,6 +714,13 @@ class DepreciacaoService:
         4. só então proxy, e nunca salvando curva com zero pontos.
         """
         tentativas: list[dict[str, Any]] = []
+
+        # V23.1: primeiro tenta o motor correto de família/coorte.
+        # Se não houver histórico mínimo, continua com os caminhos antigos como fallback controlado.
+        try:
+            return self._calcular_por_familia_coorte(veiculo, tipo="combustao")
+        except CalculoCombustaoInvalido as exc:
+            tentativas.append({"fonte": "familia/coorte", "erro": str(exc), "auditoria": exc.auditoria})
 
         historico_api, origem_api, ref_api = self._historico_api_v2_price_history(veiculo)
         if len(historico_api) >= 3:
@@ -699,6 +1048,11 @@ class DepreciacaoService:
         4. considera idade de entrada para suavizar a depreciação ao longo do tempo;
         5. marca claramente quando o cálculo é próprio ou proxy.
         """
+        try:
+            return self._calcular_por_familia_coorte(veiculo, tipo="eletrico")
+        except CalculoCombustaoInvalido:
+            pass
+
         historico, origem_hist, ref = self._buscar_historico_ev_compativel(veiculo)
         indices = self.ipca.carregar_indices()
 
