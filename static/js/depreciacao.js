@@ -154,7 +154,7 @@ function montarRelatorioTextual(data, origem = "curva") {
   const pontos = data?.pontos_historicos || detalhes.pontos_historicos;
   const janela = data?.janela_historica_meses || detalhes.janela_historica_meses;
   const origemFinal = data?.origem_curva || detalhes.origem_curva || origem || "curva cadastrada";
-  const auditoria = detalhes.auditoria_historico || data?.motor?.auditoria_historico || {};
+  const auditoriaInfo = detalhes.auditoria_historico || data?.motor?.auditoria_historico || {};
   const perda = valorAtual && valorFuturo ? valorAtual - valorFuturo : 0;
 
   const linhas = [];
@@ -167,26 +167,26 @@ function montarRelatorioTextual(data, origem = "curva") {
   if (perda > 0) linhas.push(`Perda econômica estimada no período: ${formatarMoedaBR(perda)}.`);
   if (dep) linhas.push(`Depreciação acumulada: ${dep.toFixed(2).replace(".", ",")}%.`);
   if (taxa) linhas.push(`Taxa média anual utilizada: ${taxa.toFixed(2).replace(".", ",")}% a.a.`);
-  if (valorInformado(auditoria.modo_calculo)) {
-    if (String(auditoria.modo_calculo).includes("usado")) {
+  if (valorInformado(auditoriaInfo.modo_calculo)) {
+    if (String(auditoriaInfo.modo_calculo).includes("usado")) {
       linhas.push("Critério de projeção: veículo usado; a projeção parte do valor FIPE atual e continua a curva no ponto de idade observado, em vez de reiniciar a depreciação como zero km.");
-    } else if (String(auditoria.modo_calculo).includes("zero")) {
+    } else if (String(auditoriaInfo.modo_calculo).includes("zero")) {
       linhas.push("Critério de projeção: veículo zero km; a projeção inicia na idade zero da curva de depreciação.");
     }
   }
 
-  const auditoria = [];
-  if (valorInformado(origemFinal)) auditoria.push(`Origem técnica da curva: ${origemFinal}.`);
-  if (valorInformado(confianca)) auditoria.push(`Nível de confiança: ${confianca}.`);
-  if (valorInformado(pontos)) auditoria.push(`Pontos históricos considerados: ${pontos}.`);
-  if (valorInformado(janela)) auditoria.push(`Janela histórica observada: ${janela} meses.`);
-  if (valorInformado(auditoria.fonte_historico)) auditoria.push(`Fonte do histórico: ${auditoria.fonte_historico}.`);
-  if (valorInformado(auditoria.curva_referencia)) auditoria.push(`Curva/modelo de referência: ${auditoria.curva_referencia}.`);
-  const proxyTxt = String(origemFinal || "").toLowerCase().includes("proxy") || auditoria.proxy_aplicado;
-  auditoria.push(`Proxy aplicado: ${proxyTxt ? "Sim" : "Não"}.`);
-  if (auditoria.length) {
+  const linhasAuditoria = [];
+  if (valorInformado(origemFinal)) linhasAuditoria.push(`Origem técnica da curva: ${origemFinal}.`);
+  if (valorInformado(confianca)) linhasAuditoria.push(`Nível de confiança: ${confianca}.`);
+  if (valorInformado(pontos)) linhasAuditoria.push(`Pontos históricos considerados: ${pontos}.`);
+  if (valorInformado(janela)) linhasAuditoria.push(`Janela histórica observada: ${janela} meses.`);
+  if (valorInformado(auditoriaInfo.fonte_historico)) linhasAuditoria.push(`Fonte do histórico: ${auditoriaInfo.fonte_historico}.`);
+  if (valorInformado(auditoriaInfo.curva_referencia)) linhasAuditoria.push(`Curva/modelo de referência: ${auditoriaInfo.curva_referencia}.`);
+  const proxyTxt = String(origemFinal || "").toLowerCase().includes("proxy") || auditoriaInfo.proxy_aplicado;
+  linhasAuditoria.push(`Proxy aplicado: ${proxyTxt ? "Sim" : "Não"}.`);
+  if (linhasAuditoria.length) {
     linhas.push("");
-    linhas.push(...auditoria);
+    linhas.push(...linhasAuditoria);
   }
 
   linhas.push("");
