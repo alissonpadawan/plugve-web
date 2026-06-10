@@ -97,15 +97,23 @@ class CoorteDiagnosticoService:
         detalhe_base = None
         pontos_price_history = 0
         erro_price_history = None
-        # Diagnóstico faz uma única consulta de detalhe da coorte base para verificar se a API retorna priceHistory.
-        # Isso evita varredura pesada e não queima a cota inteira.
+        amostragem_referencias = self._coletar_amostragem_referencias(
+            veiculo=veiculo,
+            coorte_base=coorte_base,
+            historico_plano=historico_plano,
+        )
+        pontos_amostrados = int(amostragem_referencias.get("pontos_validos", 0) or 0)
+
+        # Consulta leve adicional: algumas respostas da API já trazem priceHistory direto.
+        # Se vier, ele é usado apenas como indicação; a coleta por referências é mais controlada.
         try:
             detalhe_base = self.fipe.consultar_preco(veiculo.codigo_marca, veiculo.codigo_modelo, coorte_base["codigo"])
             pontos_price_history = len(detalhe_base.get("HistoricoPreco") or detalhe_base.get("priceHistory") or [])
         except Exception as exc:
             erro_price_history = str(exc)[:240]
 
-        qualidade = self._classificar_qualidade(pontos_price_history, historico_plano["janela_teorica_meses"])
+        pontos_para_qualidade = max(pontos_price_history, pontos_amostrados)
+        qualidade = self._classificar_qualidade(pontos_para_qualidade, historico_plano["janela_teorica_meses"])
 
         texto = self._montar_texto(
             veiculo=veiculo,
@@ -121,6 +129,7 @@ class CoorteDiagnosticoService:
             idade_entrada=idade_entrada,
             historico_plano=historico_plano,
             pontos_price_history=pontos_price_history,
+            amostragem_referencias=amostragem_referencias,
             qualidade=qualidade,
             erro_price_history=erro_price_history,
         )
@@ -143,6 +152,7 @@ class CoorteDiagnosticoService:
             "ultimo_ano_disponivel": ultimo_ano,
             "plano_historico": historico_plano,
             "price_history_coorte_base_pontos": pontos_price_history,
+            "amostragem_referencias": amostragem_referencias,
             "price_history_erro": erro_price_history,
             "qualidade_estimativa": qualidade,
             "explicacao_modo": explicacao_modo,
@@ -265,8 +275,21 @@ class CoorteDiagnosticoService:
         linhas.append(f"Modelo recente: {'Sim' if plano.get('modelo_recente') else 'Não'}.")
         linhas.append(f"Modelo descontinuado: {'Sim' if plano.get('modelo_descontinuado') else 'Não'}.")
         linhas.append(f"Pontos priceHistory retornados na coorte base: {ctx['pontos_price_history']}.")
+        am = ctx.get("amostragem_referencias") or {}
+        linhas.append(f"Amostragem adaptativa por referências: {am.get('criterio_passo', '-') }.")
+        linhas.append(f"Referências planejadas: {am.get('pontos_planejados', 0)}; pontos válidos encontrados: {am.get('pontos_validos', 0)}.")
+        if am.get("primeiro_ponto") and am.get("ultimo_ponto"):
+            p0 = am.get("primeiro_ponto") or {}
+            p1 = am.get("ultimo_ponto") or {}
+            linhas.append(f"Primeiro ponto válido: {p0.get('mes')} - {p0.get('valor_formatado')}.")
+            linhas.append(f"Último ponto válido: {p1.get('mes')} - {p1.get('valor_formatado')}.")
+            linhas.append(f"Variação observada na janela: {am.get('variacao_percentual_observada')}%.")
+        if am.get("limite_interrompeu"):
+            linhas.append("Coleta interrompida por limite FIPE. O progresso deve ser retomado depois da janela de 24h.")
+        if am.get("erro"):
+            linhas.append(f"Observação da amostragem: {am.get('erro')}.")
         if ctx.get("erro_price_history"):
-            linhas.append(f"Falha ao consultar priceHistory da coorte base: {ctx['erro_price_history']}.")
+            linhas.append(f"Falha ao consultar priceHistory direto da coorte base: {ctx['erro_price_history']}.")
         linhas.append(f"Qualidade estimada: {ctx['qualidade']}.")
         linhas.append("")
         linhas.append("Como o cálculo definitivo deve agir:")

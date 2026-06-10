@@ -494,6 +494,17 @@ async function solicitarDiagnosticoCoorte() {
       adicionarDetalhe(corpo, "Coorte base", data.coorte_base ? `${data.coorte_base.ano || ""} ${data.coorte_base.nome || ""}`.trim() : "-");
       adicionarDetalhe(corpo, "Idade de entrada", data.idade_entrada_curva_anos != null ? `${data.idade_entrada_curva_anos} ano(s)` : "-");
       adicionarDetalhe(corpo, "Pontos priceHistory", data.price_history_coorte_base_pontos);
+      if (data.amostragem_referencias) {
+        const am = data.amostragem_referencias;
+        adicionarDetalhe(corpo, "Amostragem", am.criterio_passo || "-");
+        adicionarDetalhe(corpo, "Passo", am.passo_meses ? `${am.passo_meses} mês(es)` : "-");
+        adicionarDetalhe(corpo, "Referências planejadas", am.pontos_planejados);
+        adicionarDetalhe(corpo, "Pontos válidos", am.pontos_validos);
+        if (am.primeiro_ponto) adicionarDetalhe(corpo, "Primeiro ponto", `${am.primeiro_ponto.mes || ""} ${am.primeiro_ponto.valor_formatado || ""}`.trim());
+        if (am.ultimo_ponto) adicionarDetalhe(corpo, "Último ponto", `${am.ultimo_ponto.mes || ""} ${am.ultimo_ponto.valor_formatado || ""}`.trim());
+        if (am.variacao_percentual_observada != null) adicionarDetalhe(corpo, "Variação observada", `${am.variacao_percentual_observada}%`);
+        if (am.limite_interrompeu) adicionarDetalhe(corpo, "Limite FIPE", "Coleta interrompida e segura.");
+      }
       adicionarDetalhe(corpo, "Qualidade", data.qualidade_estimativa);
       adicionarDetalhe(corpo, "Observação", "Diagnóstico não salva curva.");
     }

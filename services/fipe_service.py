@@ -343,6 +343,73 @@ class FipeService:
         }
         FipeService._salvar_usage_static(cache_dir, dados)
 
+
+    def _api_root_v2(self) -> str:
+        base = self._base_url().rstrip('/')
+        if base.endswith('/cars') or base.endswith('/motorcycles') or base.endswith('/trucks'):
+            return base.rsplit('/', 1)[0]
+        return base
+
+    def _headers(self) -> dict:
+        token = self._token()
+        return {"X-Subscription-Token": token} if token else {}
+
+    def listar_referencias(self) -> list[dict]:
+        """Lista referências mensais da API FIPE v2. Conta como requisição FIPE."""
+        cache_dir = self._cache_dir()
+        url = f"{self._api_root_v2()}/references"
+        try:
+            self._registrar_requisicao_static(cache_dir, token_ativo=bool(self._token()))
+            resp = requests.get(url, timeout=self._timeout(), headers=self._headers())
+            if resp.status_code >= 400:
+                self._registrar_erro_static(cache_dir, resp.status_code, url, resp.text[:300])
+                raise FipeApiError(f"Erro FIPE {resp.status_code} ao consultar referências.", resp.status_code, "references")
+            dados = resp.json()
+            if not isinstance(dados, list):
+                return []
+            refs = []
+            for r in dados:
+                code = str(r.get('code') or r.get('codigo') or '').strip()
+                month = str(r.get('month') or r.get('mes') or '').strip()
+                if code.isdigit():
+                    refs.append({'code': code, 'month': month})
+            return sorted(refs, key=lambda x: int(x['code']))
+        except FipeApiError:
+            raise
+        except requests.exceptions.Timeout:
+            self._registrar_erro_static(cache_dir, None, url, 'timeout')
+            raise FipeApiError("Tempo esgotado ao consultar referências da FIPE.", None, "references")
+        except requests.exceptions.RequestException as exc:
+            self._registrar_erro_static(cache_dir, None, url, str(exc)[:300])
+            raise FipeApiError("Falha de conexão ao consultar referências da FIPE.", None, "references")
+
+    def consultar_preco_referencia(self, codigo_marca: str, codigo_modelo: str, codigo_ano: str, reference: str):
+        """Consulta detalhe FIPE v2 em uma referência mensal específica. Conta como requisição FIPE."""
+        cache_dir = self._cache_dir()
+        endpoint = f"brands/{codigo_marca}/models/{codigo_modelo}/years/{codigo_ano}"
+        url = f"{self._base_url().rstrip('/')}/{endpoint}"
+        try:
+            self._registrar_requisicao_static(cache_dir, token_ativo=bool(self._token()))
+            resp = requests.get(url, timeout=self._timeout(), headers=self._headers(), params={"reference": str(reference)})
+            if resp.status_code >= 400:
+                self._registrar_erro_static(cache_dir, resp.status_code, url, resp.text[:300])
+                if resp.status_code == 404:
+                    raise FipeApiError("Combinação FIPE não encontrada nesta referência mensal.", 404, endpoint)
+                if resp.status_code == 429:
+                    raise FipeApiError("Limite diário da API FIPE atingido durante coleta histórica.", 429, endpoint)
+                if resp.status_code in (401, 403):
+                    raise FipeApiError("Token FIPE inválido, ausente ou sem permissão nesta consulta histórica.", resp.status_code, endpoint)
+                raise FipeApiError(f"Erro FIPE {resp.status_code} na consulta histórica.", resp.status_code, endpoint)
+            return self._normalizar_preco(resp.json())
+        except FipeApiError:
+            raise
+        except requests.exceptions.Timeout:
+            self._registrar_erro_static(cache_dir, None, url, 'timeout')
+            raise FipeApiError("Tempo esgotado ao consultar histórico FIPE.", None, endpoint)
+        except requests.exceptions.RequestException as exc:
+            self._registrar_erro_static(cache_dir, None, url, str(exc)[:300])
+            raise FipeApiError("Falha de conexão ao consultar histórico FIPE.", None, endpoint)
+
     def uso_requisicoes(self) -> dict:
         dados = self._normalizar_janela_usage(self._ler_usage_static(self._cache_dir()), token_ativo=bool(self._token()))
         self._salvar_usage_static(self._cache_dir(), dados)
