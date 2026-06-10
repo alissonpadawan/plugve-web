@@ -360,7 +360,7 @@ class FipeService:
         url = f"{self._api_root_v2()}/references"
         try:
             self._registrar_requisicao_static(cache_dir, token_ativo=bool(self._token()))
-            resp = requests.get(url, timeout=self._timeout(), headers=self._headers())
+            resp = requests.get(url, timeout=min(self._timeout(), 5), headers=self._headers())
             if resp.status_code >= 400:
                 self._registrar_erro_static(cache_dir, resp.status_code, url, resp.text[:300])
                 raise FipeApiError(f"Erro FIPE {resp.status_code} ao consultar referências.", resp.status_code, "references")
@@ -390,7 +390,7 @@ class FipeService:
         url = f"{self._base_url().rstrip('/')}/{endpoint}"
         try:
             self._registrar_requisicao_static(cache_dir, token_ativo=bool(self._token()))
-            resp = requests.get(url, timeout=self._timeout(), headers=self._headers(), params={"reference": str(reference)})
+            resp = requests.get(url, timeout=min(self._timeout(), 4), headers=self._headers(), params={"reference": str(reference)})
             if resp.status_code >= 400:
                 self._registrar_erro_static(cache_dir, resp.status_code, url, resp.text[:300])
                 if resp.status_code == 404:

@@ -315,13 +315,19 @@ class CoorteDiagnosticoService:
         if janela_refs and planejadas[-1].get("code") != janela_refs[-1].get("code"):
             planejadas.append(janela_refs[-1])
 
-        # Segurança contra estouro de requisições: no máximo 50 pontos por diagnóstico.
-        if len(planejadas) > 50:
-            fator = max(1, round(len(planejadas) / 50))
-            reduzidas = planejadas[::fator]
-            if reduzidas[-1].get("code") != planejadas[-1].get("code"):
-                reduzidas.append(planejadas[-1])
-            planejadas = reduzidas[:50]
+        # Segurança contra estouro de requisições e timeout do Render:
+        # o diagnóstico NÃO pode tentar 30-50 chamadas em uma única requisição HTTP.
+        # Ele faz uma amostra curta e espalhada pela janela histórica.
+        pontos_planejados_original = len(planejadas)
+        limite_diagnostico = 8
+        amostragem_parcial = False
+        if len(planejadas) > limite_diagnostico:
+            amostragem_parcial = True
+            if limite_diagnostico <= 1:
+                planejadas = [planejadas[-1]]
+            else:
+                idxs = sorted(set(round(i * (len(planejadas) - 1) / (limite_diagnostico - 1)) for i in range(limite_diagnostico)))
+                planejadas = [planejadas[i] for i in idxs]
 
         pontos: list[dict[str, Any]] = []
         erros_404 = 0
@@ -372,7 +378,10 @@ class CoorteDiagnosticoService:
             "passo_meses": passo,
             "janela_teorica_meses": janela_meses,
             "referencias_disponiveis": len(referencias),
+            "pontos_planejados_original": pontos_planejados_original,
             "pontos_planejados": len(planejadas),
+            "amostragem_parcial": amostragem_parcial,
+            "limite_diagnostico_por_clique": limite_diagnostico,
             "pontos_validos": len(pontos),
             "erros_404_ignorados": erros_404,
             "erros_outros": erros_outros,
