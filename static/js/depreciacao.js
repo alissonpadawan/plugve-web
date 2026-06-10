@@ -61,6 +61,7 @@ function configurarBotoesResultado(curvaEncontrada, podeCalcularFuturo) {
   const btnCalcular = document.getElementById("btn_calcular_futuro");
   const btnUsarTCO = document.getElementById("btn_usar_no_tco");
   const btnApagar = document.getElementById("btn_apagar_curva");
+  const btnDiag = document.getElementById("btn_diagnostico_coorte");
 
   if (btnDetalhes) {
     btnDetalhes.classList.toggle("hidden", !curvaEncontrada);
@@ -82,6 +83,12 @@ function configurarBotoesResultado(curvaEncontrada, podeCalcularFuturo) {
   if (btnApagar) {
     btnApagar.classList.toggle("hidden", !curvaEncontrada);
     btnApagar.disabled = !curvaEncontrada;
+  }
+
+  if (btnDiag) {
+    const mostrarDiag = curvaEncontrada || podeCalcularFuturo;
+    btnDiag.classList.toggle("hidden", !mostrarDiag);
+    btnDiag.disabled = !mostrarDiag;
   }
 }
 
@@ -447,6 +454,61 @@ function montarPayloadDepreciacao() {
     tipo: document.getElementById("tipo_veiculo")?.value || "auto",
     horizonte_anos: document.getElementById("horizonte_anos")?.value || 5
   };
+}
+
+async function solicitarDiagnosticoCoorte() {
+  const payload = montarPayloadDepreciacao();
+  if (!payload) {
+    atualizarStatusResultado("Selecione um veículo antes de diagnosticar.", "erro");
+    return;
+  }
+
+  const btn = document.getElementById("btn_diagnostico_coorte");
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "Diagnosticando...";
+  }
+
+  mostrarResultadoArea(true);
+  mostrarAuditoriaArea(true);
+  mostrarGraficoBarrasArea(false);
+  atualizarFeedbackCalculo("Montando diagnóstico técnico por família/coorte...", 40, true);
+
+  try {
+    const resp = await fetch("/api/depreciacao/diagnostico_coorte", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    const data = await resp.json();
+    const rel = document.getElementById("relatorio_textual");
+    const corpo = document.getElementById("detalhes_corpo");
+    if (rel) rel.textContent = data.relatorio_textual || data.mensagem || "Diagnóstico concluído.";
+    if (corpo) {
+      corpo.innerHTML = "";
+      adicionarDetalhe(corpo, "Status", data.status);
+      adicionarDetalhe(corpo, "Modo proposto", data.modo_calculo_proposto);
+      adicionarDetalhe(corpo, "Zero km", data.zero_km_detectado ? "Sim" : "Não");
+      adicionarDetalhe(corpo, "Tem zero km na FIPE", data.tem_zero_km_na_fipe ? "Sim" : "Não");
+      adicionarDetalhe(corpo, "Ano-base preferencial", data.ano_base_preferencial);
+      adicionarDetalhe(corpo, "Coorte base", data.coorte_base ? `${data.coorte_base.ano || ""} ${data.coorte_base.nome || ""}`.trim() : "-");
+      adicionarDetalhe(corpo, "Idade de entrada", data.idade_entrada_curva_anos != null ? `${data.idade_entrada_curva_anos} ano(s)` : "-");
+      adicionarDetalhe(corpo, "Pontos priceHistory", data.price_history_coorte_base_pontos);
+      adicionarDetalhe(corpo, "Qualidade", data.qualidade_estimativa);
+      adicionarDetalhe(corpo, "Observação", "Diagnóstico não salva curva.");
+    }
+    atualizarStatusResultado(data.mensagem || "Diagnóstico técnico concluído.", data.ok ? "encontrado" : "erro");
+    atualizarFeedbackCalculo("Diagnóstico concluído. Nenhuma curva foi salva.", 100, true);
+    setTimeout(() => atualizarFeedbackCalculo("", 0, false), 1800);
+  } catch (e) {
+    atualizarStatusResultado("Erro ao montar diagnóstico técnico.", "erro");
+    atualizarFeedbackCalculo("Erro ao montar diagnóstico técnico.", 100, true);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = "Diagnóstico técnico";
+    }
+  }
 }
 
 async function solicitarCalculoSobDemanda() {
@@ -994,6 +1056,7 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("btn_ver_detalhes")?.addEventListener("click", mostrarDetalhes);
   document.getElementById("btn_usar_no_tco")?.addEventListener("click", usarResultadoNoTCOEFechar);
   document.getElementById("btn_calcular_futuro")?.addEventListener("click", solicitarCalculoSobDemanda);
+  document.getElementById("btn_diagnostico_coorte")?.addEventListener("click", solicitarDiagnosticoCoorte);
   document.getElementById("btn_apagar_curva")?.addEventListener("click", apagarCurvaAtual);
   document.getElementById("filtro_curvas_lateral")?.addEventListener("input", filtrarListaCurvasLateral);
   document.getElementById("btn_toggle_base_provisoria")?.addEventListener("click", abrirBaseProvisoria);

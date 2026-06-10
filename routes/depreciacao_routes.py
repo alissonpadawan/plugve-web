@@ -3,9 +3,11 @@ from __future__ import annotations
 from flask import Blueprint, jsonify, request
 
 from services.depreciacao_service import DepreciacaoService
+from services.coorte_diagnostico_service import CoorteDiagnosticoService
 
 depreciacao_bp = Blueprint("depreciacao", __name__)
 depreciacao_service = DepreciacaoService()
+coorte_diagnostico_service = CoorteDiagnosticoService()
 
 
 @depreciacao_bp.route("/status")
@@ -49,3 +51,13 @@ def apagar_curva():
         return jsonify(resultado)
     except Exception as exc:
         return jsonify({"ok": False, "mensagem": str(exc)}), 200
+
+
+@depreciacao_bp.route("/diagnostico_coorte", methods=["POST"])
+def diagnostico_coorte():
+    payload = request.get_json(silent=True) or {}
+    try:
+        resultado = coorte_diagnostico_service.diagnosticar(payload)
+        return jsonify(resultado)
+    except Exception as exc:
+        return jsonify({"ok": False, "status": "erro_diagnostico", "mensagem": str(exc)}), 200
