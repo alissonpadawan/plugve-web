@@ -2,10 +2,19 @@ from __future__ import annotations
 
 from flask import Blueprint, jsonify, request
 
-from services.fipe_service import FipeService
+from services.fipe_service import FipeApiError, FipeService
 
 fipe_bp = Blueprint("fipe", __name__)
 fipe_service = FipeService()
+
+
+def _erro_fipe_response(exc: Exception, default_status: int = 500):
+    if isinstance(exc, FipeApiError):
+        status = exc.status_code or default_status
+        if status < 400:
+            status = default_status
+        return jsonify(exc.to_dict()), status
+    return jsonify({"erro": str(exc), "tipo": "erro_interno"}), default_status
 
 
 @fipe_bp.route("/marcas")
@@ -13,7 +22,7 @@ def marcas():
     try:
         return jsonify(fipe_service.listar_marcas())
     except Exception as exc:
-        return jsonify({"erro": str(exc)}), 500
+        return _erro_fipe_response(exc)
 
 
 @fipe_bp.route("/modelos")
@@ -24,7 +33,10 @@ def modelos():
     try:
         return jsonify(fipe_service.listar_modelos(codigo_marca))
     except Exception as exc:
-        return jsonify({"erro": str(exc), "modelos": []}), 500
+        resp, status = _erro_fipe_response(exc)
+        data = resp.get_json() or {}
+        data["modelos"] = []
+        return jsonify(data), status
 
 
 @fipe_bp.route("/anos")
@@ -36,7 +48,7 @@ def anos():
     try:
         return jsonify(fipe_service.listar_anos(codigo_marca, codigo_modelo))
     except Exception as exc:
-        return jsonify({"erro": str(exc)}), 500
+        return _erro_fipe_response(exc)
 
 
 @fipe_bp.route("/bloquear_modelo", methods=["POST"])
@@ -55,7 +67,10 @@ def bloquear_modelo():
             motivo=str(payload.get("motivo", "sem_ano_2012_ou_zero_km")).strip(),
         ))
     except Exception as exc:
-        return jsonify({"ok": False, "erro": str(exc)}), 500
+        resp, status = _erro_fipe_response(exc)
+        data = resp.get_json() or {}
+        data["ok"] = False
+        return jsonify(data), status
 
 
 @fipe_bp.route("/marcar_zero_km", methods=["POST"])
@@ -73,7 +88,10 @@ def marcar_zero_km():
             nome_modelo=str(payload.get("modelo", "")).strip(),
         ))
     except Exception as exc:
-        return jsonify({"ok": False, "erro": str(exc)}), 500
+        resp, status = _erro_fipe_response(exc)
+        data = resp.get_json() or {}
+        data["ok"] = False
+        return jsonify(data), status
 
 
 @fipe_bp.route("/desmarcar_zero_km", methods=["POST"])
@@ -89,7 +107,10 @@ def desmarcar_zero_km():
             codigo_modelo=codigo_modelo,
         ))
     except Exception as exc:
-        return jsonify({"ok": False, "erro": str(exc)}), 500
+        resp, status = _erro_fipe_response(exc)
+        data = resp.get_json() or {}
+        data["ok"] = False
+        return jsonify(data), status
 
 
 @fipe_bp.route("/marcar_marca_varrida", methods=["POST"])
@@ -106,7 +127,10 @@ def marcar_marca_varrida():
             modelos_bloqueados=int(payload.get("modelos_bloqueados", 0) or 0),
         ))
     except Exception as exc:
-        return jsonify({"ok": False, "erro": str(exc)}), 500
+        resp, status = _erro_fipe_response(exc)
+        data = resp.get_json() or {}
+        data["ok"] = False
+        return jsonify(data), status
 
 
 @fipe_bp.route("/bloquear_marca", methods=["POST"])
@@ -122,7 +146,10 @@ def bloquear_marca():
             motivo=str(payload.get("motivo", "sem_modelos_2012_ou_zero_km")).strip(),
         ))
     except Exception as exc:
-        return jsonify({"ok": False, "erro": str(exc)}), 500
+        resp, status = _erro_fipe_response(exc)
+        data = resp.get_json() or {}
+        data["ok"] = False
+        return jsonify(data), status
 
 
 @fipe_bp.route("/desbloquear_marca", methods=["POST"])
@@ -134,7 +161,59 @@ def desbloquear_marca():
     try:
         return jsonify(fipe_service.desbloquear_marca(codigo_marca))
     except Exception as exc:
-        return jsonify({"ok": False, "erro": str(exc)}), 500
+        resp, status = _erro_fipe_response(exc)
+        data = resp.get_json() or {}
+        data["ok"] = False
+        return jsonify(data), status
+
+
+@fipe_bp.route("/usage")
+def usage():
+    try:
+        return jsonify(fipe_service.uso_requisicoes())
+    except Exception as exc:
+        return _erro_fipe_response(exc)
+
+
+@fipe_bp.route("/varredura_status")
+def varredura_status():
+    codigo_marca = request.args.get("codigo_marca", "").strip()
+    if not codigo_marca:
+        return jsonify({})
+    try:
+        return jsonify(fipe_service.obter_progresso_varredura(codigo_marca))
+    except Exception as exc:
+        return _erro_fipe_response(exc)
+
+
+@fipe_bp.route("/salvar_varredura", methods=["POST"])
+def salvar_varredura():
+    payload = request.get_json(silent=True) or {}
+    codigo_marca = str(payload.get("codigo_marca", "")).strip()
+    if not codigo_marca:
+        return jsonify({"ok": False, "erro": "Parâmetros incompletos."}), 400
+    try:
+        return jsonify(fipe_service.registrar_progresso_varredura(codigo_marca, payload))
+    except Exception as exc:
+        resp, status = _erro_fipe_response(exc)
+        data = resp.get_json() or {}
+        data["ok"] = False
+        return jsonify(data), status
+
+
+@fipe_bp.route("/limpar_varredura", methods=["POST"])
+def limpar_varredura():
+    payload = request.get_json(silent=True) or {}
+    codigo_marca = str(payload.get("codigo_marca", "")).strip()
+    if not codigo_marca:
+        return jsonify({"ok": False, "erro": "Parâmetros incompletos."}), 400
+    try:
+        return jsonify(fipe_service.limpar_progresso_varredura(codigo_marca))
+    except Exception as exc:
+        resp, status = _erro_fipe_response(exc)
+        data = resp.get_json() or {}
+        data["ok"] = False
+        return jsonify(data), status
 
 
 @fipe_bp.route("/preco")
@@ -147,4 +226,4 @@ def preco():
     try:
         return jsonify(fipe_service.consultar_preco(codigo_marca, codigo_modelo, codigo_ano))
     except Exception as exc:
-        return jsonify({"erro": str(exc)}), 500
+        return _erro_fipe_response(exc)

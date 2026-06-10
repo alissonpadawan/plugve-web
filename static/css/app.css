@@ -1091,3 +1091,19 @@ select, input {
 .sweep-status.running { color: #92400e; font-weight: 700; }
 .sweep-status.ok { color: #166534; font-weight: 700; }
 .sweep-status.error { color: #991b1b; font-weight: 700; }
+
+.fipe-usage-box {
+  font-size: .9rem;
+  line-height: 1.35;
+}
+.fipe-error-box {
+  margin: 1rem 0;
+  border-color: #fecaca;
+  background: #fff7f7;
+  color: #991b1b;
+  font-weight: 700;
+}
+.fipe-error-box .button {
+  margin-top: .75rem;
+}
+.hidden { display: none !important; }

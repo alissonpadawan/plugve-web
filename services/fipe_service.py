@@ -1,45 +1,89 @@
 from __future__ import annotations
 
 import json
-import requests
+import os
+from datetime import datetime, timedelta, timezone
 from functools import lru_cache
 from pathlib import Path
+from typing import Any
+
+import requests
 from flask import current_app
+
+
+class FipeApiError(Exception):
+    def __init__(self, message: str, status_code: int | None = None, endpoint: str | None = None):
+        super().__init__(message)
+        self.status_code = status_code
+        self.endpoint = endpoint
+        self.message = message
+
+    @property
+    def tipo(self) -> str:
+        if self.status_code == 429:
+            return "limite_requisicoes"
+        if self.status_code == 404:
+            return "nao_encontrado"
+        if self.status_code in (401, 403):
+            return "token_ou_acesso"
+        if self.status_code is None:
+            return "conexao"
+        return "erro_api"
+
+    def to_dict(self) -> dict:
+        return {
+            "erro": self.message,
+            "status_code": self.status_code,
+            "tipo": self.tipo,
+            "fipe_limitada": self.status_code == 429,
+            "endpoint": self.endpoint,
+        }
 
 
 class FipeService:
     def _cache_dir(self) -> Path:
-        # Cache permanente: no Render fica em /var/data/plugve/fipe_cache.
-        # Assim modelos/marcas bloqueados não voltam após redeploy/restart.
         path = Path(current_app.config.get("FIPE_CACHE_DIR") or (current_app.config["PERSISTENT_DIR"] / "fipe_cache"))
         path.mkdir(parents=True, exist_ok=True)
         return path
 
+    def _json_path(self, nome: str) -> Path:
+        return self._cache_dir() / nome
+
     def _bloqueados_path(self) -> Path:
-        return self._cache_dir() / "modelos_bloqueados.json"
+        return self._json_path("modelos_bloqueados.json")
 
     def _marcas_bloqueadas_path(self) -> Path:
-        return self._cache_dir() / "marcas_bloqueadas.json"
+        return self._json_path("marcas_bloqueadas.json")
 
     def _modelos_zero_km_path(self) -> Path:
-        return self._cache_dir() / "modelos_zero_km.json"
+        return self._json_path("modelos_zero_km.json")
 
     def _marcas_varridas_path(self) -> Path:
-        return self._cache_dir() / "marcas_varridas.json"
+        return self._json_path("marcas_varridas.json")
 
+    def _usage_path(self) -> Path:
+        return self._json_path("requisicoes_fipe.json")
 
-    def _ler_marcas_varridas(self) -> dict:
-        path = self._marcas_varridas_path()
+    def _progresso_varredura_path(self) -> Path:
+        return self._json_path("progresso_varredura.json")
+
+    def _ler_json(self, path: Path, padrao):
         if not path.exists():
-            return {}
+            return padrao
         try:
             return json.loads(path.read_text(encoding="utf-8"))
         except Exception:
-            return {}
+            return padrao
+
+    def _salvar_json(self, path: Path, dados) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(dados, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    def _ler_marcas_varridas(self) -> dict:
+        return self._ler_json(self._marcas_varridas_path(), {})
 
     def _salvar_marcas_varridas(self, dados: dict) -> None:
-        path = self._marcas_varridas_path()
-        path.write_text(json.dumps(dados, ensure_ascii=False, indent=2), encoding="utf-8")
+        self._salvar_json(self._marcas_varridas_path(), dados)
 
     def marca_varrida(self, codigo_marca: str) -> bool:
         return str(codigo_marca) in set(map(str, self._ler_marcas_varridas().keys()))
@@ -53,22 +97,17 @@ class FipeService:
             "modelos_validos": int(modelos_validos or 0),
             "modelos_bloqueados": int(modelos_bloqueados or 0),
             "status": "varrida",
+            "atualizado_em": self._agora_iso(),
         }
         self._salvar_marcas_varridas(dados)
+        self.limpar_progresso_varredura(marca_key)
         return {"ok": True, "marca_varrida": dados[marca_key]}
 
     def _ler_modelos_zero_km(self) -> dict:
-        path = self._modelos_zero_km_path()
-        if not path.exists():
-            return {}
-        try:
-            return json.loads(path.read_text(encoding="utf-8"))
-        except Exception:
-            return {}
+        return self._ler_json(self._modelos_zero_km_path(), {})
 
     def _salvar_modelos_zero_km(self, dados: dict) -> None:
-        path = self._modelos_zero_km_path()
-        path.write_text(json.dumps(dados, ensure_ascii=False, indent=2), encoding="utf-8")
+        self._salvar_json(self._modelos_zero_km_path(), dados)
 
     def modelo_tem_zero_km_salvo(self, codigo_marca: str, codigo_modelo: str) -> bool:
         dados = self._ler_modelos_zero_km()
@@ -84,6 +123,7 @@ class FipeService:
             "marca": nome_marca,
             "modelo": nome_modelo,
             "tem_zero_km": True,
+            "atualizado_em": self._agora_iso(),
         }
         self._salvar_modelos_zero_km(dados)
         return {"ok": True, "modelo_zero_km": dados[marca_key][modelo_key]}
@@ -102,17 +142,10 @@ class FipeService:
         return {"ok": True, "removido": removido}
 
     def _ler_marcas_bloqueadas(self) -> dict:
-        path = self._marcas_bloqueadas_path()
-        if not path.exists():
-            return {}
-        try:
-            return json.loads(path.read_text(encoding="utf-8"))
-        except Exception:
-            return {}
+        return self._ler_json(self._marcas_bloqueadas_path(), {})
 
     def _salvar_marcas_bloqueadas(self, dados: dict) -> None:
-        path = self._marcas_bloqueadas_path()
-        path.write_text(json.dumps(dados, ensure_ascii=False, indent=2), encoding="utf-8")
+        self._salvar_json(self._marcas_bloqueadas_path(), dados)
 
     def marca_bloqueada(self, codigo_marca: str) -> bool:
         return str(codigo_marca) in set(map(str, self._ler_marcas_bloqueadas().keys()))
@@ -124,27 +157,18 @@ class FipeService:
             "codigo_marca": marca_key,
             "marca": nome_marca,
             "motivo": motivo,
+            "bloqueado_em": self._agora_iso(),
         }
         self._salvar_marcas_bloqueadas(dados)
-        # Marca bloqueada não deve permanecer como varrida/normal na lista.
         varridas = self._ler_marcas_varridas()
         if marca_key in varridas:
             varridas.pop(marca_key, None)
             self._salvar_marcas_varridas(varridas)
+        self.limpar_progresso_varredura(marca_key)
         return {"ok": True, "marca_bloqueada": dados[marca_key]}
 
-
     def desbloquear_marca(self, codigo_marca: str) -> dict:
-        """Remove bloqueios provisórios de uma marca para permitir nova varredura segura.
-
-        Mantém o cache de Zero km, porque ele ajuda a destacar modelos novos.
-        Remove:
-        - marca bloqueada
-        - modelos bloqueados da marca
-        - status de marca varrida
-        """
         marca_key = str(codigo_marca)
-
         marcas_bloq = self._ler_marcas_bloqueadas()
         marca_removida = marcas_bloq.pop(marca_key, None) is not None
         self._salvar_marcas_bloqueadas(marcas_bloq)
@@ -158,6 +182,8 @@ class FipeService:
         varrida_removida = varridas.pop(marca_key, None) is not None
         self._salvar_marcas_varridas(varridas)
 
+        self.limpar_progresso_varredura(marca_key)
+
         return {
             "ok": True,
             "codigo_marca": marca_key,
@@ -167,17 +193,10 @@ class FipeService:
         }
 
     def _ler_bloqueados(self) -> dict:
-        path = self._bloqueados_path()
-        if not path.exists():
-            return {}
-        try:
-            return json.loads(path.read_text(encoding="utf-8"))
-        except Exception:
-            return {}
+        return self._ler_json(self._bloqueados_path(), {})
 
     def _salvar_bloqueados(self, dados: dict) -> None:
-        path = self._bloqueados_path()
-        path.write_text(json.dumps(dados, ensure_ascii=False, indent=2), encoding="utf-8")
+        self._salvar_json(self._bloqueados_path(), dados)
 
     def modelo_bloqueado(self, codigo_marca: str, codigo_modelo: str) -> bool:
         dados = self._ler_bloqueados()
@@ -193,47 +212,201 @@ class FipeService:
             "marca": nome_marca,
             "modelo": nome_modelo,
             "motivo": motivo,
+            "bloqueado_em": self._agora_iso(),
         }
         self._salvar_bloqueados(dados)
-
-        marca_bloqueada = False
-        try:
-            modelos_data = self._get_json(f"marcas/{marca_key}/modelos")
-            modelos = modelos_data.get("modelos", []) if isinstance(modelos_data, dict) else []
-            codigos_modelos = {str(m.get("codigo")) for m in modelos if m.get("codigo") is not None}
-            bloqueados_marca = set(map(str, dados.get(marca_key, {}).keys()))
-            if codigos_modelos and codigos_modelos.issubset(bloqueados_marca):
-                self.bloquear_marca_antiga(marca_key, nome_marca, "todos_modelos_sem_ano_2012_ou_zero_km")
-                marca_bloqueada = True
-        except Exception:
-            marca_bloqueada = False
-
-        return {"ok": True, "bloqueado": dados[marca_key][modelo_key], "marca_bloqueada": marca_bloqueada}
+        return {"ok": True, "bloqueado": dados[marca_key][modelo_key], "marca_bloqueada": False}
 
     def _base_url(self) -> str:
-        return current_app.config["FIPE_BASE_URL"]
+        return str(current_app.config.get("FIPE_BASE_URL") or "https://fipe.parallelum.com.br/api/v2/cars")
 
     def _timeout(self) -> int:
         return int(current_app.config.get("REQUEST_TIMEOUT", 15))
 
+    def _token(self) -> str:
+        token = os.environ.get("FIPE_TOKEN", "").strip()
+        if token:
+            return token
+        # Alternativa segura: arquivo fora do GitHub, no disco persistente do Render.
+        token_file = Path(current_app.config["PERSISTENT_DIR"]) / "fipe_token.txt"
+        if token_file.exists():
+            return token_file.read_text(encoding="utf-8").strip()
+        return ""
+
+    def _endpoint_v2(self, endpoint: str) -> str:
+        endpoint = endpoint.strip("/")
+        partes = endpoint.split("/") if endpoint else []
+        if endpoint == "marcas":
+            return "brands"
+        if len(partes) == 3 and partes[0] == "marcas" and partes[2] == "modelos":
+            return f"brands/{partes[1]}/models"
+        if len(partes) == 5 and partes[0] == "marcas" and partes[2] == "modelos" and partes[4] == "anos":
+            return f"brands/{partes[1]}/models/{partes[3]}/years"
+        if len(partes) == 6 and partes[0] == "marcas" and partes[2] == "modelos" and partes[4] == "anos":
+            return f"brands/{partes[1]}/models/{partes[3]}/years/{partes[5]}"
+        return endpoint
+
     def _get_json(self, endpoint: str):
-        return self._get_json_cached(self._base_url(), endpoint, self._timeout())
+        base_url = self._base_url()
+        token = self._token()
+        # Se a URL for da API v2, traduzimos os endpoints internos do app.
+        endpoint_final = self._endpoint_v2(endpoint) if "/api/v2" in base_url else endpoint
+        return self._get_json_cached(base_url, endpoint_final, self._timeout(), token, str(self._cache_dir()))
 
     @staticmethod
-    @lru_cache(maxsize=512)
-    def _get_json_cached(base_url: str, endpoint: str, timeout: int):
+    @lru_cache(maxsize=1024)
+    def _get_json_cached(base_url: str, endpoint: str, timeout: int, token: str, cache_dir: str):
         url = f"{base_url.rstrip('/')}/{endpoint.lstrip('/')}"
-        resp = requests.get(url, timeout=timeout)
-        resp.raise_for_status()
-        return resp.json()
+        headers = {}
+        if token:
+            headers["X-Subscription-Token"] = token
+        try:
+            FipeService._registrar_requisicao_static(Path(cache_dir), token_ativo=bool(token))
+            resp = requests.get(url, timeout=timeout, headers=headers)
+            if resp.status_code >= 400:
+                FipeService._registrar_erro_static(Path(cache_dir), resp.status_code, url, resp.text[:300])
+                if resp.status_code == 429:
+                    raise FipeApiError("Limite diário da API FIPE atingido. Aguarde a janela de 24 horas ou use o token premium/gratuito ampliado.", 429, endpoint)
+                if resp.status_code == 404:
+                    raise FipeApiError("Recurso FIPE não encontrado para esta combinação marca/modelo/ano.", 404, endpoint)
+                if resp.status_code in (401, 403):
+                    raise FipeApiError("Token FIPE inválido, ausente ou sem permissão para esta consulta.", resp.status_code, endpoint)
+                raise FipeApiError(f"Erro FIPE {resp.status_code}: {resp.text[:160]}", resp.status_code, endpoint)
+            return resp.json()
+        except FipeApiError:
+            raise
+        except requests.exceptions.Timeout:
+            FipeService._registrar_erro_static(Path(cache_dir), None, url, "timeout")
+            raise FipeApiError("Tempo esgotado ao consultar a FIPE. Tente novamente em alguns minutos.", None, endpoint)
+        except requests.exceptions.RequestException as exc:
+            FipeService._registrar_erro_static(Path(cache_dir), None, url, str(exc)[:300])
+            raise FipeApiError("Falha de conexão ao consultar a FIPE.", None, endpoint)
+
+    @staticmethod
+    def _agora_iso() -> str:
+        return datetime.now(timezone.utc).isoformat()
+
+    @staticmethod
+    def _ler_usage_static(cache_dir: Path) -> dict:
+        path = cache_dir / "requisicoes_fipe.json"
+        if not path.exists():
+            return {}
+        try:
+            return json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            return {}
+
+    @staticmethod
+    def _salvar_usage_static(cache_dir: Path, dados: dict) -> None:
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        (cache_dir / "requisicoes_fipe.json").write_text(json.dumps(dados, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    @staticmethod
+    def _normalizar_janela_usage(dados: dict, token_ativo: bool) -> dict:
+        agora = datetime.now(timezone.utc)
+        inicio_str = dados.get("window_start")
+        try:
+            inicio = datetime.fromisoformat(inicio_str) if inicio_str else None
+        except Exception:
+            inicio = None
+        if not inicio or agora - inicio >= timedelta(hours=24):
+            dados = {
+                "window_start": agora.isoformat(),
+                "count": 0,
+                "limit": 1000 if token_ativo else 500,
+                "token_ativo": bool(token_ativo),
+                "last_error": None,
+            }
+        dados["limit"] = 1000 if token_ativo else 500
+        dados["token_ativo"] = bool(token_ativo)
+        reset = datetime.fromisoformat(dados["window_start"]) + timedelta(hours=24)
+        dados["reset_at"] = reset.isoformat()
+        dados["remaining"] = max(0, int(dados.get("limit", 500)) - int(dados.get("count", 0)))
+        return dados
+
+    @staticmethod
+    def _registrar_requisicao_static(cache_dir: Path, token_ativo: bool) -> None:
+        dados = FipeService._normalizar_janela_usage(FipeService._ler_usage_static(cache_dir), token_ativo)
+        dados["count"] = int(dados.get("count", 0)) + 1
+        dados["last_request_at"] = FipeService._agora_iso()
+        dados["remaining"] = max(0, int(dados.get("limit", 500)) - int(dados.get("count", 0)))
+        FipeService._salvar_usage_static(cache_dir, dados)
+
+    @staticmethod
+    def _registrar_erro_static(cache_dir: Path, status_code: int | None, url: str, detalhe: str) -> None:
+        dados = FipeService._normalizar_janela_usage(FipeService._ler_usage_static(cache_dir), token_ativo=True)
+        dados["last_error"] = {
+            "status_code": status_code,
+            "url": url,
+            "detalhe": detalhe,
+            "at": FipeService._agora_iso(),
+        }
+        FipeService._salvar_usage_static(cache_dir, dados)
+
+    def uso_requisicoes(self) -> dict:
+        dados = self._normalizar_janela_usage(self._ler_usage_static(self._cache_dir()), token_ativo=bool(self._token()))
+        self._salvar_usage_static(self._cache_dir(), dados)
+        return dados
+
+    def registrar_progresso_varredura(self, codigo_marca: str, dados: dict) -> dict:
+        todos = self._ler_json(self._progresso_varredura_path(), {})
+        key = str(codigo_marca)
+        atual = dict(todos.get(key, {}))
+        atual.update(dados or {})
+        atual["codigo_marca"] = key
+        atual["atualizado_em"] = self._agora_iso()
+        todos[key] = atual
+        self._salvar_json(self._progresso_varredura_path(), todos)
+        return {"ok": True, "progresso": atual}
+
+    def obter_progresso_varredura(self, codigo_marca: str) -> dict:
+        todos = self._ler_json(self._progresso_varredura_path(), {})
+        return todos.get(str(codigo_marca), {}) or {}
+
+    def limpar_progresso_varredura(self, codigo_marca: str) -> dict:
+        todos = self._ler_json(self._progresso_varredura_path(), {})
+        removido = todos.pop(str(codigo_marca), None) is not None
+        self._salvar_json(self._progresso_varredura_path(), todos)
+        return {"ok": True, "removido": removido}
+
+    def _normalizar_marcas(self, marcas: Any) -> list:
+        if not isinstance(marcas, list):
+            return []
+        return [{"codigo": str(m.get("codigo", m.get("code", ""))), "nome": m.get("nome", m.get("name", ""))} for m in marcas]
+
+    def _normalizar_modelos(self, data: Any) -> dict:
+        if isinstance(data, dict):
+            modelos = data.get("modelos") or data.get("models") or []
+        else:
+            modelos = data if isinstance(data, list) else []
+        return {"modelos": [{"codigo": str(m.get("codigo", m.get("code", ""))), "nome": m.get("nome", m.get("name", ""))} for m in modelos]}
+
+    def _normalizar_anos(self, anos: Any) -> list:
+        if not isinstance(anos, list):
+            return []
+        return [{"codigo": str(a.get("codigo", a.get("code", ""))), "nome": a.get("nome", a.get("name", ""))} for a in anos]
+
+    def _normalizar_preco(self, data: Any) -> dict:
+        if not isinstance(data, dict):
+            return {}
+        if "Valor" in data or "CodigoFipe" in data:
+            return data
+        return {
+            "Marca": data.get("brand", ""),
+            "Modelo": data.get("model", ""),
+            "AnoModelo": data.get("modelYear", ""),
+            "Combustivel": data.get("fuel", ""),
+            "CodigoFipe": data.get("codeFipe", ""),
+            "Valor": data.get("price", ""),
+            "MesReferencia": data.get("referenceMonth", ""),
+            "TipoVeiculo": data.get("vehicleType", ""),
+            "HistoricoPreco": data.get("priceHistory", []),
+        }
 
     def listar_marcas(self):
-        marcas = self._get_json("marcas")
+        marcas = self._normalizar_marcas(self._get_json("marcas"))
         bloqueadas = self._ler_marcas_bloqueadas()
         varridas = self._ler_marcas_varridas()
-        if not isinstance(marcas, list):
-            return marcas
-
         resultado = []
         for marca in marcas:
             codigo = str(marca.get("codigo"))
@@ -245,37 +418,33 @@ class FipeService:
         return resultado
 
     def listar_modelos(self, codigo_marca: str, filtrar_bloqueados: bool = True):
-        data = self._get_json(f"marcas/{codigo_marca}/modelos")
+        data = self._normalizar_modelos(self._get_json(f"marcas/{codigo_marca}/modelos"))
         if not filtrar_bloqueados:
             return data
         bloqueados = self._ler_bloqueados().get(str(codigo_marca), {})
-        modelos = data.get("modelos", []) if isinstance(data, dict) else []
+        modelos = data.get("modelos", [])
         zero_km = self._ler_modelos_zero_km().get(str(codigo_marca), {})
-        data = dict(data)
         modelos_filtrados = [m for m in modelos if str(m.get("codigo")) not in bloqueados]
         for modelo in modelos_filtrados:
             if str(modelo.get("codigo")) in zero_km:
                 modelo["tem_zero_km"] = True
         data["modelos"] = modelos_filtrados
         data["modelos_bloqueados_ocultos"] = len(modelos) - len(modelos_filtrados)
-        if not bloqueados:
-            return data
-
-        # Se todos os modelos da marca já foram bloqueados por não terem Zero km
-        # nem ano/modelo >= 2012, a própria marca vira ruído para o usuário.
-        # Ela é bloqueada para não aparecer mais no seletor de marcas.
-        if modelos and not data["modelos"]:
+        if modelos and not data["modelos"] and bloqueados:
             nome_marca = ""
-            for marca in self._get_json("marcas"):
-                if str(marca.get("codigo")) == str(codigo_marca):
-                    nome_marca = marca.get("nome", "")
-                    break
+            try:
+                for marca in self.listar_marcas():
+                    if str(marca.get("codigo")) == str(codigo_marca):
+                        nome_marca = marca.get("nome", "")
+                        break
+            except Exception:
+                pass
             self.bloquear_marca_antiga(str(codigo_marca), nome_marca)
             data["marca_bloqueada"] = True
         return data
 
     def listar_anos(self, codigo_marca: str, codigo_modelo: str):
-        return self._get_json(f"marcas/{codigo_marca}/modelos/{codigo_modelo}/anos")
+        return self._normalizar_anos(self._get_json(f"marcas/{codigo_marca}/modelos/{codigo_modelo}/anos"))
 
     def consultar_preco(self, codigo_marca: str, codigo_modelo: str, codigo_ano: str):
-        return self._get_json(f"marcas/{codigo_marca}/modelos/{codigo_modelo}/anos/{codigo_ano}")
+        return self._normalizar_preco(self._get_json(f"marcas/{codigo_marca}/modelos/{codigo_modelo}/anos/{codigo_ano}"))

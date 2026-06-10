@@ -20,6 +20,8 @@
 
     <div id="status_bases" class="status-box mini">Carregando bases...</div>
 
+    <div id="fipe_usage_box" class="status-box mini fipe-usage-box">FIPE: carregando contador...</div>
+
     <div class="field side-filter">
       <label for="filtro_curvas_lateral">Carros salvos</label>
       <input id="filtro_curvas_lateral" type="text" placeholder="Buscar marca, modelo ou FIPE">
@@ -53,12 +55,15 @@
         </div>
       </div>
 
-      <div class="grid three consulta-row">
+      <div id="fipe_error_box" class="status-box fipe-error-box hidden"></div>
+
+      <div id="fipe_search_area" class="grid three consulta-row">
         <div class="field">
           <label for="fipe_marca">Marca</label>
           <select id="fipe_marca"></select>
           <div class="sweep-actions">
             <button id="btn_varrer_marca" class="button secondary sweep-button" type="button">Varrer marca</button>
+            <button id="btn_continuar_varredura" class="button secondary sweep-button hidden" type="button">Continuar varredura</button>
             <button id="btn_restaurar_marca" class="button secondary sweep-button" type="button">Restaurar marca</button>
           </div>
           <p id="status_varredura_marca" class="sweep-status muted"></p>

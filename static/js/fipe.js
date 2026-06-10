@@ -96,6 +96,7 @@ async function desbloquearMarcaAtual() {
       body: JSON.stringify({ codigo_marca: codigoMarca })
     });
     const data = await resp.json();
+    await carregarUsoFipe();
     await carregarMarcasFipe();
     const marcaNova = document.getElementById("fipe_marca");
     if (marcaNova) marcaNova.value = codigoMarca;
@@ -170,28 +171,135 @@ async function bloquearMarcaPorCodigo(codigoMarca, nomeMarca) {
   } catch (e) {}
 }
 
-async function varrerMarcaAtual() {
+async function carregarUsoFipe() {
+  try {
+    const resp = await fetch("/api/fipe/usage");
+    const data = await resp.json();
+    const box = document.getElementById("fipe_usage_box");
+    if (!box) return data;
+    const usado = Number(data.count || 0);
+    const limite = Number(data.limit || 500);
+    const restante = Math.max(0, limite - usado);
+    const token = data.token_ativo ? "token ativo" : "sem token";
+    box.innerHTML = `<strong>FIPE</strong><br>${usado}/${limite} requisições nas últimas 24h<br>Restantes: ${restante} • ${token}`;
+    return data;
+  } catch (e) {
+    return null;
+  }
+}
+window.carregarUsoFipe = carregarUsoFipe;
+
+function erroFipeEhLimite(data, resp) {
+  return resp?.status === 429 || data?.fipe_limitada || data?.tipo === "limite_requisicoes";
+}
+
+function mostrarErroFipe(data, esconderBusca = true) {
+  const box = document.getElementById("fipe_error_box");
+  const area = document.getElementById("fipe_search_area");
+  const msg = data?.erro || "Erro ao consultar a FIPE.";
+  if (box) {
+    box.classList.remove("hidden");
+    box.innerHTML = `${msg}<br><button class="button secondary" type="button" onclick="tentarReativarFipe()">Tentar novamente</button>`;
+  }
+  if (area && esconderBusca) area.classList.add("hidden");
+}
+
+function limparErroFipe() {
+  document.getElementById("fipe_error_box")?.classList.add("hidden");
+  document.getElementById("fipe_search_area")?.classList.remove("hidden");
+}
+
+async function tentarReativarFipe() {
+  limparErroFipe();
+  await carregarUsoFipe();
+  await carregarMarcasFipe();
+}
+window.tentarReativarFipe = tentarReativarFipe;
+
+async function obterStatusVarredura(codigoMarca) {
+  if (!codigoMarca) return {};
+  try {
+    const resp = await fetch(`/api/fipe/varredura_status?codigo_marca=${encodeURIComponent(codigoMarca)}`);
+    return await resp.json();
+  } catch (e) {
+    return {};
+  }
+}
+
+async function salvarProgressoVarredura(payload) {
+  try {
+    await fetch("/api/fipe/salvar_varredura", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+  } catch (e) {}
+}
+
+async function limparProgressoVarredura(codigoMarca) {
+  try {
+    await fetch("/api/fipe/limpar_varredura", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ codigo_marca: codigoMarca })
+    });
+  } catch (e) {}
+}
+
+async function atualizarBotaoContinuarVarredura() {
+  const marca = document.getElementById("fipe_marca");
+  const btn = document.getElementById("btn_continuar_varredura");
+  if (!btn || !marca?.value) {
+    btn?.classList.add("hidden");
+    return;
+  }
+  const st = await obterStatusVarredura(marca.value);
+  if (st && st.status && st.status !== "concluida" && Number(st.proximo_indice || 0) > 0) {
+    btn.classList.remove("hidden");
+    btn.textContent = `Continuar varredura (${Number(st.proximo_indice || 0)}/${Number(st.total || 0)})`;
+  } else {
+    btn.classList.add("hidden");
+  }
+}
+window.atualizarBotaoContinuarVarredura = atualizarBotaoContinuarVarredura;
+
+async function buscarJsonFipeSeguro(url) {
+  const resp = await fetch(url);
+  const data = await resp.json().catch(() => ({}));
+  await carregarUsoFipe();
+  if (!resp.ok || data?.erro) {
+    const err = new Error(data?.erro || `Erro FIPE ${resp.status}`);
+    err.data = data;
+    err.status = resp.status;
+    throw err;
+  }
+  return { data, resp };
+}
+
+async function varrerMarcaAtual(opcoes = {}) {
   const marca = document.getElementById("fipe_marca");
   const modeloSelect = document.getElementById("fipe_modelo");
   const anoSelect = document.getElementById("fipe_ano");
   const botao = document.getElementById("btn_varrer_marca");
+  const botaoContinuar = document.getElementById("btn_continuar_varredura");
 
   if (!marca || !marca.value) {
     setStatusVarredura("Selecione uma marca antes de varrer.", "error");
     return;
   }
 
+  limparErroFipe();
   const codigoMarca = marca.value;
   const nomeMarca = obterTextoSelecionado(marca);
 
   if (botao) botao.disabled = true;
+  if (botaoContinuar) botaoContinuar.disabled = true;
   setStatusVarredura(`Varrendo ${nomeMarca}... buscando modelos.`, "running");
   limparSelect(anoSelect, "Varredura em andamento...");
 
   try {
     const tipo = document.getElementById("tipo_veiculo")?.value || "auto";
-    const resp = await fetch(`/api/fipe/modelos?codigo_marca=${encodeURIComponent(codigoMarca)}&tipo=${encodeURIComponent(tipo)}`);
-    const data = await resp.json();
+    const { data } = await buscarJsonFipeSeguro(`/api/fipe/modelos?codigo_marca=${encodeURIComponent(codigoMarca)}&tipo=${encodeURIComponent(tipo)}`);
     const modelos = (data.modelos || []).filter(m => m && m.codigo);
 
     if (!modelos.length) {
@@ -203,25 +311,46 @@ async function varrerMarcaAtual() {
       return;
     }
 
-    let validos = 0;
-    let bloqueados = 0;
-    let zeroKm = 0;
+    const progressoAnterior = opcoes.continuar ? await obterStatusVarredura(codigoMarca) : {};
+    let inicio = opcoes.continuar ? Number(progressoAnterior.proximo_indice || 0) : 0;
+    inicio = Math.max(0, Math.min(inicio, modelos.length - 1));
 
-    for (let i = 0; i < modelos.length; i++) {
+    let validos = Number(progressoAnterior.modelos_validos || 0);
+    let bloqueados = Number(progressoAnterior.modelos_bloqueados || 0);
+    let zeroKm = Number(progressoAnterior.modelos_zero_km || 0);
+    if (!opcoes.continuar) {
+      validos = 0; bloqueados = 0; zeroKm = 0;
+    }
+
+    for (let i = inicio; i < modelos.length; i++) {
       const modelo = modelos[i];
       const codigoModelo = String(modelo.codigo);
       const nomeModelo = modelo.nome || "";
       setStatusVarredura(`Varrendo ${nomeMarca}: ${i + 1}/${modelos.length} - ${nomeModelo}`, "running");
 
-      let anos = [];
+      let listaAnos = [];
       try {
-        const anosResp = await fetch(`/api/fipe/anos?codigo_marca=${encodeURIComponent(codigoMarca)}&codigo_modelo=${encodeURIComponent(codigoModelo)}`);
-        anos = await anosResp.json();
-      } catch (e) {
-        anos = [];
+        const { data: anos } = await buscarJsonFipeSeguro(`/api/fipe/anos?codigo_marca=${encodeURIComponent(codigoMarca)}&codigo_modelo=${encodeURIComponent(codigoModelo)}`);
+        listaAnos = Array.isArray(anos) ? anos : [];
+      } catch (err) {
+        await salvarProgressoVarredura({
+          codigo_marca: codigoMarca,
+          marca: nomeMarca,
+          status: erroFipeEhLimite(err.data, { status: err.status }) ? "pausada_limite" : "pausada_erro",
+          erro: err.message,
+          proximo_indice: i,
+          total: modelos.length,
+          modelos_validos: validos,
+          modelos_bloqueados: bloqueados,
+          modelos_zero_km: zeroKm,
+          ultimo_modelo: nomeModelo,
+        });
+        setStatusVarredura(`Varredura pausada em ${i + 1}/${modelos.length}: ${err.message}. Amanhã continue do mesmo ponto.`, "error");
+        if (erroFipeEhLimite(err.data, { status: err.status })) mostrarErroFipe(err.data || { erro: err.message }, false);
+        await atualizarBotaoContinuarVarredura();
+        return;
       }
 
-      const listaAnos = Array.isArray(anos) ? anos : [];
       const temZero = listaAnos.some(item => codigoAnoFipeZeroKm(item.codigo));
       const elegiveis = listaAnos.filter(anoPermitidoNaTela);
 
@@ -232,8 +361,6 @@ async function varrerMarcaAtual() {
           await bloquearModeloPorCodigo(codigoMarca, codigoModelo, nomeMarca, nomeModelo, listaAnos);
           await marcarModeloZeroKmPorCodigo(codigoMarca, codigoModelo, nomeMarca, nomeModelo, false);
         } else {
-          // Não bloqueia modelo relevante/atual ou resposta vazia da API.
-          // Mantém na lista para revisão manual e evita sumir com Pulse, Strada, Toro etc.
           validos++;
         }
       } else {
@@ -246,8 +373,19 @@ async function varrerMarcaAtual() {
         }
       }
 
-      // Respira para a tela atualizar e não parecer travada.
-      await new Promise(resolve => setTimeout(resolve, 25));
+      await salvarProgressoVarredura({
+        codigo_marca: codigoMarca,
+        marca: nomeMarca,
+        status: "em_andamento",
+        proximo_indice: i + 1,
+        total: modelos.length,
+        modelos_validos: validos,
+        modelos_bloqueados: bloqueados,
+        modelos_zero_km: zeroKm,
+        ultimo_modelo: nomeModelo,
+      });
+
+      await new Promise(resolve => setTimeout(resolve, 120));
     }
 
     if (validos <= 0) {
@@ -260,18 +398,22 @@ async function varrerMarcaAtual() {
     }
 
     await marcarMarcaVarrida(codigoMarca, nomeMarca, validos, bloqueados);
+    await limparProgressoVarredura(codigoMarca);
     setStatusVarredura(`${nomeMarca} varrida: ${validos} modelos válidos, ${bloqueados} bloqueados, ${zeroKm} com Zero km.`, "ok");
     await carregarMarcasFipe();
     const marcaNova = document.getElementById("fipe_marca");
     if (marcaNova) marcaNova.value = codigoMarca;
     await carregarModelosFipe();
-  } catch (e) {
-    setStatusVarredura("Erro durante a varredura da marca. Tente novamente.", "error");
+    await atualizarBotaoContinuarVarredura();
+  } catch (err) {
+    setStatusVarredura(`Erro durante a varredura: ${err.message || "tente novamente"}.`, "error");
+    if (erroFipeEhLimite(err.data, { status: err.status })) mostrarErroFipe(err.data || { erro: err.message }, false);
   } finally {
     if (botao) botao.disabled = false;
+    if (botaoContinuar) botaoContinuar.disabled = false;
+    await carregarUsoFipe();
   }
 }
-
 window.varrerMarcaAtual = varrerMarcaAtual;
 
 async function salvarModeloZeroKmSeEncontrado(marca, modelo, anosOriginais) {
@@ -428,8 +570,8 @@ async function carregarMarcasFipe() {
   limparSelect(ano, "Selecione o modelo primeiro");
 
   try {
-    const resp = await fetch("/api/fipe/marcas");
-    const marcas = await resp.json();
+    const { data: marcas } = await buscarJsonFipeSeguro("/api/fipe/marcas");
+    limparErroFipe();
     limparSelect(marca, "Selecione");
     marcas.forEach(item => {
       const opt = document.createElement("option");
@@ -441,11 +583,12 @@ async function carregarMarcasFipe() {
       opt.title = item.marca_varrida ? "Marca já varrida" : "Marca ainda não varrida: aparece em vermelho provisoriamente";
       marca.appendChild(opt);
     });
-  } catch (e) {
-    limparSelect(marca, "Erro ao carregar marcas");
+    await carregarUsoFipe();
+  } catch (err) {
+    limparSelect(marca, "FIPE temporariamente indisponível");
+    mostrarErroFipe(err.data || { erro: err.message || "Erro ao carregar marcas FIPE." }, true);
   }
 }
-
 async function carregarModelosFipe() {
   const marca = document.getElementById("fipe_marca");
   const modelo = document.getElementById("fipe_modelo");
@@ -460,8 +603,8 @@ async function carregarModelosFipe() {
 
   try {
     const tipo = document.getElementById("tipo_veiculo")?.value || "auto";
-    const resp = await fetch(`/api/fipe/modelos?codigo_marca=${encodeURIComponent(marca.value)}&tipo=${encodeURIComponent(tipo)}`);
-    const data = await resp.json();
+    const { data } = await buscarJsonFipeSeguro(`/api/fipe/modelos?codigo_marca=${encodeURIComponent(marca.value)}&tipo=${encodeURIComponent(tipo)}`);
+    limparErroFipe();
     if (data.marca_bloqueada) {
       await carregarMarcasFipe();
       limparSelect(modelo, "Marca ocultada: sem modelos elegíveis");
@@ -490,11 +633,12 @@ async function carregarModelosFipe() {
     if (typeof window.aplicarChecksModelosFipe === "function") {
       window.aplicarChecksModelosFipe();
     }
-  } catch (e) {
-    limparSelect(modelo, "Erro ao carregar modelos");
+    await atualizarBotaoContinuarVarredura();
+  } catch (err) {
+    limparSelect(modelo, "FIPE temporariamente indisponível");
+    mostrarErroFipe(err.data || { erro: err.message || "Erro ao carregar modelos FIPE." }, true);
   }
 }
-
 async function carregarAnosFipe() {
   const marca = document.getElementById("fipe_marca");
   const modelo = document.getElementById("fipe_modelo");
@@ -508,8 +652,8 @@ async function carregarAnosFipe() {
 
   try {
     const url = `/api/fipe/anos?codigo_marca=${encodeURIComponent(marca.value)}&codigo_modelo=${encodeURIComponent(modelo.value)}`;
-    const resp = await fetch(url);
-    const anos = await resp.json();
+    const { data: anos } = await buscarJsonFipeSeguro(url);
+    limparErroFipe();
     const anosElegiveis = Array.isArray(anos) ? anos.filter(anoPermitidoNaTela) : [];
     await salvarModeloZeroKmSeEncontrado(marca, modelo, Array.isArray(anos) ? anos : []);
     limparSelect(ano, anosElegiveis.length ? "Selecione" : "Sem anos elegíveis");
@@ -526,11 +670,15 @@ async function carregarAnosFipe() {
       opt.dataset.nome = item.nome;
       ano.appendChild(opt);
     });
-  } catch (e) {
-    limparSelect(ano, "Erro ao carregar anos");
+  } catch (err) {
+    limparSelect(ano, "FIPE temporariamente indisponível");
+    if (erroFipeEhLimite(err.data, { status: err.status })) {
+      mostrarErroFipe(err.data || { erro: err.message }, true);
+    } else {
+      atualizarStatusResultado?.(err.message || "Erro ao carregar anos FIPE.", "erro");
+    }
   }
 }
-
 async function consultarPrecoFipe() {
   const marca = document.getElementById("fipe_marca");
   const modelo = document.getElementById("fipe_modelo");
@@ -539,8 +687,8 @@ async function consultarPrecoFipe() {
 
   try {
     const url = `/api/fipe/preco?codigo_marca=${encodeURIComponent(marca.value)}&codigo_modelo=${encodeURIComponent(modelo.value)}&codigo_ano=${encodeURIComponent(ano.value)}`;
-    const resp = await fetch(url);
-    const data = await resp.json();
+    const { data } = await buscarJsonFipeSeguro(url);
+    limparErroFipe();
 
     ultimoDetalheFipe = {
       codigo_marca: marca.value,
@@ -559,7 +707,11 @@ async function consultarPrecoFipe() {
     await consultarResumoDepreciacao(ultimoDetalheFipe);
   } catch (e) {
     ultimoDetalheFipe = null;
-    atualizarStatusResultado("Erro ao consultar preço FIPE.", "erro");
+    if (erroFipeEhLimite(e.data, { status: e.status })) {
+      mostrarErroFipe(e.data || { erro: e.message }, true);
+    } else {
+      atualizarStatusResultado(e.message || "Erro ao consultar preço FIPE.", "erro");
+    }
   }
 }
 
@@ -613,7 +765,8 @@ function habilitarNavegacaoPorSetasNoModelo() {
 document.addEventListener("DOMContentLoaded", () => {
   carregarMarcasFipe();
 
-  document.getElementById("btn_varrer_marca")?.addEventListener("click", varrerMarcaAtual);
+  document.getElementById("btn_varrer_marca")?.addEventListener("click", () => varrerMarcaAtual({ continuar: false }));
+  document.getElementById("btn_continuar_varredura")?.addEventListener("click", () => varrerMarcaAtual({ continuar: true }));
   document.getElementById("btn_restaurar_marca")?.addEventListener("click", desbloquearMarcaAtual);
 
   document.getElementById("fipe_marca")?.addEventListener("change", () => {
@@ -621,6 +774,7 @@ document.addEventListener("DOMContentLoaded", () => {
     ultimoDetalheFipe = null;
     if (typeof window.resetarFluxoDepreciacao === "function") window.resetarFluxoDepreciacao();
     carregarModelosFipe();
+    atualizarBotaoContinuarVarredura();
   });
   habilitarNavegacaoPorSetasNoModelo();
 

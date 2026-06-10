@@ -32,7 +32,8 @@ class Config:
     ARQUIVO_HISTORICO_COMBUSTAO = DATA_DIR / "combustao" / "historico_fipe_sob_demanda_v18.csv"
     ARQUIVO_HISTORICO_ELETRICO = DATA_DIR / "eletrico" / "historico_fipe_ev_v20.csv"
 
-    FIPE_BASE_URL = "https://parallelum.com.br/fipe/api/v1/carros"
+    FIPE_BASE_URL = os.environ.get("FIPE_BASE_URL", "https://fipe.parallelum.com.br/api/v2/cars")
+    # Token da fipe.online deve ficar no Render como FIPE_TOKEN, não no GitHub.
     REQUEST_TIMEOUT = 15
 
     HORIZONTE_PADRAO_ANOS = 5
