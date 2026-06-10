@@ -748,18 +748,10 @@ function agendarConsultaModeloSelecionado() {
 }
 
 function habilitarNavegacaoPorSetasNoModelo() {
-  const modelo = document.getElementById("fipe_modelo");
-  if (!modelo) return;
-
-  modelo.addEventListener("keydown", (ev) => {
-    if (!["ArrowDown", "ArrowUp", "PageDown", "PageUp", "Home", "End"].includes(ev.key)) return;
-    setTimeout(agendarConsultaModeloSelecionado, 0);
-  });
-
-  modelo.addEventListener("keyup", (ev) => {
-    if (!["ArrowDown", "ArrowUp", "PageDown", "PageUp", "Home", "End"].includes(ev.key)) return;
-    agendarConsultaModeloSelecionado();
-  });
+  // Mantém a navegação nativa por setas do navegador.
+  // Não dispara consulta enquanto o usuário está apenas passando pelos modelos,
+  // porque isso fechava o seletor e fazia a seta "sumir" durante o carregamento.
+  // A consulta acontece no evento change, quando o usuário confirma o modelo.
 }
 
 document.addEventListener("DOMContentLoaded", () => {

@@ -387,56 +387,140 @@ class DepreciacaoService:
     def _historico_api_v2_price_history(self, veiculo: VeiculoSelecionado) -> tuple[list[dict[str, Any]], str, dict[str, Any] | None]:
         """Busca histórico mensal retornado pela API FIPE v2/fipe.online.
 
-        A API nova pode devolver priceHistory junto com o detalhe do veículo.
-        Para seleção Zero km, preferimos usar o ano usado mais recente do mesmo
-        modelo como curva histórica e aplicar essa curva ao valor zero km atual.
-        Isso evita tratar variação de preço de tabela do carro novo como
-        depreciação real.
+        Regra V23 refinada:
+        - Zero km: usa o ano usado mais recente do mesmo modelo como curva histórica.
+        - Usado: tenta ampliar a série com anos do mesmo modelo, preferindo os últimos 7 anos
+          e nunca usando curva de outro modelo quando há possibilidade de histórico próprio.
+        - Se a API retornar poucos pontos, o resultado fica marcado como insuficiente para
+          evitar proxy ruim e impedir curvas de SUV/segmento errado para um carro antigo.
         """
         if not veiculo.codigo_marca or not veiculo.codigo_modelo or not veiculo.codigo_ano:
             return [], "histórico FIPE API v2 não consultado: códigos incompletos", None
 
         codigo_ano_original = str(veiculo.codigo_ano or "").strip()
-        codigo_ano_consulta = codigo_ano_original
         proxy_ano = None
+        codigo_ano_consulta = codigo_ano_original
 
         try:
-            if self._veiculo_zero_km(veiculo):
-                anos = self.fipe.listar_anos(str(veiculo.codigo_marca), str(veiculo.codigo_modelo))
-                candidatos = []
-                for item in anos or []:
-                    cod = str(item.get("codigo", "") or "").strip()
-                    nome = str(item.get("nome", "") or "").strip()
-                    ano_txt = cod.split("-", 1)[0]
-                    if ano_txt == "32000" or not ano_txt.isdigit():
-                        continue
-                    ano_int = int(ano_txt)
-                    if ano_int >= 2012:
-                        candidatos.append((ano_int, cod, nome))
-                if candidatos:
-                    candidatos.sort(reverse=True)
-                    ano_int, cod, nome = candidatos[0]
-                    codigo_ano_consulta = cod
-                    proxy_ano = {"codigo_ano_proxy": cod, "ano_modelo_proxy": ano_int, "nome_proxy": nome}
+            anos = self.fipe.listar_anos(str(veiculo.codigo_marca), str(veiculo.codigo_modelo))
+        except Exception:
+            anos = []
 
-            detalhe = self.fipe.consultar_preco(str(veiculo.codigo_marca), str(veiculo.codigo_modelo), codigo_ano_consulta)
-        except Exception as exc:
-            return [], f"histórico FIPE API v2 indisponível: {exc}", None
+        candidatos = []
+        for item in anos or []:
+            cod = str(item.get("codigo", "") or "").strip()
+            nome = str(item.get("nome", "") or "").strip()
+            ano_txt = cod.split("-", 1)[0]
+            if ano_txt == "32000" or not ano_txt.isdigit():
+                continue
+            ano_int = int(ano_txt)
+            if ano_int >= 2012:
+                candidatos.append((ano_int, cod, nome))
+        candidatos.sort(reverse=True)
 
+        if self._veiculo_zero_km(veiculo):
+            if candidatos:
+                ano_int, cod, nome = candidatos[0]
+                codigo_ano_consulta = cod
+                proxy_ano = {"codigo_ano_proxy": cod, "ano_modelo_proxy": ano_int, "nome_proxy": nome, "zero_km_original": True}
+            codigos_para_buscar = [codigo_ano_consulta] if codigo_ano_consulta else []
+        else:
+            ano_sel = self._ano_modelo_int(veiculo.ano_modelo) or self._ano_codigo_int(codigo_ano_original)
+            # Para usado, compõe histórico do mesmo modelo: do primeiro ano disponível até o atual,
+            # limitado aos últimos 7 anos úteis para economizar requisições.
+            candidatos_ordenados = sorted(candidatos, key=lambda x: x[0])
+            if ano_sel:
+                rel = [c for c in candidatos_ordenados if c[0] >= max(2012, ano_sel - 7) and c[0] <= max(ano_sel, datetime.now().year)]
+                posteriores = [c for c in candidatos_ordenados if c[0] > ano_sel]
+                # inclui alguns anos posteriores do mesmo modelo, pois ajudam a entender a cauda recente da curva
+                rel.extend(posteriores[:2])
+            else:
+                rel = candidatos_ordenados[-7:]
+            # garante o ano escolhido
+            if codigo_ano_original and all(c[1] != codigo_ano_original for c in rel):
+                encontrado = [c for c in candidatos if c[1] == codigo_ano_original]
+                rel = encontrado + rel
+            # dedup e limita para não queimar cota
+            vistos_cod = set()
+            codigos_para_buscar = []
+            for _, cod, _ in rel:
+                if cod and cod not in vistos_cod:
+                    vistos_cod.add(cod)
+                    codigos_para_buscar.append(cod)
+            codigos_para_buscar = codigos_para_buscar[:8] or [codigo_ano_original]
+
+        series = []
+        falhas = []
+        for cod_ano in [c for c in codigos_para_buscar if c]:
+            try:
+                detalhe = self.fipe.consultar_preco(str(veiculo.codigo_marca), str(veiculo.codigo_modelo), cod_ano)
+                serie = self._extrair_price_history_api(veiculo, detalhe, cod_ano)
+                if serie:
+                    series.extend(serie)
+            except Exception as exc:
+                falhas.append({"codigo_ano": cod_ano, "erro": str(exc)[:180]})
+                continue
+
+        # Se não conseguiu juntar histórico, tenta ao menos o detalhe original.
+        if not series and codigo_ano_original and codigo_ano_original not in codigos_para_buscar:
+            try:
+                detalhe = self.fipe.consultar_preco(str(veiculo.codigo_marca), str(veiculo.codigo_modelo), codigo_ano_original)
+                series.extend(self._extrair_price_history_api(veiculo, detalhe, codigo_ano_original))
+            except Exception as exc:
+                falhas.append({"codigo_ano": codigo_ano_original, "erro": str(exc)[:180]})
+
+        # Consolida por mês, preferindo pontos do ano selecionado/proxy e depois mediana dos valores do mesmo mês.
+        por_mes: dict[str, list[float]] = {}
+        meta_por_mes: dict[str, dict[str, Any]] = {}
+        for row in series:
+            mes = str(row.get("data_referencia", "") or "")[:7]
+            valor = parse_float_seguro(row.get("valor_fipe"), 0.0)
+            if not mes or valor <= 0:
+                continue
+            por_mes.setdefault(mes, []).append(valor)
+            meta_por_mes.setdefault(mes, row)
+
+        saida = []
+        for mes in sorted(por_mes.keys()):
+            vals = sorted(v for v in por_mes[mes] if v > 0)
+            if not vals:
+                continue
+            base = dict(meta_por_mes.get(mes) or {})
+            base["data_referencia"] = mes
+            base["valor_fipe"] = round(float(median(vals)), 2)
+            base["origem"] = "fipe_api_v2_price_history_ampliado"
+            saida.append(base)
+
+        janela = self._meses_entre(saida[0]["data_referencia"], saida[-1]["data_referencia"]) if len(saida) >= 2 else 0
+        ref_base = {
+            "fonte": "priceHistory API v2",
+            "codigos_ano_consultados": codigos_para_buscar,
+            "pontos_api": len(saida),
+            "janela_api_meses": janela,
+            "falhas_consulta": falhas[:5],
+            "proxy_aplicado": bool(proxy_ano),
+        }
+        if proxy_ano:
+            ref_base.update(proxy_ano)
+
+        if len(saida) >= 2:
+            if proxy_ano:
+                origem = f"histórico FIPE API v2 do ano {proxy_ano.get('ano_modelo_proxy')} aplicado ao zero km"
+                return saida, origem, {**ref_base, "codigo_ano_original": codigo_ano_original}
+            return saida, "histórico próprio FIPE API v2 ampliado do mesmo modelo", {**ref_base, "proxy_aplicado": False}
+
+        return [], "histórico FIPE API v2 sem pontos suficientes", ref_base
+
+    def _extrair_price_history_api(self, veiculo: VeiculoSelecionado, detalhe: dict[str, Any], codigo_ano_consulta: str) -> list[dict[str, Any]]:
         historico_bruto = detalhe.get("HistoricoPreco") or detalhe.get("priceHistory") or []
         saida = []
         vistos = set()
         for row in historico_bruto if isinstance(historico_bruto, list) else []:
             data_ref = self._parse_mes_referencia_api(row.get("month") or row.get("mes") or row.get("referenceMonth") or "")
             if not data_ref:
-                ref_num = str(row.get("reference") or row.get("referencia") or "").strip()
-                if ref_num.isdigit():
-                    # Sem mês legível, não força data falsa para não contaminar IPCA.
-                    continue
-            valor = parse_float_seguro(row.get("price") or row.get("preco") or row.get("Valor"), 0.0)
-            if not data_ref or valor <= 0:
                 continue
-            if data_ref in vistos:
+            valor = parse_float_seguro(row.get("price") or row.get("preco") or row.get("Valor"), 0.0)
+            if valor <= 0 or data_ref in vistos:
                 continue
             vistos.add(data_ref)
             saida.append({
@@ -452,14 +536,19 @@ class DepreciacaoService:
                 "codigo_ano": codigo_ano_consulta,
                 "origem": "fipe_api_v2_price_history",
             })
-
         saida.sort(key=lambda x: str(x.get("data_referencia", "")))
-        if len(saida) >= 2:
-            if proxy_ano:
-                origem = f"histórico FIPE API v2 do ano {proxy_ano.get('ano_modelo_proxy')} aplicado ao zero km"
-                return saida, origem, {**proxy_ano, "fonte": "priceHistory API v2", "codigo_ano_original": codigo_ano_original, "proxy_aplicado": True}
-            return saida, "histórico próprio FIPE API v2 (priceHistory)", {"fonte": "priceHistory API v2", "proxy_aplicado": False}
-        return [], "histórico FIPE API v2 sem pontos suficientes", {"pontos_api": len(saida), "proxy_aplicado": bool(proxy_ano), **(proxy_ano or {})}
+        return saida
+
+    @staticmethod
+    def _ano_codigo_int(codigo_ano: Any) -> int | None:
+        txt = str(codigo_ano or "").strip().split("-", 1)[0]
+        return int(txt) if txt.isdigit() and txt != "32000" else None
+
+    @staticmethod
+    def _ano_modelo_int(ano_modelo: Any) -> int | None:
+        import re
+        m = re.search(r"(19|20)\d{2}", str(ano_modelo or ""))
+        return int(m.group(0)) if m else None
 
     @staticmethod
     def _parse_mes_referencia_api(texto: Any) -> str | None:
@@ -887,7 +976,11 @@ class DepreciacaoService:
                 score += min(45, acertos * 18)
             if score > melhor[0]:
                 melhor = (score, row)
-        if melhor[0] >= 25:
+        # Evita proxy grosseiro. Para combustão, não pode puxar SUV/picape de outro modelo
+        # só porque é da mesma marca. Se não houver similaridade forte, é melhor usar
+        # mediana conservadora ou exigir recálculo do que salvar uma curva tecnicamente errada.
+        limite = 70 if tipo == "combustao" else 38
+        if melhor[0] >= limite:
             return melhor[1], melhor[0]
         return None, 0
 
