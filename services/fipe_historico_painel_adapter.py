@@ -3,7 +3,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
+import ast
+import json
 import re
+import time
+
+import requests
 
 from services.fipe_service import FipeService, FipeApiError
 from services.text_utils import normalizar_texto, parse_float_seguro
@@ -26,6 +31,170 @@ MESES_PT = {
 }
 
 
+FIPE_WEB_BASE = "https://veiculos.fipe.org.br/api/veiculos"
+HEADERS_WEB_V1917 = {
+    "Content-Type": "application/json; charset=UTF-8",
+    "Referer": "https://veiculos.fipe.org.br/",
+    "Origin": "https://veiculos.fipe.org.br",
+    "User-Agent": "Mozilla/5.0",
+    "Accept": "application/json, text/javascript, */*; q=0.01",
+    "X-Requested-With": "XMLHttpRequest",
+}
+TIMEOUT_WEB_V1917 = 6
+SLEEP_WEB_V1917 = 0.06
+MAX_RETRIES_WEB_V1917 = 1
+CODIGO_TIPO_VEICULO_WEB_CARRO = 1
+
+
+def normalizar_payload_fipe_web_lista(payload: Any) -> list[dict[str, Any]]:
+    if payload is None:
+        return []
+    if isinstance(payload, list):
+        return [item for item in payload if isinstance(item, dict)]
+    if isinstance(payload, dict):
+        for key in ("d", "items", "Items", "result", "results", "Resultados", "Modelos", "Marcas", "Anos"):
+            val = payload.get(key)
+            if isinstance(val, list):
+                return [x for x in val if isinstance(x, dict)]
+            if isinstance(val, dict):
+                nested = normalizar_payload_fipe_web_lista(val)
+                if nested:
+                    return nested
+            if isinstance(val, str):
+                try:
+                    obj = json.loads(val)
+                except Exception:
+                    try:
+                        obj = ast.literal_eval(val)
+                    except Exception:
+                        obj = None
+                nested = normalizar_payload_fipe_web_lista(obj)
+                if nested:
+                    return nested
+        if any(k in payload for k in ("Label", "Value", "Codigo", "Mes", "codigo", "nome")):
+            return [payload]
+    if isinstance(payload, str):
+        try:
+            obj = json.loads(payload)
+        except Exception:
+            try:
+                obj = ast.literal_eval(payload)
+            except Exception:
+                return []
+        return normalizar_payload_fipe_web_lista(obj)
+    return []
+
+
+def normalizar_payload_fipe_web_modelos(payload: Any) -> dict[str, list[dict[str, Any]]]:
+    if payload is None:
+        return {"Modelos": []}
+    if isinstance(payload, dict):
+        if isinstance(payload.get("Modelos"), list):
+            return {"Modelos": [x for x in payload.get("Modelos", []) if isinstance(x, dict)]}
+        if isinstance(payload.get("d"), str):
+            try:
+                obj = json.loads(payload.get("d"))
+            except Exception:
+                try:
+                    obj = ast.literal_eval(payload.get("d"))
+                except Exception:
+                    obj = None
+            if isinstance(obj, dict) and isinstance(obj.get("Modelos"), list):
+                return {"Modelos": [x for x in obj.get("Modelos", []) if isinstance(x, dict)]}
+        modelos = normalizar_payload_fipe_web_lista(payload)
+        return {"Modelos": modelos}
+    if isinstance(payload, str):
+        try:
+            obj = json.loads(payload)
+        except Exception:
+            try:
+                obj = ast.literal_eval(payload)
+            except Exception:
+                obj = None
+        return normalizar_payload_fipe_web_modelos(obj)
+    if isinstance(payload, list):
+        return {"Modelos": [x for x in payload if isinstance(x, dict)]}
+    return {"Modelos": []}
+
+
+class FipeWebHistoricoV1917Client:
+    """Cliente fiel ao painel local V19.17 para histórico FIPE mensal.
+
+    Usa o mesmo fluxo do aplicativo local:
+    ConsultarTabelaDeReferencia -> ConsultarMarcas -> ConsultarModelos ->
+    ConsultarAnoModelo -> ConsultarValorComTodosParametros.
+
+    Não substitui as rotas FIPE atuais do site; é usado apenas pelo diagnóstico
+    V19.17 em lotes pequenos.
+    """
+
+    def __init__(self) -> None:
+        self.session = requests.Session()
+        self.session.headers.update(HEADERS_WEB_V1917)
+
+    def post(self, endpoint: str, payload: dict[str, Any] | None = None) -> Any:
+        url = f"{FIPE_WEB_BASE}/{endpoint}"
+        ultimo_erro: Exception | None = None
+        for tentativa in range(1, MAX_RETRIES_WEB_V1917 + 1):
+            try:
+                resposta = self.session.post(url, json=payload or {}, timeout=TIMEOUT_WEB_V1917)
+                resposta.raise_for_status()
+                dados = resposta.json()
+                time.sleep(SLEEP_WEB_V1917)
+                return dados
+            except Exception as exc:
+                ultimo_erro = exc
+                if tentativa < MAX_RETRIES_WEB_V1917:
+                    time.sleep(0.35 * tentativa)
+                else:
+                    raise ultimo_erro
+        return None
+
+    def consultar_tabela_referencia(self) -> Any:
+        return self.post("ConsultarTabelaDeReferencia")
+
+    def consultar_marcas(self, codigo_tabela_referencia: int) -> Any:
+        return self.post("ConsultarMarcas", {
+            "codigoTabelaReferencia": int(codigo_tabela_referencia),
+            "codigoTipoVeiculo": CODIGO_TIPO_VEICULO_WEB_CARRO,
+        })
+
+    def consultar_modelos(self, codigo_tabela_referencia: int, codigo_marca: str) -> Any:
+        return self.post("ConsultarModelos", {
+            "codigoTabelaReferencia": int(codigo_tabela_referencia),
+            "codigoTipoVeiculo": CODIGO_TIPO_VEICULO_WEB_CARRO,
+            "codigoMarca": str(codigo_marca),
+        })
+
+    def consultar_ano_modelo(self, codigo_tabela_referencia: int, codigo_marca: str, codigo_modelo: str) -> Any:
+        return self.post("ConsultarAnoModelo", {
+            "codigoTabelaReferencia": int(codigo_tabela_referencia),
+            "codigoTipoVeiculo": CODIGO_TIPO_VEICULO_WEB_CARRO,
+            "codigoMarca": str(codigo_marca),
+            "codigoModelo": str(codigo_modelo),
+        })
+
+    def consultar_valor(
+        self,
+        codigo_tabela_referencia: int,
+        codigo_marca: str,
+        codigo_modelo: str,
+        ano_str: str,
+        codigo_tipo_combustivel: int,
+        ano_modelo: int,
+    ) -> Any:
+        return self.post("ConsultarValorComTodosParametros", {
+            "codigoTabelaReferencia": int(codigo_tabela_referencia),
+            "codigoTipoVeiculo": CODIGO_TIPO_VEICULO_WEB_CARRO,
+            "codigoMarca": str(codigo_marca),
+            "codigoModelo": str(codigo_modelo),
+            "ano": str(ano_str),
+            "codigoTipoCombustivel": int(codigo_tipo_combustivel),
+            "anoModelo": int(ano_modelo),
+            "tipoConsulta": "tradicional",
+        })
+
+
 @dataclass
 class PontoHistoricoPainel:
     ok: bool
@@ -39,6 +208,8 @@ class PontoHistoricoPainel:
     modelo_referencia: str = ""
     codigo_ano_referencia: str = ""
     ano_referencia: str = ""
+    codigo_tipo_combustivel: int | None = None
+    ano_modelo_referencia: int | None = None
     estrategia: str = ""
     motivo: str = ""
     debug: dict[str, Any] | None = None
@@ -56,6 +227,8 @@ class PontoHistoricoPainel:
             "modelo_referencia": self.modelo_referencia,
             "codigo_ano_referencia": self.codigo_ano_referencia,
             "ano_referencia": self.ano_referencia,
+            "codigo_tipo_combustivel": self.codigo_tipo_combustivel,
+            "ano_modelo_referencia": self.ano_modelo_referencia,
             "estrategia": self.estrategia,
             "motivo": self.motivo,
             "debug": self.debug or {},
@@ -75,6 +248,7 @@ class FipeHistoricoPainelAdapter:
 
     def __init__(self, fipe: FipeService | None = None) -> None:
         self.fipe = fipe or FipeService()
+        self.web_client = FipeWebHistoricoV1917Client()
 
     @staticmethod
     def parse_mes_referencia(mes: str) -> datetime | None:
@@ -108,10 +282,251 @@ class FipeHistoricoPainelAdapter:
             data_ref = self.parse_mes_referencia(month)
             if not code:
                 continue
-            saida.append({"code": code, "month": month, "data_ref": data_ref})
+            saida.append({"code": code, "month": month, "data_ref": data_ref, "fonte": "fipe_v2"})
         # Se a data foi parseada, usa data. Se não, mantém ordem por código.
         saida.sort(key=lambda x: (x["data_ref"] or datetime.min, int(x["code"]) if x["code"].isdigit() else 0))
         return saida
+
+    def referencias_ordenadas_web_v1917(self) -> list[dict[str, Any]]:
+        refs = normalizar_payload_fipe_web_lista(self.web_client.consultar_tabela_referencia())
+        saida: list[dict[str, Any]] = []
+        for item in refs:
+            codigo = item.get("Codigo") or item.get("codigo") or item.get("Value") or item.get("code")
+            mes = str(item.get("Mes") or item.get("mes") or item.get("Label") or item.get("month") or "").strip()
+            data_ref = self.parse_mes_referencia(mes)
+            if codigo is None or not mes or data_ref is None:
+                continue
+            saida.append({
+                "code": str(codigo).strip(),
+                "codigo_tabela_referencia": int(codigo),
+                "month": mes,
+                "data_ref": data_ref,
+                "fonte": "fipe_web_v1917",
+            })
+        saida.sort(key=lambda x: x["data_ref"])
+        return saida
+
+    @staticmethod
+    def _valor_item_web(item: dict[str, Any]) -> str:
+        return str(item.get("Value") or item.get("value") or item.get("Codigo") or item.get("codigo") or item.get("code") or "").strip()
+
+    @staticmethod
+    def _label_item_web(item: dict[str, Any]) -> str:
+        return str(item.get("Label") or item.get("label") or item.get("Nome") or item.get("nome") or item.get("name") or "").strip()
+
+    def escolher_marca_web_v1917(self, marcas: Any, nome_marca: str) -> dict[str, Any] | None:
+        alvo = normalizar_texto(nome_marca)
+        itens = normalizar_payload_fipe_web_lista(marcas)
+        for item in itens:
+            nome = normalizar_texto(self._label_item_web(item))
+            if nome == alvo:
+                return item
+        for item in itens:
+            nome = normalizar_texto(self._label_item_web(item))
+            if alvo and (alvo in nome or nome in alvo):
+                return item
+        return None
+
+    def escolher_modelo_web_v1917(self, modelos_payload: Any, nome_modelo: str) -> tuple[dict[str, Any] | None, float, dict[str, Any]]:
+        modelos = normalizar_payload_fipe_web_modelos(modelos_payload).get("Modelos", [])
+        alvo_norm = normalizar_texto(nome_modelo)
+        alvo_tokens = self._tokenizar_modelo(nome_modelo)
+        familia = self._familia_principal(nome_modelo)
+        melhor = None
+        melhor_score = 0.0
+        debug = {"familia_alvo": familia, "tokens_alvo": sorted(alvo_tokens), "candidatos": []}
+        for item in modelos:
+            nome = self._label_item_web(item)
+            nome_norm = normalizar_texto(nome)
+            if not nome_norm:
+                continue
+            if nome_norm == alvo_norm:
+                return item, 1.0, {**debug, "match": "exato", "modelo": nome}
+            tokens = self._tokenizar_modelo(nome)
+            inter = len(alvo_tokens & tokens)
+            union = max(1, len(alvo_tokens | tokens))
+            score = inter / union
+            familia_cand = self._familia_principal(nome)
+            if familia and familia_cand == familia:
+                score += 0.35
+            if alvo_norm in nome_norm or nome_norm in alvo_norm:
+                score += 0.20
+            if familia and familia_cand and familia_cand != familia:
+                score -= 0.25
+            debug["candidatos"].append({"nome": nome, "score": round(score, 3), "tokens": sorted(tokens)[:8]})
+            if score > melhor_score:
+                melhor_score = score
+                melhor = item
+        return (melhor, melhor_score, debug) if melhor and melhor_score >= 0.42 else (None, melhor_score, debug)
+
+    def escolher_ano_modelo_web_v1917(self, anos: Any, ano_alvo: int) -> tuple[str, int, int, str] | None:
+        for item in normalizar_payload_fipe_web_lista(anos):
+            value = self._valor_item_web(item)
+            partes = value.split("-")
+            if len(partes) != 2:
+                continue
+            ano_txt, combustivel_txt = partes
+            if ano_txt != str(int(ano_alvo)):
+                continue
+            try:
+                return value, int(combustivel_txt), int(ano_txt), self._label_item_web(item)
+            except Exception:
+                continue
+        return None
+
+    def escolher_ano_zero_km_web_v1917(self, anos: Any, codigo_tipo_combustivel: int | None) -> tuple[str, int, int, str] | None:
+        candidatos: list[tuple[str, int, int, str]] = []
+        for item in normalizar_payload_fipe_web_lista(anos):
+            value = self._valor_item_web(item)
+            partes = value.split("-")
+            if len(partes) != 2:
+                continue
+            ano_txt, combustivel_txt = partes
+            if ano_txt != "32000":
+                continue
+            try:
+                candidatos.append((value, int(combustivel_txt), 32000, self._label_item_web(item) or "Zero KM"))
+            except Exception:
+                continue
+        if not candidatos:
+            return None
+        if codigo_tipo_combustivel is not None:
+            for cand in candidatos:
+                if int(cand[1]) == int(codigo_tipo_combustivel):
+                    return cand
+        return candidatos[0]
+
+    def consultar_ponto_modelo_primeiro_web_v1917(self, *, reference: str, mes_referencia: str, codigo_marca_atual: str, nome_marca: str, nome_modelo: str, ano_base: int, combustivel: str = "") -> PontoHistoricoPainel:
+        debug: dict[str, Any] = {"reference": reference, "mes": mes_referencia, "ano_base": ano_base, "fluxo": "fipe_web_v1917"}
+        try:
+            codigo_ref = int(str(reference))
+            marcas = self.web_client.consultar_marcas(codigo_ref)
+            marca = self.escolher_marca_web_v1917(marcas, nome_marca)
+            if not marca:
+                return PontoHistoricoPainel(False, reference, mes_referencia, motivo="marca_nao_encontrada_na_referencia_web", debug={**debug, "marcas": len(normalizar_payload_fipe_web_lista(marcas))})
+            codigo_marca = self._valor_item_web(marca)
+            modelos_payload = self.web_client.consultar_modelos(codigo_ref, codigo_marca)
+            modelo, score, dbg_modelo = self.escolher_modelo_web_v1917(modelos_payload, nome_modelo)
+            if not modelo:
+                modelos = normalizar_payload_fipe_web_modelos(modelos_payload).get("Modelos", [])
+                return PontoHistoricoPainel(False, reference, mes_referencia, motivo="modelo_nao_encontrado_na_referencia_web", codigo_marca_referencia=codigo_marca, debug={**debug, "modelos": len(modelos), "score_melhor": round(score, 3), "modelo_debug": dbg_modelo})
+            codigo_modelo = self._valor_item_web(modelo)
+            anos = self.web_client.consultar_ano_modelo(codigo_ref, codigo_marca, codigo_modelo)
+            ano_info = self.escolher_ano_modelo_web_v1917(anos, int(ano_base))
+            if not ano_info:
+                return PontoHistoricoPainel(False, reference, mes_referencia, motivo="ano_nao_encontrado_na_referencia_web", codigo_marca_referencia=codigo_marca, codigo_modelo_referencia=codigo_modelo, modelo_referencia=self._label_item_web(modelo), debug={**debug, "anos": len(normalizar_payload_fipe_web_lista(anos))})
+            ano_str, codigo_tipo_combustivel, ano_modelo, label_ano = ano_info
+            valor_payload = self.web_client.consultar_valor(codigo_ref, codigo_marca, codigo_modelo, ano_str, codigo_tipo_combustivel, ano_modelo)
+            valor_txt = str(valor_payload.get("Valor") or valor_payload.get("valor") or "").strip() if isinstance(valor_payload, dict) else ""
+            valor = parse_float_seguro(valor_txt)
+            if not valor or valor <= 0:
+                return PontoHistoricoPainel(False, reference, mes_referencia, motivo="preco_invalido_na_referencia_web", codigo_marca_referencia=codigo_marca, codigo_modelo_referencia=codigo_modelo, codigo_ano_referencia=ano_str, debug=debug)
+            data_dt = self.parse_mes_referencia(mes_referencia)
+            return PontoHistoricoPainel(
+                True,
+                reference,
+                mes_referencia,
+                data_referencia=data_dt.strftime("%Y-%m") if data_dt else None,
+                valor=float(valor),
+                valor_formatado=valor_txt,
+                codigo_marca_referencia=codigo_marca,
+                codigo_modelo_referencia=codigo_modelo,
+                modelo_referencia=self._label_item_web(modelo),
+                codigo_ano_referencia=ano_str,
+                ano_referencia=label_ano or str(ano_base),
+                codigo_tipo_combustivel=int(codigo_tipo_combustivel),
+                ano_modelo_referencia=int(ano_modelo),
+                estrategia="fipe_web_v1917_referencia_marca_modelos_anos_preco",
+                debug={**debug, "score_modelo": round(score, 3), "codigo_marca_web": codigo_marca, "codigo_modelo_web": codigo_modelo},
+            )
+        except Exception as exc:
+            return PontoHistoricoPainel(False, reference, mes_referencia, motivo=f"erro_web_controlado:{type(exc).__name__}:{str(exc)[:160]}", debug=debug)
+
+    def consultar_zero_km_web_v1917(self, *, referencia: dict[str, Any], primeiro_usado: PontoHistoricoPainel) -> PontoHistoricoPainel | None:
+        try:
+            codigo_ref = int(str(referencia.get("code") or referencia.get("codigo_tabela_referencia") or primeiro_usado.reference))
+            anos = self.web_client.consultar_ano_modelo(codigo_ref, primeiro_usado.codigo_marca_referencia, primeiro_usado.codigo_modelo_referencia)
+            zero_info = self.escolher_ano_zero_km_web_v1917(anos, primeiro_usado.codigo_tipo_combustivel)
+            if not zero_info:
+                return None
+            ano_str_zero, codigo_tipo_combustivel_zero, ano_modelo_zero, label_ano_zero = zero_info
+            valor_payload = self.web_client.consultar_valor(
+                codigo_ref,
+                primeiro_usado.codigo_marca_referencia,
+                primeiro_usado.codigo_modelo_referencia,
+                ano_str_zero,
+                codigo_tipo_combustivel_zero,
+                ano_modelo_zero,
+            )
+            valor_txt = str(valor_payload.get("Valor") or valor_payload.get("valor") or "").strip() if isinstance(valor_payload, dict) else ""
+            valor = parse_float_seguro(valor_txt)
+            if not valor or valor <= 0:
+                return None
+            mes = str(referencia.get("month") or primeiro_usado.mes or "")
+            data_dt = self.parse_mes_referencia(mes)
+            if primeiro_usado.data_referencia and data_dt and primeiro_usado.data_referencia == data_dt.strftime("%Y-%m"):
+                data_dt = self._subtrair_um_mes_dt(data_dt)
+                mes = data_dt.strftime("%m/%Y")
+            return PontoHistoricoPainel(
+                True,
+                str(codigo_ref),
+                mes,
+                data_referencia=data_dt.strftime("%Y-%m") if data_dt else None,
+                valor=float(valor),
+                valor_formatado=valor_txt,
+                codigo_marca_referencia=primeiro_usado.codigo_marca_referencia,
+                codigo_modelo_referencia=primeiro_usado.codigo_modelo_referencia,
+                modelo_referencia=primeiro_usado.modelo_referencia,
+                codigo_ano_referencia=ano_str_zero,
+                ano_referencia=label_ano_zero or "Zero KM",
+                codigo_tipo_combustivel=int(codigo_tipo_combustivel_zero),
+                ano_modelo_referencia=int(ano_modelo_zero),
+                estrategia="fipe_web_v1917_zero_km_mes_primeira_aparicao",
+                debug={"tipo": "zero_km", "fonte": "fipe_web_v1917"},
+            )
+        except Exception:
+            return None
+
+    def consultar_preco_usado_web_v1917(self, *, referencia: dict[str, Any], primeiro_usado: PontoHistoricoPainel) -> PontoHistoricoPainel:
+        reference = str(referencia.get("code") or referencia.get("codigo_tabela_referencia") or "")
+        mes = str(referencia.get("month") or "")
+        try:
+            codigo_ref = int(reference)
+            if primeiro_usado.codigo_tipo_combustivel is None or primeiro_usado.ano_modelo_referencia is None:
+                return PontoHistoricoPainel(False, reference, mes, motivo="primeiro_usado_sem_codigo_combustivel_web")
+            valor_payload = self.web_client.consultar_valor(
+                codigo_ref,
+                primeiro_usado.codigo_marca_referencia,
+                primeiro_usado.codigo_modelo_referencia,
+                primeiro_usado.codigo_ano_referencia,
+                int(primeiro_usado.codigo_tipo_combustivel),
+                int(primeiro_usado.ano_modelo_referencia),
+            )
+            valor_txt = str(valor_payload.get("Valor") or valor_payload.get("valor") or "").strip() if isinstance(valor_payload, dict) else ""
+            valor = parse_float_seguro(valor_txt)
+            if not valor or valor <= 0:
+                return PontoHistoricoPainel(False, reference, mes, motivo="preco_invalido_historico_web")
+            data_dt = self.parse_mes_referencia(mes)
+            return PontoHistoricoPainel(
+                True,
+                reference,
+                mes,
+                data_referencia=data_dt.strftime("%Y-%m") if data_dt else None,
+                valor=float(valor),
+                valor_formatado=valor_txt,
+                codigo_marca_referencia=primeiro_usado.codigo_marca_referencia,
+                codigo_modelo_referencia=primeiro_usado.codigo_modelo_referencia,
+                modelo_referencia=primeiro_usado.modelo_referencia,
+                codigo_ano_referencia=primeiro_usado.codigo_ano_referencia,
+                ano_referencia=primeiro_usado.ano_referencia,
+                codigo_tipo_combustivel=primeiro_usado.codigo_tipo_combustivel,
+                ano_modelo_referencia=primeiro_usado.ano_modelo_referencia,
+                estrategia="fipe_web_v1917_reutiliza_codigos_primeira_aparicao",
+                debug={"fonte": "fipe_web_v1917"},
+            )
+        except Exception as exc:
+            return PontoHistoricoPainel(False, reference, mes, motivo=f"erro_web_controlado:{type(exc).__name__}:{str(exc)[:160]}")
+
 
     @staticmethod
     def selecionar_referencias_amostradas(referencias: list[dict[str, Any]], ano_inicio: int, ano_atual: int, max_pontos: int = 6) -> list[dict[str, Any]]:

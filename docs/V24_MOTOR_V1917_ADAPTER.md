@@ -38,7 +38,7 @@ O adapter trabalha por fases e por lotes pequenos:
 5. salva progresso em JSON no disco persistente;
 6. o frontend reaproveita o `job_id` e continua a coleta no próximo clique.
 
-O parâmetro padrão é `max_referencias_por_chamada = 4`, com teto interno de 12.
+O parâmetro padrão é `max_referencias_por_chamada = 4`, com teto interno de 12. Quando a fonte histórica ativa é o fluxo web V19.17 da FIPE, o lote é reduzido internamente para no máximo 2 referências por requisição, porque cada referência exige várias consultas encadeadas.
 
 ## Critério de qualidade
 
@@ -70,3 +70,15 @@ Para reproduzir exatamente a coorte local quando necessário, enviar no payload 
 ```
 
 A comparação esperada é metodológica: coorte/base, primeira aparição, zero km base, quantidade de pontos, janela histórica, taxa para plataforma e relatório técnico.
+
+
+## Hotfix V24.1 — destravamento da coleta FIPE histórica
+
+Após o primeiro teste online do Etios, o diagnóstico parou em `erro_api_fipe` antes de achar primeira aparição e zero km. A correção desta versão é:
+
+- usar como caminho preferencial o mesmo fluxo histórico do painel local V19.17 pela FIPE Web: `ConsultarTabelaDeReferencia`, `ConsultarMarcas`, `ConsultarModelos`, `ConsultarAnoModelo` e `ConsultarValorComTodosParametros`;
+- manter a API v2 apenas como fallback para carregar referências se a FIPE Web não responder;
+- transformar falhas mensais antigas, 404 e referência sem modelo/ano em tentativa controlada, não em erro fatal;
+- preservar erro fatal apenas para autenticação/limite quando aplicável;
+- incluir `codigo_tipo_combustivel` e `ano_modelo_referencia` no ponto da primeira aparição para permitir consultar zero km 32000 e histórico sem recalcular códigos atuais;
+- manter a etapa como diagnóstico: não altera `/api/depreciacao/calcular` e não salva curva definitiva.
