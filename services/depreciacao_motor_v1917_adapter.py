@@ -440,7 +440,7 @@ class DepreciacaoMotorV1917Adapter:
     - nunca salvar curva definitiva nesta rota.
     """
 
-    VERSAO = "V24_4_adapter_v1917_parallel_terminal_hibrido"
+    VERSAO = "V24_5_adapter_v1917_publico_publico_terminal"
 
     def __init__(self, fipe: FipeService | None = None) -> None:
         self.fipe = fipe or FipeService()
@@ -465,6 +465,15 @@ class DepreciacaoMotorV1917Adapter:
                         "mensagem": "Diagnóstico V19.17 não encontrado no disco persistente. Inicie uma nova coleta.",
                         "job_id": job_id,
                     }
+                if str(job.get("fonte_historico") or "").startswith("fipe_v2"):
+                    job["fase"] = "erro_controlado"
+                    job["erro"] = {
+                        "tipo": "job_antigo_api_paga",
+                        "mensagem": "Este job foi criado antes da V24.5 usando caminho v2/token. Reinicie o diagnóstico para usar o modo público/público.",
+                    }
+                    self._registrar_terminal(job, "Job antigo interrompido: reinicie para usar modo público/público", "ERRO")
+                    self._salvar_job(job)
+                    return self._montar_resposta(job)
             else:
                 job = self._criar_job(payload)
             job = self._executar_lote(job, payload)
@@ -538,7 +547,7 @@ class DepreciacaoMotorV1917Adapter:
         self._job_path(str(job["job_id"])).write_text(json.dumps(job, ensure_ascii=False, indent=2), encoding="utf-8")
 
     # ------------------------------------------------------------------
-    # Terminal temporário V24.4: auditoria passo a passo do job.
+    # Terminal temporário V24.5: auditoria passo a passo do job.
     # ------------------------------------------------------------------
     def _registrar_terminal(self, job: dict[str, Any], mensagem: str, nivel: str = "INFO", dados: dict[str, Any] | None = None) -> None:
         if not isinstance(job, dict):
@@ -601,22 +610,19 @@ class DepreciacaoMotorV1917Adapter:
 
         inicio_busca = f"{max(int(coorte['ano']) - 1, 1990):04d}-01"
         refs_busca = [r for r in referencias if r.get("data_ref") and r["data_ref"] >= inicio_busca and r["data_ref"] <= data_base_operacao]
-        if not refs_busca:
-            raise ValueError("Não há referências FIPE suficientes para iniciar a busca da primeira aparição.")
-
         job_id = f"v1917_{uuid.uuid4().hex[:16]}"
         selecionado_zero_km = self._codigo_ano_eh_zero(veiculo.codigo_ano) or str(veiculo.ano_modelo).strip() == "32000"
-        # V24.4: quando o endpoint web V19.17 está bloqueado no Render, usa
-        # fluxo híbrido seguro: primeiro tenta código FIPE redescobrindo o ano
-        # dentro da referência; se não achar, cai para reconstrução marca ->
-        # modelo -> ano -> preço, como no painel local.
-        fonte_historico = "fipe_web_v1917" if referencias_fipe_web_v1917 else "fipe_v2_hibrido_v1917"
+        # V24.5: combustão segue exatamente o modo local 1 - Pública / 1 - Pública.
+        # Não há fallback para API paga/v2/token. O histórico usa somente o
+        # endpoint público web da FIPE, como no painel local V19.17.
+        fonte_historico = "fipe_web_v1917"
+        fase_inicial = "buscar_primeira_aparicao" if refs_busca else "erro_api_fipe_publica"
         job = {
             "job_id": job_id,
             "motor": self.VERSAO,
             "created_at": datetime.utcnow().isoformat(timespec="seconds") + "Z",
             "updated_at": datetime.utcnow().isoformat(timespec="seconds") + "Z",
-            "fase": "buscar_primeira_aparicao",
+            "fase": fase_inicial,
             "payload_original": payload,
             "veiculo": veiculo.to_dict(),
             "selecionado_zero_km": selecionado_zero_km,
@@ -627,6 +633,10 @@ class DepreciacaoMotorV1917Adapter:
             "anos_disponiveis": anos_disponiveis,
             "referencias": referencias,
             "fonte_historico": fonte_historico,
+            "api_consulta": "1 - Pública",
+            "api_historico": "1 - Pública / FIPE Web",
+            "token_utilizado": False,
+            "api_paga_utilizada": False,
             "falha_fipe_web_v1917": falha_fipe_web_v1917,
             "referencias_fipe_web_v1917": referencias_fipe_web_v1917,
             "referencias_fipe_v2": referencias_fipe_v2,
@@ -651,16 +661,13 @@ class DepreciacaoMotorV1917Adapter:
                 },
                 {
                     "tipo": "fonte_historica",
-                    "mensagem": (
-                        "Fonte FIPE Web V19.17 ativa."
-                        if fonte_historico == "fipe_web_v1917"
-                        else "Usando FIPE v2 híbrida: código FIPE com ano redescoberto por referência e fallback marca/modelo/ano. Não usa /history curto."
-                    ),
+                    "mensagem": "Modo público/público ativo: consulta básica pública e histórico pela FIPE Web oficial, sem token e sem API paga.",
                 }
             ],
         }
-        self._registrar_terminal(job, "Terminal temporário V24.4 iniciado. Acompanhe aqui a história completa da coleta.", "START")
+        self._registrar_terminal(job, "Terminal temporário V24.5 iniciado. Acompanhe aqui a história completa da coleta pública.", "START")
         self._registrar_terminal(job, "Diagnóstico paralelo: não salva curva e não aciona o botão Calcular definitivo.", "INFO")
+        self._registrar_terminal(job, "Modo de API fixado para combustão", "INFO", {"api_consulta": "1 - Pública", "api_historico": "1 - Pública / FIPE Web", "token": "não utilizado", "api_paga": "desativada"})
         self._registrar_terminal(job, "Veículo recebido", "INFO", {
             "marca": veiculo.marca,
             "modelo": veiculo.modelo,
@@ -685,51 +692,46 @@ class DepreciacaoMotorV1917Adapter:
             "fonte": fonte_historico,
         })
         if falha_fipe_web_v1917:
-            self._registrar_terminal(job, "Endpoint FIPE Web V19.17 indisponível; seguindo pelo caminho v2 seguro", "WARN", {"falha": falha_fipe_web_v1917})
+            self._registrar_terminal(job, "Endpoint FIPE Web pública indisponível; não será usado fallback pago/token", "ERRO", {"falha": falha_fipe_web_v1917})
+        if not refs_busca:
+            job["erro"] = {
+                "tipo": "fipe_web_publica_indisponivel",
+                "mensagem": "Não há referências FIPE públicas/web disponíveis para iniciar a busca histórica. API paga/token permanece desativada.",
+                "falha_fipe_web_v1917": falha_fipe_web_v1917,
+            }
+            self._registrar_terminal(job, "Coleta não iniciada: referências públicas FIPE Web indisponíveis", "ERRO", {"falha": falha_fipe_web_v1917 or "sem_referencias"})
         self._salvar_job(job)
         return job
 
     def _referencias_serializadas(self) -> list[dict[str, Any]]:
-        """Carrega referências mensais pela API v2.
+        """Carrega referências mensais somente pelo caminho público do painel local.
 
-        No programa local V19.17, o caminho preferencial era o endpoint web
-        veiculos.fipe.org.br. No Render esse endpoint retorna 403 Forbidden por
-        bloqueio do datacenter, então a V24.3 usa a API FIPE v2 por referência
-        mensal e por código FIPE. Isso preserva o raciocínio metodológico do
-        painel: percorrer mês a mês, achar primeira aparição, achar zero km e
-        só então montar histórico amostrado. Não usa /history curto como base.
+        V24.5: combustão usa modo 1 - Pública / 1 - Pública:
+        - consulta básica: API pública Parallelum v1;
+        - histórico: endpoint público web da FIPE, igual ao painel local;
+        - sem token;
+        - sem API paga/v2;
+        - sem /history curto.
         """
         refs: list[dict[str, Any]] = []
         self._ultima_falha_referencias_web = ""
+        try:
+            referencias_web = self.painel_adapter.referencias_ordenadas_web_v1917()
+        except Exception as exc:
+            referencias_web = []
+            self._ultima_falha_referencias_web = f"{type(exc).__name__}: {str(exc)[:240]}"
 
-        # O caminho web V19.17 fica disponível só para ambiente local/debug,
-        # porque no Render vem bloqueando com HTTP 403. Default: desligado.
-        usar_web = str(os.environ.get("FIPE_WEB_V1917_ENABLED") or current_app.config.get("FIPE_WEB_V1917_ENABLED") or "").strip().lower() in {"1", "true", "sim", "yes", "on"}
-        if usar_web:
-            try:
-                referencias_web = self.painel_adapter.referencias_ordenadas_web_v1917()
-            except Exception as exc:
-                referencias_web = []
-                self._ultima_falha_referencias_web = f"{type(exc).__name__}: {str(exc)[:240]}"
-            for r in referencias_web or []:
-                data_dt = r.get("data_ref")
-                data_ref = data_dt.strftime("%Y-%m") if hasattr(data_dt, "strftime") else str(data_dt or "")[:7]
-                code = str(r.get("code") or r.get("codigo_tabela_referencia") or "").strip()
-                month = str(r.get("month") or "").strip()
-                if code and data_ref:
-                    refs.append({"code": code, "month": month, "data_ref": data_ref, "fonte": "fipe_web_v1917"})
-            if refs:
-                refs.sort(key=lambda x: x["data_ref"])
-                return refs
-
-        for r in self.painel_adapter.referencias_ordenadas():
+        for r in referencias_web or []:
             data_dt = r.get("data_ref")
             data_ref = data_dt.strftime("%Y-%m") if hasattr(data_dt, "strftime") else str(data_dt or "")[:7]
-            code = str(r.get("code") or "").strip()
+            code = str(r.get("code") or r.get("codigo_tabela_referencia") or "").strip()
             month = str(r.get("month") or "").strip()
             if code and data_ref:
-                refs.append({"code": code, "month": month, "data_ref": data_ref, "fonte": "fipe_v2_codigo_fipe_v1917"})
+                refs.append({"code": code, "month": month, "data_ref": data_ref, "fonte": "fipe_web_v1917"})
+
         refs.sort(key=lambda x: x["data_ref"])
+        if not refs and not self._ultima_falha_referencias_web:
+            self._ultima_falha_referencias_web = "sem_referencias_retorno_vazio"
         return refs
 
     def _resolver_data_base_operacao(self, payload: dict[str, Any], referencias: list[dict[str, Any]]) -> str:
@@ -815,7 +817,7 @@ class DepreciacaoMotorV1917Adapter:
             limite = min(limite, 1)
         processadas = 0
         self._registrar_terminal(job, "Iniciando lote seguro no Render", "LOTE", {"fase": job.get("fase"), "limite": limite})
-        while processadas < limite and job.get("fase") not in {"concluido", "erro_controlado", "erro_api_fipe", "primeira_aparicao_nao_encontrada", "zero_km_nao_encontrado"}:
+        while processadas < limite and job.get("fase") not in {"concluido", "erro_controlado", "erro_api_fipe", "erro_api_fipe_publica", "primeira_aparicao_nao_encontrada", "zero_km_nao_encontrado"}:
             fase = str(job.get("fase") or "")
             if fase == "buscar_primeira_aparicao":
                 fez = self._passo_buscar_primeira(job)
@@ -1188,7 +1190,7 @@ class DepreciacaoMotorV1917Adapter:
         amostragem = self._montar_amostragem(job)
         relatorio = self._montar_relatorio_textual(job, qualidade, calculo, erro_calculo)
         top = {
-            "ok": str(job.get("fase")) not in {"erro_controlado", "erro_api_fipe", "primeira_aparicao_nao_encontrada", "zero_km_nao_encontrado"},
+            "ok": str(job.get("fase")) not in {"erro_controlado", "erro_api_fipe", "erro_api_fipe_publica", "primeira_aparicao_nao_encontrada", "zero_km_nao_encontrado"},
             "motor": self.VERSAO,
             "status": status,
             "mensagem": mensagem,
@@ -1200,6 +1202,10 @@ class DepreciacaoMotorV1917Adapter:
             "modo_pandemia": job.get("modo_pandemia"),
             "modo_calculo_proposto": "motor_local_v19_17_portado_em_adapter_paralelo",
             "fonte_historico": job.get("fonte_historico"),
+            "api_consulta": job.get("api_consulta") or "1 - Pública",
+            "api_historico": job.get("api_historico") or "1 - Pública / FIPE Web",
+            "token_utilizado": bool(job.get("token_utilizado")),
+            "api_paga_utilizada": bool(job.get("api_paga_utilizada")),
             "falha_fipe_web_v1917": job.get("falha_fipe_web_v1917"),
             "total_referencias_disponiveis": job.get("total_referencias_disponiveis"),
             "total_referencias_busca": job.get("total_referencias_busca"),
@@ -1301,7 +1307,7 @@ class DepreciacaoMotorV1917Adapter:
             "detalhes": {
                 "tipo_label": "Zero km" if job.get("selecionado_zero_km") else "Usado com offset de idade V19.17",
                 "auditoria_historico": {
-                    "fonte_historico": "FIPE por código FIPE e referência mensal, sem usar /history curto como espinha dorsal",
+                    "fonte_historico": "FIPE Web pública por referência mensal, igual ao painel local; sem token, sem API paga e sem /history curto",
                     "primeira_aparicao": job.get("primeiro_usado"),
                     "zero_km_base": job.get("zero_km_base"),
                     "modo_pandemia": job.get("modo_pandemia"),
@@ -1330,6 +1336,10 @@ class DepreciacaoMotorV1917Adapter:
             "criterio_passo": f"V19.17: primeira aparição + zero km + histórico amostrado por referência mensal; passo {job.get('passo_meses') or '-'} mês(es)",
             "estrategia_historico": "v1917_adapter_parallel_sem_history_curto",
             "fonte_historico": job.get("fonte_historico"),
+            "api_consulta": job.get("api_consulta") or "1 - Pública",
+            "api_historico": job.get("api_historico") or "1 - Pública / FIPE Web",
+            "token_utilizado": bool(job.get("token_utilizado")),
+            "api_paga_utilizada": bool(job.get("api_paga_utilizada")),
             "falha_fipe_web_v1917": job.get("falha_fipe_web_v1917"),
             "total_referencias_disponiveis": job.get("total_referencias_disponiveis"),
             "total_referencias_busca": job.get("total_referencias_busca"),
@@ -1355,7 +1365,7 @@ class DepreciacaoMotorV1917Adapter:
     def _montar_relatorio_textual(self, job: dict[str, Any], qualidade: dict[str, Any], calculo: dict[str, Any] | None, erro_calculo: str | None) -> str:
         veiculo = job.get("veiculo") or {}
         linhas = [
-            "DIAGNÓSTICO TÉCNICO V24.4 - MOTOR LOCAL V19.17 PORTADO",
+            "DIAGNÓSTICO TÉCNICO V24.5 - MOTOR LOCAL V19.17 PORTADO",
             "",
             "Este diagnóstico roda em módulo paralelo e não salva curva definitiva.",
             f"Veículo selecionado: {veiculo.get('marca', '')} {veiculo.get('modelo', '')} {veiculo.get('ano_modelo', '')}".strip(),
@@ -1371,6 +1381,10 @@ class DepreciacaoMotorV1917Adapter:
             "",
             "B. COLETA",
             f"Fase atual: {job.get('fase')}",
+            f"API consulta: {job.get('api_consulta') or '1 - Pública'}",
+            f"API histórico: {job.get('api_historico') or '1 - Pública / FIPE Web'}",
+            f"Token: {'utilizado' if job.get('token_utilizado') else 'não utilizado'}",
+            f"API paga: {'utilizada' if job.get('api_paga_utilizada') else 'desativada'}",
             f"Fonte histórica: {job.get('fonte_historico') or '-'}",
             f"Referências FIPE disponíveis: {job.get('total_referencias_disponiveis') or 0}; janela de busca: {job.get('total_referencias_busca') or 0}; busca primeira aparição: {job.get('indice_busca_primeira') or 0}/{job.get('total_referencias_busca') or 0}",
             f"Aviso FIPE Web V19.17: {job.get('falha_fipe_web_v1917') or 'sem falha registrada'}",

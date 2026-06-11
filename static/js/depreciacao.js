@@ -5,7 +5,7 @@ let modelosComCurva = new Set();
 let diagnosticoV1917AutoAtivo = false;
 let diagnosticoV1917Ciclos = 0;
 let terminalV1917Linhas = [];
-const DIAGNOSTICO_V1917_MAX_CICLOS = 90;
+const DIAGNOSTICO_V1917_MAX_CICLOS = 180;
 
 function textoSeguro(valor) {
   return valor === null || valor === undefined || valor === "" ? "-" : String(valor);
@@ -74,7 +74,7 @@ function atualizarTerminalV1917(data) {
     terminalV1917Linhas = linhas;
     el.textContent = linhas.join("\n");
   } else if (!terminalV1917Linhas.length) {
-    el.textContent = "Terminal aguardando diagnóstico V24.4...";
+    el.textContent = "Terminal aguardando diagnóstico V24.5...";
   }
   if (meta) {
     const total = data?.terminal_total_linhas || linhas.length || terminalV1917Linhas.length;
@@ -522,7 +522,7 @@ async function solicitarDiagnosticoCoorte(chamadaAutomatica = false) {
     diagnosticoV1917Ciclos = 0;
     terminalV1917Linhas = [];
     selecionarAbaAuditoriaV1917("terminal");
-    atualizarTerminalV1917({ terminal_linhas: ["[local] Iniciando diagnóstico V24.4. O terminal será atualizado a cada lote seguro do Render..."] });
+    atualizarTerminalV1917({ terminal_linhas: ["[local] Iniciando diagnóstico V24.5. O terminal será atualizado a cada lote seguro do Render..."] });
   }
   diagnosticoV1917Ciclos += 1;
 
@@ -589,6 +589,10 @@ async function solicitarDiagnosticoCoorte(chamadaAutomatica = false) {
       adicionarDetalhe(corpo, "Fase", data.fase);
       adicionarDetalhe(corpo, "Modo pandemia", data.modo_pandemia || "Excluir");
       adicionarDetalhe(corpo, "Fonte histórica", data.fonte_historico || am.fonte_historico || "-");
+      adicionarDetalhe(corpo, "API consulta", data.api_consulta || am.api_consulta || "1 - Pública");
+      adicionarDetalhe(corpo, "API histórico", data.api_historico || am.api_historico || "1 - Pública / FIPE Web");
+      adicionarDetalhe(corpo, "Token", data.token_utilizado ? "Utilizado" : "Não utilizado");
+      adicionarDetalhe(corpo, "API paga", data.api_paga_utilizada ? "Utilizada" : "Desativada");
       adicionarDetalhe(corpo, "Coleta", data.coleta_concluida ? "Concluída" : "Em andamento automático em lotes seguros");
       adicionarDetalhe(corpo, "Pode salvar curva", data.pode_salvar ? "Sim" : "Não");
       adicionarDetalhe(corpo, "Ano-base preferencial", data.ano_base_preferencial);

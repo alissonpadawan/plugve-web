@@ -36,13 +36,20 @@ HEADERS_WEB_V1917 = {
     "Content-Type": "application/json; charset=UTF-8",
     "Referer": "https://veiculos.fipe.org.br/",
     "Origin": "https://veiculos.fipe.org.br",
-    "User-Agent": "Mozilla/5.0",
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/125.0.0.0 Safari/537.36"
+    ),
     "Accept": "application/json, text/javascript, */*; q=0.01",
+    "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
+    "Cache-Control": "no-cache",
+    "Pragma": "no-cache",
     "X-Requested-With": "XMLHttpRequest",
 }
-TIMEOUT_WEB_V1917 = 8
+TIMEOUT_WEB_V1917 = 15
 SLEEP_WEB_V1917 = 0.06
-MAX_RETRIES_WEB_V1917 = 1
+MAX_RETRIES_WEB_V1917 = 2
 CODIGO_TIPO_VEICULO_WEB_CARRO = 1
 
 
@@ -131,10 +138,28 @@ class FipeWebHistoricoV1917Client:
     def __init__(self) -> None:
         self.session = requests.Session()
         self.session.headers.update(HEADERS_WEB_V1917)
+        self._sessao_preparada = False
+
+    def preparar_sessao(self) -> None:
+        """Abre a página pública antes do POST, igual a uma sessão de navegador.
+
+        No desktop local o painel antigo acessava o endpoint web sem token. No
+        Render alguns servidores recusam POST direto; por isso a V24.5 aquece
+        cookies/sessão antes de chamar ConsultarTabelaDeReferencia.
+        """
+        if self._sessao_preparada:
+            return
+        try:
+            self.session.get("https://veiculos.fipe.org.br/", timeout=min(TIMEOUT_WEB_V1917, 10))
+        except Exception:
+            # Não aborta: o POST seguinte ainda deve revelar o erro real.
+            pass
+        self._sessao_preparada = True
 
     def post(self, endpoint: str, payload: dict[str, Any] | None = None) -> Any:
         url = f"{FIPE_WEB_BASE}/{endpoint}"
         ultimo_erro: Exception | None = None
+        self.preparar_sessao()
         for tentativa in range(1, MAX_RETRIES_WEB_V1917 + 1):
             try:
                 resposta = self.session.post(url, json=payload or {}, timeout=TIMEOUT_WEB_V1917)
@@ -145,6 +170,9 @@ class FipeWebHistoricoV1917Client:
             except Exception as exc:
                 ultimo_erro = exc
                 if tentativa < MAX_RETRIES_WEB_V1917:
+                    # Renova sessão e tenta novamente, sem trocar para API paga.
+                    self._sessao_preparada = False
+                    self.preparar_sessao()
                     time.sleep(0.35 * tentativa)
                 else:
                     raise ultimo_erro
@@ -236,14 +264,16 @@ class PontoHistoricoPainel:
 
 
 class FipeHistoricoPainelAdapter:
-    """Adaptador do fluxo antigo do Painel de Depreciação para a API FIPE v2.
+    """Adaptador do fluxo antigo do Painel de Depreciação.
 
-    Ideia herdada do painel local:
-    - primeiro entra no mês de referência;
+    V24.5 para combustão usa o caminho público/público do painel local:
+    - primeiro entra no mês de referência FIPE Web;
     - dentro daquele mês reconstrói marca/modelo/ano;
-    - só depois consulta valor.
+    - só depois consulta valor;
+    - sem token e sem API paga.
 
-    O objetivo aqui é não usar cegamente os códigos atuais no passado.
+    Mantém alguns métodos v2 legados apenas para compatibilidade interna, mas o
+    diagnóstico V24.5 chama somente os métodos `*_web_v1917`.
     """
 
     def __init__(self, fipe: FipeService | None = None) -> None:
