@@ -128,7 +128,7 @@
         </div>
         <div class="report-tabs v1917-temp-tabs" role="tablist" aria-label="Auditoria V19.17">
           <button id="tab_relatorio_tecnico" class="tab-button active" type="button">Relatório</button>
-          <button id="tab_terminal_v1917" class="tab-button" type="button">Terminal temporário V24.5</button>
+          <button id="tab_terminal_v1917" class="tab-button" type="button">Terminal temporário V24.6</button>
         </div>
         <div id="aba_relatorio_tecnico">
           <div id="relatorio_textual" class="technical-report">Aguardando seleção do veículo.</div>
@@ -141,7 +141,7 @@
             <span id="terminal_v1917_meta">Terminal aguardando diagnóstico.</span>
             <button id="btn_limpar_terminal_v1917" class="button secondary" type="button">Limpar tela local</button>
           </div>
-          <pre id="terminal_v1917" class="terminal-v1917">Terminal aguardando diagnóstico V24.5...</pre>
+          <pre id="terminal_v1917" class="terminal-v1917">Terminal aguardando diagnóstico V24.6...</pre>
         </div>
       </section>
     </section>
@@ -151,5 +151,5 @@
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/fipe.js') }}"></script>
-<script src="{{ url_for('static', filename='js/depreciacao.js') }}?v=20260611_v245_publico_publico"></script>
+<script src="{{ url_for('static', filename='js/depreciacao.js') }}?v=20260611_v246_api_pro"></script>
 {% endblock %}

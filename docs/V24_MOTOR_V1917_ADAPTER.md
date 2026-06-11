@@ -86,3 +86,13 @@ Após o primeiro teste online do Etios, o diagnóstico parou em `erro_api_fipe` 
 ## Atualização V24.3
 
 No Render, o endpoint web `veiculos.fipe.org.br/api/veiculos` retornou HTTP 403. A partir da V24.3, o adapter não depende mais desse endpoint por padrão. Ele usa API FIPE v2 por código FIPE e referência mensal (`fipe_v2_codigo_fipe_v1917`), preservando o fluxo metodológico do painel local: primeira aparição, zero km 32000, histórico amostrado e cálculo diagnóstico. O endpoint `/history` curto continua não sendo usado como espinha dorsal.
+
+
+## V24.5
+
+Modo Pública/Pública aplicado ao diagnóstico paralelo: token/API paga ignorados e histórico por FIPE Web pública, seguindo o fluxo do painel local.
+
+
+## V24.6
+
+Como o Render bloqueou o endpoint público Web da FIPE com 403, o diagnóstico paralelo passou a usar a API PRO oficial `https://fipe.parallelum.com.br/api/v2`, com token em `FIPE_TOKEN`, montando histórico por referências mensais, código FIPE e `yearId`. O endpoint `/history` não é usado como espinha dorsal; a coleta continua em lotes pequenos e sem salvar curva definitiva.

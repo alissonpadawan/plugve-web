@@ -5,7 +5,7 @@ let modelosComCurva = new Set();
 let diagnosticoV1917AutoAtivo = false;
 let diagnosticoV1917Ciclos = 0;
 let terminalV1917Linhas = [];
-const DIAGNOSTICO_V1917_MAX_CICLOS = 180;
+const DIAGNOSTICO_V1917_MAX_CICLOS = 90;
 
 function textoSeguro(valor) {
   return valor === null || valor === undefined || valor === "" ? "-" : String(valor);
@@ -74,7 +74,7 @@ function atualizarTerminalV1917(data) {
     terminalV1917Linhas = linhas;
     el.textContent = linhas.join("\n");
   } else if (!terminalV1917Linhas.length) {
-    el.textContent = "Terminal aguardando diagnóstico V24.5...";
+    el.textContent = "Terminal aguardando diagnóstico V24.6...";
   }
   if (meta) {
     const total = data?.terminal_total_linhas || linhas.length || terminalV1917Linhas.length;
@@ -518,11 +518,14 @@ async function solicitarDiagnosticoCoorte(chamadaAutomatica = false) {
   }
 
   if (!chamadaAutomatica) {
+    // V24.6: clique manual sempre inicia job novo no modo API PRO.
+    // Isso evita continuar jobs antigos V24.5 que ainda usavam FIPE Web pública.
+    ultimoJobDiagnosticoV1917 = null;
     diagnosticoV1917AutoAtivo = true;
     diagnosticoV1917Ciclos = 0;
     terminalV1917Linhas = [];
     selecionarAbaAuditoriaV1917("terminal");
-    atualizarTerminalV1917({ terminal_linhas: ["[local] Iniciando diagnóstico V24.5. O terminal será atualizado a cada lote seguro do Render..."] });
+    atualizarTerminalV1917({ terminal_linhas: ["[local] Iniciando diagnóstico V24.6 API PRO. O terminal será atualizado a cada lote seguro do Render..."] });
   }
   diagnosticoV1917Ciclos += 1;
 
@@ -589,10 +592,10 @@ async function solicitarDiagnosticoCoorte(chamadaAutomatica = false) {
       adicionarDetalhe(corpo, "Fase", data.fase);
       adicionarDetalhe(corpo, "Modo pandemia", data.modo_pandemia || "Excluir");
       adicionarDetalhe(corpo, "Fonte histórica", data.fonte_historico || am.fonte_historico || "-");
-      adicionarDetalhe(corpo, "API consulta", data.api_consulta || am.api_consulta || "1 - Pública");
-      adicionarDetalhe(corpo, "API histórico", data.api_historico || am.api_historico || "1 - Pública / FIPE Web");
-      adicionarDetalhe(corpo, "Token", data.token_utilizado ? "Utilizado" : "Não utilizado");
-      adicionarDetalhe(corpo, "API paga", data.api_paga_utilizada ? "Utilizada" : "Desativada");
+      adicionarDetalhe(corpo, "API consulta", data.api_consulta || am.api_consulta || "API PRO v2");
+      adicionarDetalhe(corpo, "API histórico", data.api_historico || am.api_historico || "API PRO v2 por referência mensal");
+      adicionarDetalhe(corpo, "Token", data.token || am.token || "Enviado");
+      adicionarDetalhe(corpo, "API paga", data.api_paga || am.api_paga || "Ativada");
       adicionarDetalhe(corpo, "Coleta", data.coleta_concluida ? "Concluída" : "Em andamento automático em lotes seguros");
       adicionarDetalhe(corpo, "Pode salvar curva", data.pode_salvar ? "Sim" : "Não");
       adicionarDetalhe(corpo, "Ano-base preferencial", data.ano_base_preferencial);
@@ -614,7 +617,7 @@ async function solicitarDiagnosticoCoorte(chamadaAutomatica = false) {
       adicionarDetalhe(corpo, "Último ponto", am.ultimo_ponto ? `${am.ultimo_ponto.data_referencia || ""} ${am.ultimo_ponto.valor_formatado || ""}`.trim() : "-");
       adicionarDetalhe(corpo, "Falhas controladas", am.falhas_coleta);
       adicionarDetalhe(corpo, "404 ignorados", am.erros_404_ignorados);
-      adicionarDetalhe(corpo, "Falha FIPE Web V19.17", data.falha_fipe_web_v1917 || am.falha_fipe_web_v1917 || "-");
+      adicionarDetalhe(corpo, "Falha API PRO V24.6", data.falha_api_pro_v1917 || am.falha_api_pro_v1917 || data.falha_fipe_web_v1917 || am.falha_fipe_web_v1917 || "-");
       adicionarDetalhe(corpo, "Ciclos automáticos", `${diagnosticoV1917Ciclos}/${DIAGNOSTICO_V1917_MAX_CICLOS}`);
       adicionarDetalhe(corpo, "Observação", data.criterio_salvamento || "Diagnóstico não salva curva.");
     }

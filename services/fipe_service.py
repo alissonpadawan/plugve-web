@@ -217,19 +217,27 @@ class FipeService:
         self._salvar_bloqueados(dados)
         return {"ok": True, "bloqueado": dados[marca_key][modelo_key], "marca_bloqueada": False}
 
+    def _usar_publica_apenas(self) -> bool:
+        """Define se deve usar somente a FIPE pública v1.
+
+        V24.6: quando há FIPE_TOKEN configurado, o padrão passa a ser API paga
+        oficial v2. O modo público só é usado se FIPE_PUBLIC_ONLY=1 for
+        explicitamente configurado.
+        """
+        bruto = os.environ.get("FIPE_PUBLIC_ONLY")
+        if bruto is None:
+            bruto = str(current_app.config.get("FIPE_PUBLIC_ONLY", False))
+        return str(bruto).strip().lower() in {"1", "true", "sim", "yes", "on"}
+
     def _base_url(self) -> str:
+        if self._usar_publica_apenas():
+            return str(current_app.config.get("FIPE_PUBLIC_BASE_URL") or "https://parallelum.com.br/fipe/api/v1/carros")
         return str(current_app.config.get("FIPE_BASE_URL") or "https://fipe.parallelum.com.br/api/v2/cars")
 
     def _timeout(self) -> int:
         return int(current_app.config.get("REQUEST_TIMEOUT", 15))
 
     def _token(self) -> str:
-        # V24.5: combustão opera em modo 1 - Pública / 1 - Pública.
-        # Token fica totalmente ignorado, mesmo se FIPE_TOKEN existir no Render,
-        # salvo se FIPE_USAR_API_PAGA=1 for configurado explicitamente no futuro.
-        usar_api_paga = bool(current_app.config.get("FIPE_USAR_API_PAGA"))
-        if not usar_api_paga:
-            return ""
         token = os.environ.get("FIPE_TOKEN", "").strip()
         if token:
             return token
@@ -272,11 +280,13 @@ class FipeService:
             if resp.status_code >= 400:
                 FipeService._registrar_erro_static(Path(cache_dir), resp.status_code, url, resp.text[:300])
                 if resp.status_code == 429:
-                    raise FipeApiError("Limite de requisições da FIPE pública atingido. Aguarde a janela de uso antes de tentar novamente.", 429, endpoint)
+                    raise FipeApiError("Limite diário da API FIPE atingido. Aguarde a janela de 24 horas ou use o token premium/gratuito ampliado.", 429, endpoint)
                 if resp.status_code == 404:
                     raise FipeApiError("Recurso FIPE não encontrado para esta combinação marca/modelo/ano.", 404, endpoint)
                 if resp.status_code in (401, 403):
-                    raise FipeApiError("Acesso FIPE recusado no modo público. Token não está sendo usado nesta versão.", resp.status_code, endpoint)
+                    raise FipeApiError("Token FIPE inválido, ausente ou sem permissão para esta consulta.", resp.status_code, endpoint)
+                if resp.status_code == 402:
+                    raise FipeApiError("API FIPE PRO recusou a consulta. Verifique se o token PRO está ativo e se o header foi aceito.", 402, endpoint)
                 raise FipeApiError(f"Erro FIPE {resp.status_code}: {resp.text[:160]}", resp.status_code, endpoint)
             return resp.json()
         except FipeApiError:
@@ -340,7 +350,7 @@ class FipeService:
 
     @staticmethod
     def _registrar_erro_static(cache_dir: Path, status_code: int | None, url: str, detalhe: str) -> None:
-        dados = FipeService._normalizar_janela_usage(FipeService._ler_usage_static(cache_dir), token_ativo=False)
+        dados = FipeService._normalizar_janela_usage(FipeService._ler_usage_static(cache_dir), token_ativo=True)
         dados["last_error"] = {
             "status_code": status_code,
             "url": url,
@@ -358,7 +368,16 @@ class FipeService:
 
     def _headers(self) -> dict:
         token = self._token()
-        return {"X-Subscription-Token": token} if token else {}
+        if not token:
+            return {}
+        # A documentação usa X-Subscription-Token. O painel PRO também apresenta
+        # a chave como bearer; enviamos ambos para compatibilidade do provedor.
+        return {
+            "X-Subscription-Token": token,
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/json",
+            "User-Agent": "PlugVE-Web/24.6",
+        }
 
     def listar_referencias(self) -> list[dict]:
         """Lista referências mensais da API FIPE v2. Conta como requisição FIPE."""
@@ -430,7 +449,9 @@ class FipeService:
                 if resp.status_code == 429:
                     raise FipeApiError("Limite diário da API FIPE atingido durante coleta histórica.", 429, endpoint)
                 if resp.status_code in (401, 403):
-                    raise FipeApiError("Acesso FIPE recusado nesta consulta histórica pública. Token/API paga não são usados nesta versão.", resp.status_code, endpoint)
+                    raise FipeApiError("Token FIPE inválido, ausente ou sem permissão nesta consulta histórica.", resp.status_code, endpoint)
+                if resp.status_code == 402:
+                    raise FipeApiError("API FIPE PRO recusou a consulta histórica. Confirme o token PRO no Render e a assinatura ativa.", 402, endpoint)
                 raise FipeApiError(f"Erro FIPE {resp.status_code} na consulta histórica.", resp.status_code, endpoint)
             return resp.json()
         except FipeApiError:
@@ -467,7 +488,9 @@ class FipeService:
                 if resp.status_code == 429:
                     raise FipeApiError("Limite diário da API FIPE atingido durante coleta histórica.", 429, endpoint)
                 if resp.status_code in (401, 403):
-                    raise FipeApiError("Acesso FIPE recusado nesta consulta histórica pública. Token/API paga não são usados nesta versão.", resp.status_code, endpoint)
+                    raise FipeApiError("Token FIPE inválido, ausente ou sem permissão nesta consulta histórica.", resp.status_code, endpoint)
+                if resp.status_code == 402:
+                    raise FipeApiError("API FIPE PRO recusou a consulta histórica. Confirme o token PRO no Render e a assinatura ativa.", 402, endpoint)
                 raise FipeApiError(f"Erro FIPE {resp.status_code} na consulta histórica.", resp.status_code, endpoint)
             return self._normalizar_preco(resp.json())
         except FipeApiError:

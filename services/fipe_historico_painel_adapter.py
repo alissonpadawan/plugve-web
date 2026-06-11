@@ -33,23 +33,18 @@ MESES_PT = {
 
 FIPE_WEB_BASE = "https://veiculos.fipe.org.br/api/veiculos"
 HEADERS_WEB_V1917 = {
+    # V24.6: headers legados do painel local; mantidos apenas como fallback, pois o Render usa API PRO v2.
     "Content-Type": "application/json; charset=UTF-8",
     "Referer": "https://veiculos.fipe.org.br/",
     "Origin": "https://veiculos.fipe.org.br",
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/125.0.0.0 Safari/537.36"
-    ),
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
     "Accept": "application/json, text/javascript, */*; q=0.01",
     "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
-    "Cache-Control": "no-cache",
-    "Pragma": "no-cache",
     "X-Requested-With": "XMLHttpRequest",
 }
-TIMEOUT_WEB_V1917 = 15
+TIMEOUT_WEB_V1917 = 30
 SLEEP_WEB_V1917 = 0.06
-MAX_RETRIES_WEB_V1917 = 2
+MAX_RETRIES_WEB_V1917 = 3
 CODIGO_TIPO_VEICULO_WEB_CARRO = 1
 
 
@@ -141,27 +136,36 @@ class FipeWebHistoricoV1917Client:
         self._sessao_preparada = False
 
     def preparar_sessao(self) -> None:
-        """Abre a página pública antes do POST, igual a uma sessão de navegador.
+        """Abre a página pública antes do POST, como um navegador.
 
-        No desktop local o painel antigo acessava o endpoint web sem token. No
-        Render alguns servidores recusam POST direto; por isso a V24.5 aquece
-        cookies/sessão antes de chamar ConsultarTabelaDeReferencia.
+        O painel local fazia POST direto e funcionava no Windows. No Render,
+        alguns bloqueios 403 podem ocorrer sem cookies/sessão inicial. Este
+        aquecimento mantém a mesma estratégia pública, sem token e sem API paga.
         """
         if self._sessao_preparada:
             return
-        try:
-            self.session.get("https://veiculos.fipe.org.br/", timeout=min(TIMEOUT_WEB_V1917, 10))
-        except Exception:
-            # Não aborta: o POST seguinte ainda deve revelar o erro real.
-            pass
         self._sessao_preparada = True
+        try:
+            self.session.get(
+                "https://veiculos.fipe.org.br/",
+                timeout=min(TIMEOUT_WEB_V1917, 12),
+                headers={
+                    "User-Agent": HEADERS_WEB_V1917["User-Agent"],
+                    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                    "Accept-Language": HEADERS_WEB_V1917["Accept-Language"],
+                },
+            )
+            time.sleep(SLEEP_WEB_V1917)
+        except Exception:
+            # Se o GET falhar, ainda tentamos o POST exatamente como no painel.
+            pass
 
     def post(self, endpoint: str, payload: dict[str, Any] | None = None) -> Any:
         url = f"{FIPE_WEB_BASE}/{endpoint}"
         ultimo_erro: Exception | None = None
-        self.preparar_sessao()
         for tentativa in range(1, MAX_RETRIES_WEB_V1917 + 1):
             try:
+                self.preparar_sessao()
                 resposta = self.session.post(url, json=payload or {}, timeout=TIMEOUT_WEB_V1917)
                 resposta.raise_for_status()
                 dados = resposta.json()
@@ -169,11 +173,11 @@ class FipeWebHistoricoV1917Client:
                 return dados
             except Exception as exc:
                 ultimo_erro = exc
-                if tentativa < MAX_RETRIES_WEB_V1917:
-                    # Renova sessão e tenta novamente, sem trocar para API paga.
+                # Em 403, renova a sessão uma vez antes da próxima tentativa.
+                if getattr(getattr(exc, "response", None), "status_code", None) == 403:
                     self._sessao_preparada = False
-                    self.preparar_sessao()
-                    time.sleep(0.35 * tentativa)
+                if tentativa < MAX_RETRIES_WEB_V1917:
+                    time.sleep(0.4 * tentativa)
                 else:
                     raise ultimo_erro
         return None
@@ -264,16 +268,14 @@ class PontoHistoricoPainel:
 
 
 class FipeHistoricoPainelAdapter:
-    """Adaptador do fluxo antigo do Painel de Depreciação.
+    """Adaptador do fluxo antigo do Painel de Depreciação para a API FIPE v2.
 
-    V24.5 para combustão usa o caminho público/público do painel local:
-    - primeiro entra no mês de referência FIPE Web;
+    Ideia herdada do painel local:
+    - primeiro entra no mês de referência;
     - dentro daquele mês reconstrói marca/modelo/ano;
-    - só depois consulta valor;
-    - sem token e sem API paga.
+    - só depois consulta valor.
 
-    Mantém alguns métodos v2 legados apenas para compatibilidade interna, mas o
-    diagnóstico V24.5 chama somente os métodos `*_web_v1917`.
+    O objetivo aqui é não usar cegamente os códigos atuais no passado.
     """
 
     def __init__(self, fipe: FipeService | None = None) -> None:
@@ -317,8 +319,51 @@ class FipeHistoricoPainelAdapter:
         saida.sort(key=lambda x: (x["data_ref"] or datetime.min, int(x["code"]) if x["code"].isdigit() else 0))
         return saida
 
+    def referencias_estimadas_web_v1917(self, erro_origem: str = "") -> list[dict[str, Any]]:
+        """Gera a tabela de referências FIPE quando o endpoint de tabela falha.
+
+        A numeração pública da tabela de referência é sequencial. Pelo próprio
+        teste do painel local/diagnóstico, janeiro/2016 = 187. Isso equivale à
+        fórmula code = (ano - 2000) * 12 + mes - 6.
+
+        Esta rotina não consulta API paga. Ela só reconstrói os códigos mensais
+        para que o fluxo público Web continue tentando ConsultarMarcas,
+        ConsultarModelos, ConsultarAnoModelo e ConsultarValorComTodosParametros.
+        """
+        nomes = {
+            1: "janeiro", 2: "fevereiro", 3: "março", 4: "abril",
+            5: "maio", 6: "junho", 7: "julho", 8: "agosto",
+            9: "setembro", 10: "outubro", 11: "novembro", 12: "dezembro",
+        }
+        hoje = datetime.now()
+        saida: list[dict[str, Any]] = []
+        ano, mes = 2001, 1
+        while (ano < hoje.year) or (ano == hoje.year and mes <= hoje.month):
+            codigo = (ano - 2000) * 12 + mes - 6
+            if codigo > 0:
+                mes_txt = f"{nomes[mes]}/{ano}"
+                saida.append({
+                    "code": str(codigo),
+                    "codigo_tabela_referencia": int(codigo),
+                    "month": mes_txt,
+                    "data_ref": datetime(ano, mes, 1),
+                    "fonte": "fipe_web_v1917",
+                    "referencias_estimadas": True,
+                    "aviso_referencias": erro_origem,
+                })
+            mes += 1
+            if mes == 13:
+                mes = 1
+                ano += 1
+        return saida
+
     def referencias_ordenadas_web_v1917(self) -> list[dict[str, Any]]:
-        refs = normalizar_payload_fipe_web_lista(self.web_client.consultar_tabela_referencia())
+        try:
+            refs = normalizar_payload_fipe_web_lista(self.web_client.consultar_tabela_referencia())
+        except Exception as exc:
+            erro = f"Falha ao consultar tabela pública Web FIPE; referências geradas localmente: {type(exc).__name__}: {str(exc)[:180]}"
+            return self.referencias_estimadas_web_v1917(erro)
+
         saida: list[dict[str, Any]] = []
         for item in refs:
             codigo = item.get("Codigo") or item.get("codigo") or item.get("Value") or item.get("code")
@@ -332,8 +377,12 @@ class FipeHistoricoPainelAdapter:
                 "month": mes,
                 "data_ref": data_ref,
                 "fonte": "fipe_web_v1917",
+                "referencias_estimadas": False,
+                "aviso_referencias": "",
             })
         saida.sort(key=lambda x: x["data_ref"])
+        if not saida:
+            return self.referencias_estimadas_web_v1917("Tabela pública Web FIPE retornou vazia; referências geradas localmente.")
         return saida
 
     @staticmethod
@@ -378,7 +427,7 @@ class FipeHistoricoPainelAdapter:
     ) -> dict[str, Any] | None:
         """Escolhe o yearCode correto dentro de UMA referência mensal.
 
-        Esta é a correção central da V24.4: no histórico antigo não usamos
+        Esta é a correção central da V24.6: no histórico antigo não usamos
         cegamente o código de ano atual. Primeiro listamos os anos disponíveis
         na referência mensal e só então escolhemos a coorte/base.
         """
@@ -444,7 +493,7 @@ class FipeHistoricoPainelAdapter:
     ) -> PontoHistoricoPainel:
         """Consulta um ponto mensal pela API v2 usando código FIPE.
 
-        V24.4: antes de consultar preço, redescobre o código de ano dentro da
+        V24.6: antes de consultar preço, redescobre o código de ano dentro da
         própria referência mensal. Isso evita usar o yearCode atual no passado,
         que era a causa provável de a V24.3 passar por 2016-06 sem encontrar o
         Etios.
@@ -507,7 +556,7 @@ class FipeHistoricoPainelAdapter:
                 debug={**debug, "codigo_ano_resolvido": codigo_ano_resolvido, "modelo_api": str(detalhe.get("Modelo") or detalhe.get("model") or ""), "combustivel_api": str(detalhe.get("Combustivel") or detalhe.get("fuel") or "")},
             )
         except FipeApiError as exc:
-            if exc.status_code in (401, 403, 429):
+            if exc.status_code in (401, 402, 403, 429):
                 raise
             return PontoHistoricoPainel(False, reference, mes_referencia, motivo=f"erro_api_controlado:{exc.tipo}:{exc.message}", debug={**debug, "status_code": exc.status_code, "endpoint": exc.endpoint})
         except Exception as exc:
@@ -570,7 +619,7 @@ class FipeHistoricoPainelAdapter:
                 debug={"codigo_fipe": codigo_fipe, "codigo_ano_usado": primeiro_usado.codigo_ano_referencia, "codigo_ano_zero": codigo_zero, "fonte": "fipe_v2_codigo_fipe_v1917"},
             )
         except FipeApiError as exc:
-            if exc.status_code in (401, 403, 429):
+            if exc.status_code in (401, 402, 403, 429):
                 raise
             return None
         except Exception:

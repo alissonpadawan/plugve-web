@@ -1111,7 +1111,7 @@ select, input {
 .button.danger { background: #fff1f2; color: #be123c; border: 1px solid #fecdd3; }
 .button.danger:hover { background: #ffe4e6; }
 
-/* V24.4 - terminal temporário do diagnóstico V19.17 */
+/* V24.6 - terminal temporário do diagnóstico V19.17 */
 .v1917-temp-tabs {
   margin-top: 12px;
   margin-bottom: 8px;
