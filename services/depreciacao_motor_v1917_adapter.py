@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import math
+import os
 import uuid
 from dataclasses import dataclass, asdict
 from datetime import datetime
@@ -439,7 +440,7 @@ class DepreciacaoMotorV1917Adapter:
     - nunca salvar curva definitiva nesta rota.
     """
 
-    VERSAO = "V24_adapter_v1917_parallel"
+    VERSAO = "V24_3_adapter_v1917_parallel_codigo_fipe"
 
     def __init__(self, fipe: FipeService | None = None) -> None:
         self.fipe = fipe or FipeService()
@@ -544,7 +545,7 @@ class DepreciacaoMotorV1917Adapter:
         referencias = self._referencias_serializadas()
         falha_fipe_web_v1917 = str(getattr(self, "_ultima_falha_referencias_web", "") or "")
         referencias_fipe_web_v1917 = len([r for r in referencias if str(r.get("fonte") or "") == "fipe_web_v1917"])
-        referencias_fipe_v2 = len([r for r in referencias if str(r.get("fonte") or "") == "fipe_v2"])
+        referencias_fipe_v2 = len([r for r in referencias if str(r.get("fonte") or "").startswith("fipe_v2")])
         data_base_operacao = self._resolver_data_base_operacao(payload, referencias)
         anos_disponiveis = self._listar_anos_disponiveis(veiculo)
         ano_base_preferencial = self._resolver_ano_preferencial(payload, data_base_operacao)
@@ -559,6 +560,7 @@ class DepreciacaoMotorV1917Adapter:
 
         job_id = f"v1917_{uuid.uuid4().hex[:16]}"
         selecionado_zero_km = self._codigo_ano_eh_zero(veiculo.codigo_ano) or str(veiculo.ano_modelo).strip() == "32000"
+        fonte_historico = "fipe_web_v1917" if referencias_fipe_web_v1917 else ("fipe_v2_codigo_fipe_v1917" if veiculo.codigo_fipe else "fipe_v2_reconstrucao_marca_modelo_v1917")
         job = {
             "job_id": job_id,
             "motor": self.VERSAO,
@@ -574,7 +576,7 @@ class DepreciacaoMotorV1917Adapter:
             "coorte_base": coorte,
             "anos_disponiveis": anos_disponiveis,
             "referencias": referencias,
-            "fonte_historico": str((referencias[0] or {}).get("fonte") or "fipe_v2") if referencias else "sem_referencias",
+            "fonte_historico": fonte_historico,
             "falha_fipe_web_v1917": falha_fipe_web_v1917,
             "referencias_fipe_web_v1917": referencias_fipe_web_v1917,
             "referencias_fipe_v2": referencias_fipe_v2,
@@ -601,8 +603,8 @@ class DepreciacaoMotorV1917Adapter:
                     "tipo": "fonte_historica",
                     "mensagem": (
                         "Fonte FIPE Web V19.17 ativa."
-                        if (str((referencias[0] or {}).get("fonte") or "") == "fipe_web_v1917")
-                        else "FIPE Web V19.17 indisponível no início; usando fallback FIPE v2 por referência mensal."
+                        if fonte_historico == "fipe_web_v1917"
+                        else "Usando FIPE v2 por código FIPE e referência mensal; não usa /history curto."
                     ),
                 }
             ],
@@ -611,32 +613,37 @@ class DepreciacaoMotorV1917Adapter:
         return job
 
     def _referencias_serializadas(self) -> list[dict[str, Any]]:
-        """Carrega referências mensais.
+        """Carrega referências mensais pela API v2.
 
-        O caminho preferencial da V24 é o mesmo do painel local V19.17:
-        endpoint web da FIPE usado pelo aplicativo desktop. Se esse caminho
-        não responder, o diagnóstico cai para a API v2 atual apenas como
-        fallback, mantendo a coleta em lote e sem salvar curva.
+        No programa local V19.17, o caminho preferencial era o endpoint web
+        veiculos.fipe.org.br. No Render esse endpoint retorna 403 Forbidden por
+        bloqueio do datacenter, então a V24.3 usa a API FIPE v2 por referência
+        mensal e por código FIPE. Isso preserva o raciocínio metodológico do
+        painel: percorrer mês a mês, achar primeira aparição, achar zero km e
+        só então montar histórico amostrado. Não usa /history curto como base.
         """
         refs: list[dict[str, Any]] = []
         self._ultima_falha_referencias_web = ""
-        try:
-            referencias_web = self.painel_adapter.referencias_ordenadas_web_v1917()
-        except Exception as exc:
-            referencias_web = []
-            self._ultima_falha_referencias_web = f"{type(exc).__name__}: {exc}"
-        if not referencias_web and not self._ultima_falha_referencias_web:
-            self._ultima_falha_referencias_web = "ConsultarTabelaDeReferencia retornou vazio ou não foi parseável no ambiente web."
-        for r in referencias_web or []:
-            data_dt = r.get("data_ref")
-            data_ref = data_dt.strftime("%Y-%m") if hasattr(data_dt, "strftime") else str(data_dt or "")[:7]
-            code = str(r.get("code") or r.get("codigo_tabela_referencia") or "").strip()
-            month = str(r.get("month") or "").strip()
-            if code and data_ref:
-                refs.append({"code": code, "month": month, "data_ref": data_ref, "fonte": "fipe_web_v1917"})
-        if refs:
-            refs.sort(key=lambda x: x["data_ref"])
-            return refs
+
+        # O caminho web V19.17 fica disponível só para ambiente local/debug,
+        # porque no Render vem bloqueando com HTTP 403. Default: desligado.
+        usar_web = str(os.environ.get("FIPE_WEB_V1917_ENABLED") or current_app.config.get("FIPE_WEB_V1917_ENABLED") or "").strip().lower() in {"1", "true", "sim", "yes", "on"}
+        if usar_web:
+            try:
+                referencias_web = self.painel_adapter.referencias_ordenadas_web_v1917()
+            except Exception as exc:
+                referencias_web = []
+                self._ultima_falha_referencias_web = f"{type(exc).__name__}: {str(exc)[:240]}"
+            for r in referencias_web or []:
+                data_dt = r.get("data_ref")
+                data_ref = data_dt.strftime("%Y-%m") if hasattr(data_dt, "strftime") else str(data_dt or "")[:7]
+                code = str(r.get("code") or r.get("codigo_tabela_referencia") or "").strip()
+                month = str(r.get("month") or "").strip()
+                if code and data_ref:
+                    refs.append({"code": code, "month": month, "data_ref": data_ref, "fonte": "fipe_web_v1917"})
+            if refs:
+                refs.sort(key=lambda x: x["data_ref"])
+                return refs
 
         for r in self.painel_adapter.referencias_ordenadas():
             data_dt = r.get("data_ref")
@@ -644,7 +651,7 @@ class DepreciacaoMotorV1917Adapter:
             code = str(r.get("code") or "").strip()
             month = str(r.get("month") or "").strip()
             if code and data_ref:
-                refs.append({"code": code, "month": month, "data_ref": data_ref, "fonte": "fipe_v2"})
+                refs.append({"code": code, "month": month, "data_ref": data_ref, "fonte": "fipe_v2_codigo_fipe_v1917"})
         refs.sort(key=lambda x: x["data_ref"])
         return refs
 
@@ -753,8 +760,8 @@ class DepreciacaoMotorV1917Adapter:
 
     def _limite_lote(self, payload: dict[str, Any]) -> int:
         # Cada referência de busca pode consumir várias chamadas FIPE. Mantém teto baixo.
-        bruto = parse_int_seguro(payload.get("max_referencias_por_chamada") or payload.get("limite_lote") or 4, 4)
-        return max(1, min(12, bruto))
+        bruto = parse_int_seguro(payload.get("max_referencias_por_chamada") or payload.get("limite_lote") or 12, 12)
+        return max(1, min(24, bruto))
 
     def _passo_buscar_primeira(self, job: dict[str, Any]) -> int:
         refs = job.get("referencias_busca") or []
@@ -767,7 +774,8 @@ class DepreciacaoMotorV1917Adapter:
         veiculo = job["veiculo"]
         coorte = job["coorte_base"]
         try:
-            if str(job.get("fonte_historico") or "") == "fipe_web_v1917":
+            fonte = str(job.get("fonte_historico") or "")
+            if fonte == "fipe_web_v1917":
                 ponto = self.painel_adapter.consultar_ponto_modelo_primeiro_web_v1917(
                     reference=str(ref.get("code") or ""),
                     mes_referencia=str(ref.get("month") or ""),
@@ -776,6 +784,14 @@ class DepreciacaoMotorV1917Adapter:
                     nome_modelo=str(veiculo.get("modelo") or ""),
                     ano_base=int(coorte["ano"]),
                     combustivel=str(veiculo.get("combustivel") or ""),
+                )
+            elif fonte == "fipe_v2_codigo_fipe_v1917":
+                ponto = self.painel_adapter.consultar_ponto_codigo_fipe_v1917(
+                    reference=str(ref.get("code") or ""),
+                    mes_referencia=str(ref.get("month") or ""),
+                    codigo_fipe=str(veiculo.get("codigo_fipe") or ""),
+                    codigo_ano=str(coorte.get("codigo_ano") or ""),
+                    nome_modelo=str(veiculo.get("modelo") or ""),
                 )
             else:
                 ponto = self.painel_adapter.consultar_ponto_modelo_primeiro_v19(
@@ -835,8 +851,11 @@ class DepreciacaoMotorV1917Adapter:
             return 0
         ref = refs[idx]
         primeiro = self._ponto_historico_from_dict(job.get("primeiro_usado") or {})
-        if str(job.get("fonte_historico") or "") == "fipe_web_v1917":
+        fonte = str(job.get("fonte_historico") or "")
+        if fonte == "fipe_web_v1917":
             zero = self.painel_adapter.consultar_zero_km_web_v1917(referencia={"code": ref.get("code"), "month": ref.get("month")}, primeiro_usado=primeiro)
+        elif fonte == "fipe_v2_codigo_fipe_v1917":
+            zero = self.painel_adapter.consultar_zero_km_codigo_fipe_v1917(referencia={"code": ref.get("code"), "month": ref.get("month")}, primeiro_usado=primeiro)
         else:
             zero = self.painel_adapter._consultar_zero_km_v19(referencia={"code": ref.get("code"), "month": ref.get("month")}, primeiro_usado=primeiro)
         job["indice_busca_zero"] = idx + 1
@@ -918,25 +937,11 @@ class DepreciacaoMotorV1917Adapter:
         ref = refs[idx]
         primeiro = job.get("primeiro_usado") or {}
         try:
-            if str(job.get("fonte_historico") or "") == "fipe_web_v1917":
+            fonte = str(job.get("fonte_historico") or "")
+            if fonte == "fipe_web_v1917":
                 ponto = self.painel_adapter.consultar_preco_usado_web_v1917(referencia=ref, primeiro_usado=self._ponto_historico_from_dict(primeiro))
-                valor = float(ponto.valor or 0)
-                valor_txt = ponto.valor_formatado or formatar_brl(valor)
-                if ponto.ok and valor > 0:
-                    data_ref = str(ponto.data_referencia or ref.get("data_ref") or "")
-                    job.setdefault("historico", []).append({
-                        "data_referencia": data_ref,
-                        "mes_referencia": str(ponto.mes or ref.get("month") or ""),
-                        "preco_nominal": float(valor),
-                        "valor_formatado": valor_txt if isinstance(valor_txt, str) and valor_txt else formatar_brl(float(valor)),
-                        "tipo": "usado",
-                        "reference": str(ref.get("code") or ""),
-                    })
-                else:
-                    job["falhas_coleta"] = int(job.get("falhas_coleta") or 0) + 1
-                    tentativas = job.setdefault("tentativas_historico", [])
-                    if len(tentativas) < 20:
-                        tentativas.append({"reference": ref.get("code"), "mes": ref.get("month"), "data_ref": ref.get("data_ref"), "motivo": ponto.motivo})
+            elif fonte == "fipe_v2_codigo_fipe_v1917":
+                ponto = self.painel_adapter.consultar_preco_usado_codigo_fipe_v1917(referencia=ref, primeiro_usado=self._ponto_historico_from_dict(primeiro))
             else:
                 detalhe = self.fipe.consultar_preco_referencia(
                     str(primeiro.get("codigo_marca_referencia") or ""),
@@ -946,18 +951,33 @@ class DepreciacaoMotorV1917Adapter:
                 )
                 valor_txt = detalhe.get("Valor") or detalhe.get("price") or ""
                 valor = parse_float_seguro(valor_txt)
-                if valor and valor > 0:
-                    data_ref = str(ref.get("data_ref") or "")
-                    job.setdefault("historico", []).append({
-                        "data_referencia": data_ref,
-                        "mes_referencia": str(ref.get("month") or detalhe.get("MesReferencia") or detalhe.get("referenceMonth") or ""),
-                        "preco_nominal": float(valor),
-                        "valor_formatado": valor_txt if isinstance(valor_txt, str) and valor_txt else formatar_brl(float(valor)),
-                        "tipo": "usado",
-                        "reference": str(ref.get("code") or ""),
-                    })
-                else:
-                    job["falhas_coleta"] = int(job.get("falhas_coleta") or 0) + 1
+                ponto = PontoHistoricoPainel(
+                    bool(valor and valor > 0),
+                    str(ref.get("code") or ""),
+                    str(ref.get("month") or detalhe.get("MesReferencia") or detalhe.get("referenceMonth") or ""),
+                    data_referencia=str(ref.get("data_ref") or ""),
+                    valor=float(valor or 0),
+                    valor_formatado=valor_txt if isinstance(valor_txt, str) and valor_txt else formatar_brl(float(valor or 0)),
+                    motivo="" if valor and valor > 0 else "preco_invalido_historico_referencia",
+                )
+
+            valor = float(ponto.valor or 0)
+            valor_txt = ponto.valor_formatado or formatar_brl(valor)
+            if ponto.ok and valor > 0:
+                data_ref = str(ponto.data_referencia or ref.get("data_ref") or "")
+                job.setdefault("historico", []).append({
+                    "data_referencia": data_ref,
+                    "mes_referencia": str(ponto.mes or ref.get("month") or ""),
+                    "preco_nominal": float(valor),
+                    "valor_formatado": valor_txt if isinstance(valor_txt, str) and valor_txt else formatar_brl(float(valor)),
+                    "tipo": "usado",
+                    "reference": str(ref.get("code") or ""),
+                })
+            else:
+                job["falhas_coleta"] = int(job.get("falhas_coleta") or 0) + 1
+                tentativas = job.setdefault("tentativas_historico", [])
+                if len(tentativas) < 20:
+                    tentativas.append({"reference": ref.get("code"), "mes": ref.get("month"), "data_ref": ref.get("data_ref"), "motivo": ponto.motivo})
         except FipeApiError as exc:
             if exc.status_code == 429:
                 job["limite_interrompeu"] = True
@@ -1113,7 +1133,7 @@ class DepreciacaoMotorV1917Adapter:
             "detalhes": {
                 "tipo_label": "Zero km" if job.get("selecionado_zero_km") else "Usado com offset de idade V19.17",
                 "auditoria_historico": {
-                    "fonte_historico": "FIPE reconstruída por referência mensal, sem usar /history como espinha dorsal",
+                    "fonte_historico": "FIPE por código FIPE e referência mensal, sem usar /history curto como espinha dorsal",
                     "primeira_aparicao": job.get("primeiro_usado"),
                     "zero_km_base": job.get("zero_km_base"),
                     "modo_pandemia": job.get("modo_pandemia"),
@@ -1167,7 +1187,7 @@ class DepreciacaoMotorV1917Adapter:
     def _montar_relatorio_textual(self, job: dict[str, Any], qualidade: dict[str, Any], calculo: dict[str, Any] | None, erro_calculo: str | None) -> str:
         veiculo = job.get("veiculo") or {}
         linhas = [
-            "DIAGNÓSTICO TÉCNICO V24 - MOTOR LOCAL V19.17 PORTADO",
+            "DIAGNÓSTICO TÉCNICO V24.3 - MOTOR LOCAL V19.17 PORTADO",
             "",
             "Este diagnóstico roda em módulo paralelo e não salva curva definitiva.",
             f"Veículo selecionado: {veiculo.get('marca', '')} {veiculo.get('modelo', '')} {veiculo.get('ano_modelo', '')}".strip(),

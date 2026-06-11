@@ -475,7 +475,7 @@ async function solicitarDiagnosticoCoorte(chamadaAutomatica = false) {
   diagnosticoV1917Ciclos += 1;
 
   payload.modo_pandemia = payload.modo_pandemia || "Excluir";
-  payload.max_referencias_por_chamada = payload.max_referencias_por_chamada || 4;
+  payload.max_referencias_por_chamada = payload.max_referencias_por_chamada || 8;
   if (ultimoJobDiagnosticoV1917) payload.job_id = ultimoJobDiagnosticoV1917;
 
   const btn = document.getElementById("btn_diagnostico_coorte");
@@ -564,7 +564,7 @@ async function solicitarDiagnosticoCoorte(chamadaAutomatica = false) {
     continuarAutomaticamente = manterContinuar && diagnosticoV1917AutoAtivo && diagnosticoV1917Ciclos < DIAGNOSTICO_V1917_MAX_CICLOS;
     if (continuarAutomaticamente) {
       atualizarFeedbackCalculo(`Lote ${diagnosticoV1917Ciclos} concluído. Continuando automaticamente para evitar timeout do Render...`, 55, true);
-      setTimeout(() => solicitarDiagnosticoCoorte(true), 900);
+      setTimeout(() => solicitarDiagnosticoCoorte(true), 450);
     } else {
       diagnosticoV1917AutoAtivo = false;
       const msgFinal = manterContinuar ? "Diagnóstico pausado no limite de ciclos automáticos. Clique novamente para continuar." : "Diagnóstico concluído. Nenhuma curva foi salva.";

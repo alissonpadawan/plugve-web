@@ -82,3 +82,7 @@ Após o primeiro teste online do Etios, o diagnóstico parou em `erro_api_fipe` 
 - preservar erro fatal apenas para autenticação/limite quando aplicável;
 - incluir `codigo_tipo_combustivel` e `ano_modelo_referencia` no ponto da primeira aparição para permitir consultar zero km 32000 e histórico sem recalcular códigos atuais;
 - manter a etapa como diagnóstico: não altera `/api/depreciacao/calcular` e não salva curva definitiva.
+
+## Atualização V24.3
+
+No Render, o endpoint web `veiculos.fipe.org.br/api/veiculos` retornou HTTP 403. A partir da V24.3, o adapter não depende mais desse endpoint por padrão. Ele usa API FIPE v2 por código FIPE e referência mensal (`fipe_v2_codigo_fipe_v1917`), preservando o fluxo metodológico do painel local: primeira aparição, zero km 32000, histórico amostrado e cálculo diagnóstico. O endpoint `/history` curto continua não sendo usado como espinha dorsal.
