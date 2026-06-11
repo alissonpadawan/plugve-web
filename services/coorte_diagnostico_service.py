@@ -5,7 +5,7 @@ from typing import Any
 
 from core.modelos import VeiculoSelecionado
 from services.fipe_service import FipeService, FipeApiError
-from services.text_utils import detectar_eletrico, parse_float_seguro
+from services.text_utils import detectar_eletrico, normalizar_texto, parse_float_seguro
 
 
 class CoorteDiagnosticoService:
@@ -319,7 +319,7 @@ class CoorteDiagnosticoService:
         # o diagnóstico NÃO pode tentar 30-50 chamadas em uma única requisição HTTP.
         # Ele faz uma amostra curta e espalhada pela janela histórica.
         pontos_planejados_original = len(planejadas)
-        limite_diagnostico = 8
+        limite_diagnostico = 4
         amostragem_parcial = False
         if len(planejadas) > limite_diagnostico:
             amostragem_parcial = True
@@ -332,26 +332,39 @@ class CoorteDiagnosticoService:
         pontos: list[dict[str, Any]] = []
         erros_404 = 0
         erros_outros = 0
+        modelos_reconstruidos = 0
+        anos_reconstruidos = 0
+        refs_sem_modelo = 0
+        refs_sem_ano = 0
         limite_interrompeu = False
         ultimo_erro = None
 
         for ref in planejadas:
+            ref_code = str(ref.get("code"))
             try:
-                detalhe = self.fipe.consultar_preco_referencia(
-                    veiculo.codigo_marca,
-                    veiculo.codigo_modelo,
-                    codigo_ano,
-                    str(ref.get("code")),
+                # Lógica herdada do painel antigo, adaptada para API v2:
+                # em referência antiga os códigos podem mudar. Então não confiamos
+                # cegamente no codigo_modelo/codigo_ano atual. Reconstruímos o modelo
+                # e o ano dentro daquela referência antes de consultar o preço.
+                ponto = self._consultar_ponto_referencia_reconstruido(
+                    veiculo=veiculo,
+                    coorte_base=coorte_base,
+                    reference=ref_code,
+                    mes_referencia=str(ref.get("month") or ""),
                 )
-                valor_txt = detalhe.get("Valor") or detalhe.get("price") or ""
-                valor = parse_float_seguro(valor_txt)
-                if valor and valor > 0:
-                    pontos.append({
-                        "reference": str(ref.get("code")),
-                        "mes": ref.get("month") or detalhe.get("MesReferencia") or "",
-                        "valor": float(valor),
-                        "valor_formatado": valor_txt if isinstance(valor_txt, str) and valor_txt else f"R$ {valor:,.2f}",
-                    })
+                if ponto.get("ok") and ponto.get("valor"):
+                    pontos.append(ponto)
+                    modelos_reconstruidos += 1 if ponto.get("modelo_reconstruido") else 0
+                    anos_reconstruidos += 1 if ponto.get("ano_reconstruido") else 0
+                else:
+                    motivo = ponto.get("motivo") or "sem_ponto"
+                    ultimo_erro = motivo
+                    if motivo == "modelo_nao_encontrado_na_referencia":
+                        refs_sem_modelo += 1
+                    elif motivo == "ano_nao_encontrado_na_referencia":
+                        refs_sem_ano += 1
+                    else:
+                        erros_outros += 1
             except FipeApiError as exc:
                 ultimo_erro = exc.message
                 if exc.status_code == 404:
@@ -384,6 +397,11 @@ class CoorteDiagnosticoService:
             "limite_diagnostico_por_clique": limite_diagnostico,
             "pontos_validos": len(pontos),
             "erros_404_ignorados": erros_404,
+            "refs_sem_modelo": refs_sem_modelo,
+            "refs_sem_ano": refs_sem_ano,
+            "modelos_reconstruidos": modelos_reconstruidos,
+            "anos_reconstruidos": anos_reconstruidos,
+            "estrategia_historico": "reconstruir_modelo_e_ano_por_referencia",
             "erros_outros": erros_outros,
             "limite_interrompeu": limite_interrompeu,
             "primeiro_ponto": pontos[0] if pontos else None,
@@ -392,6 +410,120 @@ class CoorteDiagnosticoService:
             "amostra": pontos[:8],
             "ultimo_erro": ultimo_erro,
             "erro": ultimo_erro if not pontos and ultimo_erro else None,
+        }
+
+
+    @staticmethod
+    def _tokens_modelo(nome: str) -> set[str]:
+        texto = normalizar_texto(nome)
+        ignorar = {
+            "flex", "aut", "mec", "auto", "automatico", "manual", "gasolina", "alcool",
+            "diesel", "eletrico", "hibrido", "16v", "8v", "12v", "4p", "5p", "2p",
+            "cv", "tb", "turbo", "vvt", "mpi", "tsi", "tdi", "gdi", "at", "mt",
+        }
+        tokens = set()
+        for t in texto.replace(".", " ").replace("/", " ").replace("-", " ").split():
+            if len(t) < 2 or t in ignorar:
+                continue
+            tokens.add(t)
+        return tokens
+
+    def _encontrar_modelo_na_referencia(self, modelos: list[dict[str, Any]], nome_alvo: str) -> dict[str, Any] | None:
+        if not modelos:
+            return None
+        alvo_norm = normalizar_texto(nome_alvo)
+        alvo_tokens = self._tokens_modelo(nome_alvo)
+        melhor = None
+        melhor_score = 0.0
+        for m in modelos:
+            nome = str(m.get("nome") or m.get("name") or "")
+            nome_norm = normalizar_texto(nome)
+            if not nome_norm:
+                continue
+            if nome_norm == alvo_norm:
+                return m
+            tokens = self._tokens_modelo(nome)
+            inter = len(alvo_tokens & tokens)
+            union = max(1, len(alvo_tokens | tokens))
+            score = inter / union
+            # Bônus quando o nome principal está contido. Isso ajuda HB20/Etios/Corolla.
+            if alvo_tokens and any(t in nome_norm.split() for t in alvo_tokens):
+                score += 0.10
+            if score > melhor_score:
+                melhor_score = score
+                melhor = m
+        return melhor if melhor_score >= 0.28 else None
+
+    @staticmethod
+    def _combustivel_compativel(nome_ano: str, combustivel_alvo: str) -> bool:
+        alvo = normalizar_texto(combustivel_alvo)
+        nome = normalizar_texto(nome_ano)
+        if not alvo or not nome:
+            return True
+        if "flex" in alvo:
+            return "flex" in nome
+        if "diesel" in alvo:
+            return "diesel" in nome
+        if "eletrico" in alvo or "hibrido" in alvo:
+            return ("eletrico" in nome) or ("hibrido" in nome)
+        return True
+
+    def _encontrar_ano_na_referencia(self, anos: list[dict[str, Any]], ano_base: int, combustivel_alvo: str) -> dict[str, Any] | None:
+        candidatos = []
+        for a in anos or []:
+            codigo = str(a.get("codigo") or a.get("code") or "")
+            nome = str(a.get("nome") or a.get("name") or "")
+            ano_txt = codigo.split("-", 1)[0]
+            ano = int(ano_txt) if ano_txt.isdigit() and ano_txt != "32000" else None
+            if ano == int(ano_base):
+                candidatos.append(a)
+        if not candidatos:
+            return None
+        compativeis = [a for a in candidatos if self._combustivel_compativel(str(a.get("nome") or a.get("name") or ""), combustivel_alvo)]
+        return (compativeis or candidatos)[0]
+
+    def _consultar_ponto_referencia_reconstruido(self, *, veiculo: VeiculoSelecionado, coorte_base: dict[str, Any], reference: str, mes_referencia: str) -> dict[str, Any]:
+        ano_base = int(coorte_base.get("ano") or 0)
+        if not ano_base:
+            return {"ok": False, "motivo": "coorte_sem_ano_base"}
+
+        modelos_data = self.fipe.listar_modelos_referencia(veiculo.codigo_marca, reference)
+        modelos = modelos_data.get("modelos", []) if isinstance(modelos_data, dict) else []
+        modelo_ref = self._encontrar_modelo_na_referencia(modelos, veiculo.modelo)
+        if not modelo_ref:
+            return {"ok": False, "motivo": "modelo_nao_encontrado_na_referencia", "reference": reference, "mes": mes_referencia}
+
+        codigo_modelo_ref = str(modelo_ref.get("codigo") or modelo_ref.get("code") or "")
+        anos = self.fipe.listar_anos_referencia(veiculo.codigo_marca, codigo_modelo_ref, reference)
+        ano_ref = self._encontrar_ano_na_referencia(anos, ano_base, veiculo.combustivel)
+        if not ano_ref:
+            return {
+                "ok": False,
+                "motivo": "ano_nao_encontrado_na_referencia",
+                "reference": reference,
+                "mes": mes_referencia,
+                "modelo_referencia": modelo_ref.get("nome") or modelo_ref.get("name"),
+            }
+
+        codigo_ano_ref = str(ano_ref.get("codigo") or ano_ref.get("code") or "")
+        detalhe = self.fipe.consultar_preco_referencia(veiculo.codigo_marca, codigo_modelo_ref, codigo_ano_ref, reference)
+        valor_txt = detalhe.get("Valor") or detalhe.get("price") or ""
+        valor = parse_float_seguro(valor_txt)
+        if not valor or valor <= 0:
+            return {"ok": False, "motivo": "preco_invalido_na_referencia", "reference": reference, "mes": mes_referencia}
+
+        return {
+            "ok": True,
+            "reference": reference,
+            "mes": mes_referencia or detalhe.get("MesReferencia") or "",
+            "valor": float(valor),
+            "valor_formatado": valor_txt if isinstance(valor_txt, str) and valor_txt else f"R$ {valor:,.2f}",
+            "codigo_modelo_referencia": codigo_modelo_ref,
+            "modelo_referencia": modelo_ref.get("nome") or modelo_ref.get("name") or "",
+            "codigo_ano_referencia": codigo_ano_ref,
+            "ano_referencia": ano_ref.get("nome") or ano_ref.get("name") or "",
+            "modelo_reconstruido": codigo_modelo_ref != str(veiculo.codigo_modelo),
+            "ano_reconstruido": codigo_ano_ref != str(coorte_base.get("codigo") or ""),
         }
 
     @staticmethod
@@ -433,6 +565,9 @@ class CoorteDiagnosticoService:
         am = ctx.get("amostragem_referencias") or {}
         linhas.append(f"Amostragem adaptativa por referências: {am.get('criterio_passo', '-') }.")
         linhas.append(f"Referências planejadas: {am.get('pontos_planejados', 0)}; pontos válidos encontrados: {am.get('pontos_validos', 0)}.")
+        linhas.append(f"Estratégia de busca histórica: {am.get('estrategia_historico', 'consulta direta por referência')}.")
+        if am.get('refs_sem_modelo') or am.get('refs_sem_ano'):
+            linhas.append(f"Referências sem modelo compatível: {am.get('refs_sem_modelo', 0)}; sem ano compatível: {am.get('refs_sem_ano', 0)}.")
         if am.get("primeiro_ponto") and am.get("ultimo_ponto"):
             p0 = am.get("primeiro_ponto") or {}
             p1 = am.get("ultimo_ponto") or {}

@@ -1,0 +1,20 @@
+V23 - Diagnóstico por coorte com reconstrução por referência
+
+Objetivo:
+- Não usar os códigos FIPE atuais cegamente em referências antigas.
+- Em cada referência mensal, reconstruir o modelo e o ano daquela referência antes de consultar o preço.
+
+Fluxo:
+1. Escolhe a coorte base: ano atual - 7 ou ano mais próximo disponível.
+2. Seleciona uma amostra pequena de referências para não estourar timeout/requisição.
+3. Para cada referência:
+   - lista modelos da marca naquela referência;
+   - encontra modelo compatível por nome/tokens;
+   - lista anos desse modelo naquela referência;
+   - encontra ano/combustível compatível com a coorte;
+   - consulta preço.
+4. O diagnóstico mostra quantos pontos foram encontrados e por que pontos falharam.
+
+Importante:
+- Este pacote ainda é diagnóstico. Não salva curva definitiva.
+- A lógica contempla zero km/usado, combustão/elétrico e histórico suficiente/insuficiente sem misturar as táticas.

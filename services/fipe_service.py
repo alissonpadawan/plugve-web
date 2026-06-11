@@ -383,6 +383,49 @@ class FipeService:
             self._registrar_erro_static(cache_dir, None, url, str(exc)[:300])
             raise FipeApiError("Falha de conexão ao consultar referências da FIPE.", None, "references")
 
+
+    def _get_json_referencia(self, endpoint: str, reference: str, timeout_segundos: int = 3):
+        """GET na API FIPE v2 usando uma referência mensal específica."""
+        cache_dir = self._cache_dir()
+        endpoint = endpoint.strip("/")
+        url = f"{self._base_url().rstrip('/')}/{endpoint}"
+        try:
+            self._registrar_requisicao_static(cache_dir, token_ativo=bool(self._token()))
+            resp = requests.get(
+                url,
+                timeout=max(1, min(int(timeout_segundos or 3), 4)),
+                headers=self._headers(),
+                params={"reference": str(reference)},
+            )
+            if resp.status_code >= 400:
+                self._registrar_erro_static(cache_dir, resp.status_code, url, resp.text[:300])
+                if resp.status_code == 404:
+                    raise FipeApiError("Recurso FIPE não encontrado nesta referência mensal.", 404, endpoint)
+                if resp.status_code == 429:
+                    raise FipeApiError("Limite diário da API FIPE atingido durante coleta histórica.", 429, endpoint)
+                if resp.status_code in (401, 403):
+                    raise FipeApiError("Token FIPE inválido, ausente ou sem permissão nesta consulta histórica.", resp.status_code, endpoint)
+                raise FipeApiError(f"Erro FIPE {resp.status_code} na consulta histórica.", resp.status_code, endpoint)
+            return resp.json()
+        except FipeApiError:
+            raise
+        except requests.exceptions.Timeout:
+            self._registrar_erro_static(cache_dir, None, url, 'timeout')
+            raise FipeApiError("Tempo esgotado ao consultar histórico FIPE.", None, endpoint)
+        except requests.exceptions.RequestException as exc:
+            self._registrar_erro_static(cache_dir, None, url, str(exc)[:300])
+            raise FipeApiError("Falha de conexão ao consultar histórico FIPE.", None, endpoint)
+
+    def listar_modelos_referencia(self, codigo_marca: str, reference: str) -> dict:
+        """Lista modelos de uma marca em uma referência FIPE antiga."""
+        data = self._get_json_referencia(f"brands/{codigo_marca}/models", reference, timeout_segundos=3)
+        return self._normalizar_modelos(data)
+
+    def listar_anos_referencia(self, codigo_marca: str, codigo_modelo: str, reference: str) -> list[dict]:
+        """Lista anos de um modelo em uma referência FIPE antiga."""
+        data = self._get_json_referencia(f"brands/{codigo_marca}/models/{codigo_modelo}/years", reference, timeout_segundos=3)
+        return self._normalizar_anos(data)
+
     def consultar_preco_referencia(self, codigo_marca: str, codigo_modelo: str, codigo_ano: str, reference: str):
         """Consulta detalhe FIPE v2 em uma referência mensal específica. Conta como requisição FIPE."""
         cache_dir = self._cache_dir()
