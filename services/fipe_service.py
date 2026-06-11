@@ -384,6 +384,26 @@ class FipeService:
             raise FipeApiError("Falha de conexão ao consultar referências da FIPE.", None, "references")
 
 
+
+    def listar_marcas_referencia(self, reference: str) -> list[dict]:
+        """Lista marcas dentro de uma referência mensal específica da API FIPE v2."""
+        data = self._get_json_referencia("brands", str(reference), timeout_segundos=3)
+        return self._normalizar_marcas(data)
+
+    def listar_anos_marca_referencia(self, codigo_marca: str, reference: str) -> list[dict]:
+        """Lista anos disponíveis para uma marca dentro de uma referência mensal.
+
+        Este endpoint é importante para reproduzir o fluxo do painel antigo:
+        referência -> marca -> ano -> modelos -> preço.
+        """
+        data = self._get_json_referencia(f"brands/{codigo_marca}/years", str(reference), timeout_segundos=3)
+        return self._normalizar_anos(data)
+
+    def listar_modelos_por_ano_referencia(self, codigo_marca: str, codigo_ano: str, reference: str) -> dict:
+        """Lista modelos de uma marca/ano dentro de uma referência mensal."""
+        data = self._get_json_referencia(f"brands/{codigo_marca}/years/{codigo_ano}/models", str(reference), timeout_segundos=3)
+        return self._normalizar_modelos(data)
+
     def _get_json_referencia(self, endpoint: str, reference: str, timeout_segundos: int = 3):
         """GET na API FIPE v2 usando uma referência mensal específica."""
         cache_dir = self._cache_dir()

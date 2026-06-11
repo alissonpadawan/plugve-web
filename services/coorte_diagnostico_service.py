@@ -5,6 +5,7 @@ from typing import Any
 
 from core.modelos import VeiculoSelecionado
 from services.fipe_service import FipeService, FipeApiError
+from services.fipe_historico_painel_adapter import FipeHistoricoPainelAdapter
 from services.text_utils import detectar_eletrico, normalizar_texto, parse_float_seguro
 
 
@@ -18,6 +19,7 @@ class CoorteDiagnosticoService:
 
     def __init__(self) -> None:
         self.fipe = FipeService()
+        self.historico_adapter = FipeHistoricoPainelAdapter(self.fipe)
 
     def diagnosticar(self, payload: dict[str, Any]) -> dict[str, Any]:
         veiculo = VeiculoSelecionado.from_payload(payload)
@@ -241,44 +243,30 @@ class CoorteDiagnosticoService:
 
 
     def _coletar_amostragem_referencias(self, *, veiculo: VeiculoSelecionado, coorte_base: dict[str, Any], historico_plano: dict[str, Any]) -> dict[str, Any]:
-        """Coleta controlada de histórico FIPE por referências mensais.
+        """Coleta diagnóstica inspirada no painel antigo.
 
-        Esta função é apenas diagnóstica: consulta a API v2 com amostragem
-        adaptativa, não salva curva e não altera bases. O objetivo é mostrar se
-        existe massa histórica suficiente para o motor definitivo por coorte.
+        Não usa código atual no passado como fonte única. Para cada referência
+        mensal, reconstrói o caminho dentro daquele mês:
+        referência -> marca -> ano -> modelos daquele ano -> preço.
         """
-        codigo_ano = str(coorte_base.get("codigo") or "").strip()
-        if not codigo_ano:
-            return {
-                "ok": False,
-                "erro": "coorte_base_sem_codigo_ano",
-                "criterio_passo": "não executado",
-                "pontos_planejados": 0,
-                "pontos_validos": 0,
-            }
+        ano_base = int(coorte_base.get("ano") or 0)
+        if not ano_base:
+            return {"ok": False, "erro": "coorte_base_sem_ano", "pontos_planejados": 0, "pontos_validos": 0}
 
         janela_meses = int(historico_plano.get("janela_teorica_meses") or 0)
-        if janela_meses <= 0:
-            return {
-                "ok": False,
-                "erro": "janela_historica_zero",
-                "criterio_passo": "não executado",
-                "pontos_planejados": 0,
-                "pontos_validos": 0,
-            }
-
+        ano_atual = datetime.now().year
         if janela_meses <= 36:
-            passo = 1
-            criterio = "modelo recente: coleta mensal"
+            criterio = "modelo recente: amostra mensal/curta, com reconstrução por referência"
+            max_pontos = 6
         elif janela_meses <= 84:
-            passo = 2
-            criterio = "modelo intermediário: coleta a cada 2 meses"
+            criterio = "modelo intermediário: amostra adaptativa, com reconstrução por referência"
+            max_pontos = 6
         else:
-            passo = 3
-            criterio = "modelo antigo: coleta a cada 3 meses"
+            criterio = "modelo antigo/descontinuado: amostra espaçada, com reconstrução por referência"
+            max_pontos = 5
 
         try:
-            referencias = self.fipe.listar_referencias()
+            referencias = self.historico_adapter.referencias_ordenadas()
         except FipeApiError as exc:
             return {
                 "ok": False,
@@ -290,81 +278,56 @@ class CoorteDiagnosticoService:
                 "limite_interrompeu": exc.status_code == 429,
             }
         except Exception as exc:
-            return {
-                "ok": False,
-                "erro": str(exc)[:240],
-                "criterio_passo": criterio,
-                "pontos_planejados": 0,
-                "pontos_validos": 0,
-            }
+            return {"ok": False, "erro": str(exc)[:240], "criterio_passo": criterio, "pontos_planejados": 0, "pontos_validos": 0}
 
-        if not referencias:
-            return {
-                "ok": False,
-                "erro": "nenhuma_referencia_fipe_retornada",
-                "criterio_passo": criterio,
-                "pontos_planejados": 0,
-                "pontos_validos": 0,
-            }
-
-        # A API retorna códigos de referência crescentes. Usamos a janela mais
-        # recente equivalente à janela teórica da coorte e amostramos do mais
-        # antigo para o mais recente.
-        janela_refs = referencias[-max(1, min(janela_meses, len(referencias))):]
-        planejadas = janela_refs[::passo]
-        if janela_refs and planejadas[-1].get("code") != janela_refs[-1].get("code"):
-            planejadas.append(janela_refs[-1])
-
-        # Segurança contra estouro de requisições e timeout do Render:
-        # o diagnóstico NÃO pode tentar 30-50 chamadas em uma única requisição HTTP.
-        # Ele faz uma amostra curta e espalhada pela janela histórica.
-        pontos_planejados_original = len(planejadas)
-        limite_diagnostico = 4
-        amostragem_parcial = False
-        if len(planejadas) > limite_diagnostico:
-            amostragem_parcial = True
-            if limite_diagnostico <= 1:
-                planejadas = [planejadas[-1]]
-            else:
-                idxs = sorted(set(round(i * (len(planejadas) - 1) / (limite_diagnostico - 1)) for i in range(limite_diagnostico)))
-                planejadas = [planejadas[i] for i in idxs]
+        planejadas = self.historico_adapter.selecionar_referencias_amostradas(
+            referencias,
+            ano_inicio=max(1990, ano_base),
+            ano_atual=ano_atual,
+            max_pontos=max_pontos,
+        )
 
         pontos: list[dict[str, Any]] = []
-        erros_404 = 0
-        erros_outros = 0
-        modelos_reconstruidos = 0
-        anos_reconstruidos = 0
+        refs_sem_marca = 0
         refs_sem_modelo = 0
         refs_sem_ano = 0
+        refs_sem_preco = 0
+        erros_404 = 0
+        erros_outros = 0
         limite_interrompeu = False
         ultimo_erro = None
+        amostras_falhas: list[dict[str, Any]] = []
 
         for ref in planejadas:
-            ref_code = str(ref.get("code"))
+            ref_code = str(ref.get("code") or "")
             try:
-                # Lógica herdada do painel antigo, adaptada para API v2:
-                # em referência antiga os códigos podem mudar. Então não confiamos
-                # cegamente no codigo_modelo/codigo_ano atual. Reconstruímos o modelo
-                # e o ano dentro daquela referência antes de consultar o preço.
-                ponto = self._consultar_ponto_referencia_reconstruido(
-                    veiculo=veiculo,
-                    coorte_base=coorte_base,
+                ponto = self.historico_adapter.consultar_ponto_por_referencia_painel(
                     reference=ref_code,
                     mes_referencia=str(ref.get("month") or ""),
+                    codigo_marca_atual=veiculo.codigo_marca,
+                    nome_marca=veiculo.marca,
+                    nome_modelo=veiculo.modelo,
+                    ano_base=ano_base,
+                    combustivel=veiculo.combustivel,
                 )
-                if ponto.get("ok") and ponto.get("valor"):
-                    pontos.append(ponto)
-                    modelos_reconstruidos += 1 if ponto.get("modelo_reconstruido") else 0
-                    anos_reconstruidos += 1 if ponto.get("ano_reconstruido") else 0
+                d = ponto.to_dict()
+                if ponto.ok and ponto.valor:
+                    pontos.append(d)
                 else:
-                    motivo = ponto.get("motivo") or "sem_ponto"
+                    motivo = ponto.motivo or "sem_ponto"
                     ultimo_erro = motivo
-                    if motivo == "modelo_nao_encontrado_na_referencia":
+                    if motivo == "marca_nao_encontrada_na_referencia":
+                        refs_sem_marca += 1
+                    elif motivo == "modelo_nao_encontrado_na_referencia":
                         refs_sem_modelo += 1
                     elif motivo == "ano_nao_encontrado_na_referencia":
                         refs_sem_ano += 1
+                    elif motivo == "preco_invalido_na_referencia":
+                        refs_sem_preco += 1
                     else:
                         erros_outros += 1
+                    if len(amostras_falhas) < 4:
+                        amostras_falhas.append(d)
             except FipeApiError as exc:
                 ultimo_erro = exc.message
                 if exc.status_code == 404:
@@ -374,40 +337,41 @@ class CoorteDiagnosticoService:
                     limite_interrompeu = True
                     break
                 erros_outros += 1
-                continue
             except Exception as exc:
-                ultimo_erro = str(exc)[:240]
+                ultimo_erro = f"{type(exc).__name__}: {str(exc)[:180]}"
                 erros_outros += 1
-                continue
 
+        # Ordena por data quando disponível; mantém ordem de coleta se não houver data.
+        pontos.sort(key=lambda x: x.get("data_referencia") or x.get("reference") or "")
         variacao = None
         if len(pontos) >= 2 and pontos[0].get("valor"):
-            variacao = ((pontos[-1]["valor"] - pontos[0]["valor"]) / pontos[0]["valor"]) * 100
+            variacao = ((float(pontos[-1]["valor"]) - float(pontos[0]["valor"])) / float(pontos[0]["valor"])) * 100
             variacao = round(variacao, 2)
 
         return {
             "ok": True,
             "criterio_passo": criterio,
-            "passo_meses": passo,
+            "passo_meses": None,
             "janela_teorica_meses": janela_meses,
             "referencias_disponiveis": len(referencias),
-            "pontos_planejados_original": pontos_planejados_original,
+            "pontos_planejados_original": len(planejadas),
             "pontos_planejados": len(planejadas),
-            "amostragem_parcial": amostragem_parcial,
-            "limite_diagnostico_por_clique": limite_diagnostico,
+            "amostragem_parcial": True,
+            "limite_diagnostico_por_clique": max_pontos,
             "pontos_validos": len(pontos),
-            "erros_404_ignorados": erros_404,
+            "refs_sem_marca": refs_sem_marca,
             "refs_sem_modelo": refs_sem_modelo,
             "refs_sem_ano": refs_sem_ano,
-            "modelos_reconstruidos": modelos_reconstruidos,
-            "anos_reconstruidos": anos_reconstruidos,
-            "estrategia_historico": "reconstruir_modelo_e_ano_por_referencia",
+            "refs_sem_preco": refs_sem_preco,
+            "erros_404_ignorados": erros_404,
             "erros_outros": erros_outros,
             "limite_interrompeu": limite_interrompeu,
+            "estrategia_historico": "painel_antigo_adaptado: referencia_marca_ano_modelos_preco",
             "primeiro_ponto": pontos[0] if pontos else None,
             "ultimo_ponto": pontos[-1] if pontos else None,
             "variacao_percentual_observada": variacao,
             "amostra": pontos[:8],
+            "amostras_falhas": amostras_falhas,
             "ultimo_erro": ultimo_erro,
             "erro": ultimo_erro if not pontos and ultimo_erro else None,
         }
@@ -566,8 +530,13 @@ class CoorteDiagnosticoService:
         linhas.append(f"Amostragem adaptativa por referências: {am.get('criterio_passo', '-') }.")
         linhas.append(f"Referências planejadas: {am.get('pontos_planejados', 0)}; pontos válidos encontrados: {am.get('pontos_validos', 0)}.")
         linhas.append(f"Estratégia de busca histórica: {am.get('estrategia_historico', 'consulta direta por referência')}.")
-        if am.get('refs_sem_modelo') or am.get('refs_sem_ano'):
-            linhas.append(f"Referências sem modelo compatível: {am.get('refs_sem_modelo', 0)}; sem ano compatível: {am.get('refs_sem_ano', 0)}.")
+        if am.get('refs_sem_marca') or am.get('refs_sem_modelo') or am.get('refs_sem_ano') or am.get('refs_sem_preco'):
+            linhas.append(
+                f"Falhas por referência: sem marca {am.get('refs_sem_marca', 0)}, "
+                f"sem modelo {am.get('refs_sem_modelo', 0)}, "
+                f"sem ano {am.get('refs_sem_ano', 0)}, "
+                f"sem preço {am.get('refs_sem_preco', 0)}."
+            )
         if am.get("primeiro_ponto") and am.get("ultimo_ponto"):
             p0 = am.get("primeiro_ponto") or {}
             p1 = am.get("ultimo_ponto") or {}
