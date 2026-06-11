@@ -294,3 +294,147 @@ class FipeHistoricoPainelAdapter:
             raise
         except Exception as exc:
             return PontoHistoricoPainel(False, reference, mes_referencia, motivo=f"erro_controlado:{type(exc).__name__}:{str(exc)[:160]}", debug=debug)
+
+    def consultar_ponto_modelo_primeiro_v19(self, *, reference: str, mes_referencia: str, codigo_marca_atual: str, nome_marca: str, nome_modelo: str, ano_base: int, combustivel: str) -> PontoHistoricoPainel:
+        """Fluxo V19.15 do painel local: referência -> marca -> modelos -> anos -> preço."""
+        debug: dict[str, Any] = {"reference": reference, "mes": mes_referencia, "ano_base": ano_base, "fluxo": "modelo_primeiro_v19"}
+        try:
+            marcas = self.fipe.listar_marcas_referencia(reference)
+            marca_ref = self.escolher_marca_na_referencia(marcas, nome_marca, codigo_marca_atual)
+            if not marca_ref:
+                return PontoHistoricoPainel(False, reference, mes_referencia, motivo="marca_nao_encontrada_na_referencia", debug={**debug, "marcas": len(marcas or [])})
+            codigo_marca_ref = str(marca_ref.get("codigo") or marca_ref.get("code") or codigo_marca_atual)
+            modelos_data = self.fipe.listar_modelos_referencia(codigo_marca_ref, reference)
+            modelos = modelos_data.get("modelos", []) if isinstance(modelos_data, dict) else []
+            modelo_ref, score, dbg_modelo = self.escolher_modelo_na_referencia(modelos, nome_modelo)
+            if not modelo_ref:
+                return PontoHistoricoPainel(False, reference, mes_referencia, motivo="modelo_nao_encontrado_na_referencia", codigo_marca_referencia=codigo_marca_ref, debug={**debug, "modelos": len(modelos or []), "score_melhor": round(score, 3), "modelo_debug": dbg_modelo})
+            codigo_modelo_ref = str(modelo_ref.get("codigo") or modelo_ref.get("code") or "")
+            anos = self.fipe.listar_anos_referencia(codigo_marca_ref, codigo_modelo_ref, reference)
+            ano_ref = self.escolher_ano_na_referencia(anos, ano_base, combustivel)
+            if not ano_ref:
+                return PontoHistoricoPainel(False, reference, mes_referencia, motivo="ano_nao_encontrado_na_referencia", codigo_marca_referencia=codigo_marca_ref, codigo_modelo_referencia=codigo_modelo_ref, modelo_referencia=str(modelo_ref.get("nome") or modelo_ref.get("name") or ""), debug={**debug, "anos": len(anos or [])})
+            codigo_ano_ref = str(ano_ref.get("codigo") or ano_ref.get("code") or "")
+            detalhe = self.fipe.consultar_preco_referencia(codigo_marca_ref, codigo_modelo_ref, codigo_ano_ref, reference)
+            valor_txt = detalhe.get("Valor") or detalhe.get("price") or ""
+            valor = parse_float_seguro(valor_txt)
+            if not valor or valor <= 0:
+                return PontoHistoricoPainel(False, reference, mes_referencia, motivo="preco_invalido_na_referencia", codigo_marca_referencia=codigo_marca_ref, codigo_modelo_referencia=codigo_modelo_ref, codigo_ano_referencia=codigo_ano_ref, debug=debug)
+            data_dt = self.parse_mes_referencia(mes_referencia or str(detalhe.get("MesReferencia") or detalhe.get("referenceMonth") or ""))
+            data_ref = data_dt.strftime("%Y-%m") if data_dt else None
+            return PontoHistoricoPainel(True, reference, mes_referencia or str(detalhe.get("MesReferencia") or detalhe.get("referenceMonth") or ""), data_referencia=data_ref, valor=float(valor), valor_formatado=valor_txt if isinstance(valor_txt, str) and valor_txt else f"R$ {valor:,.2f}", codigo_marca_referencia=codigo_marca_ref, codigo_modelo_referencia=codigo_modelo_ref, modelo_referencia=str(modelo_ref.get("nome") or modelo_ref.get("name") or ""), codigo_ano_referencia=codigo_ano_ref, ano_referencia=str(ano_ref.get("nome") or ano_ref.get("name") or ""), estrategia="v19_15_referencia_marca_modelos_anos_preco", debug={**debug, "score_modelo": round(score, 3)})
+        except FipeApiError:
+            raise
+        except Exception as exc:
+            return PontoHistoricoPainel(False, reference, mes_referencia, motivo=f"erro_controlado:{type(exc).__name__}:{str(exc)[:160]}", debug=debug)
+
+    @staticmethod
+    def _subtrair_um_mes_dt(data: datetime) -> datetime:
+        if data.month == 1:
+            return datetime(data.year - 1, 12, 1)
+        return datetime(data.year, data.month - 1, 1)
+
+    def _consultar_zero_km_v19(self, *, referencia: dict[str, Any], primeiro_usado: PontoHistoricoPainel) -> PontoHistoricoPainel | None:
+        try:
+            anos = self.fipe.listar_anos_referencia(primeiro_usado.codigo_marca_referencia, primeiro_usado.codigo_modelo_referencia, str(referencia.get("code") or ""))
+            suffix = ""
+            if "-" in str(primeiro_usado.codigo_ano_referencia):
+                suffix = str(primeiro_usado.codigo_ano_referencia).split("-", 1)[1]
+            zero = None
+            for a in anos or []:
+                codigo = str(a.get("codigo") or a.get("code") or "")
+                if not codigo.startswith("32000"):
+                    continue
+                if suffix and codigo.endswith(f"-{suffix}"):
+                    zero = a
+                    break
+                if zero is None:
+                    zero = a
+            if not zero:
+                return None
+            codigo_zero = str(zero.get("codigo") or zero.get("code") or "")
+            detalhe = self.fipe.consultar_preco_referencia(primeiro_usado.codigo_marca_referencia, primeiro_usado.codigo_modelo_referencia, codigo_zero, str(referencia.get("code") or ""))
+            valor_txt = detalhe.get("Valor") or detalhe.get("price") or ""
+            valor = parse_float_seguro(valor_txt)
+            if not valor or valor <= 0:
+                return None
+            mes = str(referencia.get("month") or detalhe.get("MesReferencia") or detalhe.get("referenceMonth") or "")
+            data_dt = self.parse_mes_referencia(mes)
+            if primeiro_usado.data_referencia and data_dt and primeiro_usado.data_referencia == data_dt.strftime("%Y-%m"):
+                data_dt = self._subtrair_um_mes_dt(data_dt)
+                mes = data_dt.strftime("%m/%Y")
+            return PontoHistoricoPainel(True, str(referencia.get("code") or ""), mes, data_referencia=data_dt.strftime("%Y-%m") if data_dt else None, valor=float(valor), valor_formatado=valor_txt if isinstance(valor_txt, str) and valor_txt else f"R$ {valor:,.2f}", codigo_marca_referencia=primeiro_usado.codigo_marca_referencia, codigo_modelo_referencia=primeiro_usado.codigo_modelo_referencia, modelo_referencia=primeiro_usado.modelo_referencia, codigo_ano_referencia=codigo_zero, ano_referencia=str(zero.get("nome") or zero.get("name") or "Zero km"), estrategia="v19_15_zero_km_mes_primeira_aparicao", debug={"tipo": "zero_km"})
+        except Exception:
+            return None
+
+    def montar_historico_v19_15_adaptado(self, *, codigo_marca_atual: str, nome_marca: str, nome_modelo: str, ano_base: int, combustivel: str, ano_atual: int, max_pontos: int = 24) -> dict[str, Any]:
+        referencias = self.referencias_ordenadas()
+        if not referencias:
+            return {"ok": False, "estrategia_historico": "v19_15_adaptado", "pontos_validos": 0, "erro": "sem_referencias"}
+        inicio = datetime(max(int(ano_base) - 1, 1990), 1, 1)
+        candidatas_primeira = [r for r in referencias if r.get("data_ref") and r["data_ref"] >= inicio]
+        primeiro: PontoHistoricoPainel | None = None
+        tentativas_primeira: list[dict[str, Any]] = []
+        limite_primeira = 42
+        for ref in candidatas_primeira[:limite_primeira]:
+            try:
+                p = self.consultar_ponto_modelo_primeiro_v19(reference=str(ref.get("code") or ""), mes_referencia=str(ref.get("month") or ""), codigo_marca_atual=codigo_marca_atual, nome_marca=nome_marca, nome_modelo=nome_modelo, ano_base=ano_base, combustivel=combustivel)
+                if p.ok and p.valor:
+                    primeiro = p
+                    break
+                if len(tentativas_primeira) < 8:
+                    tentativas_primeira.append({"ref": ref.get("code"), "mes": ref.get("month"), "motivo": p.motivo, "debug": p.debug})
+            except FipeApiError as exc:
+                if exc.status_code == 429:
+                    return {"ok": False, "estrategia_historico": "v19_15_adaptado", "pontos_validos": 0, "limite_interrompeu": True, "erro": exc.message}
+                if len(tentativas_primeira) < 8:
+                    tentativas_primeira.append({"ref": ref.get("code"), "mes": ref.get("month"), "erro": exc.message})
+            except Exception as exc:
+                if len(tentativas_primeira) < 8:
+                    tentativas_primeira.append({"ref": ref.get("code"), "mes": ref.get("month"), "erro": f"{type(exc).__name__}: {str(exc)[:120]}"})
+        if not primeiro:
+            return {"ok": False, "estrategia_historico": "v19_15_adaptado_modelo_primeiro", "pontos_validos": 0, "erro": "primeira_aparicao_nao_encontrada", "tentativas_primeira_aparicao": tentativas_primeira, "referencias_testadas_primeira_aparicao": min(len(candidatas_primeira), limite_primeira)}
+        ref_primeiro = next((r for r in referencias if str(r.get("code")) == str(primeiro.reference)), None)
+        zero = self._consultar_zero_km_v19(referencia=ref_primeiro or {}, primeiro_usado=primeiro) if ref_primeiro else None
+        data_inicio_hist = None
+        if zero and zero.data_referencia:
+            data_inicio_hist = self.parse_mes_referencia(zero.mes) or (ref_primeiro and ref_primeiro.get("data_ref"))
+        if not data_inicio_hist and ref_primeiro:
+            data_inicio_hist = ref_primeiro.get("data_ref")
+        refs_hist = [r for r in referencias if r.get("data_ref") and data_inicio_hist and r["data_ref"] >= data_inicio_hist and r["data_ref"].year <= int(ano_atual)]
+        if len(refs_hist) > max_pontos:
+            idxs = sorted(set(round(i * (len(refs_hist) - 1) / (max_pontos - 1)) for i in range(max_pontos))) if max_pontos > 1 else [len(refs_hist)-1]
+            refs_coleta = [refs_hist[i] for i in idxs]
+        else:
+            refs_coleta = refs_hist
+        pontos: list[dict[str, Any]] = []
+        if zero and zero.valor:
+            z = zero.to_dict(); z["tipo"] = "zero_km"; pontos.append(z)
+        falhas = 0; erros_404 = 0; limite = False
+        for ref in refs_coleta:
+            try:
+                detalhe = self.fipe.consultar_preco_referencia(primeiro.codigo_marca_referencia, primeiro.codigo_modelo_referencia, primeiro.codigo_ano_referencia, str(ref.get("code") or ""))
+                valor_txt = detalhe.get("Valor") or detalhe.get("price") or ""
+                valor = parse_float_seguro(valor_txt)
+                if not valor or valor <= 0:
+                    falhas += 1; continue
+                data_dt = self.parse_mes_referencia(str(ref.get("month") or detalhe.get("MesReferencia") or detalhe.get("referenceMonth") or ""))
+                pontos.append({"ok": True, "reference": str(ref.get("code") or ""), "mes": str(ref.get("month") or detalhe.get("MesReferencia") or detalhe.get("referenceMonth") or ""), "data_referencia": data_dt.strftime("%Y-%m") if data_dt else None, "valor": float(valor), "valor_formatado": valor_txt if isinstance(valor_txt, str) and valor_txt else f"R$ {valor:,.2f}", "codigo_marca_referencia": primeiro.codigo_marca_referencia, "codigo_modelo_referencia": primeiro.codigo_modelo_referencia, "codigo_ano_referencia": primeiro.codigo_ano_referencia, "modelo_referencia": primeiro.modelo_referencia, "ano_referencia": primeiro.ano_referencia, "tipo": "usado", "estrategia": "v19_15_reutiliza_codigos_primeira_aparicao"})
+            except FipeApiError as exc:
+                if exc.status_code == 429:
+                    limite = True; break
+                if exc.status_code == 404:
+                    erros_404 += 1; continue
+                falhas += 1
+            except Exception:
+                falhas += 1
+        uniq = {}
+        for p in pontos:
+            chave = (p.get("data_referencia") or p.get("reference"), p.get("tipo") or "usado")
+            uniq[chave] = p
+        pontos = sorted(uniq.values(), key=lambda x: x.get("data_referencia") or x.get("reference") or "")
+        variacao = None
+        if len(pontos) >= 2 and pontos[0].get("valor"):
+            variacao = round(((float(pontos[-1]["valor"]) - float(pontos[0]["valor"])) / float(pontos[0]["valor"])) * 100, 2)
+        return {"ok": True, "criterio_passo": "fluxo V19.15 do painel local: primeira aparição + zero km + reutilização dos códigos da coorte", "estrategia_historico": "painel_local_v19_15_adaptado: referencia_marca_modelos_anos_preco_reutiliza_codigos", "pontos_planejados": len(refs_coleta) + (1 if zero else 0), "pontos_validos": len(pontos), "referencias_disponiveis": len(referencias), "referencias_testadas_primeira_aparicao": min(len(candidatas_primeira), limite_primeira), "primeira_aparicao": primeiro.to_dict(), "zero_km_encontrado": zero.to_dict() if zero else None, "falhas_coleta": falhas, "erros_404_ignorados": erros_404, "limite_interrompeu": limite, "primeiro_ponto": pontos[0] if pontos else None, "ultimo_ponto": pontos[-1] if pontos else None, "variacao_percentual_observada": variacao, "amostra": pontos[:12], "pontos": pontos, "tentativas_primeira_aparicao": tentativas_primeira}
+

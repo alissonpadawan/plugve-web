@@ -127,9 +127,30 @@ class CoorteDiagnosticoService:
             else:
                 amostragem_referencias["ampliacao_por_ancoras"] = ampliado
 
-        # 3) Fallback controlado: se ainda houver poucos pontos, tenta a reconstrução
-        # por referência inspirada no painel antigo. Continua limitado para não
-        # estourar timeout/requisições.
+        # 3) Fallback principal: reproduz o fluxo V19.15/V19.17 do painel local.
+        # O painel local achava a primeira aparição do modelo/coorte, buscava o
+        # zero km 32000 e reutilizava os códigos encontrados para coletar o histórico.
+        if pontos_price_history < 8:
+            try:
+                v19 = self.historico_adapter.montar_historico_v19_15_adaptado(
+                    codigo_marca_atual=veiculo.codigo_marca,
+                    nome_marca=veiculo.marca,
+                    nome_modelo=veiculo.modelo,
+                    ano_base=int(coorte_base.get("ano") or ano_selecionado or ano_atual),
+                    combustivel=veiculo.combustivel,
+                    ano_atual=ano_atual,
+                    max_pontos=24,
+                )
+            except Exception as exc:
+                v19 = {"ok": False, "estrategia_historico": "painel_local_v19_15_adaptado", "pontos_validos": 0, "erro": f"{type(exc).__name__}: {str(exc)[:220]}"}
+            if int(v19.get("pontos_validos", 0) or 0) > pontos_price_history:
+                amostragem_referencias = v19
+                pontos_price_history = int(v19.get("pontos_validos", 0) or 0)
+            else:
+                amostragem_referencias["fallback_v19_15_painel_local"] = v19
+
+        # 4) Fallback controlado: se ainda houver poucos pontos, tenta a reconstrução
+        # por referência/ano. Continua limitado para não estourar timeout/requisições.
         if pontos_price_history < 8:
             fallback = self._coletar_amostragem_referencias(
                 veiculo=veiculo,
