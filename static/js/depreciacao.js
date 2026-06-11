@@ -2,6 +2,9 @@ let ultimoResumoDepreciacao = null;
 let ultimoJobDiagnosticoV1917 = null;
 let painelDepreciacaoDados = null;
 let modelosComCurva = new Set();
+let diagnosticoV1917AutoAtivo = false;
+let diagnosticoV1917Ciclos = 0;
+const DIAGNOSTICO_V1917_MAX_CICLOS = 90;
 
 function textoSeguro(valor) {
   return valor === null || valor === undefined || valor === "" ? "-" : String(valor);
@@ -458,12 +461,18 @@ function montarPayloadDepreciacao() {
   };
 }
 
-async function solicitarDiagnosticoCoorte() {
+async function solicitarDiagnosticoCoorte(chamadaAutomatica = false) {
   const payload = montarPayloadDepreciacao();
   if (!payload) {
     atualizarStatusResultado("Selecione um veículo antes de diagnosticar.", "erro");
     return;
   }
+
+  if (!chamadaAutomatica) {
+    diagnosticoV1917AutoAtivo = true;
+    diagnosticoV1917Ciclos = 0;
+  }
+  diagnosticoV1917Ciclos += 1;
 
   payload.modo_pandemia = payload.modo_pandemia || "Excluir";
   payload.max_referencias_por_chamada = payload.max_referencias_por_chamada || 4;
@@ -481,6 +490,7 @@ async function solicitarDiagnosticoCoorte() {
   atualizarFeedbackCalculo("Rodando diagnóstico V19.17 em lote seguro...", 40, true);
 
   let manterContinuar = false;
+  let continuarAutomaticamente = false;
   try {
     const resp = await fetch("/api/depreciacao/diagnostico_v1917", {
       method: "POST",
@@ -524,12 +534,15 @@ async function solicitarDiagnosticoCoorte() {
       adicionarDetalhe(corpo, "Job", data.job_id);
       adicionarDetalhe(corpo, "Fase", data.fase);
       adicionarDetalhe(corpo, "Modo pandemia", data.modo_pandemia || "Excluir");
-      adicionarDetalhe(corpo, "Coleta", data.coleta_concluida ? "Concluída" : "Em andamento; clique novamente para continuar");
+      adicionarDetalhe(corpo, "Fonte histórica", data.fonte_historico || am.fonte_historico || "-");
+      adicionarDetalhe(corpo, "Coleta", data.coleta_concluida ? "Concluída" : "Em andamento automático em lotes seguros");
       adicionarDetalhe(corpo, "Pode salvar curva", data.pode_salvar ? "Sim" : "Não");
       adicionarDetalhe(corpo, "Ano-base preferencial", data.ano_base_preferencial);
       adicionarDetalhe(corpo, "Coorte base", data.coorte_base ? `${data.coorte_base.ano || ""} ${data.coorte_base.nome || ""}`.trim() : "-");
       adicionarDetalhe(corpo, "Primeira aparição", primeira.data_referencia ? `${primeira.data_referencia} ${primeira.valor_formatado || ""}`.trim() : "-");
       adicionarDetalhe(corpo, "Zero km base", zero.data_referencia ? `${zero.data_referencia} ${zero.valor_formatado || ""}`.trim() : "-");
+      adicionarDetalhe(corpo, "Referências disponíveis", data.total_referencias_disponiveis || am.total_referencias_disponiveis);
+      adicionarDetalhe(corpo, "Busca primeira aparição", data.indice_busca_primeira != null && data.total_referencias_busca != null ? `${data.indice_busca_primeira}/${data.total_referencias_busca}` : "-");
       adicionarDetalhe(corpo, "Referências planejadas", am.pontos_planejados);
       adicionarDetalhe(corpo, "Referências processadas", am.referencias_processadas != null && am.total_referencias_coleta != null ? `${am.referencias_processadas}/${am.total_referencias_coleta}` : "-");
       adicionarDetalhe(corpo, "Pontos válidos", am.pontos_validos);
@@ -543,19 +556,35 @@ async function solicitarDiagnosticoCoorte() {
       adicionarDetalhe(corpo, "Último ponto", am.ultimo_ponto ? `${am.ultimo_ponto.data_referencia || ""} ${am.ultimo_ponto.valor_formatado || ""}`.trim() : "-");
       adicionarDetalhe(corpo, "Falhas controladas", am.falhas_coleta);
       adicionarDetalhe(corpo, "404 ignorados", am.erros_404_ignorados);
+      adicionarDetalhe(corpo, "Falha FIPE Web V19.17", data.falha_fipe_web_v1917 || am.falha_fipe_web_v1917 || "-");
+      adicionarDetalhe(corpo, "Ciclos automáticos", `${diagnosticoV1917Ciclos}/${DIAGNOSTICO_V1917_MAX_CICLOS}`);
       adicionarDetalhe(corpo, "Observação", data.criterio_salvamento || "Diagnóstico não salva curva.");
     }
     atualizarStatusResultado(data.mensagem || "Diagnóstico V19.17 executado.", data.ok ? "encontrado" : "erro");
-    atualizarFeedbackCalculo(manterContinuar ? "Lote concluído. Clique novamente em Diagnóstico técnico para continuar." : "Diagnóstico concluído. Nenhuma curva foi salva.", 100, true);
-    setTimeout(() => atualizarFeedbackCalculo("", 0, false), manterContinuar ? 2600 : 1800);
+    continuarAutomaticamente = manterContinuar && diagnosticoV1917AutoAtivo && diagnosticoV1917Ciclos < DIAGNOSTICO_V1917_MAX_CICLOS;
+    if (continuarAutomaticamente) {
+      atualizarFeedbackCalculo(`Lote ${diagnosticoV1917Ciclos} concluído. Continuando automaticamente para evitar timeout do Render...`, 55, true);
+      setTimeout(() => solicitarDiagnosticoCoorte(true), 900);
+    } else {
+      diagnosticoV1917AutoAtivo = false;
+      const msgFinal = manterContinuar ? "Diagnóstico pausado no limite de ciclos automáticos. Clique novamente para continuar." : "Diagnóstico concluído. Nenhuma curva foi salva.";
+      atualizarFeedbackCalculo(msgFinal, 100, true);
+      setTimeout(() => atualizarFeedbackCalculo("", 0, false), manterContinuar ? 2600 : 1800);
+    }
   } catch (e) {
+    diagnosticoV1917AutoAtivo = false;
     const msg = `Erro ao montar diagnóstico V19.17: ${e && e.message ? e.message : e}`;
     atualizarStatusResultado(msg, "erro");
     atualizarFeedbackCalculo(msg, 100, true);
   } finally {
     if (btn) {
-      btn.disabled = false;
-      btn.textContent = manterContinuar ? "Continuar diagnóstico V19.17" : "Diagnóstico técnico";
+      if (continuarAutomaticamente) {
+        btn.disabled = true;
+        btn.textContent = "Continuando diagnóstico V19.17...";
+      } else {
+        btn.disabled = false;
+        btn.textContent = manterContinuar ? "Continuar diagnóstico V19.17" : "Diagnóstico técnico";
+      }
     }
   }
 }

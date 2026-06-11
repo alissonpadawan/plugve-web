@@ -542,6 +542,9 @@ class DepreciacaoMotorV1917Adapter:
         if not veiculo.codigo_marca or not veiculo.codigo_modelo:
             raise ValueError("Selecione marca e modelo antes de iniciar o diagnóstico V19.17.")
         referencias = self._referencias_serializadas()
+        falha_fipe_web_v1917 = str(getattr(self, "_ultima_falha_referencias_web", "") or "")
+        referencias_fipe_web_v1917 = len([r for r in referencias if str(r.get("fonte") or "") == "fipe_web_v1917"])
+        referencias_fipe_v2 = len([r for r in referencias if str(r.get("fonte") or "") == "fipe_v2"])
         data_base_operacao = self._resolver_data_base_operacao(payload, referencias)
         anos_disponiveis = self._listar_anos_disponiveis(veiculo)
         ano_base_preferencial = self._resolver_ano_preferencial(payload, data_base_operacao)
@@ -572,6 +575,11 @@ class DepreciacaoMotorV1917Adapter:
             "anos_disponiveis": anos_disponiveis,
             "referencias": referencias,
             "fonte_historico": str((referencias[0] or {}).get("fonte") or "fipe_v2") if referencias else "sem_referencias",
+            "falha_fipe_web_v1917": falha_fipe_web_v1917,
+            "referencias_fipe_web_v1917": referencias_fipe_web_v1917,
+            "referencias_fipe_v2": referencias_fipe_v2,
+            "total_referencias_disponiveis": len(referencias),
+            "total_referencias_busca": len(refs_busca),
             "referencias_busca": refs_busca,
             "indice_busca_primeira": 0,
             "primeiro_usado": None,
@@ -588,6 +596,14 @@ class DepreciacaoMotorV1917Adapter:
                 {
                     "tipo": "inicio",
                     "mensagem": "Diagnóstico V19.17 iniciado em módulo paralelo. Nenhuma curva será salva.",
+                },
+                {
+                    "tipo": "fonte_historica",
+                    "mensagem": (
+                        "Fonte FIPE Web V19.17 ativa."
+                        if (str((referencias[0] or {}).get("fonte") or "") == "fipe_web_v1917")
+                        else "FIPE Web V19.17 indisponível no início; usando fallback FIPE v2 por referência mensal."
+                    ),
                 }
             ],
         }
@@ -603,11 +619,14 @@ class DepreciacaoMotorV1917Adapter:
         fallback, mantendo a coleta em lote e sem salvar curva.
         """
         refs: list[dict[str, Any]] = []
+        self._ultima_falha_referencias_web = ""
         try:
             referencias_web = self.painel_adapter.referencias_ordenadas_web_v1917()
         except Exception as exc:
             referencias_web = []
             self._ultima_falha_referencias_web = f"{type(exc).__name__}: {exc}"
+        if not referencias_web and not self._ultima_falha_referencias_web:
+            self._ultima_falha_referencias_web = "ConsultarTabelaDeReferencia retornou vazio ou não foi parseável no ambiente web."
         for r in referencias_web or []:
             data_dt = r.get("data_ref")
             data_ref = data_dt.strftime("%Y-%m") if hasattr(data_dt, "strftime") else str(data_dt or "")[:7]
@@ -707,7 +726,9 @@ class DepreciacaoMotorV1917Adapter:
     def _executar_lote(self, job: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
         limite = self._limite_lote(payload)
         if str(job.get("fonte_historico") or "") == "fipe_web_v1917":
-            limite = min(limite, 2)
+            # Cada referência no fluxo fiel V19.17 pode exigir 4 chamadas ao endpoint web
+            # da FIPE. No Render/Gunicorn, uma referência por requisição é mais seguro.
+            limite = min(limite, 1)
         processadas = 0
         while processadas < limite and job.get("fase") not in {"concluido", "erro_controlado", "erro_api_fipe", "primeira_aparicao_nao_encontrada", "zero_km_nao_encontrado"}:
             fase = str(job.get("fase") or "")
@@ -993,6 +1014,13 @@ class DepreciacaoMotorV1917Adapter:
             "criterio_salvamento": "Diagnóstico V24 não salva curva. Integração/salvamento só depois de validar o caso-padrão e atingir critério mínimo.",
             "modo_pandemia": job.get("modo_pandemia"),
             "modo_calculo_proposto": "motor_local_v19_17_portado_em_adapter_paralelo",
+            "fonte_historico": job.get("fonte_historico"),
+            "falha_fipe_web_v1917": job.get("falha_fipe_web_v1917"),
+            "total_referencias_disponiveis": job.get("total_referencias_disponiveis"),
+            "total_referencias_busca": job.get("total_referencias_busca"),
+            "indice_busca_primeira": job.get("indice_busca_primeira"),
+            "referencias_fipe_web_v1917": job.get("referencias_fipe_web_v1917"),
+            "referencias_fipe_v2": job.get("referencias_fipe_v2"),
             "zero_km_detectado": bool(job.get("selecionado_zero_km")),
             "tem_zero_km_na_fipe": bool(job.get("zero_km_base")),
             "ano_base_preferencial": job.get("ano_base_preferencial"),
@@ -1114,6 +1142,10 @@ class DepreciacaoMotorV1917Adapter:
             "criterio_passo": f"V19.17: primeira aparição + zero km + histórico amostrado por referência mensal; passo {job.get('passo_meses') or '-'} mês(es)",
             "estrategia_historico": "v1917_adapter_parallel_sem_history_curto",
             "fonte_historico": job.get("fonte_historico"),
+            "falha_fipe_web_v1917": job.get("falha_fipe_web_v1917"),
+            "total_referencias_disponiveis": job.get("total_referencias_disponiveis"),
+            "total_referencias_busca": job.get("total_referencias_busca"),
+            "indice_busca_primeira": job.get("indice_busca_primeira"),
             "pontos_planejados": len(refs) + (1 if job.get("zero_km_base") else 0),
             "pontos_validos": len(hist),
             "pontos_usados_validos": len(pontos_usados),
@@ -1152,6 +1184,8 @@ class DepreciacaoMotorV1917Adapter:
             "B. COLETA",
             f"Fase atual: {job.get('fase')}",
             f"Fonte histórica: {job.get('fonte_historico') or '-'}",
+            f"Referências FIPE disponíveis: {job.get('total_referencias_disponiveis') or 0}; janela de busca: {job.get('total_referencias_busca') or 0}; busca primeira aparição: {job.get('indice_busca_primeira') or 0}/{job.get('total_referencias_busca') or 0}",
+            f"Aviso FIPE Web V19.17: {job.get('falha_fipe_web_v1917') or 'sem falha registrada'}",
             f"Pontos válidos usados: {qualidade.get('pontos_usados')} usado(s) + zero km quando disponível",
             f"Janela histórica: {qualidade.get('janela_meses')} mês(es)",
             f"Qualidade: {qualidade.get('classe')} - {qualidade.get('descricao')}",
@@ -1247,11 +1281,11 @@ class DepreciacaoMotorV1917Adapter:
         if fase == "concluido":
             return "Coleta V19.17 concluída, mas ainda sem cálculo válido. Nenhuma curva foi salva."
         if fase == "buscar_primeira_aparicao":
-            return "Buscando primeira aparição da coorte/base. Clique novamente para continuar a coleta segura."
+            return "Buscando primeira aparição da coorte/base em lotes seguros. A tela pode continuar automaticamente sem salvar curva."
         if fase == "buscar_zero_km":
             return "Primeira aparição encontrada. Buscando zero km base 32000 em lote seguro."
         if fase == "coletar_historico":
-            return "Coletando histórico FIPE em lotes pequenos para evitar timeout. Clique novamente para continuar."
+            return "Coletando histórico FIPE em lotes pequenos para evitar timeout. A tela pode continuar automaticamente."
         if fase == "primeira_aparicao_nao_encontrada":
             return "Não foi possível localizar a primeira aparição da coorte/base nesta janela."
         if fase == "zero_km_nao_encontrado":

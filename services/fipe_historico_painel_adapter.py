@@ -40,7 +40,7 @@ HEADERS_WEB_V1917 = {
     "Accept": "application/json, text/javascript, */*; q=0.01",
     "X-Requested-With": "XMLHttpRequest",
 }
-TIMEOUT_WEB_V1917 = 6
+TIMEOUT_WEB_V1917 = 8
 SLEEP_WEB_V1917 = 0.06
 MAX_RETRIES_WEB_V1917 = 1
 CODIGO_TIPO_VEICULO_WEB_CARRO = 1
