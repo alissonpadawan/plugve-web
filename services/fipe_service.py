@@ -579,16 +579,24 @@ class FipeService:
     def consultar_preco(self, codigo_marca: str, codigo_modelo: str, codigo_ano: str):
         return self._normalizar_preco(self._get_json(f"marcas/{codigo_marca}/modelos/{codigo_modelo}/anos/{codigo_ano}"))
 
-    def listar_anos_por_codigo_fipe(self, codigo_fipe: str) -> list[dict]:
+    def listar_anos_por_codigo_fipe(self, codigo_fipe: str, reference: str | None = None) -> list[dict]:
         """Lista anos disponíveis usando o código FIPE do veículo.
 
         Endpoint documentado na API fipe.online/parallelum v2:
         GET /{vehicleType}/{fipeCode}/years
+
+        Quando `reference` é informado, consulta os anos disponíveis naquela
+        referência mensal. Isso é importante para montar histórico antigo sem
+        depender do código de ano atual em meses passados.
         """
         codigo_fipe = str(codigo_fipe or "").strip()
         if not codigo_fipe:
             return []
-        data = self._get_json(f"{codigo_fipe}/years")
+        endpoint = f"{codigo_fipe}/years"
+        if reference is None:
+            data = self._get_json(endpoint)
+        else:
+            data = self._get_json_referencia(endpoint, str(reference), timeout_segundos=4)
         return self._normalizar_anos(data)
 
     def consultar_detalhe_por_codigo_fipe(self, codigo_fipe: str, codigo_ano: str, reference: str | None = None) -> dict:

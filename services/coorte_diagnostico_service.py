@@ -109,10 +109,28 @@ class CoorteDiagnosticoService:
         )
         pontos_price_history = int(amostragem_referencias.get("pontos_validos", 0) or 0)
 
-        # 2) Fallback controlado: se o endpoint por código FIPE não trouxer histórico,
-        # tenta a reconstrução por referência inspirada no painel antigo.
-        # Continua limitado para não estourar timeout/requisições.
-        if pontos_price_history < 2:
+        # 2) Se o endpoint /history retornou só uma janela curta, tenta ampliar
+        # usando âncoras de referência. A API pode devolver poucos meses por chamada;
+        # então consultamos o mesmo código FIPE em poucas referências espaçadas e
+        # unimos os priceHistory retornados. Isso aproveita a documentação atual sem
+        # reconstruir marca/modelo em todas as referências.
+        if pontos_price_history < 8:
+            ampliado = self._coletar_historico_codigo_fipe_por_ancoras(
+                veiculo=veiculo,
+                coorte_base=coorte_base,
+                historico_plano=historico_plano,
+                historico_inicial=amostragem_referencias,
+            )
+            if int(ampliado.get("pontos_validos", 0) or 0) > pontos_price_history:
+                amostragem_referencias = ampliado
+                pontos_price_history = int(ampliado.get("pontos_validos", 0) or 0)
+            else:
+                amostragem_referencias["ampliacao_por_ancoras"] = ampliado
+
+        # 3) Fallback controlado: se ainda houver poucos pontos, tenta a reconstrução
+        # por referência inspirada no painel antigo. Continua limitado para não
+        # estourar timeout/requisições.
+        if pontos_price_history < 8:
             fallback = self._coletar_amostragem_referencias(
                 veiculo=veiculo,
                 coorte_base=coorte_base,
@@ -406,7 +424,202 @@ class CoorteDiagnosticoService:
             "ultimo_ponto": pontos[-1] if pontos else None,
             "variacao_percentual_observada": variacao,
             "amostra": pontos[:12],
+            "pontos": pontos,
             "erro": None if pontos else "priceHistory_vazio_no_endpoint_por_codigo_fipe",
+        }
+
+
+    def _coletar_historico_codigo_fipe_por_ancoras(self, *, veiculo: VeiculoSelecionado, coorte_base: dict[str, Any], historico_plano: dict[str, Any], historico_inicial: dict[str, Any] | None = None) -> dict[str, Any]:
+        """Amplia histórico por código FIPE usando referências âncora.
+
+        A documentação atual oferece /{vehicleType}/{fipeCode}/years/{yearId}/history.
+        Na prática, algumas respostas vêm com uma janela curta. Para aproveitar melhor
+        esse endpoint sem explodir requisições, testamos poucas referências espaçadas:
+
+        referência âncora -> anos por código FIPE naquela referência -> history naquela referência
+
+        Depois unimos os pontos únicos retornados. Se a API ignorar o parâmetro
+        reference, os pontos duplicam e o diagnóstico informa isso sem salvar curva.
+        """
+        codigo_fipe = str(veiculo.codigo_fipe or "").strip()
+        tentativas: list[dict[str, Any]] = []
+        if not codigo_fipe:
+            try:
+                detalhe_atual = self.fipe.consultar_preco(veiculo.codigo_marca, veiculo.codigo_modelo, veiculo.codigo_ano)
+                codigo_fipe = str(detalhe_atual.get("CodigoFipe") or detalhe_atual.get("codeFipe") or "").strip()
+            except Exception as exc:
+                tentativas.append({"etapa": "obter_codigo_fipe_atual", "erro": f"{type(exc).__name__}: {str(exc)[:160]}"})
+        if not codigo_fipe:
+            return {
+                "ok": False,
+                "criterio_passo": "ampliação por âncoras não executada: sem código FIPE",
+                "estrategia_historico": "codigo_fipe_history_ancoras_indisponivel",
+                "pontos_planejados": 0,
+                "pontos_validos": 0,
+                "erro": "codigo_fipe_ausente",
+                "tentativas": tentativas,
+            }
+
+        ano_base = int(coorte_base.get("ano") or 0)
+        if not ano_base:
+            return {
+                "ok": False,
+                "criterio_passo": "ampliação por âncoras não executada: coorte sem ano",
+                "estrategia_historico": "codigo_fipe_history_ancoras",
+                "pontos_planejados": 0,
+                "pontos_validos": 0,
+                "erro": "coorte_sem_ano",
+                "tentativas": tentativas,
+            }
+
+        try:
+            referencias = self.historico_adapter.referencias_ordenadas()
+        except FipeApiError as exc:
+            return {
+                "ok": False,
+                "criterio_passo": "ampliação por âncoras interrompida ao listar referências",
+                "estrategia_historico": "codigo_fipe_history_ancoras",
+                "pontos_planejados": 0,
+                "pontos_validos": 0,
+                "limite_interrompeu": exc.status_code == 429,
+                "erro": exc.message,
+                "tentativas": tentativas,
+            }
+        except Exception as exc:
+            return {
+                "ok": False,
+                "criterio_passo": "ampliação por âncoras interrompida ao listar referências",
+                "estrategia_historico": "codigo_fipe_history_ancoras",
+                "pontos_planejados": 0,
+                "pontos_validos": 0,
+                "erro": f"{type(exc).__name__}: {str(exc)[:160]}",
+                "tentativas": tentativas,
+            }
+
+        janela_meses = int(historico_plano.get("janela_teorica_meses") or 0)
+        ano_atual = datetime.now().year
+        if janela_meses <= 36:
+            max_ancoras = 5
+            criterio = "histórico por código FIPE com âncoras: modelo recente, âncoras mais próximas"
+        elif janela_meses <= 84:
+            max_ancoras = 5
+            criterio = "histórico por código FIPE com âncoras: modelo intermediário"
+        else:
+            max_ancoras = 4
+            criterio = "histórico por código FIPE com âncoras: modelo antigo/descontinuado"
+
+        planejadas = self.historico_adapter.selecionar_referencias_amostradas(
+            referencias,
+            ano_inicio=max(1990, ano_base),
+            ano_atual=ano_atual,
+            max_pontos=max_ancoras,
+        )
+
+        pontos_por_chave: dict[str, dict[str, Any]] = {}
+        def adicionar_pontos(origem: dict[str, Any] | None, fonte: str) -> None:
+            if not origem:
+                return
+            lista = origem.get("pontos") or origem.get("amostra") or []
+            for p in lista or []:
+                if not isinstance(p, dict) or not p.get("valor"):
+                    continue
+                chave = str(p.get("reference") or p.get("data_referencia") or p.get("mes") or len(pontos_por_chave))
+                item = dict(p)
+                item.setdefault("fonte_bloco", fonte)
+                pontos_por_chave[chave] = item
+
+        adicionar_pontos(historico_inicial, "history_inicial")
+
+        refs_sem_ano = 0
+        refs_sem_historico = 0
+        erros_404 = 0
+        erros_outros = 0
+        limite_interrompeu = False
+        ultimo_erro = None
+
+        for ref in planejadas:
+            ref_code = str(ref.get("code") or "")
+            if not ref_code:
+                continue
+            try:
+                anos_ref = self.fipe.listar_anos_por_codigo_fipe(codigo_fipe, reference=ref_code)
+                ano_ref = self._encontrar_ano_na_referencia(anos_ref, ano_base, veiculo.combustivel)
+                if not ano_ref:
+                    refs_sem_ano += 1
+                    tentativas.append({"reference": ref_code, "mes": ref.get("month"), "status": "ano_coorte_nao_encontrado"})
+                    continue
+                codigo_ano_ref = str(ano_ref.get("codigo") or ano_ref.get("code") or "")
+                detalhe_hist = self.fipe.consultar_historico_por_codigo_fipe(codigo_fipe, codigo_ano_ref, reference=ref_code)
+                bloco = self._normalizar_historico_codigo_fipe(
+                    detalhe_hist,
+                    codigo_fipe=codigo_fipe,
+                    codigo_ano=codigo_ano_ref,
+                    origem_codigo_ano=f"ancora_reference_{ref_code}",
+                    historico_plano=historico_plano,
+                )
+                tentativas.append({
+                    "reference": ref_code,
+                    "mes": ref.get("month"),
+                    "codigo_ano": codigo_ano_ref,
+                    "pontos": bloco.get("pontos_validos", 0),
+                })
+                if int(bloco.get("pontos_validos", 0) or 0) <= 0:
+                    refs_sem_historico += 1
+                    ultimo_erro = bloco.get("erro") or "history_vazio_na_ancora"
+                adicionar_pontos(bloco, f"history_ancora_{ref_code}")
+                if len(pontos_por_chave) >= 12:
+                    # suficiente para diagnosticar sem gastar muitas requisições neste clique
+                    break
+            except FipeApiError as exc:
+                ultimo_erro = exc.message
+                if exc.status_code == 404:
+                    erros_404 += 1
+                    tentativas.append({"reference": ref_code, "mes": ref.get("month"), "erro": exc.message, "status_code": 404})
+                    continue
+                if exc.status_code == 429:
+                    limite_interrompeu = True
+                    tentativas.append({"reference": ref_code, "mes": ref.get("month"), "erro": exc.message, "status_code": 429})
+                    break
+                erros_outros += 1
+                tentativas.append({"reference": ref_code, "mes": ref.get("month"), "erro": exc.message, "status_code": exc.status_code})
+            except Exception as exc:
+                ultimo_erro = f"{type(exc).__name__}: {str(exc)[:180]}"
+                erros_outros += 1
+                tentativas.append({"reference": ref_code, "mes": ref.get("month"), "erro": ultimo_erro})
+
+        pontos = list(pontos_por_chave.values())
+        pontos.sort(key=lambda x: x.get("data_referencia") or x.get("reference") or x.get("mes") or "")
+        variacao = None
+        if len(pontos) >= 2 and pontos[0].get("valor"):
+            variacao = ((float(pontos[-1]["valor"]) - float(pontos[0]["valor"])) / float(pontos[0]["valor"])) * 100
+            variacao = round(variacao, 2)
+
+        return {
+            "ok": True,
+            "criterio_passo": criterio,
+            "passo_meses": None,
+            "janela_teorica_meses": janela_meses,
+            "referencias_disponiveis": len(referencias),
+            "pontos_planejados": len(planejadas),
+            "pontos_validos": len(pontos),
+            "pontos_price_history_codigo_fipe": len(pontos),
+            "refs_sem_ano": refs_sem_ano,
+            "refs_sem_historico": refs_sem_historico,
+            "erros_404_ignorados": erros_404,
+            "erros_outros": erros_outros,
+            "limite_interrompeu": limite_interrompeu,
+            "estrategia_historico": "codigo_fipe_history_ancoras: /cars/{fipeCode}/years/{yearId}/history?reference=...",
+            "codigo_fipe_utilizado": codigo_fipe,
+            "codigo_ano_utilizado": str(coorte_base.get("codigo") or ""),
+            "origem_codigo_ano": "coorte_por_ancoras",
+            "primeiro_ponto": pontos[0] if pontos else None,
+            "ultimo_ponto": pontos[-1] if pontos else None,
+            "variacao_percentual_observada": variacao,
+            "amostra": pontos[:12],
+            "pontos": pontos,
+            "tentativas": tentativas,
+            "ultimo_erro": ultimo_erro,
+            "erro": ultimo_erro if not pontos and ultimo_erro else None,
         }
 
 
