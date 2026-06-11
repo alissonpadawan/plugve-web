@@ -220,7 +220,7 @@ class FipeService:
     def _usar_publica_apenas(self) -> bool:
         """Define se deve usar somente a FIPE pública v1.
 
-        V24.6: quando há FIPE_TOKEN configurado, o padrão passa a ser API paga
+        V24.7: quando há FIPE_TOKEN configurado, o padrão passa a ser API paga
         oficial v2. O modo público só é usado se FIPE_PUBLIC_ONLY=1 for
         explicitamente configurado.
         """
@@ -235,7 +235,18 @@ class FipeService:
         return str(current_app.config.get("FIPE_BASE_URL") or "https://fipe.parallelum.com.br/api/v2/cars")
 
     def _timeout(self) -> int:
-        return int(current_app.config.get("REQUEST_TIMEOUT", 15))
+        bruto = os.environ.get("FIPE_REQUEST_TIMEOUT") or current_app.config.get("REQUEST_TIMEOUT", 15)
+        try:
+            return max(5, min(60, int(bruto)))
+        except Exception:
+            return 15
+
+    def _timeout_historico(self) -> int:
+        bruto = os.environ.get("FIPE_HISTORICO_TIMEOUT") or current_app.config.get("FIPE_HISTORICO_TIMEOUT", self._timeout())
+        try:
+            return max(6, min(45, int(bruto)))
+        except Exception:
+            return max(12, self._timeout())
 
     def _token(self) -> str:
         token = os.environ.get("FIPE_TOKEN", "").strip()
@@ -271,9 +282,10 @@ class FipeService:
     @lru_cache(maxsize=1024)
     def _get_json_cached(base_url: str, endpoint: str, timeout: int, token: str, cache_dir: str):
         url = f"{base_url.rstrip('/')}/{endpoint.lstrip('/')}"
-        headers = {}
+        headers = {"Accept": "application/json", "User-Agent": "PlugVE-Web/24.7"}
         if token:
             headers["X-Subscription-Token"] = token
+            headers["Authorization"] = f"Bearer {token}"
         try:
             FipeService._registrar_requisicao_static(Path(cache_dir), token_ativo=bool(token))
             resp = requests.get(url, timeout=timeout, headers=headers)
@@ -376,7 +388,7 @@ class FipeService:
             "X-Subscription-Token": token,
             "Authorization": f"Bearer {token}",
             "Accept": "application/json",
-            "User-Agent": "PlugVE-Web/24.6",
+            "User-Agent": "PlugVE-Web/24.7",
         }
 
     def listar_referencias(self) -> list[dict]:
@@ -385,7 +397,7 @@ class FipeService:
         url = f"{self._api_root_v2()}/references"
         try:
             self._registrar_requisicao_static(cache_dir, token_ativo=bool(self._token()))
-            resp = requests.get(url, timeout=min(self._timeout(), 5), headers=self._headers())
+            resp = requests.get(url, timeout=max(8, min(self._timeout(), 20)), headers=self._headers())
             if resp.status_code >= 400:
                 self._registrar_erro_static(cache_dir, resp.status_code, url, resp.text[:300])
                 raise FipeApiError(f"Erro FIPE {resp.status_code} ao consultar referências.", resp.status_code, "references")
@@ -412,7 +424,7 @@ class FipeService:
 
     def listar_marcas_referencia(self, reference: str) -> list[dict]:
         """Lista marcas dentro de uma referência mensal específica da API FIPE v2."""
-        data = self._get_json_referencia("brands", str(reference), timeout_segundos=3)
+        data = self._get_json_referencia("brands", str(reference), timeout_segundos=self._timeout_historico())
         return self._normalizar_marcas(data)
 
     def listar_anos_marca_referencia(self, codigo_marca: str, reference: str) -> list[dict]:
@@ -421,86 +433,102 @@ class FipeService:
         Este endpoint é importante para reproduzir o fluxo do painel antigo:
         referência -> marca -> ano -> modelos -> preço.
         """
-        data = self._get_json_referencia(f"brands/{codigo_marca}/years", str(reference), timeout_segundos=3)
+        data = self._get_json_referencia(f"brands/{codigo_marca}/years", str(reference), timeout_segundos=self._timeout_historico())
         return self._normalizar_anos(data)
 
     def listar_modelos_por_ano_referencia(self, codigo_marca: str, codigo_ano: str, reference: str) -> dict:
         """Lista modelos de uma marca/ano dentro de uma referência mensal."""
-        data = self._get_json_referencia(f"brands/{codigo_marca}/years/{codigo_ano}/models", str(reference), timeout_segundos=3)
+        data = self._get_json_referencia(f"brands/{codigo_marca}/years/{codigo_ano}/models", str(reference), timeout_segundos=self._timeout_historico())
         return self._normalizar_modelos(data)
 
-    def _get_json_referencia(self, endpoint: str, reference: str, timeout_segundos: int = 3):
-        """GET na API FIPE v2 usando uma referência mensal específica."""
+    def _bases_historico_v2(self) -> list[str]:
+        """Bases candidatas da API PRO v2 para histórico mensal.
+
+        A documentação aceita fipe.parallelum.com.br/api/v2; o painel fipe.online
+        também mostra api.fipe.online/api/v2. A V24.7 tenta a base configurada
+        primeiro e, em timeout de histórico antigo, tenta a alternativa oficial.
+        """
+        bases = [str(self._base_url()).rstrip('/')]
+        alt = os.environ.get("FIPE_ALT_BASE_URL") or current_app.config.get("FIPE_ALT_BASE_URL", "https://api.fipe.online/api/v2/cars")
+        if alt:
+            bases.append(str(alt).rstrip('/'))
+        saida: list[str] = []
+        for base in bases:
+            if base and base not in saida:
+                saida.append(base)
+        return saida
+
+    def _get_json_referencia(self, endpoint: str, reference: str, timeout_segundos: int | None = None):
+        """GET na API FIPE v2 usando uma referência mensal específica.
+
+        V24.7: histórico antigo pode demorar mais do que 4s. O timeout agora é
+        configurável e, em timeout, tentamos uma segunda base oficial antes de
+        desistir.
+        """
         cache_dir = self._cache_dir()
         endpoint = endpoint.strip("/")
-        url = f"{self._base_url().rstrip('/')}/{endpoint}"
-        try:
-            self._registrar_requisicao_static(cache_dir, token_ativo=bool(self._token()))
-            resp = requests.get(
-                url,
-                timeout=max(1, min(int(timeout_segundos or 3), 4)),
-                headers=self._headers(),
-                params={"reference": str(reference)},
-            )
-            if resp.status_code >= 400:
-                self._registrar_erro_static(cache_dir, resp.status_code, url, resp.text[:300])
-                if resp.status_code == 404:
-                    raise FipeApiError("Recurso FIPE não encontrado nesta referência mensal.", 404, endpoint)
-                if resp.status_code == 429:
-                    raise FipeApiError("Limite diário da API FIPE atingido durante coleta histórica.", 429, endpoint)
-                if resp.status_code in (401, 403):
-                    raise FipeApiError("Token FIPE inválido, ausente ou sem permissão nesta consulta histórica.", resp.status_code, endpoint)
-                if resp.status_code == 402:
-                    raise FipeApiError("API FIPE PRO recusou a consulta histórica. Confirme o token PRO no Render e a assinatura ativa.", 402, endpoint)
-                raise FipeApiError(f"Erro FIPE {resp.status_code} na consulta histórica.", resp.status_code, endpoint)
-            return resp.json()
-        except FipeApiError:
-            raise
-        except requests.exceptions.Timeout:
-            self._registrar_erro_static(cache_dir, None, url, 'timeout')
-            raise FipeApiError("Tempo esgotado ao consultar histórico FIPE.", None, endpoint)
-        except requests.exceptions.RequestException as exc:
-            self._registrar_erro_static(cache_dir, None, url, str(exc)[:300])
-            raise FipeApiError("Falha de conexão ao consultar histórico FIPE.", None, endpoint)
+        timeout_real = int(timeout_segundos or self._timeout_historico())
+        timeout_real = max(6, min(45, timeout_real))
+        ultimo_timeout_url = ""
+        ultimo_timeout_base = ""
+        for pos, base in enumerate(self._bases_historico_v2(), start=1):
+            url = f"{base.rstrip('/')}/{endpoint}"
+            try:
+                self._registrar_requisicao_static(cache_dir, token_ativo=bool(self._token()))
+                resp = requests.get(
+                    url,
+                    timeout=timeout_real,
+                    headers=self._headers(),
+                    params={"reference": str(reference)},
+                )
+                if resp.status_code >= 400:
+                    self._registrar_erro_static(cache_dir, resp.status_code, url, resp.text[:300])
+                    if resp.status_code == 404:
+                        raise FipeApiError("Recurso FIPE não encontrado nesta referência mensal.", 404, endpoint)
+                    if resp.status_code == 429:
+                        raise FipeApiError("Limite diário da API FIPE atingido durante coleta histórica.", 429, endpoint)
+                    if resp.status_code in (401, 403):
+                        raise FipeApiError("Token FIPE inválido, ausente ou sem permissão nesta consulta histórica.", resp.status_code, endpoint)
+                    if resp.status_code == 402:
+                        raise FipeApiError("API FIPE PRO recusou a consulta histórica. Confirme o token PRO no Render e a assinatura ativa.", 402, endpoint)
+                    raise FipeApiError(f"Erro FIPE {resp.status_code} na consulta histórica.", resp.status_code, endpoint)
+                dados = resp.json()
+                if isinstance(dados, dict):
+                    dados.setdefault("_plugve_api_base", base)
+                return dados
+            except FipeApiError:
+                raise
+            except requests.exceptions.Timeout:
+                ultimo_timeout_url = url
+                ultimo_timeout_base = base
+                self._registrar_erro_static(cache_dir, None, url, f"timeout após {timeout_real}s; endpoint={endpoint}; reference={reference}; tentativa_base={pos}")
+                # Tenta a próxima base antes de falhar.
+                continue
+            except requests.exceptions.RequestException as exc:
+                self._registrar_erro_static(cache_dir, None, url, str(exc)[:300])
+                raise FipeApiError(f"Falha de conexão ao consultar histórico FIPE em {endpoint} ref={reference}.", None, endpoint)
+        detalhe = f"Tempo esgotado ao consultar histórico FIPE em {endpoint} ref={reference} após {timeout_real}s por base"
+        if ultimo_timeout_base:
+            detalhe += f"; última_base={ultimo_timeout_base}"
+        if ultimo_timeout_url:
+            detalhe += f"; última_url={ultimo_timeout_url}"
+        raise FipeApiError(detalhe, None, endpoint)
 
     def listar_modelos_referencia(self, codigo_marca: str, reference: str) -> dict:
         """Lista modelos de uma marca em uma referência FIPE antiga."""
-        data = self._get_json_referencia(f"brands/{codigo_marca}/models", reference, timeout_segundos=3)
+        data = self._get_json_referencia(f"brands/{codigo_marca}/models", reference, timeout_segundos=self._timeout_historico())
         return self._normalizar_modelos(data)
 
     def listar_anos_referencia(self, codigo_marca: str, codigo_modelo: str, reference: str) -> list[dict]:
         """Lista anos de um modelo em uma referência FIPE antiga."""
-        data = self._get_json_referencia(f"brands/{codigo_marca}/models/{codigo_modelo}/years", reference, timeout_segundos=3)
+        data = self._get_json_referencia(f"brands/{codigo_marca}/models/{codigo_modelo}/years", reference, timeout_segundos=self._timeout_historico())
         return self._normalizar_anos(data)
 
     def consultar_preco_referencia(self, codigo_marca: str, codigo_modelo: str, codigo_ano: str, reference: str):
         """Consulta detalhe FIPE v2 em uma referência mensal específica. Conta como requisição FIPE."""
-        cache_dir = self._cache_dir()
         endpoint = f"brands/{codigo_marca}/models/{codigo_modelo}/years/{codigo_ano}"
-        url = f"{self._base_url().rstrip('/')}/{endpoint}"
-        try:
-            self._registrar_requisicao_static(cache_dir, token_ativo=bool(self._token()))
-            resp = requests.get(url, timeout=min(self._timeout(), 4), headers=self._headers(), params={"reference": str(reference)})
-            if resp.status_code >= 400:
-                self._registrar_erro_static(cache_dir, resp.status_code, url, resp.text[:300])
-                if resp.status_code == 404:
-                    raise FipeApiError("Combinação FIPE não encontrada nesta referência mensal.", 404, endpoint)
-                if resp.status_code == 429:
-                    raise FipeApiError("Limite diário da API FIPE atingido durante coleta histórica.", 429, endpoint)
-                if resp.status_code in (401, 403):
-                    raise FipeApiError("Token FIPE inválido, ausente ou sem permissão nesta consulta histórica.", resp.status_code, endpoint)
-                if resp.status_code == 402:
-                    raise FipeApiError("API FIPE PRO recusou a consulta histórica. Confirme o token PRO no Render e a assinatura ativa.", 402, endpoint)
-                raise FipeApiError(f"Erro FIPE {resp.status_code} na consulta histórica.", resp.status_code, endpoint)
-            return self._normalizar_preco(resp.json())
-        except FipeApiError:
-            raise
-        except requests.exceptions.Timeout:
-            self._registrar_erro_static(cache_dir, None, url, 'timeout')
-            raise FipeApiError("Tempo esgotado ao consultar histórico FIPE.", None, endpoint)
-        except requests.exceptions.RequestException as exc:
-            self._registrar_erro_static(cache_dir, None, url, str(exc)[:300])
-            raise FipeApiError("Falha de conexão ao consultar histórico FIPE.", None, endpoint)
+        data = self._get_json_referencia(endpoint, str(reference), timeout_segundos=self._timeout_historico())
+        return self._normalizar_preco(data)
 
     def uso_requisicoes(self) -> dict:
         dados = self._normalizar_janela_usage(self._ler_usage_static(self._cache_dir()), token_ativo=bool(self._token()))
@@ -625,7 +653,7 @@ class FipeService:
         if reference is None:
             data = self._get_json(endpoint)
         else:
-            data = self._get_json_referencia(endpoint, str(reference), timeout_segundos=4)
+            data = self._get_json_referencia(endpoint, str(reference), timeout_segundos=self._timeout_historico())
         return self._normalizar_anos(data)
 
     def consultar_detalhe_por_codigo_fipe(self, codigo_fipe: str, codigo_ano: str, reference: str | None = None) -> dict:
@@ -642,7 +670,7 @@ class FipeService:
         endpoint = f"{codigo_fipe}/years/{codigo_ano}"
         if reference is None:
             return self._normalizar_preco(self._get_json(endpoint))
-        return self._normalizar_preco(self._get_json_referencia(endpoint, str(reference), timeout_segundos=4))
+        return self._normalizar_preco(self._get_json_referencia(endpoint, str(reference), timeout_segundos=self._timeout_historico()))
 
     def consultar_historico_por_codigo_fipe(self, codigo_fipe: str, codigo_ano: str, reference: str | None = None) -> dict:
         """Consulta histórico de preços por código FIPE + ano.
@@ -660,4 +688,4 @@ class FipeService:
         endpoint = f"{codigo_fipe}/years/{codigo_ano}/history"
         if reference is None:
             return self._normalizar_preco(self._get_json(endpoint))
-        return self._normalizar_preco(self._get_json_referencia(endpoint, str(reference), timeout_segundos=5))
+        return self._normalizar_preco(self._get_json_referencia(endpoint, str(reference), timeout_segundos=self._timeout_historico()))

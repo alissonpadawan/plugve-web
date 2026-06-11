@@ -33,7 +33,7 @@ MESES_PT = {
 
 FIPE_WEB_BASE = "https://veiculos.fipe.org.br/api/veiculos"
 HEADERS_WEB_V1917 = {
-    # V24.6: headers legados do painel local; mantidos apenas como fallback, pois o Render usa API PRO v2.
+    # V24.7: headers legados do painel local; mantidos apenas como fallback, pois o Render usa API PRO v2.
     "Content-Type": "application/json; charset=UTF-8",
     "Referer": "https://veiculos.fipe.org.br/",
     "Origin": "https://veiculos.fipe.org.br",
@@ -427,7 +427,7 @@ class FipeHistoricoPainelAdapter:
     ) -> dict[str, Any] | None:
         """Escolhe o yearCode correto dentro de UMA referência mensal.
 
-        Esta é a correção central da V24.6: no histórico antigo não usamos
+        Esta é a correção central da V24.7: no histórico antigo não usamos
         cegamente o código de ano atual. Primeiro listamos os anos disponíveis
         na referência mensal e só então escolhemos a coorte/base.
         """
@@ -493,10 +493,10 @@ class FipeHistoricoPainelAdapter:
     ) -> PontoHistoricoPainel:
         """Consulta um ponto mensal pela API v2 usando código FIPE.
 
-        V24.6: antes de consultar preço, redescobre o código de ano dentro da
-        própria referência mensal. Isso evita usar o yearCode atual no passado,
-        que era a causa provável de a V24.3 passar por 2016-06 sem encontrar o
-        Etios.
+        V24.7: tenta primeiro o detalhe direto por código FIPE + yearCode da
+        coorte. Isso economiza uma chamada lenta a /years em referências antigas.
+        Se o detalhe direto retornar 404, aí sim redescobre o yearCode dentro da
+        referência mensal, como no painel local.
         """
         reference = str(reference or "").strip()
         mes_referencia = str(mes_referencia or "").strip()
@@ -509,32 +509,21 @@ class FipeHistoricoPainelAdapter:
             "codigo_fipe": codigo_fipe,
             "codigo_ano_preferido": codigo_ano_preferido,
             "ano_base": ano_base_resolvido,
-            "fluxo": "fipe_v2_codigo_fipe_redescobre_ano_referencia_v1917",
+            "fluxo": "fipe_v2_codigo_fipe_direto_com_fallback_redescobre_ano_v1917",
         }
         if not codigo_fipe:
             return PontoHistoricoPainel(False, reference, mes_referencia, motivo="codigo_fipe_ausente", debug=debug)
-        try:
-            anos = self.fipe.listar_anos_por_codigo_fipe(codigo_fipe, reference=reference)
-            ano_item = self.escolher_ano_codigo_fipe_na_referencia(
-                anos,
-                ano_base=ano_base_resolvido,
-                codigo_ano_preferido=codigo_ano_preferido,
-                combustivel_alvo=combustivel,
-                codigo_tipo_combustivel_preferido=codigo_tipo_combustivel_preferido,
-            )
-            if not ano_item:
+
+        def _montar_ponto_ok(detalhe: dict[str, Any], codigo_ano_resolvido: str, estrategia: str, debug_extra: dict[str, Any] | None = None) -> PontoHistoricoPainel:
+            valor, valor_txt = self._preco_do_detalhe_v2(detalhe)
+            if not valor or valor <= 0:
                 return PontoHistoricoPainel(
                     False,
                     reference,
                     mes_referencia,
-                    motivo="ano_nao_encontrado_codigo_fipe_na_referencia",
-                    debug={**debug, "anos_disponiveis": len(anos or []), "amostra_anos": (anos or [])[:6]},
+                    motivo="preco_invalido_codigo_fipe_referencia",
+                    debug={**debug, **(debug_extra or {}), "codigo_ano_resolvido": codigo_ano_resolvido, "detalhe_keys": sorted(detalhe.keys())[:12] if isinstance(detalhe, dict) else []},
                 )
-            codigo_ano_resolvido = str(ano_item.get("codigo") or ano_item.get("code") or "").strip()
-            detalhe = self.fipe.consultar_detalhe_por_codigo_fipe(codigo_fipe, codigo_ano_resolvido, reference=reference)
-            valor, valor_txt = self._preco_do_detalhe_v2(detalhe)
-            if not valor or valor <= 0:
-                return PontoHistoricoPainel(False, reference, mes_referencia, motivo="preco_invalido_codigo_fipe_referencia", debug={**debug, "codigo_ano_resolvido": codigo_ano_resolvido, "detalhe_keys": sorted(detalhe.keys())[:12] if isinstance(detalhe, dict) else []})
             data_dt = self.parse_mes_referencia(mes_referencia or str(detalhe.get("MesReferencia") or detalhe.get("referenceMonth") or ""))
             ano_modelo = self._ano_modelo_do_codigo_ano(codigo_ano_resolvido)
             codigo_tipo_combustivel = self._codigo_tipo_combustivel_do_codigo_ano(codigo_ano_resolvido)
@@ -552,59 +541,120 @@ class FipeHistoricoPainelAdapter:
                 ano_referencia=str(detalhe.get("AnoModelo") or detalhe.get("modelYear") or ano_modelo or ""),
                 codigo_tipo_combustivel=codigo_tipo_combustivel,
                 ano_modelo_referencia=ano_modelo,
-                estrategia="fipe_v2_codigo_fipe_redescobre_ano_referencia_v1917",
-                debug={**debug, "codigo_ano_resolvido": codigo_ano_resolvido, "modelo_api": str(detalhe.get("Modelo") or detalhe.get("model") or ""), "combustivel_api": str(detalhe.get("Combustivel") or detalhe.get("fuel") or "")},
+                estrategia=estrategia,
+                debug={
+                    **debug,
+                    **(debug_extra or {}),
+                    "codigo_ano_resolvido": codigo_ano_resolvido,
+                    "modelo_api": str(detalhe.get("Modelo") or detalhe.get("model") or ""),
+                    "combustivel_api": str(detalhe.get("Combustivel") or detalhe.get("fuel") or ""),
+                    "api_base": str(detalhe.get("_plugve_api_base") or ""),
+                },
+            )
+
+        # 1) Caminho rápido: detalhe direto. Para o Etios, tenta 2017-5 em cada referência.
+        if codigo_ano_preferido:
+            try:
+                detalhe = self.fipe.consultar_detalhe_por_codigo_fipe(codigo_fipe, codigo_ano_preferido, reference=reference)
+                ponto = _montar_ponto_ok(
+                    detalhe,
+                    codigo_ano_preferido,
+                    "fipe_v2_codigo_fipe_direto_ano_preferido_v1917",
+                    {"tentativa": "direto_codigo_fipe_yearcode", "endpoint": f"{codigo_fipe}/years/{codigo_ano_preferido}"},
+                )
+                if ponto.ok and ponto.valor:
+                    return ponto
+            except FipeApiError as exc:
+                if exc.status_code in (401, 402, 403, 429):
+                    raise
+                # 404 significa apenas que a coorte ainda não existia neste mês.
+                if exc.status_code == 404:
+                    return PontoHistoricoPainel(
+                        False,
+                        reference,
+                        mes_referencia,
+                        motivo="ano_preferido_nao_existe_na_referencia",
+                        debug={**debug, "tentativa": "direto_codigo_fipe_yearcode", "status_code": exc.status_code, "endpoint": exc.endpoint},
+                    )
+                # Timeout/conexão: não faz segunda chamada no mesmo lote para não estourar o Render.
+                return PontoHistoricoPainel(
+                    False,
+                    reference,
+                    mes_referencia,
+                    motivo=f"erro_api_controlado:{exc.tipo}:{exc.message}",
+                    debug={**debug, "tentativa": "direto_codigo_fipe_yearcode", "status_code": exc.status_code, "endpoint": exc.endpoint},
+                )
+            except Exception as exc:
+                return PontoHistoricoPainel(False, reference, mes_referencia, motivo=f"erro_controlado:{type(exc).__name__}:{str(exc)[:160]}", debug={**debug, "tentativa": "direto_codigo_fipe_yearcode"})
+
+        # 2) Caminho fiel ao local: redescobre o ano dentro da referência.
+        try:
+            anos = self.fipe.listar_anos_por_codigo_fipe(codigo_fipe, reference=reference)
+            ano_item = self.escolher_ano_codigo_fipe_na_referencia(
+                anos,
+                ano_base=ano_base_resolvido,
+                codigo_ano_preferido=codigo_ano_preferido,
+                combustivel_alvo=combustivel,
+                codigo_tipo_combustivel_preferido=codigo_tipo_combustivel_preferido,
+            )
+            if not ano_item:
+                return PontoHistoricoPainel(
+                    False,
+                    reference,
+                    mes_referencia,
+                    motivo="ano_nao_encontrado_codigo_fipe_na_referencia",
+                    debug={**debug, "tentativa": "redescobrir_yearcode", "anos_disponiveis": len(anos or []), "amostra_anos": (anos or [])[:6]},
+                )
+            codigo_ano_resolvido = str(ano_item.get("codigo") or ano_item.get("code") or "").strip()
+            detalhe = self.fipe.consultar_detalhe_por_codigo_fipe(codigo_fipe, codigo_ano_resolvido, reference=reference)
+            return _montar_ponto_ok(
+                detalhe,
+                codigo_ano_resolvido,
+                "fipe_v2_codigo_fipe_redescobre_ano_referencia_v1917",
+                {"tentativa": "redescobrir_yearcode", "endpoint": f"{codigo_fipe}/years/{codigo_ano_resolvido}", "anos_disponiveis": len(anos or [])},
             )
         except FipeApiError as exc:
             if exc.status_code in (401, 402, 403, 429):
                 raise
-            return PontoHistoricoPainel(False, reference, mes_referencia, motivo=f"erro_api_controlado:{exc.tipo}:{exc.message}", debug={**debug, "status_code": exc.status_code, "endpoint": exc.endpoint})
+            return PontoHistoricoPainel(False, reference, mes_referencia, motivo=f"erro_api_controlado:{exc.tipo}:{exc.message}", debug={**debug, "tentativa": "redescobrir_yearcode", "status_code": exc.status_code, "endpoint": exc.endpoint})
         except Exception as exc:
             return PontoHistoricoPainel(False, reference, mes_referencia, motivo=f"erro_controlado:{type(exc).__name__}:{str(exc)[:160]}", debug=debug)
 
     def consultar_zero_km_codigo_fipe_v1917(self, *, referencia: dict[str, Any], primeiro_usado: PontoHistoricoPainel) -> PontoHistoricoPainel | None:
-        """Procura o yearCode 32000 na mesma referência usando código FIPE."""
+        """Procura o yearCode 32000 na mesma referência usando código FIPE.
+
+        V24.7: tenta direto 32000-sufixo antes de listar /years, porque o /years
+        em referências antigas pode ser a chamada mais lenta.
+        """
         reference = str(referencia.get("code") or referencia.get("codigo_tabela_referencia") or primeiro_usado.reference or "").strip()
         mes = str(referencia.get("month") or primeiro_usado.mes or "").strip()
         codigo_fipe = str((primeiro_usado.debug or {}).get("codigo_fipe") or "").strip()
         if not codigo_fipe:
             return None
-        try:
-            anos = self.fipe.listar_anos_por_codigo_fipe(codigo_fipe, reference=reference)
-            suffix_usado = ""
-            if "-" in str(primeiro_usado.codigo_ano_referencia or ""):
-                suffix_usado = str(primeiro_usado.codigo_ano_referencia).split("-", 1)[1].strip()
-            candidatos: list[str] = []
-            for item in anos or []:
-                codigo = str(item.get("codigo") or item.get("code") or "").strip()
-                if not codigo.startswith("32000"):
-                    continue
-                if suffix_usado and codigo.endswith(f"-{suffix_usado}"):
-                    candidatos.insert(0, codigo)
-                else:
-                    candidatos.append(codigo)
-            if not candidatos:
-                # Fallback: alguns provedores não listam o yearCode 32000 em
-                # /years?reference, mas aceitam a consulta direta. Deriva o
-                # código zero km pelo mesmo combustível do usado.
-                if suffix_usado:
-                    candidatos.append(f"32000-{suffix_usado}")
-                else:
-                    candidatos.extend(["32000-1", "32000-2", "32000-3"])
-            codigo_zero = candidatos[0]
-            detalhe = self.fipe.consultar_detalhe_por_codigo_fipe(codigo_fipe, codigo_zero, reference=reference)
+        suffix_usado = ""
+        if "-" in str(primeiro_usado.codigo_ano_referencia or ""):
+            suffix_usado = str(primeiro_usado.codigo_ano_referencia).split("-", 1)[1].strip()
+
+        candidatos_diretos = []
+        if suffix_usado:
+            candidatos_diretos.append(f"32000-{suffix_usado}")
+        candidatos_diretos.extend(["32000-1", "32000-2", "32000-3", "32000-5"])
+
+        def _montar_zero(codigo_zero: str, detalhe: dict[str, Any]) -> PontoHistoricoPainel | None:
             valor, valor_txt = self._preco_do_detalhe_v2(detalhe)
             if not valor or valor <= 0:
                 return None
             data_dt = self.parse_mes_referencia(mes or str(detalhe.get("MesReferencia") or detalhe.get("referenceMonth") or ""))
             if primeiro_usado.data_referencia and data_dt and primeiro_usado.data_referencia == data_dt.strftime("%Y-%m"):
                 data_dt = self._subtrair_um_mes_dt(data_dt)
-                mes = data_dt.strftime("%m/%Y")
+                mes_local = data_dt.strftime("%m/%Y")
+            else:
+                mes_local = mes
             combustivel_zero = self._codigo_tipo_combustivel_do_codigo_ano(codigo_zero)
             return PontoHistoricoPainel(
                 True,
                 reference,
-                mes,
+                mes_local,
                 data_referencia=data_dt.strftime("%Y-%m") if data_dt else None,
                 valor=float(valor),
                 valor_formatado=valor_txt,
@@ -615,9 +665,50 @@ class FipeHistoricoPainelAdapter:
                 ano_referencia="Zero KM",
                 codigo_tipo_combustivel=combustivel_zero,
                 ano_modelo_referencia=32000,
-                estrategia="fipe_v2_codigo_fipe_zero_km_referencia_v1917",
-                debug={"codigo_fipe": codigo_fipe, "codigo_ano_usado": primeiro_usado.codigo_ano_referencia, "codigo_ano_zero": codigo_zero, "fonte": "fipe_v2_codigo_fipe_v1917"},
+                estrategia="fipe_v2_codigo_fipe_zero_km_direto_v1917",
+                debug={"codigo_fipe": codigo_fipe, "codigo_ano_usado": primeiro_usado.codigo_ano_referencia, "codigo_ano_zero": codigo_zero, "fonte": "fipe_v2_codigo_fipe_v1917", "api_base": str(detalhe.get("_plugve_api_base") or "")},
             )
+
+        # 1) tenta consulta direta 32000-sufixo.
+        ja_testados: set[str] = set()
+        for codigo_zero in candidatos_diretos:
+            if not codigo_zero or codigo_zero in ja_testados:
+                continue
+            ja_testados.add(codigo_zero)
+            try:
+                detalhe = self.fipe.consultar_detalhe_por_codigo_fipe(codigo_fipe, codigo_zero, reference=reference)
+                zero = _montar_zero(codigo_zero, detalhe)
+                if zero:
+                    return zero
+            except FipeApiError as exc:
+                if exc.status_code in (401, 402, 403, 429):
+                    raise
+                if exc.status_code is None:
+                    # Timeout: não insiste no mesmo lote; evita derrubar o Render.
+                    return None
+                continue
+            except Exception:
+                continue
+
+        # 2) fallback fiel: lista anos e procura 32000.
+        try:
+            anos = self.fipe.listar_anos_por_codigo_fipe(codigo_fipe, reference=reference)
+            candidatos: list[str] = []
+            for item in anos or []:
+                codigo = str(item.get("codigo") or item.get("code") or "").strip()
+                if not codigo.startswith("32000") or codigo in ja_testados:
+                    continue
+                if suffix_usado and codigo.endswith(f"-{suffix_usado}"):
+                    candidatos.insert(0, codigo)
+                else:
+                    candidatos.append(codigo)
+            for codigo_zero in candidatos:
+                detalhe = self.fipe.consultar_detalhe_por_codigo_fipe(codigo_fipe, codigo_zero, reference=reference)
+                zero = _montar_zero(codigo_zero, detalhe)
+                if zero:
+                    zero.estrategia = "fipe_v2_codigo_fipe_zero_km_lista_years_v1917"
+                    return zero
+            return None
         except FipeApiError as exc:
             if exc.status_code in (401, 402, 403, 429):
                 raise

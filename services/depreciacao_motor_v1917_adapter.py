@@ -440,7 +440,7 @@ class DepreciacaoMotorV1917Adapter:
     - nunca salvar curva definitiva nesta rota.
     """
 
-    VERSAO = "V24_6_adapter_v1917_parallel_api_pro_referencias"
+    VERSAO = "V24_7_adapter_v1917_api_pro_timeout_direto"
 
     def __init__(self, fipe: FipeService | None = None) -> None:
         self.fipe = fipe or FipeService()
@@ -538,7 +538,7 @@ class DepreciacaoMotorV1917Adapter:
         self._job_path(str(job["job_id"])).write_text(json.dumps(job, ensure_ascii=False, indent=2), encoding="utf-8")
 
     # ------------------------------------------------------------------
-    # Terminal temporário V24.6: auditoria passo a passo do job.
+    # Terminal temporário V24.7: auditoria passo a passo do job.
     # ------------------------------------------------------------------
     def _registrar_terminal(self, job: dict[str, Any], mensagem: str, nivel: str = "INFO", dados: dict[str, Any] | None = None) -> None:
         if not isinstance(job, dict):
@@ -575,10 +575,18 @@ class DepreciacaoMotorV1917Adapter:
             extras = {"data": data_ref, "ref": reference, "mes": mes, "motivo": motivo}
             if dbg.get("fluxo"):
                 extras["fluxo"] = dbg.get("fluxo")
+            if dbg.get("tentativa"):
+                extras["tentativa"] = dbg.get("tentativa")
+            if dbg.get("endpoint"):
+                extras["endpoint"] = dbg.get("endpoint")
+            if dbg.get("status_code") is not None:
+                extras["status"] = dbg.get("status_code")
             if dbg.get("codigo_ano_resolvido"):
                 extras["ano_resolvido"] = dbg.get("codigo_ano_resolvido")
             if dbg.get("anos_disponiveis") is not None:
                 extras["anos_ref"] = dbg.get("anos_disponiveis")
+            if dbg.get("api_base"):
+                extras["api_base"] = dbg.get("api_base")
             self._registrar_terminal(job, f"{etapa}: não encontrado nesta referência", "BUSCA", extras)
 
     # ------------------------------------------------------------------
@@ -606,7 +614,7 @@ class DepreciacaoMotorV1917Adapter:
 
         job_id = f"v1917_{uuid.uuid4().hex[:16]}"
         selecionado_zero_km = self._codigo_ano_eh_zero(veiculo.codigo_ano) or str(veiculo.ano_modelo).strip() == "32000"
-        # V24.6: Render não consegue usar FIPE Web pública (403).
+        # V24.7: Render não consegue usar FIPE Web pública (403).
         # Usa a API PRO oficial por referências mensais, sem depender de /history curto.
         fonte_historico = "fipe_v2_codigo_fipe_v1917"
         job = {
@@ -651,14 +659,14 @@ class DepreciacaoMotorV1917Adapter:
                 {
                     "tipo": "fonte_historica",
                     "mensagem": (
-                        "Fonte API PRO V24.6 ativa: fipe.parallelum.com.br/api/v2, token enviado e histórico montado por referência mensal. /history não é usado como espinha dorsal."
+                        "Fonte API PRO V24.7 ativa: fipe.parallelum.com.br/api/v2, token enviado e histórico montado por referência mensal. /history não é usado como espinha dorsal."
                         if fonte_historico == "fipe_v2_codigo_fipe_v1917"
                         else "Fonte inesperada."
                     ),
                 }
             ],
         }
-        self._registrar_terminal(job, "Terminal temporário V24.6 iniciado. Acompanhe aqui a história completa da coleta via API PRO.", "START")
+        self._registrar_terminal(job, "Terminal temporário V24.7 iniciado. Acompanhe aqui a história completa da coleta via API PRO.", "START")
         self._registrar_terminal(job, "Diagnóstico paralelo: não salva curva e não aciona o botão Calcular definitivo.", "INFO")
         self._registrar_terminal(job, "Veículo recebido", "INFO", {
             "marca": veiculo.marca,
@@ -687,7 +695,10 @@ class DepreciacaoMotorV1917Adapter:
             "api_consulta": "API PRO v2",
             "api_historico": "API PRO v2 por referência mensal",
             "base_url": "https://fipe.parallelum.com.br/api/v2",
+            "base_alt": "https://api.fipe.online/api/v2",
             "token": "enviado via variável FIPE_TOKEN/arquivo persistente",
+            "timeout_historico": "12s padrão",
+            "estrategia": "detalhe direto por código FIPE antes de listar anos",
             "history_curto": "não usado como base principal",
             "fipe_web_publica": "não usada no Render",
         })
@@ -699,7 +710,7 @@ class DepreciacaoMotorV1917Adapter:
     def _referencias_serializadas(self) -> list[dict[str, Any]]:
         """Carrega referências mensais pela API PRO oficial.
 
-        V24.6 usa https://fipe.parallelum.com.br/api/v2/references com token
+        V24.7 usa https://fipe.parallelum.com.br/api/v2/references com token
         configurado no Render. O histórico é montado referência a referência
         por código FIPE + yearId, reproduzindo a lógica do painel local sem
         acessar a FIPE Web pública bloqueada no Render.
@@ -809,8 +820,8 @@ class DepreciacaoMotorV1917Adapter:
         if str(job.get("fonte_historico") or "") == "fipe_web_v1917":
             limite = min(limite, 1)
         elif str(job.get("fonte_historico") or "").startswith("fipe_v2"):
-            # API PRO: cada referência exige ao menos /years + detalhe. Mantém lote baixo.
-            limite = min(limite, 4)
+            # API PRO: cada referência antiga pode demorar. V24.7 processa 1 referência por requisição.
+            limite = min(limite, 1)
         processadas = 0
         self._registrar_terminal(job, "Iniciando lote seguro no Render", "LOTE", {"fase": job.get("fase"), "limite": limite})
         while processadas < limite and job.get("fase") not in {"concluido", "erro_controlado", "erro_api_fipe", "primeira_aparicao_nao_encontrada", "zero_km_nao_encontrado"}:
@@ -837,8 +848,8 @@ class DepreciacaoMotorV1917Adapter:
 
     def _limite_lote(self, payload: dict[str, Any]) -> int:
         # Cada referência de busca pode consumir várias chamadas FIPE. Mantém teto baixo.
-        bruto = parse_int_seguro(payload.get("max_referencias_por_chamada") or payload.get("limite_lote") or 12, 12)
-        return max(1, min(24, bruto))
+        bruto = parse_int_seguro(payload.get("max_referencias_por_chamada") or payload.get("limite_lote") or 1, 1)
+        return max(1, min(6, bruto))
 
     def _passo_buscar_primeira(self, job: dict[str, Any]) -> int:
         refs = job.get("referencias_busca") or []
@@ -1363,7 +1374,7 @@ class DepreciacaoMotorV1917Adapter:
     def _montar_relatorio_textual(self, job: dict[str, Any], qualidade: dict[str, Any], calculo: dict[str, Any] | None, erro_calculo: str | None) -> str:
         veiculo = job.get("veiculo") or {}
         linhas = [
-            "DIAGNÓSTICO TÉCNICO V24.6 - MOTOR LOCAL V19.17 VIA API PRO",
+            "DIAGNÓSTICO TÉCNICO V24.7 - MOTOR LOCAL V19.17 VIA API PRO",
             "",
             "Este diagnóstico roda em módulo paralelo e não salva curva definitiva.",
             f"Veículo selecionado: {veiculo.get('marca', '')} {veiculo.get('modelo', '')} {veiculo.get('ano_modelo', '')}".strip(),
@@ -1381,7 +1392,7 @@ class DepreciacaoMotorV1917Adapter:
             f"Fase atual: {job.get('fase')}",
             f"Fonte histórica: {job.get('fonte_historico') or '-'}",
             f"Referências FIPE disponíveis: {job.get('total_referencias_disponiveis') or 0}; janela de busca: {job.get('total_referencias_busca') or 0}; busca primeira aparição: {job.get('indice_busca_primeira') or 0}/{job.get('total_referencias_busca') or 0}",
-            f"Aviso API PRO V24.6: {job.get('falha_api_pro_v1917') or job.get('falha_fipe_web_v1917') or 'sem falha registrada'}",
+            f"Aviso API PRO V24.7: {job.get('falha_api_pro_v1917') or job.get('falha_fipe_web_v1917') or 'sem falha registrada'}",
             f"Pontos válidos usados: {qualidade.get('pontos_usados')} usado(s) + zero km quando disponível",
             f"Janela histórica: {qualidade.get('janela_meses')} mês(es)",
             f"Qualidade: {qualidade.get('classe')} - {qualidade.get('descricao')}",

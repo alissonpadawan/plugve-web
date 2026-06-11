@@ -5,7 +5,7 @@ let modelosComCurva = new Set();
 let diagnosticoV1917AutoAtivo = false;
 let diagnosticoV1917Ciclos = 0;
 let terminalV1917Linhas = [];
-const DIAGNOSTICO_V1917_MAX_CICLOS = 90;
+const DIAGNOSTICO_V1917_MAX_CICLOS = 180;
 
 function textoSeguro(valor) {
   return valor === null || valor === undefined || valor === "" ? "-" : String(valor);
@@ -74,7 +74,7 @@ function atualizarTerminalV1917(data) {
     terminalV1917Linhas = linhas;
     el.textContent = linhas.join("\n");
   } else if (!terminalV1917Linhas.length) {
-    el.textContent = "Terminal aguardando diagnóstico V24.6...";
+    el.textContent = "Terminal aguardando diagnóstico V24.7...";
   }
   if (meta) {
     const total = data?.terminal_total_linhas || linhas.length || terminalV1917Linhas.length;
@@ -518,19 +518,19 @@ async function solicitarDiagnosticoCoorte(chamadaAutomatica = false) {
   }
 
   if (!chamadaAutomatica) {
-    // V24.6: clique manual sempre inicia job novo no modo API PRO.
+    // V24.7: clique manual sempre inicia job novo no modo API PRO.
     // Isso evita continuar jobs antigos V24.5 que ainda usavam FIPE Web pública.
     ultimoJobDiagnosticoV1917 = null;
     diagnosticoV1917AutoAtivo = true;
     diagnosticoV1917Ciclos = 0;
     terminalV1917Linhas = [];
     selecionarAbaAuditoriaV1917("terminal");
-    atualizarTerminalV1917({ terminal_linhas: ["[local] Iniciando diagnóstico V24.6 API PRO. O terminal será atualizado a cada lote seguro do Render..."] });
+    atualizarTerminalV1917({ terminal_linhas: ["[local] Iniciando diagnóstico V24.7 API PRO. O terminal será atualizado a cada lote seguro do Render..."] });
   }
   diagnosticoV1917Ciclos += 1;
 
   payload.modo_pandemia = payload.modo_pandemia || "Excluir";
-  payload.max_referencias_por_chamada = payload.max_referencias_por_chamada || 4;
+  payload.max_referencias_por_chamada = payload.max_referencias_por_chamada || 1;
   if (ultimoJobDiagnosticoV1917) payload.job_id = ultimoJobDiagnosticoV1917;
 
   const btn = document.getElementById("btn_diagnostico_coorte");
@@ -617,7 +617,7 @@ async function solicitarDiagnosticoCoorte(chamadaAutomatica = false) {
       adicionarDetalhe(corpo, "Último ponto", am.ultimo_ponto ? `${am.ultimo_ponto.data_referencia || ""} ${am.ultimo_ponto.valor_formatado || ""}`.trim() : "-");
       adicionarDetalhe(corpo, "Falhas controladas", am.falhas_coleta);
       adicionarDetalhe(corpo, "404 ignorados", am.erros_404_ignorados);
-      adicionarDetalhe(corpo, "Falha API PRO V24.6", data.falha_api_pro_v1917 || am.falha_api_pro_v1917 || data.falha_fipe_web_v1917 || am.falha_fipe_web_v1917 || "-");
+      adicionarDetalhe(corpo, "Falha API PRO V24.7", data.falha_api_pro_v1917 || am.falha_api_pro_v1917 || data.falha_fipe_web_v1917 || am.falha_fipe_web_v1917 || "-");
       adicionarDetalhe(corpo, "Ciclos automáticos", `${diagnosticoV1917Ciclos}/${DIAGNOSTICO_V1917_MAX_CICLOS}`);
       adicionarDetalhe(corpo, "Observação", data.criterio_salvamento || "Diagnóstico não salva curva.");
     }

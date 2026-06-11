@@ -32,12 +32,15 @@ class Config:
     ARQUIVO_HISTORICO_COMBUSTAO = DATA_DIR / "combustao" / "historico_fipe_sob_demanda_v18.csv"
     ARQUIVO_HISTORICO_ELETRICO = DATA_DIR / "eletrico" / "historico_fipe_ev_v20.csv"
 
-    # V24.6: para o motor V19.17 online, usar a API paga oficial fipe.online/Parallelum v2.
-    # A FIPE Web pública do site oficial funciona no desktop local, mas bloqueia o Render com 403.
+    # V24.7: motor V19.17 online usando API PRO oficial por referência mensal.
+    # A FIPE Web pública funciona no desktop local, mas bloqueia o Render com 403.
     # Mantemos a pública v1 apenas como fallback para telas simples quando não houver token.
     FIPE_PUBLIC_BASE_URL = "https://parallelum.com.br/fipe/api/v1/carros"
     FIPE_PUBLIC_ONLY = os.environ.get("FIPE_PUBLIC_ONLY", "0").strip().lower() in {"1", "true", "sim", "yes", "on"}
     FIPE_BASE_URL = os.environ.get("FIPE_BASE_URL", "https://fipe.parallelum.com.br/api/v2/cars")
-    REQUEST_TIMEOUT = 15
+    # Base alternativa mostrada no painel fipe.online. Usada apenas se a base principal der timeout em histórico antigo.
+    FIPE_ALT_BASE_URL = os.environ.get("FIPE_ALT_BASE_URL", "https://api.fipe.online/api/v2/cars")
+    REQUEST_TIMEOUT = int(os.environ.get("FIPE_REQUEST_TIMEOUT", "15"))
+    FIPE_HISTORICO_TIMEOUT = int(os.environ.get("FIPE_HISTORICO_TIMEOUT", "12"))
 
     HORIZONTE_PADRAO_ANOS = 5
