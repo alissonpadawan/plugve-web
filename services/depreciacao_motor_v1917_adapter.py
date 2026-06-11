@@ -440,7 +440,7 @@ class DepreciacaoMotorV1917Adapter:
     - nunca salvar curva definitiva nesta rota.
     """
 
-    VERSAO = "V24_3_adapter_v1917_parallel_codigo_fipe"
+    VERSAO = "V24_4_adapter_v1917_parallel_terminal_hibrido"
 
     def __init__(self, fipe: FipeService | None = None) -> None:
         self.fipe = fipe or FipeService()
@@ -482,6 +482,7 @@ class DepreciacaoMotorV1917Adapter:
             job["fase"] = "erro_api_fipe"
             job["erro"] = exc.to_dict()
             job.setdefault("eventos", []).append({"tipo": "erro_api_fipe", "mensagem": exc.message, "status_code": exc.status_code})
+            self._registrar_terminal(job, "Erro FIPE impeditivo no diagnóstico", "ERRO", {"status": exc.status_code, "endpoint": exc.endpoint, "mensagem": exc.message})
             self._salvar_job(job)
             return self._montar_resposta(job)
         except Exception as exc:
@@ -496,6 +497,7 @@ class DepreciacaoMotorV1917Adapter:
             job["fase"] = "erro_controlado"
             job["erro"] = {"tipo": type(exc).__name__, "mensagem": str(exc)}
             job.setdefault("eventos", []).append({"tipo": "erro_controlado", "mensagem": f"{type(exc).__name__}: {exc}"})
+            self._registrar_terminal(job, "Erro controlado no diagnóstico", "ERRO", {"tipo": type(exc).__name__, "mensagem": str(exc)[:220]})
             self._salvar_job(job)
             return self._montar_resposta(job)
 
@@ -536,6 +538,50 @@ class DepreciacaoMotorV1917Adapter:
         self._job_path(str(job["job_id"])).write_text(json.dumps(job, ensure_ascii=False, indent=2), encoding="utf-8")
 
     # ------------------------------------------------------------------
+    # Terminal temporário V24.4: auditoria passo a passo do job.
+    # ------------------------------------------------------------------
+    def _registrar_terminal(self, job: dict[str, Any], mensagem: str, nivel: str = "INFO", dados: dict[str, Any] | None = None) -> None:
+        if not isinstance(job, dict):
+            return
+        ts = datetime.utcnow().strftime("%H:%M:%S")
+        nivel_txt = str(nivel or "INFO").upper()[:8]
+        linha = f"[{ts}] [{nivel_txt}] {str(mensagem or '').strip()}"
+        if dados:
+            partes = []
+            for chave, valor in dados.items():
+                if valor is None or valor == "":
+                    continue
+                texto_valor = str(valor)
+                if len(texto_valor) > 140:
+                    texto_valor = texto_valor[:137] + "..."
+                partes.append(f"{chave}={texto_valor}")
+            if partes:
+                linha += " | " + "; ".join(partes)
+        linhas = job.setdefault("terminal_linhas", [])
+        linhas.append(linha)
+        # Mantém histórico suficiente para auditoria sem crescer indefinidamente.
+        if len(linhas) > 650:
+            del linhas[: len(linhas) - 650]
+
+    def _registrar_tentativa_terminal(self, job: dict[str, Any], etapa: str, ref: dict[str, Any], ponto: PontoHistoricoPainel | None) -> None:
+        data_ref = str((ponto.data_referencia if ponto else None) or ref.get("data_ref") or "")
+        mes = str((ponto.mes if ponto else None) or ref.get("month") or "")
+        reference = str((ponto.reference if ponto else None) or ref.get("code") or "")
+        if ponto and ponto.ok and ponto.valor:
+            self._registrar_terminal(job, f"{etapa}: encontrado", "OK", {"data": data_ref, "ref": reference, "mes": mes, "valor": ponto.valor_formatado, "estrategia": ponto.estrategia})
+        else:
+            motivo = ponto.motivo if ponto else "sem_retorno"
+            dbg = (ponto.debug or {}) if ponto else {}
+            extras = {"data": data_ref, "ref": reference, "mes": mes, "motivo": motivo}
+            if dbg.get("fluxo"):
+                extras["fluxo"] = dbg.get("fluxo")
+            if dbg.get("codigo_ano_resolvido"):
+                extras["ano_resolvido"] = dbg.get("codigo_ano_resolvido")
+            if dbg.get("anos_disponiveis") is not None:
+                extras["anos_ref"] = dbg.get("anos_disponiveis")
+            self._registrar_terminal(job, f"{etapa}: não encontrado nesta referência", "BUSCA", extras)
+
+    # ------------------------------------------------------------------
     # Criação do plano de diagnóstico.
     # ------------------------------------------------------------------
     def _criar_job(self, payload: dict[str, Any]) -> dict[str, Any]:
@@ -560,7 +606,11 @@ class DepreciacaoMotorV1917Adapter:
 
         job_id = f"v1917_{uuid.uuid4().hex[:16]}"
         selecionado_zero_km = self._codigo_ano_eh_zero(veiculo.codigo_ano) or str(veiculo.ano_modelo).strip() == "32000"
-        fonte_historico = "fipe_web_v1917" if referencias_fipe_web_v1917 else ("fipe_v2_codigo_fipe_v1917" if veiculo.codigo_fipe else "fipe_v2_reconstrucao_marca_modelo_v1917")
+        # V24.4: quando o endpoint web V19.17 está bloqueado no Render, usa
+        # fluxo híbrido seguro: primeiro tenta código FIPE redescobrindo o ano
+        # dentro da referência; se não achar, cai para reconstrução marca ->
+        # modelo -> ano -> preço, como no painel local.
+        fonte_historico = "fipe_web_v1917" if referencias_fipe_web_v1917 else "fipe_v2_hibrido_v1917"
         job = {
             "job_id": job_id,
             "motor": self.VERSAO,
@@ -604,11 +654,38 @@ class DepreciacaoMotorV1917Adapter:
                     "mensagem": (
                         "Fonte FIPE Web V19.17 ativa."
                         if fonte_historico == "fipe_web_v1917"
-                        else "Usando FIPE v2 por código FIPE e referência mensal; não usa /history curto."
+                        else "Usando FIPE v2 híbrida: código FIPE com ano redescoberto por referência e fallback marca/modelo/ano. Não usa /history curto."
                     ),
                 }
             ],
         }
+        self._registrar_terminal(job, "Terminal temporário V24.4 iniciado. Acompanhe aqui a história completa da coleta.", "START")
+        self._registrar_terminal(job, "Diagnóstico paralelo: não salva curva e não aciona o botão Calcular definitivo.", "INFO")
+        self._registrar_terminal(job, "Veículo recebido", "INFO", {
+            "marca": veiculo.marca,
+            "modelo": veiculo.modelo,
+            "ano_modelo": veiculo.ano_modelo,
+            "codigo_fipe": veiculo.codigo_fipe,
+            "codigo_marca": veiculo.codigo_marca,
+            "codigo_modelo": veiculo.codigo_modelo,
+            "codigo_ano": veiculo.codigo_ano,
+        })
+        self._registrar_terminal(job, "Base/coorte definida", "INFO", {
+            "data_base": data_base_operacao,
+            "ano_preferencial": ano_base_preferencial,
+            "coorte_ano": coorte.get("ano"),
+            "coorte_codigo_ano": coorte.get("codigo_ano"),
+            "coorte_nome": coorte.get("nome"),
+        })
+        self._registrar_terminal(job, "Referências FIPE preparadas", "INFO", {
+            "total_disponivel": len(referencias),
+            "inicio_busca": inicio_busca,
+            "fim_busca": data_base_operacao,
+            "refs_busca": len(refs_busca),
+            "fonte": fonte_historico,
+        })
+        if falha_fipe_web_v1917:
+            self._registrar_terminal(job, "Endpoint FIPE Web V19.17 indisponível; seguindo pelo caminho v2 seguro", "WARN", {"falha": falha_fipe_web_v1917})
         self._salvar_job(job)
         return job
 
@@ -737,6 +814,7 @@ class DepreciacaoMotorV1917Adapter:
             # da FIPE. No Render/Gunicorn, uma referência por requisição é mais seguro.
             limite = min(limite, 1)
         processadas = 0
+        self._registrar_terminal(job, "Iniciando lote seguro no Render", "LOTE", {"fase": job.get("fase"), "limite": limite})
         while processadas < limite and job.get("fase") not in {"concluido", "erro_controlado", "erro_api_fipe", "primeira_aparicao_nao_encontrada", "zero_km_nao_encontrado"}:
             fase = str(job.get("fase") or "")
             if fase == "buscar_primeira_aparicao":
@@ -756,6 +834,7 @@ class DepreciacaoMotorV1917Adapter:
             if fez == 0 and str(job.get("fase")) in {"planejar_historico", "coletar_historico"}:
                 continue
         job["ultima_execucao_lote"] = {"limite_referencias": limite, "processadas": processadas}
+        self._registrar_terminal(job, "Lote finalizado", "LOTE", {"fase_atual": job.get("fase"), "processadas": processadas})
         return job
 
     def _limite_lote(self, payload: dict[str, Any]) -> int:
@@ -769,12 +848,15 @@ class DepreciacaoMotorV1917Adapter:
         if idx >= len(refs):
             job["fase"] = "primeira_aparicao_nao_encontrada"
             job.setdefault("eventos", []).append({"tipo": "falha", "mensagem": "Primeira aparição não encontrada na janela de referências."})
+            self._registrar_terminal(job, "Primeira aparição não encontrada dentro da janela planejada", "ERRO", {"refs_testadas": idx, "total": len(refs)})
             return 0
         ref = refs[idx]
         veiculo = job["veiculo"]
         coorte = job["coorte_base"]
+        ponto: PontoHistoricoPainel | None = None
         try:
             fonte = str(job.get("fonte_historico") or "")
+            self._registrar_terminal(job, "Buscando primeira aparição", "BUSCA", {"progresso": f"{idx + 1}/{len(refs)}", "data": ref.get("data_ref"), "ref": ref.get("code"), "fonte": fonte})
             if fonte == "fipe_web_v1917":
                 ponto = self.painel_adapter.consultar_ponto_modelo_primeiro_web_v1917(
                     reference=str(ref.get("code") or ""),
@@ -785,14 +867,35 @@ class DepreciacaoMotorV1917Adapter:
                     ano_base=int(coorte["ano"]),
                     combustivel=str(veiculo.get("combustivel") or ""),
                 )
-            elif fonte == "fipe_v2_codigo_fipe_v1917":
-                ponto = self.painel_adapter.consultar_ponto_codigo_fipe_v1917(
-                    reference=str(ref.get("code") or ""),
-                    mes_referencia=str(ref.get("month") or ""),
-                    codigo_fipe=str(veiculo.get("codigo_fipe") or ""),
-                    codigo_ano=str(coorte.get("codigo_ano") or ""),
-                    nome_modelo=str(veiculo.get("modelo") or ""),
-                )
+            elif fonte in {"fipe_v2_codigo_fipe_v1917", "fipe_v2_hibrido_v1917"}:
+                ponto_codigo = None
+                if str(veiculo.get("codigo_fipe") or ""):
+                    ponto_codigo = self.painel_adapter.consultar_ponto_codigo_fipe_v1917(
+                        reference=str(ref.get("code") or ""),
+                        mes_referencia=str(ref.get("month") or ""),
+                        codigo_fipe=str(veiculo.get("codigo_fipe") or ""),
+                        codigo_ano=str(coorte.get("codigo_ano") or ""),
+                        nome_modelo=str(veiculo.get("modelo") or ""),
+                        ano_base=int(coorte["ano"]),
+                        combustivel=str(veiculo.get("combustivel") or ""),
+                    )
+                    if ponto_codigo.ok and ponto_codigo.valor:
+                        ponto = ponto_codigo
+                    elif fonte == "fipe_v2_codigo_fipe_v1917":
+                        ponto = ponto_codigo
+                    else:
+                        self._registrar_tentativa_terminal(job, "Primeira aparição por código FIPE", ref, ponto_codigo)
+                if ponto is None:
+                    ponto_modelo = self.painel_adapter.consultar_ponto_modelo_primeiro_v19(
+                        reference=str(ref.get("code") or ""),
+                        mes_referencia=str(ref.get("month") or ""),
+                        codigo_marca_atual=str(veiculo.get("codigo_marca") or ""),
+                        nome_marca=str(veiculo.get("marca") or ""),
+                        nome_modelo=str(veiculo.get("modelo") or ""),
+                        ano_base=int(coorte["ano"]),
+                        combustivel=str(veiculo.get("combustivel") or ""),
+                    )
+                    ponto = ponto_modelo
             else:
                 ponto = self.painel_adapter.consultar_ponto_modelo_primeiro_v19(
                     reference=str(ref.get("code") or ""),
@@ -805,6 +908,7 @@ class DepreciacaoMotorV1917Adapter:
                 )
         except FipeApiError as exc:
             if exc.status_code in (401, 403, 429):
+                self._registrar_terminal(job, "Erro FIPE impeditivo durante busca da primeira aparição", "ERRO", {"status": exc.status_code, "endpoint": exc.endpoint, "mensagem": exc.message})
                 raise
             if exc.status_code == 404:
                 job["erros_404_ignorados"] = int(job.get("erros_404_ignorados") or 0) + 1
@@ -815,18 +919,20 @@ class DepreciacaoMotorV1917Adapter:
             job["falhas_coleta"] = int(job.get("falhas_coleta") or 0) + 1
             ponto = PontoHistoricoPainel(False, str(ref.get("code") or ""), str(ref.get("month") or ""), motivo=f"erro_controlado:{type(exc).__name__}:{exc}")
         job["indice_busca_primeira"] = idx + 1
-        if ponto.ok and ponto.valor:
+        self._registrar_tentativa_terminal(job, "Primeira aparição", ref, ponto)
+        if ponto and ponto.ok and ponto.valor:
             job["primeiro_usado"] = ponto.to_dict()
             job.setdefault("eventos", []).append({
                 "tipo": "primeira_aparicao",
                 "mensagem": f"Primeira aparição encontrada em {ponto.data_referencia} ({ponto.valor_formatado}).",
             })
+            self._registrar_terminal(job, "Primeira aparição confirmada; próxima fase será procurar zero km 32000", "OK", {"data": ponto.data_referencia, "valor": ponto.valor_formatado, "codigo_ano": ponto.codigo_ano_referencia, "estrategia": ponto.estrategia})
             self._preparar_referencias_zero(job)
             job["fase"] = "buscar_zero_km"
         else:
             tentativas = job.setdefault("tentativas_primeira_aparicao", [])
-            if len(tentativas) < 20:
-                tentativas.append({"reference": ref.get("code"), "mes": ref.get("month"), "data_ref": ref.get("data_ref"), "motivo": ponto.motivo, "debug": ponto.debug or {}})
+            if len(tentativas) < 30:
+                tentativas.append({"reference": ref.get("code"), "mes": ref.get("month"), "data_ref": ref.get("data_ref"), "motivo": ponto.motivo if ponto else "sem_retorno", "debug": (ponto.debug or {}) if ponto else {}})
         return 1
 
     def _preparar_referencias_zero(self, job: dict[str, Any]) -> None:
@@ -848,14 +954,20 @@ class DepreciacaoMotorV1917Adapter:
         if idx >= len(refs):
             job["fase"] = "zero_km_nao_encontrado"
             job.setdefault("eventos", []).append({"tipo": "falha", "mensagem": "Zero km 32000 não encontrado para a coorte base."})
+            self._registrar_terminal(job, "Zero km 32000 não encontrado na janela planejada", "ERRO", {"refs_testadas": idx, "total": len(refs)})
             return 0
         ref = refs[idx]
         primeiro = self._ponto_historico_from_dict(job.get("primeiro_usado") or {})
         fonte = str(job.get("fonte_historico") or "")
+        zero = None
+        self._registrar_terminal(job, "Buscando zero km base 32000", "BUSCA", {"progresso": f"{idx + 1}/{len(refs)}", "data": ref.get("data_ref"), "ref": ref.get("code"), "fonte": fonte})
         if fonte == "fipe_web_v1917":
             zero = self.painel_adapter.consultar_zero_km_web_v1917(referencia={"code": ref.get("code"), "month": ref.get("month")}, primeiro_usado=primeiro)
-        elif fonte == "fipe_v2_codigo_fipe_v1917":
+        elif fonte in {"fipe_v2_codigo_fipe_v1917", "fipe_v2_hibrido_v1917"}:
             zero = self.painel_adapter.consultar_zero_km_codigo_fipe_v1917(referencia={"code": ref.get("code"), "month": ref.get("month")}, primeiro_usado=primeiro)
+            if not (zero and zero.valor) and fonte == "fipe_v2_hibrido_v1917":
+                self._registrar_terminal(job, "Zero km por código FIPE não apareceu; tentando pelo caminho marca/modelo/ano", "BUSCA", {"data": ref.get("data_ref"), "ref": ref.get("code")})
+                zero = self.painel_adapter._consultar_zero_km_v19(referencia={"code": ref.get("code"), "month": ref.get("month")}, primeiro_usado=primeiro)
         else:
             zero = self.painel_adapter._consultar_zero_km_v19(referencia={"code": ref.get("code"), "month": ref.get("month")}, primeiro_usado=primeiro)
         job["indice_busca_zero"] = idx + 1
@@ -867,10 +979,12 @@ class DepreciacaoMotorV1917Adapter:
                 "tipo": "zero_km",
                 "mensagem": f"Zero km base encontrado em {z.get('data_referencia')} ({z.get('valor_formatado')}).",
             })
+            self._registrar_terminal(job, "Zero km base encontrado; próxima fase será planejar histórico amostrado", "OK", {"data": z.get("data_referencia"), "valor": z.get("valor_formatado"), "codigo_ano": z.get("codigo_ano_referencia"), "estrategia": z.get("estrategia")})
             job["fase"] = "planejar_historico"
         else:
+            self._registrar_terminal(job, "Zero km não encontrado nesta referência", "BUSCA", {"data": ref.get("data_ref"), "ref": ref.get("code")})
             tentativas = job.setdefault("tentativas_zero_km", [])
-            if len(tentativas) < 20:
+            if len(tentativas) < 30:
                 tentativas.append({"reference": ref.get("code"), "mes": ref.get("month"), "data_ref": ref.get("data_ref"), "motivo": "zero_km_nao_encontrado_nesta_referencia"})
         return 1
 
@@ -925,6 +1039,13 @@ class DepreciacaoMotorV1917Adapter:
             "tipo": "plano_historico",
             "mensagem": f"Histórico planejado de {inicio} a {data_final}: {len(refs_amostradas)} referências, passo {passo_meses} mês(es).",
         })
+        self._registrar_terminal(job, "Histórico amostrado planejado", "OK", {
+            "inicio": inicio,
+            "fim": data_final,
+            "janela_meses": total_meses,
+            "passo_meses": passo_meses,
+            "refs_planejadas": len(refs_amostradas),
+        })
 
     def _passo_coletar_historico(self, job: dict[str, Any]) -> int:
         refs = job.get("referencias_planejadas") or []
@@ -933,15 +1054,53 @@ class DepreciacaoMotorV1917Adapter:
             job["fase"] = "concluido"
             self._deduplicar_historico(job)
             job.setdefault("eventos", []).append({"tipo": "coleta_concluida", "mensagem": "Coleta V19.17 concluída. Nenhuma curva foi salva."})
+            self._registrar_terminal(job, "Coleta histórica concluída; nenhuma curva foi salva", "OK", {"pontos": len(job.get("historico") or [])})
             return 0
         ref = refs[idx]
         primeiro = job.get("primeiro_usado") or {}
+        ponto: PontoHistoricoPainel | None = None
+        self._registrar_terminal(job, "Coletando ponto histórico", "COLETA", {"progresso": f"{idx + 1}/{len(refs)}", "data": ref.get("data_ref"), "ref": ref.get("code")})
         try:
             fonte = str(job.get("fonte_historico") or "")
+            primeiro_obj = self._ponto_historico_from_dict(primeiro)
             if fonte == "fipe_web_v1917":
-                ponto = self.painel_adapter.consultar_preco_usado_web_v1917(referencia=ref, primeiro_usado=self._ponto_historico_from_dict(primeiro))
-            elif fonte == "fipe_v2_codigo_fipe_v1917":
-                ponto = self.painel_adapter.consultar_preco_usado_codigo_fipe_v1917(referencia=ref, primeiro_usado=self._ponto_historico_from_dict(primeiro))
+                ponto = self.painel_adapter.consultar_preco_usado_web_v1917(referencia=ref, primeiro_usado=primeiro_obj)
+            elif fonte in {"fipe_v2_codigo_fipe_v1917", "fipe_v2_hibrido_v1917"}:
+                if str((primeiro_obj.debug or {}).get("codigo_fipe") or ""):
+                    ponto_codigo = self.painel_adapter.consultar_preco_usado_codigo_fipe_v1917(referencia=ref, primeiro_usado=primeiro_obj)
+                    if ponto_codigo.ok and ponto_codigo.valor:
+                        ponto = ponto_codigo
+                    elif fonte == "fipe_v2_codigo_fipe_v1917":
+                        ponto = ponto_codigo
+                    else:
+                        self._registrar_tentativa_terminal(job, "Histórico por código FIPE", ref, ponto_codigo)
+                if ponto is None:
+                    if primeiro_obj.codigo_marca_referencia and primeiro_obj.codigo_modelo_referencia and primeiro_obj.codigo_ano_referencia:
+                        detalhe = self.fipe.consultar_preco_referencia(
+                            str(primeiro_obj.codigo_marca_referencia),
+                            str(primeiro_obj.codigo_modelo_referencia),
+                            str(primeiro_obj.codigo_ano_referencia),
+                            str(ref.get("code") or ""),
+                        )
+                        valor_txt = detalhe.get("Valor") or detalhe.get("price") or ""
+                        valor = parse_float_seguro(valor_txt)
+                        ponto = PontoHistoricoPainel(
+                            bool(valor and valor > 0),
+                            str(ref.get("code") or ""),
+                            str(ref.get("month") or detalhe.get("MesReferencia") or detalhe.get("referenceMonth") or ""),
+                            data_referencia=str(ref.get("data_ref") or ""),
+                            valor=float(valor or 0),
+                            valor_formatado=valor_txt if isinstance(valor_txt, str) and valor_txt else formatar_brl(float(valor or 0)),
+                            codigo_marca_referencia=str(primeiro_obj.codigo_marca_referencia),
+                            codigo_modelo_referencia=str(primeiro_obj.codigo_modelo_referencia),
+                            modelo_referencia=str(primeiro_obj.modelo_referencia),
+                            codigo_ano_referencia=str(primeiro_obj.codigo_ano_referencia),
+                            ano_referencia=str(primeiro_obj.ano_referencia),
+                            estrategia="fipe_v2_hibrido_marca_modelo_ano_preco_v1917",
+                            motivo="" if valor and valor > 0 else "preco_invalido_historico_referencia",
+                        )
+                    else:
+                        ponto = PontoHistoricoPainel(False, str(ref.get("code") or ""), str(ref.get("month") or ""), data_referencia=str(ref.get("data_ref") or ""), motivo="sem_codigos_marca_modelo_para_fallback_historico")
             else:
                 detalhe = self.fipe.consultar_preco_referencia(
                     str(primeiro.get("codigo_marca_referencia") or ""),
@@ -961,9 +1120,9 @@ class DepreciacaoMotorV1917Adapter:
                     motivo="" if valor and valor > 0 else "preco_invalido_historico_referencia",
                 )
 
-            valor = float(ponto.valor or 0)
-            valor_txt = ponto.valor_formatado or formatar_brl(valor)
-            if ponto.ok and valor > 0:
+            valor = float((ponto.valor if ponto else 0) or 0)
+            valor_txt = (ponto.valor_formatado if ponto else "") or formatar_brl(valor)
+            if ponto and ponto.ok and valor > 0:
                 data_ref = str(ponto.data_referencia or ref.get("data_ref") or "")
                 job.setdefault("historico", []).append({
                     "data_referencia": data_ref,
@@ -973,26 +1132,32 @@ class DepreciacaoMotorV1917Adapter:
                     "tipo": "usado",
                     "reference": str(ref.get("code") or ""),
                 })
+                self._registrar_tentativa_terminal(job, "Ponto histórico", ref, ponto)
             else:
                 job["falhas_coleta"] = int(job.get("falhas_coleta") or 0) + 1
+                self._registrar_tentativa_terminal(job, "Ponto histórico", ref, ponto)
                 tentativas = job.setdefault("tentativas_historico", [])
-                if len(tentativas) < 20:
-                    tentativas.append({"reference": ref.get("code"), "mes": ref.get("month"), "data_ref": ref.get("data_ref"), "motivo": ponto.motivo})
+                if len(tentativas) < 30:
+                    tentativas.append({"reference": ref.get("code"), "mes": ref.get("month"), "data_ref": ref.get("data_ref"), "motivo": ponto.motivo if ponto else "sem_retorno"})
         except FipeApiError as exc:
             if exc.status_code == 429:
                 job["limite_interrompeu"] = True
+                self._registrar_terminal(job, "Limite FIPE interrompeu a coleta histórica", "ERRO", {"status": exc.status_code, "mensagem": exc.message})
                 raise
             if exc.status_code == 404:
                 job["erros_404_ignorados"] = int(job.get("erros_404_ignorados") or 0) + 1
             else:
                 job["falhas_coleta"] = int(job.get("falhas_coleta") or 0) + 1
-        except Exception:
+            self._registrar_terminal(job, "Erro FIPE controlado no ponto histórico", "WARN", {"status": exc.status_code, "endpoint": exc.endpoint, "data": ref.get("data_ref")})
+        except Exception as exc:
             job["falhas_coleta"] = int(job.get("falhas_coleta") or 0) + 1
+            self._registrar_terminal(job, "Erro controlado no ponto histórico", "WARN", {"tipo": type(exc).__name__, "data": ref.get("data_ref"), "erro": str(exc)[:160]})
         job["offset_coleta"] = idx + 1
         self._deduplicar_historico(job)
         if int(job.get("offset_coleta") or 0) >= len(refs):
             job["fase"] = "concluido"
             job.setdefault("eventos", []).append({"tipo": "coleta_concluida", "mensagem": "Coleta V19.17 concluída. Nenhuma curva foi salva."})
+            self._registrar_terminal(job, "Último ponto do plano processado; coleta concluída", "OK", {"pontos": len(job.get("historico") or [])})
         return 1
 
     # ------------------------------------------------------------------
@@ -1058,6 +1223,9 @@ class DepreciacaoMotorV1917Adapter:
             "erro": job.get("erro"),
             "erro_calculo": erro_calculo,
             "eventos": (job.get("eventos") or [])[-12:],
+            "terminal_linhas": (job.get("terminal_linhas") or [])[-260:],
+            "terminal_total_linhas": len(job.get("terminal_linhas") or []),
+            "terminal_atualizado_em": job.get("updated_at"),
         }
         if calculo:
             top.update(calculo)
@@ -1187,7 +1355,7 @@ class DepreciacaoMotorV1917Adapter:
     def _montar_relatorio_textual(self, job: dict[str, Any], qualidade: dict[str, Any], calculo: dict[str, Any] | None, erro_calculo: str | None) -> str:
         veiculo = job.get("veiculo") or {}
         linhas = [
-            "DIAGNÓSTICO TÉCNICO V24.3 - MOTOR LOCAL V19.17 PORTADO",
+            "DIAGNÓSTICO TÉCNICO V24.4 - MOTOR LOCAL V19.17 PORTADO",
             "",
             "Este diagnóstico roda em módulo paralelo e não salva curva definitiva.",
             f"Veículo selecionado: {veiculo.get('marca', '')} {veiculo.get('modelo', '')} {veiculo.get('ano_modelo', '')}".strip(),

@@ -1110,3 +1110,45 @@ select, input {
 
 .button.danger { background: #fff1f2; color: #be123c; border: 1px solid #fecdd3; }
 .button.danger:hover { background: #ffe4e6; }
+
+/* V24.4 - terminal temporário do diagnóstico V19.17 */
+.v1917-temp-tabs {
+  margin-top: 12px;
+  margin-bottom: 8px;
+}
+
+.terminal-toolbar-v1917 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid #1f2937;
+  border-bottom: 0;
+  background: #111827;
+  color: #d1d5db;
+  border-radius: 12px 12px 0 0;
+  padding: 10px 12px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.terminal-toolbar-v1917 .button {
+  padding: 7px 10px;
+  font-size: 12px;
+}
+
+.terminal-v1917 {
+  margin: 0 0 16px;
+  min-height: 420px;
+  max-height: 640px;
+  overflow: auto;
+  white-space: pre-wrap;
+  border: 1px solid #1f2937;
+  background: #020617;
+  color: #d1d5db;
+  border-radius: 0 0 12px 12px;
+  padding: 14px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  line-height: 1.55;
+}

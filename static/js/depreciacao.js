@@ -4,6 +4,7 @@ let painelDepreciacaoDados = null;
 let modelosComCurva = new Set();
 let diagnosticoV1917AutoAtivo = false;
 let diagnosticoV1917Ciclos = 0;
+let terminalV1917Linhas = [];
 const DIAGNOSTICO_V1917_MAX_CICLOS = 90;
 
 function textoSeguro(valor) {
@@ -38,6 +39,52 @@ function atualizarFeedbackCalculo(texto, percentual, mostrar = true) {
   if (fill) fill.style.width = `${Math.max(0, Math.min(100, Number(percentual || 0)))}%`;
 }
 
+function selecionarAbaAuditoriaV1917(aba) {
+  const rel = document.getElementById("aba_relatorio_tecnico");
+  const term = document.getElementById("aba_terminal_v1917");
+  const btnRel = document.getElementById("tab_relatorio_tecnico");
+  const btnTerm = document.getElementById("tab_terminal_v1917");
+  const terminalAtivo = aba === "terminal";
+  if (rel) rel.classList.toggle("hidden", terminalAtivo);
+  if (term) term.classList.toggle("hidden", !terminalAtivo);
+  if (btnRel) btnRel.classList.toggle("active", !terminalAtivo);
+  if (btnTerm) btnTerm.classList.toggle("active", terminalAtivo);
+  if (terminalAtivo) rolarTerminalV1917ParaFim();
+}
+
+function rolarTerminalV1917ParaFim() {
+  const el = document.getElementById("terminal_v1917");
+  if (el) el.scrollTop = el.scrollHeight;
+}
+
+function limparTerminalV1917Local() {
+  terminalV1917Linhas = [];
+  const el = document.getElementById("terminal_v1917");
+  if (el) el.textContent = "Terminal limpo localmente. O job no Render continua preservado no disco persistente.";
+  const meta = document.getElementById("terminal_v1917_meta");
+  if (meta) meta.textContent = "0 linha(s) visíveis";
+}
+
+function atualizarTerminalV1917(data) {
+  const linhas = Array.isArray(data?.terminal_linhas) ? data.terminal_linhas : [];
+  const el = document.getElementById("terminal_v1917");
+  const meta = document.getElementById("terminal_v1917_meta");
+  if (!el) return;
+  if (linhas.length) {
+    terminalV1917Linhas = linhas;
+    el.textContent = linhas.join("\n");
+  } else if (!terminalV1917Linhas.length) {
+    el.textContent = "Terminal aguardando diagnóstico V24.4...";
+  }
+  if (meta) {
+    const total = data?.terminal_total_linhas || linhas.length || terminalV1917Linhas.length;
+    const fase = data?.fase ? `fase: ${data.fase}` : "aguardando fase";
+    const job = data?.job_id ? `job: ${data.job_id}` : "sem job";
+    meta.textContent = `${total} linha(s) no job; ${fase}; ${job}`;
+  }
+  rolarTerminalV1917ParaFim();
+}
+
 function limparResumo() {
   ["res_valor_atual", "res_valor_futuro", "res_depreciacao", "res_taxa", "res_confianca", "res_origem", "res_tipo_usado"].forEach(id => {
     const el = document.getElementById(id);
@@ -57,6 +104,8 @@ function resetarFluxoDepreciacao() {
   mostrarAuditoriaArea(false);
   atualizarFeedbackCalculo("", 0, false);
   atualizarStatusResultado("Aguardando seleção do veículo.", "muted");
+  terminalV1917Linhas = [];
+  atualizarTerminalV1917({ terminal_linhas: [] });
   limparResumo();
 }
 window.resetarFluxoDepreciacao = resetarFluxoDepreciacao;
@@ -471,11 +520,14 @@ async function solicitarDiagnosticoCoorte(chamadaAutomatica = false) {
   if (!chamadaAutomatica) {
     diagnosticoV1917AutoAtivo = true;
     diagnosticoV1917Ciclos = 0;
+    terminalV1917Linhas = [];
+    selecionarAbaAuditoriaV1917("terminal");
+    atualizarTerminalV1917({ terminal_linhas: ["[local] Iniciando diagnóstico V24.4. O terminal será atualizado a cada lote seguro do Render..."] });
   }
   diagnosticoV1917Ciclos += 1;
 
   payload.modo_pandemia = payload.modo_pandemia || "Excluir";
-  payload.max_referencias_por_chamada = payload.max_referencias_por_chamada || 8;
+  payload.max_referencias_por_chamada = payload.max_referencias_por_chamada || 4;
   if (ultimoJobDiagnosticoV1917) payload.job_id = ultimoJobDiagnosticoV1917;
 
   const btn = document.getElementById("btn_diagnostico_coorte");
@@ -513,6 +565,8 @@ async function solicitarDiagnosticoCoorte(chamadaAutomatica = false) {
       atualizarFeedbackCalculo(msg, 100, true);
       return;
     }
+
+    atualizarTerminalV1917(data);
 
     if (data.job_id && data.ok && !data.coleta_concluida) {
       ultimoJobDiagnosticoV1917 = data.job_id;
@@ -1136,6 +1190,9 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("btn_calcular_futuro")?.addEventListener("click", solicitarCalculoSobDemanda);
   document.getElementById("btn_diagnostico_coorte")?.addEventListener("click", solicitarDiagnosticoCoorte);
   document.getElementById("btn_apagar_curva")?.addEventListener("click", apagarCurvaAtual);
+  document.getElementById("tab_relatorio_tecnico")?.addEventListener("click", () => selecionarAbaAuditoriaV1917("relatorio"));
+  document.getElementById("tab_terminal_v1917")?.addEventListener("click", () => selecionarAbaAuditoriaV1917("terminal"));
+  document.getElementById("btn_limpar_terminal_v1917")?.addEventListener("click", limparTerminalV1917Local);
   document.getElementById("filtro_curvas_lateral")?.addEventListener("input", filtrarListaCurvasLateral);
   document.getElementById("btn_toggle_base_provisoria")?.addEventListener("click", abrirBaseProvisoria);
   document.getElementById("btn_fechar_base_provisoria")?.addEventListener("click", fecharBaseProvisoria);

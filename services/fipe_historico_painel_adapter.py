@@ -337,6 +337,69 @@ class FipeHistoricoPainelAdapter:
         valor = parse_float_seguro(valor_txt)
         return float(valor or 0.0), valor_txt
 
+    def escolher_ano_codigo_fipe_na_referencia(
+        self,
+        anos: list[dict[str, Any]],
+        *,
+        ano_base: int | None = None,
+        codigo_ano_preferido: str = "",
+        combustivel_alvo: str = "",
+        codigo_tipo_combustivel_preferido: int | None = None,
+    ) -> dict[str, Any] | None:
+        """Escolhe o yearCode correto dentro de UMA referência mensal.
+
+        Esta é a correção central da V24.4: no histórico antigo não usamos
+        cegamente o código de ano atual. Primeiro listamos os anos disponíveis
+        na referência mensal e só então escolhemos a coorte/base.
+        """
+        itens = [a for a in (anos or []) if isinstance(a, dict)]
+        if not itens:
+            return None
+
+        preferido = str(codigo_ano_preferido or "").strip()
+        suffix_preferido = ""
+        if "-" in preferido:
+            suffix_preferido = preferido.split("-", 1)[1].strip()
+
+        candidatos: list[dict[str, Any]] = []
+        for item in itens:
+            codigo = str(item.get("codigo") or item.get("code") or "").strip()
+            ano_codigo = self._ano_modelo_do_codigo_ano(codigo)
+            if codigo.startswith("32000"):
+                continue
+            if ano_base is not None and ano_codigo != int(ano_base):
+                continue
+            candidatos.append(item)
+
+        if not candidatos and preferido:
+            for item in itens:
+                codigo = str(item.get("codigo") or item.get("code") or "").strip()
+                if codigo == preferido:
+                    candidatos.append(item)
+                    break
+
+        if not candidatos:
+            return None
+
+        if suffix_preferido:
+            for item in candidatos:
+                codigo = str(item.get("codigo") or item.get("code") or "").strip()
+                if codigo.endswith(f"-{suffix_preferido}"):
+                    return item
+
+        if codigo_tipo_combustivel_preferido is not None:
+            for item in candidatos:
+                codigo = str(item.get("codigo") or item.get("code") or "").strip()
+                tipo = self._codigo_tipo_combustivel_do_codigo_ano(codigo)
+                if tipo is not None and int(tipo) == int(codigo_tipo_combustivel_preferido):
+                    return item
+
+        compativeis = [
+            item for item in candidatos
+            if self._combustivel_compativel(str(item.get("nome") or item.get("name") or ""), combustivel_alvo)
+        ]
+        return (compativeis or candidatos)[0]
+
     def consultar_ponto_codigo_fipe_v1917(
         self,
         *,
@@ -345,35 +408,57 @@ class FipeHistoricoPainelAdapter:
         codigo_fipe: str,
         codigo_ano: str,
         nome_modelo: str = "",
+        ano_base: int | None = None,
+        combustivel: str = "",
+        codigo_tipo_combustivel_preferido: int | None = None,
     ) -> PontoHistoricoPainel:
-        """Consulta um ponto mensal pela API v2 usando código FIPE + yearCode.
+        """Consulta um ponto mensal pela API v2 usando código FIPE.
 
-        Este é o caminho seguro para o Render quando o endpoint público
-        veiculos.fipe.org.br bloqueia o datacenter com HTTP 403. Ele mantém
-        a lógica do painel local: percorre referências mensais e consulta o
-        preço dentro de cada referência. Não usa /history como espinha dorsal.
+        V24.4: antes de consultar preço, redescobre o código de ano dentro da
+        própria referência mensal. Isso evita usar o yearCode atual no passado,
+        que era a causa provável de a V24.3 passar por 2016-06 sem encontrar o
+        Etios.
         """
         reference = str(reference or "").strip()
         mes_referencia = str(mes_referencia or "").strip()
         codigo_fipe = str(codigo_fipe or "").strip()
-        codigo_ano = str(codigo_ano or "").strip()
+        codigo_ano_preferido = str(codigo_ano or "").strip()
+        ano_base_resolvido = int(ano_base) if ano_base is not None else self._ano_modelo_do_codigo_ano(codigo_ano_preferido)
         debug = {
             "reference": reference,
             "mes": mes_referencia,
             "codigo_fipe": codigo_fipe,
-            "codigo_ano": codigo_ano,
-            "fluxo": "fipe_v2_codigo_fipe_referencia_v1917",
+            "codigo_ano_preferido": codigo_ano_preferido,
+            "ano_base": ano_base_resolvido,
+            "fluxo": "fipe_v2_codigo_fipe_redescobre_ano_referencia_v1917",
         }
-        if not codigo_fipe or not codigo_ano:
-            return PontoHistoricoPainel(False, reference, mes_referencia, motivo="codigo_fipe_ou_codigo_ano_ausente", debug=debug)
+        if not codigo_fipe:
+            return PontoHistoricoPainel(False, reference, mes_referencia, motivo="codigo_fipe_ausente", debug=debug)
         try:
-            detalhe = self.fipe.consultar_detalhe_por_codigo_fipe(codigo_fipe, codigo_ano, reference=reference)
+            anos = self.fipe.listar_anos_por_codigo_fipe(codigo_fipe, reference=reference)
+            ano_item = self.escolher_ano_codigo_fipe_na_referencia(
+                anos,
+                ano_base=ano_base_resolvido,
+                codigo_ano_preferido=codigo_ano_preferido,
+                combustivel_alvo=combustivel,
+                codigo_tipo_combustivel_preferido=codigo_tipo_combustivel_preferido,
+            )
+            if not ano_item:
+                return PontoHistoricoPainel(
+                    False,
+                    reference,
+                    mes_referencia,
+                    motivo="ano_nao_encontrado_codigo_fipe_na_referencia",
+                    debug={**debug, "anos_disponiveis": len(anos or []), "amostra_anos": (anos or [])[:6]},
+                )
+            codigo_ano_resolvido = str(ano_item.get("codigo") or ano_item.get("code") or "").strip()
+            detalhe = self.fipe.consultar_detalhe_por_codigo_fipe(codigo_fipe, codigo_ano_resolvido, reference=reference)
             valor, valor_txt = self._preco_do_detalhe_v2(detalhe)
             if not valor or valor <= 0:
-                return PontoHistoricoPainel(False, reference, mes_referencia, motivo="preco_invalido_codigo_fipe_referencia", debug={**debug, "detalhe_keys": sorted(detalhe.keys())[:12] if isinstance(detalhe, dict) else []})
+                return PontoHistoricoPainel(False, reference, mes_referencia, motivo="preco_invalido_codigo_fipe_referencia", debug={**debug, "codigo_ano_resolvido": codigo_ano_resolvido, "detalhe_keys": sorted(detalhe.keys())[:12] if isinstance(detalhe, dict) else []})
             data_dt = self.parse_mes_referencia(mes_referencia or str(detalhe.get("MesReferencia") or detalhe.get("referenceMonth") or ""))
-            ano_modelo = self._ano_modelo_do_codigo_ano(codigo_ano)
-            codigo_tipo_combustivel = self._codigo_tipo_combustivel_do_codigo_ano(codigo_ano)
+            ano_modelo = self._ano_modelo_do_codigo_ano(codigo_ano_resolvido)
+            codigo_tipo_combustivel = self._codigo_tipo_combustivel_do_codigo_ano(codigo_ano_resolvido)
             return PontoHistoricoPainel(
                 True,
                 reference,
@@ -384,12 +469,12 @@ class FipeHistoricoPainelAdapter:
                 codigo_marca_referencia="",
                 codigo_modelo_referencia="",
                 modelo_referencia=str(detalhe.get("Modelo") or detalhe.get("model") or nome_modelo or ""),
-                codigo_ano_referencia=codigo_ano,
+                codigo_ano_referencia=codigo_ano_resolvido,
                 ano_referencia=str(detalhe.get("AnoModelo") or detalhe.get("modelYear") or ano_modelo or ""),
                 codigo_tipo_combustivel=codigo_tipo_combustivel,
                 ano_modelo_referencia=ano_modelo,
-                estrategia="fipe_v2_codigo_fipe_referencia_v1917",
-                debug={**debug, "modelo_api": str(detalhe.get("Modelo") or detalhe.get("model") or ""), "combustivel_api": str(detalhe.get("Combustivel") or detalhe.get("fuel") or "")},
+                estrategia="fipe_v2_codigo_fipe_redescobre_ano_referencia_v1917",
+                debug={**debug, "codigo_ano_resolvido": codigo_ano_resolvido, "modelo_api": str(detalhe.get("Modelo") or detalhe.get("model") or ""), "combustivel_api": str(detalhe.get("Combustivel") or detalhe.get("fuel") or "")},
             )
         except FipeApiError as exc:
             if exc.status_code in (401, 403, 429):
@@ -472,6 +557,8 @@ class FipeHistoricoPainelAdapter:
             codigo_fipe=codigo_fipe,
             codigo_ano=codigo_ano,
             nome_modelo=primeiro_usado.modelo_referencia,
+            ano_base=primeiro_usado.ano_modelo_referencia,
+            codigo_tipo_combustivel_preferido=primeiro_usado.codigo_tipo_combustivel,
         )
 
     def escolher_marca_web_v1917(self, marcas: Any, nome_marca: str) -> dict[str, Any] | None:
