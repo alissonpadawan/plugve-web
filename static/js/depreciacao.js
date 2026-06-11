@@ -513,8 +513,12 @@ async function solicitarDiagnosticoCoorte() {
         const am = data.amostragem_referencias;
         adicionarDetalhe(corpo, "Amostragem", am.criterio_passo || "-");
         adicionarDetalhe(corpo, "Passo", am.passo_meses ? `${am.passo_meses} mês(es)` : "-");
-        adicionarDetalhe(corpo, "Referências planejadas", am.pontos_planejados);
+        adicionarDetalhe(corpo, "Referências/pontos planejados", am.pontos_planejados);
         adicionarDetalhe(corpo, "Pontos válidos", am.pontos_validos);
+        if (am.estrategia_historico) adicionarDetalhe(corpo, "Estratégia histórica", am.estrategia_historico);
+        if (am.codigo_fipe_utilizado) adicionarDetalhe(corpo, "Código FIPE usado", am.codigo_fipe_utilizado);
+        if (am.codigo_ano_utilizado) adicionarDetalhe(corpo, "Código ano usado", am.codigo_ano_utilizado);
+        if (am.origem_codigo_ano) adicionarDetalhe(corpo, "Origem do ano histórico", am.origem_codigo_ano);
         if (am.primeiro_ponto) adicionarDetalhe(corpo, "Primeiro ponto", `${am.primeiro_ponto.mes || ""} ${am.primeiro_ponto.valor_formatado || ""}`.trim());
         if (am.ultimo_ponto) adicionarDetalhe(corpo, "Último ponto", `${am.ultimo_ponto.mes || ""} ${am.ultimo_ponto.valor_formatado || ""}`.trim());
         if (am.variacao_percentual_observada != null) adicionarDetalhe(corpo, "Variação observada", `${am.variacao_percentual_observada}%`);

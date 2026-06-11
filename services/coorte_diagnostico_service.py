@@ -96,23 +96,37 @@ class CoorteDiagnosticoService:
             ano_selecionado=ano_selecionado,
         )
 
-        detalhe_base = None
-        pontos_price_history = 0
         erro_price_history = None
-        amostragem_referencias = self._coletar_amostragem_referencias(
+
+        # 1) Caminho prioritário da documentação atual da API FIPE:
+        #    /{vehicleType}/{fipeCode}/years/{yearId}/history
+        # Esse endpoint evita reconstruir manualmente marca/modelo/ano em cada referência
+        # e é o equivalente mais direto ao histórico que o painel antigo precisava montar.
+        amostragem_referencias = self._coletar_historico_por_codigo_fipe(
             veiculo=veiculo,
             coorte_base=coorte_base,
             historico_plano=historico_plano,
         )
-        pontos_amostrados = int(amostragem_referencias.get("pontos_validos", 0) or 0)
+        pontos_price_history = int(amostragem_referencias.get("pontos_validos", 0) or 0)
 
-        # Consulta leve adicional: algumas respostas da API já trazem priceHistory direto.
-        # Se vier, ele é usado apenas como indicação; a coleta por referências é mais controlada.
-        try:
-            detalhe_base = self.fipe.consultar_preco(veiculo.codigo_marca, veiculo.codigo_modelo, coorte_base["codigo"])
-            pontos_price_history = len(detalhe_base.get("HistoricoPreco") or detalhe_base.get("priceHistory") or [])
-        except Exception as exc:
-            erro_price_history = str(exc)[:240]
+        # 2) Fallback controlado: se o endpoint por código FIPE não trouxer histórico,
+        # tenta a reconstrução por referência inspirada no painel antigo.
+        # Continua limitado para não estourar timeout/requisições.
+        if pontos_price_history < 2:
+            fallback = self._coletar_amostragem_referencias(
+                veiculo=veiculo,
+                coorte_base=coorte_base,
+                historico_plano=historico_plano,
+            )
+            if int(fallback.get("pontos_validos", 0) or 0) > pontos_price_history:
+                amostragem_referencias = fallback
+                pontos_price_history = int(fallback.get("pontos_validos", 0) or 0)
+            else:
+                # preserva o erro/diagnóstico do fallback como contexto, sem perder a estratégia principal
+                amostragem_referencias["fallback_referencia"] = fallback
+
+        pontos_amostrados = int(amostragem_referencias.get("pontos_validos", 0) or 0)
+        erro_price_history = amostragem_referencias.get("erro") or amostragem_referencias.get("ultimo_erro")
 
         pontos_para_qualidade = max(pontos_price_history, pontos_amostrados)
         qualidade = self._classificar_qualidade(pontos_para_qualidade, historico_plano["janela_teorica_meses"])
@@ -239,6 +253,160 @@ class CoorteDiagnosticoService:
             "fluxo": "zero_km_aplica_desde_idade_0" if zero_km else "usado_aplica_a_partir_da_idade_atual",
             "pandemia": "peso reduzido por padrão; futuro campo permitirá manter, reduzir ou excluir",
             "ipca": "corrigir série histórica antes de ajustar curva",
+        }
+
+
+    def _coletar_historico_por_codigo_fipe(self, *, veiculo: VeiculoSelecionado, coorte_base: dict[str, Any], historico_plano: dict[str, Any]) -> dict[str, Any]:
+        """Coleta prioritária usando o endpoint documentado por código FIPE.
+
+        A documentação enviada pelo Alisson oferece:
+        GET /{vehicleType}/{fipeCode}/years/{yearId}/history
+
+        Esse caminho precisa vir ANTES da reconstrução manual por referência, porque:
+        - consome muito menos requisições;
+        - evita timeout;
+        - retorna a série histórica pronta quando disponível;
+        - preserva a lógica do painel antigo sem depender do endpoint web antigo bloqueado no Render.
+        """
+        codigo_fipe = str(veiculo.codigo_fipe or "").strip()
+        codigo_ano_coorte = str(coorte_base.get("codigo") or "").strip()
+        tentativas: list[dict[str, Any]] = []
+
+        if not codigo_fipe:
+            try:
+                detalhe_atual = self.fipe.consultar_preco(veiculo.codigo_marca, veiculo.codigo_modelo, veiculo.codigo_ano)
+                codigo_fipe = str(detalhe_atual.get("CodigoFipe") or detalhe_atual.get("codeFipe") or "").strip()
+            except Exception as exc:
+                tentativas.append({"etapa": "obter_codigo_fipe_atual", "erro": f"{type(exc).__name__}: {str(exc)[:160]}"})
+
+        if not codigo_fipe:
+            return {
+                "ok": False,
+                "criterio_passo": "histórico por código FIPE indisponível: veículo sem código FIPE",
+                "estrategia_historico": "codigo_fipe_history_indisponivel",
+                "pontos_planejados": 0,
+                "pontos_validos": 0,
+                "erro": "codigo_fipe_ausente",
+                "tentativas": tentativas,
+            }
+
+        codigos_ano_para_tentar: list[tuple[str, str]] = []
+        if codigo_ano_coorte:
+            codigos_ano_para_tentar.append((codigo_ano_coorte, "coorte_base"))
+        if veiculo.codigo_ano and str(veiculo.codigo_ano) != codigo_ano_coorte:
+            codigos_ano_para_tentar.append((str(veiculo.codigo_ano), "ano_selecionado"))
+
+        # Consulta leve: se a API souber listar anos pelo código FIPE, ela ajuda a alinhar
+        # a coorte escolhida com o ano disponível para aquele código FIPE.
+        try:
+            anos_por_codigo = self.fipe.listar_anos_por_codigo_fipe(codigo_fipe)
+            ano_coorte_int = self._ano_codigo_int(codigo_ano_coorte)
+            if ano_coorte_int:
+                for ano_item in anos_por_codigo or []:
+                    codigo = str(ano_item.get("codigo") or ano_item.get("code") or "")
+                    if self._ano_codigo_int(codigo) == ano_coorte_int and codigo not in [x[0] for x in codigos_ano_para_tentar]:
+                        codigos_ano_para_tentar.insert(0, (codigo, "ano_por_codigo_fipe_alinhado"))
+                        break
+        except Exception as exc:
+            tentativas.append({"etapa": "listar_anos_por_codigo_fipe", "erro": f"{type(exc).__name__}: {str(exc)[:160]}"})
+
+        melhor: dict[str, Any] | None = None
+        for codigo_ano, origem in codigos_ano_para_tentar:
+            try:
+                detalhe_hist = self.fipe.consultar_historico_por_codigo_fipe(codigo_fipe, codigo_ano)
+                coletado = self._normalizar_historico_codigo_fipe(
+                    detalhe_hist,
+                    codigo_fipe=codigo_fipe,
+                    codigo_ano=codigo_ano,
+                    origem_codigo_ano=origem,
+                    historico_plano=historico_plano,
+                )
+                tentativas.append({"codigo_ano": codigo_ano, "origem": origem, "pontos": coletado.get("pontos_validos", 0)})
+                if melhor is None or int(coletado.get("pontos_validos", 0) or 0) > int(melhor.get("pontos_validos", 0) or 0):
+                    melhor = coletado
+                if int(coletado.get("pontos_validos", 0) or 0) >= 8:
+                    break
+            except FipeApiError as exc:
+                tentativas.append({"codigo_ano": codigo_ano, "origem": origem, "erro": exc.message, "status_code": exc.status_code})
+                if exc.status_code == 429:
+                    return {
+                        "ok": False,
+                        "criterio_passo": "histórico por código FIPE interrompido por limite FIPE",
+                        "estrategia_historico": "codigo_fipe_history",
+                        "pontos_planejados": len(codigos_ano_para_tentar),
+                        "pontos_validos": 0,
+                        "limite_interrompeu": True,
+                        "erro": exc.message,
+                        "tentativas": tentativas,
+                    }
+            except Exception as exc:
+                tentativas.append({"codigo_ano": codigo_ano, "origem": origem, "erro": f"{type(exc).__name__}: {str(exc)[:160]}"})
+
+        if melhor is None:
+            return {
+                "ok": False,
+                "criterio_passo": "histórico por código FIPE não retornou série",
+                "estrategia_historico": "codigo_fipe_history",
+                "pontos_planejados": len(codigos_ano_para_tentar),
+                "pontos_validos": 0,
+                "erro": "sem_historico_por_codigo_fipe",
+                "tentativas": tentativas,
+            }
+
+        melhor["tentativas"] = tentativas
+        return melhor
+
+    def _normalizar_historico_codigo_fipe(self, detalhe: dict[str, Any], *, codigo_fipe: str, codigo_ano: str, origem_codigo_ano: str, historico_plano: dict[str, Any]) -> dict[str, Any]:
+        historico = detalhe.get("HistoricoPreco") or detalhe.get("priceHistory") or []
+        pontos: list[dict[str, Any]] = []
+        for item in historico or []:
+            if not isinstance(item, dict):
+                continue
+            mes = str(item.get("month") or item.get("mes") or item.get("MesReferencia") or "").strip()
+            ref = str(item.get("reference") or item.get("codigo") or item.get("Codigo") or "").strip()
+            preco_txt = item.get("price") or item.get("preco") or item.get("Valor") or ""
+            valor = parse_float_seguro(preco_txt)
+            if not valor or valor <= 0:
+                continue
+            data_dt = self.historico_adapter.parse_mes_referencia(mes)
+            pontos.append({
+                "ok": True,
+                "reference": ref,
+                "mes": mes,
+                "data_referencia": data_dt.strftime("%Y-%m") if data_dt else None,
+                "valor": float(valor),
+                "valor_formatado": preco_txt if isinstance(preco_txt, str) and preco_txt else f"R$ {valor:,.2f}",
+                "codigo_fipe": codigo_fipe,
+                "codigo_ano": codigo_ano,
+                "estrategia": "codigo_fipe_year_history",
+            })
+
+        pontos.sort(key=lambda x: x.get("data_referencia") or x.get("reference") or "")
+        variacao = None
+        if len(pontos) >= 2 and pontos[0].get("valor"):
+            variacao = ((float(pontos[-1]["valor"]) - float(pontos[0]["valor"])) / float(pontos[0]["valor"])) * 100
+            variacao = round(variacao, 2)
+
+        return {
+            "ok": True,
+            "criterio_passo": "histórico direto por código FIPE, conforme documentação atual da API",
+            "passo_meses": None,
+            "janela_teorica_meses": int(historico_plano.get("janela_teorica_meses") or 0),
+            "pontos_planejados": len(pontos),
+            "pontos_validos": len(pontos),
+            "pontos_price_history_codigo_fipe": len(pontos),
+            "limite_interrompeu": False,
+            "estrategia_historico": "codigo_fipe_history: /cars/{fipeCode}/years/{yearId}/history",
+            "codigo_fipe_utilizado": codigo_fipe,
+            "codigo_ano_utilizado": codigo_ano,
+            "origem_codigo_ano": origem_codigo_ano,
+            "modelo_referencia": detalhe.get("Modelo") or detalhe.get("model") or "",
+            "ano_referencia": detalhe.get("AnoModelo") or detalhe.get("modelYear") or "",
+            "primeiro_ponto": pontos[0] if pontos else None,
+            "ultimo_ponto": pontos[-1] if pontos else None,
+            "variacao_percentual_observada": variacao,
+            "amostra": pontos[:12],
+            "erro": None if pontos else "priceHistory_vazio_no_endpoint_por_codigo_fipe",
         }
 
 
