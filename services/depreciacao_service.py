@@ -2,8 +2,12 @@ from __future__ import annotations
 
 from typing import Any
 from statistics import median
+import json
 import math
 from datetime import datetime
+from pathlib import Path
+
+from flask import current_app
 
 from core.modelos import VeiculoSelecionado, ResumoDepreciacao
 from repositories.curvas_repository import CurvasRepository
@@ -106,6 +110,45 @@ class DepreciacaoService:
         tipo_detectado = self._detectar_tipo_por_veiculo(veiculo)
         tipo = self._resolver_tipo(veiculo, tipo_detectado)
         return self.curvas.apagar_curva_calculada(veiculo, tipo)
+
+
+    def registrar_pendencia_calculo(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Registra que um usuário pediu curva inexistente, sem calcular no Render."""
+        try:
+            veiculo = VeiculoSelecionado.from_payload(payload)
+            item = {
+                "data": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "codigo_fipe": veiculo.codigo_fipe,
+                "codigo_marca": veiculo.codigo_marca,
+                "codigo_modelo": veiculo.codigo_modelo,
+                "codigo_ano": veiculo.codigo_ano,
+                "marca": veiculo.marca,
+                "modelo": veiculo.modelo,
+                "ano_modelo": veiculo.ano_modelo,
+                "tipo_detectado": self._detectar_tipo_por_veiculo(veiculo),
+                "status": "pendente_processamento_local",
+            }
+        except Exception:
+            item = {
+                "data": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "payload": payload,
+                "status": "pendente_processamento_local",
+            }
+
+        try:
+            path = Path(current_app.config.get("PERSISTENT_DIR", "data")) / "pendencias_curvas.json"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            if path.exists():
+                dados = json.loads(path.read_text(encoding="utf-8") or "[]")
+            else:
+                dados = []
+            if not isinstance(dados, list):
+                dados = []
+            dados.append(item)
+            path.write_text(json.dumps(dados[-500:], ensure_ascii=False, indent=2), encoding="utf-8")
+        except Exception:
+            pass
+        return item
 
 
     def painel_dados(self) -> dict[str, Any]:

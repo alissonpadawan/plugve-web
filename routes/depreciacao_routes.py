@@ -1,16 +1,45 @@
 from __future__ import annotations
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, current_app, jsonify, request
+import hmac
 import traceback
 
 from services.depreciacao_service import DepreciacaoService
 from services.coorte_diagnostico_service import CoorteDiagnosticoService
 from services.depreciacao_motor_v1917_adapter import DepreciacaoMotorV1917Adapter
+from repositories.curvas_repository import CurvasRepository
 
 depreciacao_bp = Blueprint("depreciacao", __name__)
 depreciacao_service = DepreciacaoService()
 coorte_diagnostico_service = CoorteDiagnosticoService()
 motor_v1917_adapter = DepreciacaoMotorV1917Adapter()
+curvas_repository = CurvasRepository()
+
+
+def _admin_token_recebido() -> str:
+    token = request.headers.get("X-PlugVE-Admin-Token", "").strip()
+    if token:
+        return token
+    token = request.headers.get("X-PlugVE-Sync-Token", "").strip()
+    if token:
+        return token
+    token = request.args.get("token", "").strip()
+    if token:
+        return token
+    auth = request.headers.get("Authorization", "").strip()
+    if auth.lower().startswith("bearer "):
+        return auth[7:].strip()
+    return ""
+
+
+def _admin_token_valido() -> bool:
+    esperado = str(
+        current_app.config.get("PLUGVE_ADMIN_TOKEN", "")
+        or current_app.config.get("PLUGVE_SYNC_TOKEN", "")
+        or ""
+    ).strip()
+    recebido = _admin_token_recebido()
+    return bool(esperado) and bool(recebido) and hmac.compare_digest(recebido, esperado)
 
 
 @depreciacao_bp.route("/status")
@@ -38,12 +67,19 @@ def resumo():
 
 @depreciacao_bp.route("/calcular", methods=["POST"])
 def calcular():
+    # Decisão de arquitetura: Render não calcula histórico pesado nem fabrica curva.
+    # Se não houver curva pronta, o site deve registrar/mostrar pendência e o painel local processa.
     payload = request.get_json(silent=True) or {}
     try:
-        resultado = depreciacao_service.preparar_calculo_sob_demanda(payload)
-        return jsonify(resultado)
-    except Exception as exc:
-        return jsonify({"ok": False, "status": "erro_controlado", "mensagem": str(exc)}), 200
+        resultado = depreciacao_service.registrar_pendencia_calculo(payload)
+    except Exception:
+        resultado = {}
+    return jsonify({
+        "ok": False,
+        "status": "pendente_processamento_local",
+        "mensagem": "Curva não calculada no Render. Processe no painel local e envie/importa a curva pronta.",
+        "pendencia": resultado,
+    }), 200
 
 
 @depreciacao_bp.route("/apagar_curva", methods=["POST"])
@@ -54,6 +90,31 @@ def apagar_curva():
         return jsonify(resultado)
     except Exception as exc:
         return jsonify({"ok": False, "mensagem": str(exc)}), 200
+
+
+@depreciacao_bp.route("/importar_curvas", methods=["POST"])
+@depreciacao_bp.route("/admin/importar_curvas", methods=["POST"])
+def importar_curvas():
+    if not _admin_token_valido():
+        return jsonify({
+            "ok": False,
+            "erro": "Token administrativo inválido ou ausente.",
+            "tipo": "nao_autorizado",
+        }), 401
+    payload = request.get_json(silent=True) or {}
+    try:
+        resultado = curvas_repository.importar_curvas_painel(payload)
+        resultado["ok"] = True
+        resultado["mensagem"] = "Curvas importadas no Render a partir do painel local."
+        resultado["status_bases"] = depreciacao_service.status_bases()
+        return jsonify(resultado), 200
+    except Exception as exc:
+        return jsonify({
+            "ok": False,
+            "erro": str(exc),
+            "tipo": "erro_importacao_curvas",
+            "traceback_resumo": traceback.format_exc(limit=4),
+        }), 500
 
 
 

@@ -273,6 +273,128 @@ class CurvasRepository:
         return nova_linha
 
 
+    def importar_curvas_painel(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Importa curvas prontas exportadas pelo painel local.
+
+        O Render não calcula curva aqui. Ele apenas recebe linhas já validadas
+        pelo painel local e atualiza os CSVs persistentes em /var/data/plugve.
+        """
+        curvas_combustao = payload.get("curvas_combustao") or []
+        curvas_eletrico = payload.get("curvas_eletrico") or []
+        if not isinstance(curvas_combustao, list):
+            curvas_combustao = []
+        if not isinstance(curvas_eletrico, list):
+            curvas_eletrico = []
+        return {
+            "combustao": self._importar_curvas_csv("combustao", curvas_combustao),
+            "eletrico": self._importar_curvas_csv("eletrico", curvas_eletrico),
+        }
+
+    def _importar_curvas_csv(self, tipo: str, curvas: list[dict[str, Any]]) -> dict[str, Any]:
+        tipo_norm = str(tipo or "").strip().lower()
+        caminho = self._arquivo_curvas_eletrico() if tipo_norm == "eletrico" else self._arquivo_curvas_combustao()
+        caminho.parent.mkdir(parents=True, exist_ok=True)
+
+        linhas_existentes = self._ler_csv(caminho)
+        campos_existentes: list[str] = []
+        if caminho.exists():
+            try:
+                with open(caminho, mode="r", encoding="utf-8-sig", newline="") as arquivo:
+                    leitor = csv.DictReader(arquivo)
+                    campos_existentes = list(leitor.fieldnames or [])
+            except Exception:
+                campos_existentes = []
+
+        campos: list[str] = list(campos_existentes)
+        for row in linhas_existentes:
+            for campo in row.keys():
+                if campo not in campos:
+                    campos.append(campo)
+        for row in curvas:
+            if isinstance(row, dict):
+                for campo in row.keys():
+                    if campo not in campos:
+                        campos.append(campo)
+        for campo in ["origem_importacao", "data_importacao_render"]:
+            if campo not in campos:
+                campos.append(campo)
+
+        def chave(row: dict[str, Any]) -> str:
+            for campo in ("curve_id", "chave_curva"):
+                val = str(row.get(campo, "") or "").strip()
+                if val:
+                    return f"{campo}:{val}"
+            partes = [
+                str(row.get("codigo_fipe", "") or "").strip(),
+                str(row.get("marca_id", "") or row.get("codigo_marca", "") or "").strip(),
+                str(row.get("modelo_id", "") or row.get("codigo_modelo", "") or "").strip(),
+                str(row.get("marca", "") or "").strip().lower(),
+                str(row.get("modelo", "") or "").strip().lower(),
+                str(row.get("ano_modelo", "") or "").strip(),
+                str(row.get("modo_pandemia", "") or "").strip().lower(),
+            ]
+            return "fallback:" + "|".join(partes)
+
+        mapa: dict[str, dict[str, Any]] = {}
+        ordem: list[str] = []
+        for row in linhas_existentes:
+            if not isinstance(row, dict):
+                continue
+            k = chave(row)
+            if k not in mapa:
+                ordem.append(k)
+            mapa[k] = row
+
+        agora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        importadas = 0
+        ignoradas = 0
+        for row in curvas:
+            if not isinstance(row, dict):
+                ignoradas += 1
+                continue
+            status = str(row.get("status", "OK") or "OK").strip().upper()
+            if status not in {"", "OK", "HOMOLOGADA", "EXPLORATORIA", "EXPLORATÓRIA"}:
+                ignoradas += 1
+                continue
+            nova = {campo: row.get(campo, "") for campo in campos}
+            nova["origem_importacao"] = "painel_local"
+            nova["data_importacao_render"] = agora
+            k = chave(nova)
+            if k not in mapa:
+                ordem.append(k)
+            mapa[k] = nova
+            importadas += 1
+
+        # Backup simples antes da escrita, no disco persistente.
+        if caminho.exists():
+            try:
+                backup = caminho.with_suffix(caminho.suffix + f".bak_{datetime.now().strftime('%Y%m%d_%H%M%S')}")
+                backup.write_bytes(caminho.read_bytes())
+            except Exception:
+                pass
+
+        with open(caminho, mode="w", encoding="utf-8-sig", newline="") as arquivo:
+            escritor = csv.DictWriter(arquivo, fieldnames=campos, extrasaction="ignore")
+            escritor.writeheader()
+            for k in ordem:
+                row = mapa.get(k, {})
+                escritor.writerow({campo: row.get(campo, "") for campo in campos})
+
+        try:
+            self._ler_csv_cache.cache_clear()
+        except Exception:
+            pass
+
+        return {
+            "tipo": tipo_norm,
+            "arquivo": str(caminho),
+            "recebidas": len(curvas),
+            "importadas": importadas,
+            "ignoradas": ignoradas,
+            "total_final": len(mapa),
+        }
+
+
     def apagar_curva_calculada(self, veiculo: VeiculoSelecionado, tipo: str) -> dict[str, Any]:
         """Remove manualmente uma curva criada pela calculadora web.
 
