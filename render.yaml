@@ -6,6 +6,10 @@ services:
     startCommand: gunicorn app:app
     plan: free
     envVars:
+      - key: PLUGVE_SYNC_TOKEN
+        value: plugve_catalogo_dT4RZ4OqOwN1hLVO2HYPnp_SGLKW28XPHTobf4dZlOE
+      - key: PLUGVE_ADMIN_TOKEN
+        value: plugve_catalogo_dT4RZ4OqOwN1hLVO2HYPnp_SGLKW28XPHTobf4dZlOE
       - key: PYTHON_VERSION
         value: 3.11.9
       - key: FLASK_ENV

@@ -67,6 +67,9 @@ class FipeService:
     def _progresso_varredura_path(self) -> Path:
         return self._json_path("progresso_varredura.json")
 
+    def _modelos_novos_path(self) -> Path:
+        return self._json_path("modelos_novos.json")
+
     def _ler_json(self, path: Path, padrao):
         if not path.exists():
             return padrao
@@ -108,6 +111,12 @@ class FipeService:
 
     def _salvar_modelos_zero_km(self, dados: dict) -> None:
         self._salvar_json(self._modelos_zero_km_path(), dados)
+
+    def _ler_modelos_novos(self) -> dict:
+        return self._ler_json(self._modelos_novos_path(), {})
+
+    def _salvar_modelos_novos(self, dados: dict) -> None:
+        self._salvar_json(self._modelos_novos_path(), dados)
 
     def modelo_tem_zero_km_salvo(self, codigo_marca: str, codigo_modelo: str) -> bool:
         dados = self._ler_modelos_zero_km()
@@ -534,6 +543,70 @@ class FipeService:
         dados = self._normalizar_janela_usage(self._ler_usage_static(self._cache_dir()), token_ativo=bool(self._token()))
         self._salvar_usage_static(self._cache_dir(), dados)
         return dados
+
+
+    @staticmethod
+    def _contar_itens_aninhados(dados: Any) -> int:
+        if not isinstance(dados, dict):
+            return 0
+        total = 0
+        for valor in dados.values():
+            if isinstance(valor, dict):
+                total += len(valor)
+            elif isinstance(valor, list):
+                total += len(valor)
+            elif valor:
+                total += 1
+        return total
+
+    def catalogo_estado(self) -> dict:
+        """Exporta o estado persistente da varredura FIPE para o painel local.
+
+        Esta função não consulta a FIPE e não calcula depreciação. Ela só lê os
+        JSONs persistentes em /var/data/plugve/fipe_cache. O contador de
+        requisições FIPE não é incluído por decisão metodológica.
+        """
+        marcas_varridas = self._ler_marcas_varridas()
+        marcas_bloqueadas = self._ler_marcas_bloqueadas()
+        modelos_bloqueados = self._ler_bloqueados()
+        modelos_zero_km = self._ler_modelos_zero_km()
+        modelos_novos = self._ler_modelos_novos()
+        progresso_varredura = self._ler_json(self._progresso_varredura_path(), {})
+
+        return {
+            "ok": True,
+            "tipo": "catalogo_fipe_varredura",
+            "schema_version": "catalogo_fipe_render_v1",
+            "origem": "render",
+            "atualizado_em": self._agora_iso(),
+            "fipe_cache_dir": str(self._cache_dir()),
+            "arquivos": {
+                "marcas_varridas": "fipe_cache/marcas_varridas.json",
+                "marcas_bloqueadas": "fipe_cache/marcas_bloqueadas.json",
+                "modelos_bloqueados": "fipe_cache/modelos_bloqueados.json",
+                "modelos_zero_km": "fipe_cache/modelos_zero_km.json",
+                "modelos_novos": "fipe_cache/modelos_novos.json",
+                "progresso_varredura": "fipe_cache/progresso_varredura.json",
+            },
+            "resumo": {
+                "marcas_varridas": len(marcas_varridas) if isinstance(marcas_varridas, dict) else 0,
+                "marcas_bloqueadas": len(marcas_bloqueadas) if isinstance(marcas_bloqueadas, dict) else 0,
+                "modelos_bloqueados": self._contar_itens_aninhados(modelos_bloqueados),
+                "modelos_zero_km": self._contar_itens_aninhados(modelos_zero_km),
+                "modelos_novos": self._contar_itens_aninhados(modelos_novos),
+                "marcas_com_progresso": len(progresso_varredura) if isinstance(progresso_varredura, dict) else 0,
+            },
+            "marcas_varridas": marcas_varridas if isinstance(marcas_varridas, dict) else {},
+            "marcas_bloqueadas": marcas_bloqueadas if isinstance(marcas_bloqueadas, dict) else {},
+            "modelos_bloqueados": modelos_bloqueados if isinstance(modelos_bloqueados, dict) else {},
+            "modelos_zero_km": modelos_zero_km if isinstance(modelos_zero_km, dict) else {},
+            "modelos_novos": modelos_novos if isinstance(modelos_novos, dict) else {},
+            "progresso_varredura": progresso_varredura if isinstance(progresso_varredura, dict) else {},
+        }
+
+    def exportar_catalogo_estado(self) -> dict:
+        """Alias mantido para compatibilidade com janelas/rotas futuras."""
+        return self.catalogo_estado()
 
     def registrar_progresso_varredura(self, codigo_marca: str, dados: dict) -> dict:
         todos = self._ler_json(self._progresso_varredura_path(), {})

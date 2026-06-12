@@ -43,4 +43,9 @@ class Config:
     REQUEST_TIMEOUT = int(os.environ.get("FIPE_REQUEST_TIMEOUT", "15"))
     FIPE_HISTORICO_TIMEOUT = int(os.environ.get("FIPE_HISTORICO_TIMEOUT", "12"))
 
+    # Token simples para sincronização de leitura painel local -> Render.
+    # Configure PLUGVE_SYNC_TOKEN no Render com o mesmo valor do painel local.
+    PLUGVE_SYNC_TOKEN = os.environ.get("PLUGVE_SYNC_TOKEN", "").strip()
+    PLUGVE_ADMIN_TOKEN = os.environ.get("PLUGVE_ADMIN_TOKEN", PLUGVE_SYNC_TOKEN).strip()
+
     HORIZONTE_PADRAO_ANOS = 5

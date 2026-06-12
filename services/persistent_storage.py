@@ -42,7 +42,7 @@ def bootstrap_persistent_storage(app: Flask) -> None:
     )
 
     # Arquivos permanentes de aprendizado da FIPE.
-    for nome in ["modelos_bloqueados.json", "marcas_bloqueadas.json", "modelos_zero_km.json", "marcas_varridas.json", "requisicoes_fipe.json", "progresso_varredura.json"]:
+    for nome in ["modelos_bloqueados.json", "marcas_bloqueadas.json", "modelos_zero_km.json", "marcas_varridas.json", "modelos_novos.json", "progresso_varredura.json"]:
         path = persistent_dir / "fipe_cache" / nome
         if not path.exists():
             path.write_text("{}", encoding="utf-8")

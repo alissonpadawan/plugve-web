@@ -1,11 +1,39 @@
 from __future__ import annotations
 
-from flask import Blueprint, jsonify, request
+import hmac
+
+from flask import Blueprint, current_app, jsonify, request
 
 from services.fipe_service import FipeApiError, FipeService
 
 fipe_bp = Blueprint("fipe", __name__)
 fipe_service = FipeService()
+
+
+def _admin_token_recebido() -> str:
+    token = request.headers.get("X-PlugVE-Admin-Token", "").strip()
+    if token:
+        return token
+    token = request.headers.get("X-PlugVE-Sync-Token", "").strip()
+    if token:
+        return token
+    token = request.args.get("token", "").strip()
+    if token:
+        return token
+    auth = request.headers.get("Authorization", "").strip()
+    if auth.lower().startswith("bearer "):
+        return auth[7:].strip()
+    return ""
+
+
+def _admin_token_valido() -> bool:
+    esperado = str(
+        current_app.config.get("PLUGVE_SYNC_TOKEN", "")
+        or current_app.config.get("PLUGVE_ADMIN_TOKEN", "")
+        or ""
+    ).strip()
+    recebido = _admin_token_recebido()
+    return bool(esperado) and bool(recebido) and hmac.compare_digest(recebido, esperado)
 
 
 def _erro_fipe_response(exc: Exception, default_status: int = 500):
@@ -15,6 +43,25 @@ def _erro_fipe_response(exc: Exception, default_status: int = 500):
             status = default_status
         return jsonify(exc.to_dict()), status
     return jsonify({"erro": str(exc), "tipo": "erro_interno"}), default_status
+
+
+@fipe_bp.route("/catalogo_estado")
+@fipe_bp.route("/catalogo/status")
+def catalogo_estado():
+    """Estado consolidado da varredura FIPE para sincronização com o painel local."""
+    if not _admin_token_valido():
+        return jsonify({
+            "ok": False,
+            "erro": "Token de sincronização inválido ou ausente.",
+            "tipo": "nao_autorizado",
+        }), 401
+    try:
+        return jsonify(fipe_service.catalogo_estado())
+    except Exception as exc:
+        resp, status = _erro_fipe_response(exc)
+        data = resp.get_json() or {}
+        data["ok"] = False
+        return jsonify(data), status
 
 
 @fipe_bp.route("/marcas")
