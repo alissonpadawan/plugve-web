@@ -4,6 +4,7 @@ from typing import Any
 from statistics import median
 import json
 import math
+import re
 from datetime import datetime
 from pathlib import Path
 
@@ -110,10 +111,18 @@ class DepreciacaoService:
         if resultado.get("relatorio_tecnico"):
             saida["relatorio_textual"] = resultado.get("relatorio_tecnico")
 
+        relatorio_base = str(saida.get("relatorio_textual") or saida.get("relatorio_tecnico") or "").strip()
         historico_mensal = self._historico_mensal_local_para_relatorio(veiculo, tipo)
+        if not historico_mensal and relatorio_base:
+            historico_mensal = self._extrair_historico_nominal_do_relatorio(relatorio_base)
+        historico_mensal_corrigido = self._corrigir_historico_pelo_ipca_render(historico_mensal)
         if historico_mensal:
             saida["historico_mensal"] = historico_mensal
             saida.setdefault("detalhes", {})["historico_mensal"] = historico_mensal
+        if historico_mensal_corrigido:
+            saida["historico_mensal_corrigido"] = historico_mensal_corrigido
+            saida.setdefault("detalhes", {})["historico_mensal_corrigido"] = historico_mensal_corrigido
+            saida["historico_ipca"] = historico_mensal_corrigido
 
         relatorio_final = self._garantir_relatorio_com_historico(saida, veiculo, tipo_label, historico_mensal)
         if relatorio_final:
@@ -165,6 +174,86 @@ class DepreciacaoService:
         pontos.sort(key=lambda item: item.get("data", ""))
         return pontos
 
+    def _extrair_historico_nominal_do_relatorio(self, texto: str) -> list[dict[str, Any]]:
+        """Extrai a progressão histórica mensal do relatório técnico do painel.
+
+        O painel local grava linhas como:
+        - 2018-03: R$ 62.452,00 (zero_km)
+        - 2018-04: R$ 56,769.00 (usado)
+        """
+        pontos: list[dict[str, Any]] = []
+        padrao = re.compile(r"^\s*[-•]\s*(\d{4}-\d{2})\s*:\s*R\$\s*([0-9.,]+)\s*\(([^)]*)\)", re.I | re.M)
+        vistos: set[tuple[str, int, str]] = set()
+        for m in padrao.finditer(str(texto or "")):
+            data_ref = m.group(1)
+            valor = parse_float_seguro(m.group(2), 0.0)
+            tipo = str(m.group(3) or "usado").strip() or "usado"
+            if valor <= 0:
+                continue
+            chave = (data_ref, round(valor * 100), tipo.lower())
+            if chave in vistos:
+                continue
+            vistos.add(chave)
+            pontos.append({"data": data_ref, "valor": round(valor, 2), "tipo": tipo})
+        pontos.sort(key=lambda item: item.get("data", ""))
+        return pontos
+
+    def _resolver_mes_ipca_render(self, data_ref: str, indices: dict[str, float]) -> str | None:
+        data_ref = str(data_ref or "")[:7]
+        if not data_ref or not indices:
+            return None
+        if data_ref in indices:
+            return data_ref
+        chaves = sorted(indices.keys())
+        anteriores = [k for k in chaves if k <= data_ref]
+        if anteriores:
+            return anteriores[-1]
+        return chaves[0] if chaves else None
+
+    def _corrigir_historico_pelo_ipca_render(self, historico: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Replica a regra do painel local: preço_corrigido = preço_nominal × (IPCA_base / IPCA_ref).
+
+        A base monetária é o primeiro mês compatível com IPCA no histórico, igual ao painel.
+        """
+        if not historico:
+            return []
+        try:
+            indices = self.ipca.carregar_indices()
+        except Exception:
+            indices = {}
+        if not indices:
+            return []
+        meses = [self._resolver_mes_ipca_render(str(item.get("data") or item.get("data_referencia") or ""), indices) for item in historico]
+        meses = [m for m in meses if m]
+        if not meses:
+            return []
+        mes_base = min(meses)
+        indice_base = indices.get(mes_base)
+        if not indice_base:
+            return []
+        corrigido: list[dict[str, Any]] = []
+        for item in historico:
+            data_ref = str(item.get("data") or item.get("data_referencia") or "")[:7]
+            mes_ipca = self._resolver_mes_ipca_render(data_ref, indices)
+            if not mes_ipca:
+                continue
+            indice_ref = indices.get(mes_ipca)
+            valor_nominal = parse_float_seguro(item.get("valor") or item.get("valor_fipe") or item.get("preco"), 0.0)
+            if not indice_ref or valor_nominal <= 0:
+                continue
+            preco_corrigido = valor_nominal * (indice_base / indice_ref)
+            corrigido.append({
+                "data": data_ref,
+                "valor": round(preco_corrigido, 2),
+                "tipo": str(item.get("tipo") or "usado"),
+                "preco_nominal": round(valor_nominal, 2),
+                "preco_corrigido": round(preco_corrigido, 2),
+                "data_referencia_ipca": mes_ipca,
+                "ipca_base": mes_base,
+            })
+        corrigido.sort(key=lambda item: item.get("data", ""))
+        return corrigido
+
     def _garantir_relatorio_com_historico(self, saida: dict[str, Any], veiculo: VeiculoSelecionado, tipo_label: str, historico_mensal: list[dict[str, Any]]) -> str:
         existente = str(saida.get("relatorio_textual") or saida.get("relatorio_tecnico") or "").strip()
         if existente and ("4. PROGRESSÃO HISTÓRICA COLETADA DA COORTE" in existente or "PROGRESSÃO HISTÓRICA" in existente):
@@ -212,6 +301,16 @@ class DepreciacaoService:
             ])
             for ponto in historico_mensal:
                 linhas.append(f"- {ponto.get('data')}: {formatar_brl(ponto.get('valor'))} ({ponto.get('tipo')})")
+            corrigido = self._corrigir_historico_pelo_ipca_render(historico_mensal)
+            if corrigido:
+                base_ipca = str(corrigido[0].get("ipca_base", "")).strip()
+                linhas.extend([
+                    "",
+                    f"5. HISTÓRICO CORRIGIDO PELO IPCA" + (f" (base {base_ipca})" if base_ipca else ""),
+                    "- Observação: correção aplicada pelo mesmo critério do painel local: preço nominal × (IPCA_base / IPCA_mês).",
+                ])
+                for ponto in corrigido:
+                    linhas.append(f"- {ponto.get('data')}: {formatar_brl(ponto.get('valor'))} ({ponto.get('tipo')})")
         return "\n".join(linhas).strip()
 
 

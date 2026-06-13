@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from flask import Blueprint, render_template, redirect, url_for
+from flask import Blueprint, render_template
 
 main_bp = Blueprint("main", __name__)
 
 
 @main_bp.route("/")
 def index():
-    return redirect(url_for("tco.simular"))
+    return render_template("index.html")
 
 
 @main_bp.route("/depreciacao")
@@ -17,7 +17,7 @@ def depreciacao():
 
 @main_bp.route("/metodologia")
 def metodologia():
-    return redirect(url_for("tco.simular"))
+    return render_template("metodologia.html")
 
 
 @main_bp.route("/financiamento")

@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{% block title %}PlugVE Web{% endblock %}</title>
+  <title>{% block title %}Aroeira Calculadora Veicular{% endblock %}</title>
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/favicon.png') }}">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
@@ -11,13 +12,20 @@
 <body>
   <header class="topbar">
     <div class="container nav">
-      <a class="brand" href="/simular">PlugVE Web</a>
-      <nav>
-        <a href="/simular">Início</a>
-        <a href="/depreciacao">Depreciação</a>
-        <a href="/financiamento">Financiamento</a>
-        <a href="/sobre">Sobre</a>
-        <a href="/contato">Contato</a>
+      <a class="brand" href="/" aria-label="Aroeira Calculadora Veicular">
+        <img class="brand-mark" src="{{ url_for('static', filename='img/logo_aroeira_simbolo.png') }}" alt="Símbolo Aroeira">
+        <span class="brand-copy">
+          <span class="brand-word">Aroeira</span>
+          <span class="brand-subtitle">Calculadora Veicular</span>
+        </span>
+      </a>
+      <nav class="nav-links" aria-label="Navegação principal">
+        <a class="nav-link {{ 'active' if request.path == '/' else '' }}" href="/">Início</a>
+        <a class="nav-link {{ 'active' if request.path.startswith('/simular') else '' }}" href="/simular">Simular</a>
+        <a class="nav-link {{ 'active' if request.path.startswith('/depreciacao') else '' }}" href="/depreciacao">Depreciação</a>
+        <a class="nav-link {{ 'active' if request.path.startswith('/financiamento') else '' }}" href="/financiamento">Financiamento</a>
+        <a class="nav-link {{ 'active' if request.path.startswith('/sobre') else '' }}" href="/sobre">Sobre</a>
+        <a class="nav-link {{ 'active' if request.path.startswith('/contato') else '' }}" href="/contato">Contato</a>
       </nav>
     </div>
   </header>
@@ -27,7 +35,7 @@
   </main>
 
   <footer class="footer">
-    <div class="container">PlugVE Web - TCO e Depreciação Veicular</div>
+    <div class="container">© 2025 Aroeira Calculadora Veicular. Plataforma acadêmica de TCO e depreciação veicular.</div>
   </footer>
 
   {% block scripts %}{% endblock %}
