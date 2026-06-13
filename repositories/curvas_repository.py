@@ -395,6 +395,79 @@ class CurvasRepository:
         }
 
 
+    def excluir_curvas_painel(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Exclui curvas no Render a pedido do painel local.
+
+        Endpoint administrativo: usado quando o usuário apaga uma curva no painel
+        e quer manter o Render como espelho online da base curada.
+        """
+        tipo_norm = str(payload.get("tipo", "combustao") or "combustao").strip().lower()
+        caminho = self._arquivo_curvas_eletrico() if tipo_norm == "eletrico" else self._arquivo_curvas_combustao()
+        chaves = {str(x or "").strip() for x in (payload.get("chaves_curva") or payload.get("chaves") or []) if str(x or "").strip()}
+        codigo_fipe = str(payload.get("codigo_fipe", "") or "").strip()
+        marca = normalizar_texto(payload.get("marca", ""))
+        modelo = normalizar_texto(payload.get("modelo", ""))
+        modo = str(payload.get("modo_pandemia", "") or "").strip().lower()
+
+        linhas = self._ler_csv(caminho)
+        if not linhas:
+            return {"ok": True, "tipo": tipo_norm, "removidas": 0, "mensagem": "Nenhuma curva encontrada no Render."}
+
+        campos = []
+        try:
+            with open(caminho, mode="r", encoding="utf-8-sig", newline="") as arquivo:
+                leitor = csv.DictReader(arquivo)
+                campos = list(leitor.fieldnames or [])
+        except Exception:
+            campos = list(linhas[0].keys()) if linhas else []
+
+        def deve_remover(row: dict[str, Any]) -> bool:
+            chave_row = str(row.get("chave_curva", "") or row.get("curve_id", "") or "").strip()
+            if chaves and chave_row in chaves:
+                return True
+            if codigo_fipe and str(row.get("codigo_fipe", "") or "").strip() == codigo_fipe:
+                if modo and str(row.get("modo_pandemia", "") or "").strip().lower() not in {"", modo}:
+                    return False
+                return True
+            if marca and modelo:
+                if normalizar_texto(row.get("marca", "")) == marca and normalizar_texto(row.get("modelo", "")) == modelo:
+                    if modo and str(row.get("modo_pandemia", "") or "").strip().lower() not in {"", modo}:
+                        return False
+                    return True
+            return False
+
+        mantidas = []
+        removidas = 0
+        for row in linhas:
+            if deve_remover(row):
+                removidas += 1
+            else:
+                mantidas.append(row)
+
+        if removidas:
+            caminho.parent.mkdir(parents=True, exist_ok=True)
+            try:
+                backup = caminho.with_suffix(caminho.suffix + f".bak_delete_{datetime.now().strftime('%Y%m%d_%H%M%S')}")
+                backup.write_bytes(caminho.read_bytes())
+            except Exception:
+                pass
+            with open(caminho, mode="w", encoding="utf-8-sig", newline="") as arquivo:
+                escritor = csv.DictWriter(arquivo, fieldnames=campos, extrasaction="ignore")
+                escritor.writeheader()
+                for linha in mantidas:
+                    escritor.writerow({campo: linha.get(campo, "") for campo in campos})
+            try:
+                self._ler_csv_cache.cache_clear()
+            except Exception:
+                pass
+
+        return {
+            "ok": True,
+            "tipo": tipo_norm,
+            "removidas": removidas,
+            "mensagem": "Curva(s) removida(s) do Render." if removidas else "Nenhuma curva correspondente encontrada no Render.",
+        }
+
     def apagar_curva_calculada(self, veiculo: VeiculoSelecionado, tipo: str) -> dict[str, Any]:
         """Remove manualmente uma curva criada pela calculadora web.
 
@@ -497,49 +570,78 @@ class CurvasRepository:
         valor_atual = parse_float_seguro(curva.get("valor_fipe_atual"), 0.0)
         return taxa <= 0.05 or (valor_atual > 0 and abs(valor_atual - valor_futuro) < 1.0)
 
+    def _ordenar_curvas_preferidas(self, linhas: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Prioriza a curva mais recente/importada do painel quando houver duplicidade.
+
+        O Render pode ter curvas antigas no CSV persistente. Para não carregar uma
+        curva velha quando o painel enviou uma nova, a busca sempre prefere linhas
+        importadas pelo painel, versão mais nova e data de coleta/importação mais recente.
+        """
+        def versao_num(row: dict[str, Any]) -> float:
+            txt = str(row.get("versao_curva", "") or row.get("versao", "") or "").upper().replace("V", "")
+            try:
+                return float(txt)
+            except Exception:
+                return 0.0
+
+        def data_txt(row: dict[str, Any]) -> str:
+            for campo in ("data_importacao_render", "data_coleta", "data_salvamento", "data_atualizacao", "data_calculo"):
+                val = str(row.get(campo, "") or "").strip()
+                if val:
+                    return val
+            return ""
+
+        def prioridade(row: dict[str, Any]) -> tuple:
+            origem = str(row.get("origem_importacao", "") or row.get("origem_curva", "") or "").lower()
+            fonte = str(row.get("fonte_ajuste", "") or "").lower()
+            importada = 1 if ("painel" in origem or "painel" in fonte or "coorte fixa" in fonte) else 0
+            status = str(row.get("status", "") or "").upper()
+            ok = 1 if status in {"", "OK", "HOMOLOGADA", "EXPLORATORIA", "EXPLORATÓRIA"} else 0
+            pontos = parse_int_seguro(row.get("observacoes_total") or row.get("pontos_historicos"), 0)
+            janela = parse_int_seguro(row.get("janela_historica_meses") or row.get("janela_meses"), 0)
+            return (ok, importada, versao_num(row), data_txt(row), pontos, janela)
+
+        return sorted(linhas, key=prioridade, reverse=True)
+
     def _buscar_por_codigo_fipe(self, curvas: list[dict[str, Any]], codigo_fipe: str) -> dict[str, Any] | None:
         alvo = str(codigo_fipe or "").strip()
         if not alvo:
             return None
-        for row in curvas:
-            if str(row.get("codigo_fipe", "") or "").strip() == alvo:
-                if self._curva_combustao_v2_invalida(row):
-                    continue
-                return row
-        return None
+        candidatos = [row for row in curvas if str(row.get("codigo_fipe", "") or "").strip() == alvo and not self._curva_combustao_v2_invalida(row)]
+        candidatos = self._ordenar_curvas_preferidas(candidatos)
+        return candidatos[0] if candidatos else None
 
     def _buscar_ev_por_codigos(self, curvas: list[dict[str, Any]], codigo_marca: str, codigo_modelo: str) -> dict[str, Any] | None:
         marca = str(codigo_marca or "").strip()
         modelo = str(codigo_modelo or "").strip()
         if not marca or not modelo:
             return None
-        for row in curvas:
-            if str(row.get("marca_id", "") or "").strip() == marca and str(row.get("modelo_id", "") or "").strip() == modelo:
-                return row
-        return None
+        candidatos = [row for row in curvas if str(row.get("marca_id", "") or "").strip() == marca and str(row.get("modelo_id", "") or "").strip() == modelo]
+        candidatos = self._ordenar_curvas_preferidas(candidatos)
+        return candidatos[0] if candidatos else None
 
     def _buscar_curva_combustao_por_familia(self, curvas: list[dict[str, Any]], familia: dict[str, Any]) -> dict[str, Any] | None:
         modelo_base = normalizar_texto(familia.get("modelo_base_curva_combustao") or familia.get("modelo_base_curva"))
         ano_base = str(familia.get("ano_base_curva_combustao") or familia.get("ano_base_curva") or "").strip()
         family_id = str(familia.get("family_id", "") or "").strip()
 
+        candidatos: list[dict[str, Any]] = []
         if family_id:
-            for row in curvas:
-                if str(row.get("family_id", "") or "").strip() == family_id:
-                    if self._curva_combustao_v2_invalida(row):
-                        continue
-                    return row
+            candidatos.extend([row for row in curvas if str(row.get("family_id", "") or "").strip() == family_id and not self._curva_combustao_v2_invalida(row)])
+        if candidatos:
+            candidatos = self._ordenar_curvas_preferidas(candidatos)
+            return candidatos[0]
 
         if modelo_base:
             for row in curvas:
                 modelo_row = normalizar_texto(row.get("modelo", ""))
                 ano_row = str(row.get("ano_modelo", "") or "").strip()
-                if modelo_base in modelo_row or modelo_row in modelo_base:
+                if modelo_base and modelo_row and (modelo_base in modelo_row or modelo_row in modelo_base):
                     if not ano_base or not ano_row or ano_base == ano_row or ano_row == "32000":
-                        if self._curva_combustao_v2_invalida(row):
-                            continue
-                        return row
-        return None
+                        if not self._curva_combustao_v2_invalida(row):
+                            candidatos.append(row)
+        candidatos = self._ordenar_curvas_preferidas(candidatos)
+        return candidatos[0] if candidatos else None
 
     def _buscar_por_nome(self, curvas: list[dict[str, Any]], marca: str, modelo: str) -> dict[str, Any] | None:
         alvo_modelo = normalizar_texto(modelo)
@@ -569,11 +671,13 @@ class CurvasRepository:
 
         if not melhores:
             return None
-        melhores.sort(key=lambda x: x[0], reverse=True)
-        for _score, row in melhores:
-            if not self._curva_combustao_v2_invalida(row):
-                return row
-        return None
+        validos = [(score, row) for score, row in melhores if not self._curva_combustao_v2_invalida(row)]
+        if not validos:
+            return None
+        score_max = max(score for score, _row in validos)
+        candidatos = [row for score, row in validos if score == score_max]
+        candidatos = self._ordenar_curvas_preferidas(candidatos)
+        return candidatos[0] if candidatos else None
 
     def _buscar_ev_por_titulo(self, curvas: list[dict[str, Any]], marca: str, modelo: str) -> dict[str, Any] | None:
         alvo = normalizar_texto(f"{marca} {modelo}")
@@ -586,19 +690,65 @@ class CurvasRepository:
                 return row
         return None
 
+    def _valor_cenario_curva(self, curva: dict[str, Any], horizonte: int, tipo: str = "base") -> float:
+        tipo_norm = str(tipo or "base").strip().lower()
+        if tipo_norm == "base":
+            chaves = [
+                f"valor_{horizonte}ano",
+                "valor_futuro_base",
+                "valor_futuro",
+                "valor_estimado_futuro_principal",
+            ]
+        elif tipo_norm == "otimista":
+            chaves = [
+                f"valor_{horizonte}ano_otimista",
+                "valor_futuro_otimista",
+                "valor_otimista_final",
+            ]
+        else:
+            chaves = [
+                f"valor_{horizonte}ano_pessimista",
+                "valor_futuro_pessimista",
+                "valor_pessimista_final",
+            ]
+        for chave in chaves:
+            valor = parse_float_seguro(curva.get(chave), 0.0)
+            if valor > 0:
+                return valor
+        return 0.0
+
     def _montar_resultado_combustao(self, curva: dict[str, Any], veiculo: VeiculoSelecionado, tipo_match: str) -> dict[str, Any]:
         horizonte = veiculo.horizonte_anos
         valor_atual = veiculo.valor_atual or parse_float_seguro(curva.get("valor_fipe_atual"), 0.0)
-        valor_futuro = parse_float_seguro(curva.get(f"valor_{horizonte}ano"), 0.0)
-
-        if valor_futuro <= 0:
-            taxa = parse_float_seguro(curva.get("depreciacao_media_anual_principal_percentual"), 0.0) / 100.0
-            valor_futuro = valor_atual * ((1.0 - taxa) ** horizonte) if valor_atual > 0 else 0.0
-
-        pontos = parse_int_seguro(curva.get("observacoes_total"), 0)
-        janela = parse_int_seguro(curva.get("janela_historica_meses"), 0)
         taxa_anual = parse_float_seguro(curva.get("depreciacao_media_anual_principal_percentual"), 0.0)
+        valor_futuro = self._valor_cenario_curva(curva, horizonte, "base")
+
+        valor_taxa = valor_atual * ((1.0 - taxa_anual / 100.0) ** horizonte) if taxa_anual > 0 and valor_atual > 0 else 0.0
+        # Proteção contra curva antiga/distorcida ainda existente no CSV persistente:
+        # se o valor salvo divergir demais da taxa técnica exibida, usa a taxa da curva.
+        if valor_futuro <= 0:
+            valor_futuro = valor_taxa
+        elif valor_taxa > 0 and valor_futuro > 0:
+            razao = valor_futuro / valor_taxa
+            if razao < 0.65 or razao > 1.35:
+                valor_futuro = valor_taxa
+
+        valor_futuro_otimista = self._valor_cenario_curva(curva, horizonte, "otimista")
+        valor_futuro_pessimista = self._valor_cenario_curva(curva, horizonte, "pessimista")
+        if valor_futuro_otimista <= 0 and valor_atual > 0 and taxa_anual > 0:
+            valor_futuro_otimista = valor_atual * ((1.0 - (taxa_anual * 0.85) / 100.0) ** horizonte)
+        if valor_futuro_pessimista <= 0 and valor_atual > 0 and taxa_anual > 0:
+            valor_futuro_pessimista = valor_atual * ((1.0 - (taxa_anual * 1.15) / 100.0) ** horizonte)
+
+        pontos = parse_int_seguro(curva.get("observacoes_total") or curva.get("pontos_historicos"), 0)
+        janela = parse_int_seguro(curva.get("janela_historica_meses"), 0)
         depreciacao_pct = ((valor_atual - valor_futuro) / valor_atual * 100.0) if valor_atual > 0 else 0.0
+        relatorio_tecnico = str(
+            curva.get("relatorio_tecnico")
+            or curva.get("relatorio_tecnico_texto")
+            or curva.get("relatorio_textual")
+            or ""
+        ).strip()
 
         return {
             "tipo": "combustao",
@@ -606,12 +756,15 @@ class CurvasRepository:
             "curva": curva,
             "valor_atual": round(valor_atual, 2),
             "valor_futuro": round(valor_futuro, 2),
+            "valor_futuro_otimista": round(valor_futuro_otimista, 2) if valor_futuro_otimista > 0 else 0.0,
+            "valor_futuro_pessimista": round(valor_futuro_pessimista, 2) if valor_futuro_pessimista > 0 else 0.0,
             "depreciacao_percentual": round(max(0.0, depreciacao_pct), 2),
             "taxa_anual_percentual": round(max(0.0, taxa_anual), 2),
-            "confianca": classificar_confianca_combustao(pontos, janela),
+            "confianca": str(curva.get("confianca") or classificar_confianca_combustao(pontos, janela)),
             "pontos_historicos": pontos,
             "janela_historica_meses": janela,
             "origem_curva": str(curva.get("fonte_ajuste", "curva salva combustão") or "curva salva combustão"),
+            "relatorio_tecnico": relatorio_tecnico,
         }
 
     def _montar_resultado_eletrico(self, curva: dict[str, Any], veiculo: VeiculoSelecionado, tipo_match: str) -> dict[str, Any]:

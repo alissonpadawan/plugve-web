@@ -20,7 +20,6 @@
 
     <div id="status_bases" class="status-box mini">Carregando bases...</div>
 
-    <div id="fipe_usage_box" class="status-box mini fipe-usage-box">FIPE: carregando contador...</div>
 
     <div class="field side-filter">
       <label for="filtro_curvas_lateral">Carros salvos</label>
@@ -61,12 +60,6 @@
         <div class="field">
           <label for="fipe_marca">Marca</label>
           <select id="fipe_marca"></select>
-          <div class="sweep-actions">
-            <button id="btn_varrer_marca" class="button secondary sweep-button" type="button">Varrer marca</button>
-            <button id="btn_continuar_varredura" class="button secondary sweep-button hidden" type="button">Continuar varredura</button>
-            <button id="btn_restaurar_marca" class="button secondary sweep-button" type="button">Restaurar marca</button>
-          </div>
-          <p id="status_varredura_marca" class="sweep-status muted"></p>
         </div>
         <div class="field">
           <label for="fipe_modelo">Modelo</label>
@@ -100,9 +93,6 @@
         <div class="actions">
           <button id="btn_ver_detalhes" class="button primary hidden" type="button" disabled>Ver relatório da depreciação</button>
           <button id="btn_usar_no_tco" class="button primary hidden" type="button" disabled>Usar no TCO e fechar</button>
-          <button id="btn_calcular_futuro" class="button primary hidden" type="button" disabled>Calcular depreciação</button>
-          <button id="btn_apagar_curva" class="button danger hidden" type="button" disabled>Apagar curva</button>
-          <button id="btn_diagnostico_coorte" class="button secondary hidden" type="button" disabled>Diagnóstico técnico</button>
         </div>
       </div>
       <div id="card_grafico_barras" class="card chart-card chart-card-bars hidden">
@@ -126,22 +116,11 @@
             <p class="muted">Síntese da curva usada, premissas, valor inicial, valor final e auditoria da base.</p>
           </div>
         </div>
-        <div class="report-tabs v1917-temp-tabs" role="tablist" aria-label="Auditoria V19.17">
-          <button id="tab_relatorio_tecnico" class="tab-button active" type="button">Relatório</button>
-          <button id="tab_terminal_v1917" class="tab-button" type="button">Terminal temporário V24.7</button>
-        </div>
         <div id="aba_relatorio_tecnico">
           <div id="relatorio_textual" class="technical-report">Aguardando seleção do veículo.</div>
           <table class="details-table compact-details">
             <tbody id="detalhes_corpo"></tbody>
           </table>
-        </div>
-        <div id="aba_terminal_v1917" class="hidden">
-          <div class="terminal-toolbar-v1917">
-            <span id="terminal_v1917_meta">Terminal aguardando diagnóstico.</span>
-            <button id="btn_limpar_terminal_v1917" class="button secondary" type="button">Limpar tela local</button>
-          </div>
-          <pre id="terminal_v1917" class="terminal-v1917">Terminal aguardando diagnóstico V24.7...</pre>
         </div>
       </section>
     </section>

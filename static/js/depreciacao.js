@@ -202,6 +202,8 @@ function adicionarDetalhe(corpo, rotulo, valor) {
 
 
 function montarRelatorioTextual(data, origem = "curva") {
+  const relatorioImportado = data?.relatorio_textual || data?.relatorio_tecnico || data?.detalhes?.curva?.relatorio_tecnico || data?.detalhes?.curva?.relatorio_tecnico_texto;
+  if (relatorioImportado && String(relatorioImportado).trim()) return String(relatorioImportado).trim();
   const detalhes = data?.detalhes || {};
   const veiculo = detalhes.veiculo || ultimoDetalheFipe || {};
   const modelo = veiculo.modelo || detalhes.modelo || data?.modelo || "veículo selecionado";
@@ -377,8 +379,8 @@ async function consultarResumoDepreciacao(detalheFipe) {
       renderizarGraficosDepreciacao(data);
       if (estaEmModoBridgeTCO()) mostrarDetalhes();
     } else {
-      atualizarFeedbackCalculo("Curva não encontrada. Cálculo sob demanda liberado.", 100, false);
-      atualizarStatusResultado((data.mensagem || "Curva não encontrada.") + " Clique em Calcular depreciação para gerar e salvar a curva.", "nao-encontrado");
+      atualizarFeedbackCalculo("Curva não encontrada. Processamento deve ser feito no painel local.", 100, false);
+      atualizarStatusResultado((data.mensagem || "Curva não encontrada.") + " Processe esta curva no painel local e envie para o Render.", "nao-encontrado");
       limparResumoParcialApenasValor(data.valor_atual || detalheFipe.valor_atual);
       mostrarGraficoBarrasArea(false);
       mostrarAuditoriaArea(false);

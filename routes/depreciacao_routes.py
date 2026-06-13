@@ -118,6 +118,29 @@ def importar_curvas():
 
 
 
+@depreciacao_bp.route("/excluir_curvas", methods=["POST"])
+@depreciacao_bp.route("/admin/excluir_curvas", methods=["POST"])
+def excluir_curvas_admin():
+    if not _admin_token_valido():
+        return jsonify({
+            "ok": False,
+            "erro": "Token administrativo inválido ou ausente.",
+            "tipo": "nao_autorizado",
+        }), 401
+    payload = request.get_json(silent=True) or {}
+    try:
+        resultado = curvas_repository.excluir_curvas_painel(payload)
+        resultado["status_bases"] = depreciacao_service.status_bases()
+        return jsonify(resultado), 200
+    except Exception as exc:
+        return jsonify({
+            "ok": False,
+            "erro": str(exc),
+            "tipo": "erro_exclusao_curvas",
+            "traceback_resumo": traceback.format_exc(limit=4),
+        }), 500
+
+
 @depreciacao_bp.route("/diagnostico_v1917", methods=["POST"])
 def diagnostico_v1917():
     payload = request.get_json(silent=True) or {}

@@ -102,7 +102,14 @@ class DepreciacaoService:
                 "aviso_tipo": aviso_tipo,
             },
         )
-        return resumo.to_dict()
+        saida = resumo.to_dict()
+        for campo in ("valor_futuro_otimista", "valor_futuro_pessimista", "relatorio_tecnico"):
+            valor = resultado.get(campo)
+            if valor not in (None, ""):
+                saida[campo] = valor
+        if resultado.get("relatorio_tecnico"):
+            saida["relatorio_textual"] = resultado.get("relatorio_tecnico")
+        return saida
 
 
     def apagar_curva_manual(self, payload: dict[str, Any]) -> dict[str, Any]:
@@ -1283,6 +1290,12 @@ class DepreciacaoService:
             "ultimo_valor_historico",
             "variacao_total_percentual",
             "observacao_metodologica",
+            "relatorio_tecnico",
+            "relatorio_tecnico_texto",
+            "valor_futuro_base",
+            "valor_futuro_otimista",
+            "valor_futuro_pessimista",
+            "horizonte_relatorio_anos",
             "tipo_match",
         ]
         return {campo: curva.get(campo, "") for campo in campos if campo in curva and str(curva.get(campo, "")).strip()}
