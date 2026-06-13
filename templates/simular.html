@@ -243,6 +243,7 @@
                 <div>
                   <label class="block text-sm font-medium">Seguro atual (anual)</label>
                   <input type="text" name="seguro_atual" id="seguro_atual" class="mt-1 p-2 border rounded w-full" placeholder="ex: 2800">
+                    <p id="seguro_status_atual" class="text-[11px] text-gray-500 mt-1">Seguro estimado automaticamente como 4,7% do valor do veículo; edite se tiver cotação real.</p>
                 </div>
 
                 <div>
@@ -327,6 +328,7 @@
               <div>
                 <label class="block text-sm font-medium">Seguro VE (anual)</label>
                 <input type="text" name="seguro_ve" id="seguro_ve" class="mt-1 p-2 border rounded w-full" placeholder="ex: 4000">
+                <p id="seguro_status_ve" class="text-[11px] text-gray-500 mt-1">Seguro estimado automaticamente como 4,7% do valor do veículo; edite se tiver cotação real.</p>
               </div>
 
               <div>
@@ -399,6 +401,7 @@
               <div>
                 <label class="block text-sm font-medium">Seguro ICEV (anual)</label>
                 <input type="text" name="seguro_icev" id="seguro_icev" class="mt-1 p-2 border rounded w-full" placeholder="ex: 3000">
+                <p id="seguro_status_icev" class="text-[11px] text-gray-500 mt-1">Seguro estimado automaticamente como 4,7% do valor do veículo; edite se tiver cotação real.</p>
               </div>
 
               <div>
@@ -622,6 +625,97 @@
         return `Zero km ${partes}`.trim();
       }
       return textoOriginal || "";
+    }
+
+
+    // Seguro padrão adotado provisoriamente para o TCO acadêmico.
+    // O campo continua editável porque a cotação real depende de perfil, CEP, cobertura, franquia e seguradora.
+    const PERCENTUAL_SEGURO_PADRAO = 0.047;
+
+    function numeroBRParaFloat(valor) {
+      if (valor === null || valor === undefined) return 0;
+      const txt = String(valor).replace("R$", "").trim();
+      if (!txt) return 0;
+      const normalizado = txt.replace(/\./g, "").replace(",", ".");
+      const n = Number(normalizado);
+      return Number.isFinite(n) ? n : 0;
+    }
+
+    function classificarTipoVeiculoTCO(modelo, combustivel, codigoAno) {
+      const texto = `${modelo || ""} ${combustivel || ""} ${codigoAno || ""}`.toLowerCase();
+      const ehHibrido = /(h[íi]br|hybrid|hev|phev|plug\s*-?\s*in)/i.test(texto);
+      if (ehHibrido) return "hibrido";
+      const ehEletrico = /(el[eé]tr|electric|\bev\b|bateria)/i.test(texto);
+      if (ehEletrico) return "eletrico";
+      return "combustao";
+    }
+
+    function tipoPermitidoNoBloco(prefixo, tipo) {
+      if (prefixo === "ve") return tipo === "eletrico" || tipo === "hibrido";
+      if (prefixo === "icev") return tipo === "combustao" || tipo === "hibrido";
+      return true;
+    }
+
+    function mensagemBloqueioTipo(prefixo, tipo) {
+      if (prefixo === "ve" && tipo === "combustao") {
+        return "Este veículo é combustão puro. Ele não pode ser selecionado no bloco VE; use o bloco ICEV/combustão.";
+      }
+      if (prefixo === "icev" && tipo === "eletrico") {
+        return "Este veículo é elétrico puro. Ele não pode ser selecionado no bloco ICEV; use o bloco VE/elétrico.";
+      }
+      return "Tipo de veículo incompatível com este bloco.";
+    }
+
+    function campoSeguroPorPrefixo(prefixo) {
+      if (prefixo === "ve") return document.getElementById("seguro_ve");
+      if (prefixo === "icev") return document.getElementById("seguro_icev");
+      return document.getElementById("seguro_atual");
+    }
+
+    function campoPrecoPorPrefixo(prefixo) {
+      if (prefixo === "ve") return document.getElementById("preco_ve");
+      if (prefixo === "icev") return document.getElementById("preco_icev");
+      return document.getElementById("preco_atual");
+    }
+
+    function statusSeguroPorPrefixo(prefixo) {
+      return document.getElementById(`seguro_status_${prefixo}`);
+    }
+
+    function atualizarSeguroAutomatico(prefixo, forcar = false) {
+      const precoEl = campoPrecoPorPrefixo(prefixo);
+      const seguroEl = campoSeguroPorPrefixo(prefixo);
+      const status = statusSeguroPorPrefixo(prefixo);
+      if (!precoEl || !seguroEl) return;
+      const preco = numeroBRParaFloat(precoEl.value);
+      if (!preco || preco <= 0) return;
+      const jaManual = seguroEl.dataset.editadoManual === "1";
+      const eraAuto = seguroEl.dataset.autoSeguro === "1" || !String(seguroEl.value || "").trim();
+      if (jaManual && !forcar && !eraAuto) {
+        if (status) status.textContent = "Seguro editado manualmente pelo usuário.";
+        return;
+      }
+      const seguro = preco * PERCENTUAL_SEGURO_PADRAO;
+      seguroEl.value = formatarMoedaBR(seguro);
+      seguroEl.dataset.autoSeguro = "1";
+      seguroEl.dataset.editadoManual = "0";
+      if (status) {
+        status.textContent = "Seguro estimado automaticamente como 4,7% do valor do veículo. Edite se tiver cotação real.";
+      }
+    }
+
+    function limparCamposVeiculo(prefixo) {
+      const ids = prefixo === "ve"
+        ? ["modelo_ve", "preco_ve", "ano_modelo_ve", "combustivel_ve", "ipva_ve_input", "seguro_ve", "depreciacao_ve"]
+        : prefixo === "icev"
+          ? ["modelo_icev", "preco_icev", "ano_modelo_icev", "combustivel_icev", "ipva_icev_input", "seguro_icev", "depreciacao_icev"]
+          : ["modelo_atual", "preco_atual", "ano_modelo_atual", "combustivel_atual", "ipva_atual_input", "seguro_atual", "depreciacao_atual"];
+      ids.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = "";
+      });
+      const status = statusDepreciacaoPorPrefixo(prefixo);
+      if (status) status.textContent = "Seleção incompatível com este bloco.";
     }
 
     function aplicarPremissasInflacaoAutomaticas() {
@@ -906,13 +1000,30 @@
         const resp = await fetch(`/fipe/anos?codigo_marca=${marca}&codigo_modelo=${modelo}`);
         const anos = await resp.json();
         selectAno.innerHTML = "<option value=''>Selecione</option>";
+        let adicionados = 0;
+        const prefixoDestino = String(selectAnoId || "").split("_")[0];
+        const nomeModeloSelecionado = modeloEl.options[modeloEl.selectedIndex]?.text || "";
         anos.forEach(a => {
+          const tipoAno = classificarTipoVeiculoTCO(nomeModeloSelecionado, a.nome, a.codigo);
+          if (!tipoPermitidoNoBloco(prefixoDestino, tipoAno)) return;
           const opt = document.createElement("option");
           opt.value = a.codigo;
           opt.textContent = textoAnoFipeParaTela(a.codigo, a.nome);
           opt.dataset.nomeOriginal = a.nome;
+          opt.dataset.tipoVeiculo = tipoAno;
           selectAno.appendChild(opt);
+          adicionados += 1;
         });
+        if (!adicionados) {
+          const opt = document.createElement("option");
+          opt.value = "";
+          opt.textContent = prefixoDestino === "ve"
+            ? "Nenhum ano elétrico/híbrido compatível"
+            : prefixoDestino === "icev"
+              ? "Nenhum ano combustão/híbrido compatível"
+              : "Nenhum ano compatível";
+          selectAno.appendChild(opt);
+        }
       } catch (e) {
         console.error("Erro ao carregar anos FIPE:", e);
         selectAno.innerHTML = "<option value=''>Erro ao carregar</option>";
@@ -981,6 +1092,12 @@
         const combustivelStr = data.Combustivel || textoAnoOriginal;
         const textoAnoTela = textoAnoFipeParaTela(ano, textoAnoOriginal);
         const nomeCompleto = `${nomeModelo} ${textoAnoTela}`.trim();
+        const tipoSelecionado = classificarTipoVeiculoTCO(nomeModelo, combustivelStr || textoAnoTela, ano);
+        if (!tipoPermitidoNoBloco(prefixo, tipoSelecionado)) {
+          limparCamposVeiculo(prefixo);
+          alert(mensagemBloqueioTipo(prefixo, tipoSelecionado));
+          return;
+        }
 
         if (prefixo === "ve") {
           document.getElementById("modelo_ve").value = nomeCompleto;
@@ -999,6 +1116,7 @@
           document.getElementById("combustivel_atual").value = combustivelStr;
         }
 
+        atualizarSeguroAutomatico(prefixo);
         atualizarIpva(prefixo);
 
         const detalheDepreciacao = montarDetalheDepreciacaoTCO(prefixo, data, marcaSelect, modeloSelect, anoSelect, valor, nomeModelo, anoModeloStr, combustivelStr);
@@ -1118,8 +1236,8 @@
           campo.dataset.depreciacaoValidada = "0";
           campo.dataset.origemDepreciacao = "";
         }
-        escreverStatusDepreciacaoTCO(prefixo, "Curva salva não encontrada. Clique em Calcular depreciação para abrir o relatório técnico, calcular e salvar na tabela.", "text-yellow-700 font-semibold");
-        configurarBotaoDepreciacaoTCO(prefixo, true, detalhe, "calcular");
+        escreverStatusDepreciacaoTCO(prefixo, "Curva salva não encontrada no Render. Processe no painel local e envie a curva pronta.", "text-yellow-700 font-semibold");
+        configurarBotaoDepreciacaoTCO(prefixo, false, detalhe, "calcular");
       } catch (e) {
         console.error("Erro ao consultar depreciação no TCO:", e);
         escreverStatusDepreciacaoTCO(prefixo, "Erro ao consultar depreciação. Você pode preencher manualmente ou abrir o módulo.", "text-red-700 font-semibold");
@@ -1442,6 +1560,23 @@
         this.dataset.editado = "1";
       });
       aplicarPremissasInflacaoAutomaticas();
+
+      ["ve", "icev", "atual"].forEach(prefixo => {
+        const seguro = campoSeguroPorPrefixo(prefixo);
+        const preco = campoPrecoPorPrefixo(prefixo);
+        if (seguro) {
+          seguro.addEventListener("input", function () {
+            this.dataset.editadoManual = "1";
+            this.dataset.autoSeguro = "0";
+            const status = statusSeguroPorPrefixo(prefixo);
+            if (status) status.textContent = "Seguro editado manualmente pelo usuário.";
+          });
+        }
+        if (preco) {
+          preco.addEventListener("change", () => atualizarSeguroAutomatico(prefixo));
+          preco.addEventListener("blur", () => atualizarSeguroAutomatico(prefixo));
+        }
+      });
 
       renderEnergiaBreakdown(0, null);
       setBreakdownDisabled(true);

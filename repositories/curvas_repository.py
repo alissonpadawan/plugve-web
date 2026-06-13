@@ -778,9 +778,23 @@ class CurvasRepository:
             # A curva salva fornece a taxa; o valor projetado precisa respeitar a seleção atual.
             valor_futuro = valor_atual * ((1.0 - taxa_anual / 100.0) ** horizonte)
 
+        valor_otimista = parse_float_seguro(curva.get("valor_futuro_otimista") or curva.get("valor_otimista_final"), 0.0)
+        valor_pessimista = parse_float_seguro(curva.get("valor_futuro_pessimista") or curva.get("valor_pessimista_final"), 0.0)
+        if taxa_anual > 0 and valor_atual > 0:
+            if valor_otimista <= 0:
+                valor_otimista = valor_atual * ((1.0 - (taxa_anual * 0.85) / 100.0) ** horizonte)
+            if valor_pessimista <= 0:
+                valor_pessimista = valor_atual * ((1.0 - (taxa_anual * 1.15) / 100.0) ** horizonte)
+
         pontos = parse_int_seguro(curva.get("pontos_historicos"), 0)
         janela = parse_int_seguro(curva.get("janela_historica_meses"), 0)
         depreciacao_pct = ((valor_atual - valor_futuro) / valor_atual * 100.0) if valor_atual > 0 else 0.0
+        relatorio_tecnico = str(
+            curva.get("relatorio_tecnico")
+            or curva.get("relatorio_tecnico_texto")
+            or curva.get("relatorio_textual")
+            or ""
+        ).strip()
 
         return {
             "tipo": "eletrico",
@@ -788,10 +802,13 @@ class CurvasRepository:
             "curva": curva,
             "valor_atual": round(valor_atual, 2),
             "valor_futuro": round(valor_futuro, 2),
+            "valor_futuro_otimista": round(valor_otimista, 2) if valor_otimista > 0 else 0.0,
+            "valor_futuro_pessimista": round(valor_pessimista, 2) if valor_pessimista > 0 else 0.0,
             "depreciacao_percentual": round(max(0.0, depreciacao_pct), 2),
             "taxa_anual_percentual": round(max(0.0, taxa_anual), 2),
             "confianca": classificar_confianca_eletrico(curva.get("confianca_ev", ""), pontos, janela),
             "pontos_historicos": pontos,
             "janela_historica_meses": janela,
             "origem_curva": str(curva.get("origem_curva", "curva EV salva") or "curva EV salva"),
+            "relatorio_tecnico": relatorio_tecnico,
         }

@@ -1152,3 +1152,18 @@ select, input {
   font-size: 12px;
   line-height: 1.55;
 }
+
+/* V26 - leitura técnica dos gráficos do Render */
+.chart-scale-note {
+  margin: 6px 0 4px;
+  font-size: 11px;
+  line-height: 1.35;
+  color: #64748b;
+  text-align: center;
+}
+.chart-card-history.hidden {
+  display: none !important;
+}
+.chart-card-history .simple-chart {
+  min-height: 430px;
+}

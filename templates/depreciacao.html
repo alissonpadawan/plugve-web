@@ -3,12 +3,12 @@
 {% block title %}Depreciação | PlugVE Web{% endblock %}
 
 {% block content %}
-<button id="btn_toggle_base_provisoria" class="button secondary base-drawer-toggle" type="button">Mostrar base provisória</button>
+<button id="btn_toggle_base_provisoria" class="button secondary base-drawer-toggle" type="button">Mostrar curvas salvas</button>
 <div id="base_drawer_backdrop" class="base-drawer-backdrop hidden"></div>
 <section class="depr-workspace depr-workspace-final">
   <aside id="base_provisoria_drawer" class="card depr-sidebar base-drawer hidden-drawer">
-    <div class="drawer-header"><h2>Base provisória</h2><button id="btn_fechar_base_provisoria" class="drawer-close" type="button">×</button></div>
-    <p class="muted small-text">Consulta técnica das curvas já cadastradas. Este menu fica provisoriamente para conferência durante a validação do mestrado.</p>
+    <div class="drawer-header"><h2>Curvas salvas</h2><button id="btn_fechar_base_provisoria" class="drawer-close" type="button">×</button></div>
+    <p class="muted small-text">Consulta técnica das curvas já cadastradas no Render.</p>
 
     <div class="side-stats">
       <div><span>Modelos cadastrados</span><strong id="side_modelos">-</strong></div>
@@ -98,7 +98,7 @@
       <div id="card_grafico_barras" class="card chart-card chart-card-bars hidden">
         <h2>Gráfico de barras</h2>
         <p class="muted">Comparação entre valor inicial, cenário base, cenário otimista e cenário pessimista.</p>
-        <div id="grafico_barras" class="simple-chart empty-chart">Selecione ou calcule um veículo.</div>
+        <div id="grafico_barras" class="simple-chart empty-chart">Selecione um veículo com curva pronta.</div>
       </div>
     </section>
 
@@ -106,7 +106,13 @@
       <section class="card chart-card chart-card-curve">
         <h2>Curva de depreciação</h2>
         <p class="muted">Evolução estimada do valor do veículo ao longo do horizonte selecionado.</p>
-        <div id="grafico_projecao" class="simple-chart empty-chart">Selecione ou calcule um veículo.</div>
+        <div id="grafico_projecao" class="simple-chart empty-chart">Selecione um veículo com curva pronta.</div>
+      </section>
+
+      <section id="historico_render_area" class="card chart-card chart-card-history hidden">
+        <h2>Histórico FIPE da base</h2>
+        <p class="muted">Quando a curva importada trouxer histórico no relatório técnico, o Render reconstrói a visualização da coorte para auditoria.</p>
+        <div id="grafico_historico_render" class="simple-chart empty-chart">Histórico não disponível para esta curva.</div>
       </section>
 
       <section id="detalhes_resultado" class="card report-card">

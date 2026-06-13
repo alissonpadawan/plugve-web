@@ -815,6 +815,7 @@ async function carregarStatusBases() {
 function renderizarGraficosDepreciacao(data) {
   renderizarGraficoBarrasResultado(data);
   renderizarGraficoProjecaoResultado(data);
+  renderizarGraficoHistoricoRender(data);
 }
 
 
@@ -833,6 +834,103 @@ function calcularCenarios(valorAtual, taxaAnual, horizonte) {
     taxaPessimista,
     horizonte: anos
   };
+}
+
+
+function calcularEscalaAjustada(valores, margemRelativa = 0.12) {
+  const nums = (valores || []).map(Number).filter(v => Number.isFinite(v) && v > 0);
+  if (!nums.length) return { min: 0, max: 1, range: 1 };
+  const minValor = Math.min(...nums);
+  const maxValor = Math.max(...nums);
+  const bruto = Math.max(1, maxValor - minValor);
+  const margem = Math.max(bruto * margemRelativa, maxValor * 0.015, 1);
+  let min = minValor - margem;
+  let max = maxValor + margem;
+  if (min < 0) min = 0;
+  if (max <= min) max = min + 1;
+  return { min, max, range: max - min };
+}
+
+function textoRelatorioCompleto(data) {
+  return String(
+    data?.relatorio_textual || data?.relatorio_tecnico ||
+    data?.detalhes?.curva?.relatorio_tecnico || data?.detalhes?.curva?.relatorio_tecnico_texto || ""
+  );
+}
+
+function extrairHistoricoDoRelatorio(data) {
+  const txt = textoRelatorioCompleto(data);
+  if (!txt.trim()) return [];
+  const pontos = [];
+  const re = /^\s*-\s*(\d{4}-\d{2})\s*:\s*R\$\s*([0-9.]+(?:,[0-9]{2})?|[0-9,]+(?:\.[0-9]{2})?)\s*\(([^)]*)\)/gmi;
+  let m;
+  while ((m = re.exec(txt)) !== null) {
+    const dataRef = m[1];
+    const valor = Number(String(m[2]).replace(/\./g, "").replace(",", "."));
+    if (Number.isFinite(valor) && valor > 0) pontos.push({ data: dataRef, valor, tipo: m[3] || "" });
+  }
+  const vistos = new Set();
+  return pontos.filter(p => {
+    const k = `${p.data}|${p.valor}`;
+    if (vistos.has(k)) return false;
+    vistos.add(k);
+    return true;
+  }).sort((a, b) => String(a.data).localeCompare(String(b.data)));
+}
+
+function renderizarGraficoHistoricoRender(data) {
+  const area = document.getElementById("historico_render_area");
+  const el = document.getElementById("grafico_historico_render");
+  if (!area || !el) return;
+  const pontos = extrairHistoricoDoRelatorio(data);
+  if (!pontos.length) {
+    area.classList.add("hidden");
+    return;
+  }
+  area.classList.remove("hidden");
+  el.classList.remove("empty-chart");
+  el.innerHTML = "";
+  const valores = pontos.map(p => p.valor);
+  const escala = calcularEscalaAjustada(valores, 0.10);
+  const w = 900, h = 360, padL = 86, padR = 36, padT = 30, padB = 58;
+  const x = idx => padL + (idx / Math.max(1, pontos.length - 1)) * (w - padL - padR);
+  const y = valor => padT + ((escala.max - valor) / escala.range) * (h - padT - padB);
+  const svgNS = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(svgNS, "svg");
+  svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+  svg.setAttribute("class", "line-chart-svg");
+  const axis = document.createElementNS(svgNS, "path");
+  axis.setAttribute("d", `M${padL} ${padT} V${h-padB} H${w-padR}`);
+  axis.setAttribute("class", "chart-axis");
+  svg.appendChild(axis);
+  [escala.max, (escala.max + escala.min) / 2, escala.min].forEach((valor, idx) => {
+    const t = document.createElementNS(svgNS, "text");
+    t.setAttribute("x", padL - 10);
+    t.setAttribute("y", idx === 0 ? padT + 4 : idx === 1 ? (padT + h - padB) / 2 : h - padB);
+    t.setAttribute("text-anchor", "end");
+    t.setAttribute("class", "chart-label-svg");
+    t.textContent = formatarMoedaBR(valor).replace(",00", "");
+    svg.appendChild(t);
+  });
+  [0, Math.floor((pontos.length - 1) / 2), pontos.length - 1].forEach(idx => {
+    const t = document.createElementNS(svgNS, "text");
+    t.setAttribute("x", x(idx));
+    t.setAttribute("y", h - 20);
+    t.setAttribute("text-anchor", "middle");
+    t.setAttribute("class", "chart-label-svg");
+    t.textContent = pontos[idx]?.data || "";
+    svg.appendChild(t);
+  });
+  const d = pontos.map((p, idx) => `${idx === 0 ? "M" : "L"}${x(idx).toFixed(1)} ${y(p.valor).toFixed(1)}`).join(" ");
+  const path = document.createElementNS(svgNS, "path");
+  path.setAttribute("d", d);
+  path.setAttribute("class", "line-series base");
+  svg.appendChild(path);
+  const nota = document.createElement("div");
+  nota.className = "chart-scale-note";
+  nota.textContent = "Escala vertical ajustada ao intervalo observado da coorte para facilitar auditoria visual; os valores originais estão preservados no relatório técnico.";
+  el.appendChild(svg);
+  el.appendChild(nota);
 }
 
 
@@ -883,7 +981,7 @@ function renderizarGraficoBarrasResultado(data) {
     { label: "Otimista", valor: cen.otimista },
     { label: "Pessimista", valor: cen.pessimista }
   ];
-  const max = Math.max(...itens.map(i => i.valor), 1);
+  const escala = calcularEscalaAjustada(itens.map(i => i.valor), 0.18);
   const chart = document.createElement("div");
   chart.className = "bar-chart-grid";
   itens.forEach(item => {
@@ -894,7 +992,8 @@ function renderizarGraficoBarrasResultado(data) {
     value.textContent = formatarMoedaBR(item.valor);
     const bar = document.createElement("div");
     bar.className = "bar-chart-bar";
-    bar.style.height = `${Math.max(12, (item.valor / max) * 250)}px`;
+    bar.style.height = `${Math.max(24, ((item.valor - escala.min) / escala.range) * 230)}px`;
+    bar.title = `Escala ajustada: eixo inferior aproximado ${formatarMoedaBR(escala.min)}`;
     const label = document.createElement("div");
     label.className = "bar-chart-label";
     label.textContent = item.label;
@@ -903,7 +1002,11 @@ function renderizarGraficoBarrasResultado(data) {
     wrap.appendChild(label);
     chart.appendChild(wrap);
   });
+  const nota = document.createElement("div");
+  nota.className = "chart-scale-note";
+  nota.textContent = `Barras com escala vertical ajustada ao intervalo dos cenários (base visual próxima de ${formatarMoedaBR(escala.min)}).`;
   el.appendChild(chart);
+  el.appendChild(nota);
 }
 
 function renderizarGraficoProjecaoResultado(data) {
@@ -931,11 +1034,10 @@ function renderizarGraficoProjecaoResultado(data) {
   }));
 
   const todos = series.flatMap(s => s.pontos.map(p => p.valor)).concat([cen.atual]);
-  const min = Math.min(...todos);
-  const max = Math.max(...todos);
+  const escala = calcularEscalaAjustada(todos, 0.12);
   const w = 900, h = 360, padL = 86, padR = 36, padT = 30, padB = 52;
   const x = ano => padL + (ano / Math.max(1, cen.horizonte)) * (w - padL - padR);
-  const y = valor => padT + ((max - valor) / Math.max(1, max - min)) * (h - padT - padB);
+  const y = valor => padT + ((escala.max - valor) / escala.range) * (h - padT - padB);
 
   const svgNS = "http://www.w3.org/2000/svg";
   const svg = document.createElementNS(svgNS, "svg");
@@ -957,10 +1059,10 @@ function renderizarGraficoProjecaoResultado(data) {
     svg.appendChild(t);
   });
 
-  [max, min].forEach((valor, idx) => {
+  [escala.max, (escala.max + escala.min) / 2, escala.min].forEach((valor, idx) => {
     const t = document.createElementNS(svgNS, "text");
     t.setAttribute("x", padL - 12);
-    t.setAttribute("y", idx === 0 ? padT + 4 : h - padB);
+    t.setAttribute("y", idx === 0 ? padT + 4 : idx === 1 ? (padT + h - padB) / 2 : h - padB);
     t.setAttribute("text-anchor", "end");
     t.setAttribute("class", "chart-label-svg");
     t.textContent = formatarMoedaBR(valor).replace(",00", "");
@@ -992,7 +1094,11 @@ function renderizarGraficoProjecaoResultado(data) {
     <div><span>Pessimista final</span><strong>${formatarMoedaBR(cen.pessimista)}</strong></div>
   `;
 
+  const nota = document.createElement("div");
+  nota.className = "chart-scale-note";
+  nota.textContent = "Escala vertical ajustada ao intervalo dos cenários para melhorar a leitura visual. Valores absolutos preservados nos cartões.";
   el.appendChild(svg);
+  el.appendChild(nota);
   el.appendChild(legenda);
   el.appendChild(tabela);
 }
@@ -1019,7 +1125,7 @@ function renderizarGraficoBarras(atual, futuro) {
     { label: "Otimista", valor: cen.otimista },
     { label: "Pessimista", valor: cen.pessimista }
   ];
-  const max = Math.max(...itens.map(i => i.valor), 1);
+  const escala = calcularEscalaAjustada(itens.map(i => i.valor), 0.18);
   const chart = document.createElement("div");
   chart.className = "bar-chart-grid";
 
@@ -1031,7 +1137,8 @@ function renderizarGraficoBarras(atual, futuro) {
     value.textContent = formatarMoedaBR(item.valor);
     const bar = document.createElement("div");
     bar.className = "bar-chart-bar";
-    bar.style.height = `${Math.max(10, (item.valor / max) * 250)}px`;
+    bar.style.height = `${Math.max(24, ((item.valor - escala.min) / escala.range) * 230)}px`;
+    bar.title = `Escala ajustada: eixo inferior aproximado ${formatarMoedaBR(escala.min)}`;
     const label = document.createElement("div");
     label.className = "bar-chart-label";
     label.textContent = item.label;
@@ -1040,7 +1147,11 @@ function renderizarGraficoBarras(atual, futuro) {
     wrap.appendChild(label);
     chart.appendChild(wrap);
   });
+  const nota = document.createElement("div");
+  nota.className = "chart-scale-note";
+  nota.textContent = `Barras com escala vertical ajustada ao intervalo dos cenários (base visual próxima de ${formatarMoedaBR(escala.min)}).`;
   el.appendChild(chart);
+  el.appendChild(nota);
 }
 
 function renderizarGraficoProjecao(valorAtual, taxaAnual, horizonte) {
@@ -1067,11 +1178,10 @@ function renderizarGraficoProjecao(valorAtual, taxaAnual, horizonte) {
   }));
 
   const todos = series.flatMap(s => s.pontos.map(p => p.valor));
-  const min = Math.min(...todos);
-  const max = Math.max(...todos);
+  const escala = calcularEscalaAjustada(todos, 0.12);
   const w = 760, h = 300, padL = 72, padR = 24, padT = 28, padB = 48;
   const x = ano => padL + (ano / Math.max(1, cen.horizonte)) * (w - padL - padR);
-  const y = valor => padT + ((max - valor) / Math.max(1, max - min)) * (h - padT - padB);
+  const y = valor => padT + ((escala.max - valor) / escala.range) * (h - padT - padB);
 
   const svgNS = "http://www.w3.org/2000/svg";
   const svg = document.createElementNS(svgNS, "svg");
@@ -1093,10 +1203,10 @@ function renderizarGraficoProjecao(valorAtual, taxaAnual, horizonte) {
     svg.appendChild(t);
   });
 
-  [max, min].forEach((valor, idx) => {
+  [escala.max, (escala.max + escala.min) / 2, escala.min].forEach((valor, idx) => {
     const t = document.createElementNS(svgNS, "text");
     t.setAttribute("x", padL - 10);
-    t.setAttribute("y", idx === 0 ? padT + 4 : h - padB);
+    t.setAttribute("y", idx === 0 ? padT + 4 : idx === 1 ? (padT + h - padB) / 2 : h - padB);
     t.setAttribute("text-anchor", "end");
     t.setAttribute("class", "chart-label-svg");
     t.textContent = formatarMoedaBR(valor).replace(",00", "");
@@ -1137,7 +1247,11 @@ function renderizarGraficoProjecao(valorAtual, taxaAnual, horizonte) {
     <div><span>Pessimista final</span><strong>${formatarMoedaBR(cen.pessimista)}</strong></div>
   `;
 
+  const nota = document.createElement("div");
+  nota.className = "chart-scale-note";
+  nota.textContent = "Escala vertical ajustada ao intervalo dos cenários para melhorar a leitura visual. Valores absolutos preservados nos cartões.";
   el.appendChild(svg);
+  el.appendChild(nota);
   el.appendChild(legenda);
   el.appendChild(tabela);
 }

@@ -28,11 +28,26 @@ CAMINHO_MUNICIPIOS = os.path.join(BASE_DIR, "data", "municipios.xlsx")
 # ============================================================
 
 # 2.1) Converter número com vírgula/ponto
+SEGURO_PADRAO_PERCENTUAL = 0.047
+
 def conv(num):
     try:
-        return float(str(num).replace(",", "."))
+        txt = str(num if num is not None else "").strip().replace("R$", "").replace("%", "")
+        if not txt:
+            return 0.0
+        # Formato brasileiro: 6.191,92 -> 6191.92
+        if "," in txt:
+            txt = txt.replace(".", "").replace(",", ".")
+        return float(txt)
     except (TypeError, ValueError):
         return 0.0
+
+def seguro_padrao(preco: float) -> float:
+    return max(0.0, float(preco or 0.0) * SEGURO_PADRAO_PERCENTUAL)
+
+def seguro_formulario_ou_padrao(dados_form, campo: str, preco: float) -> float:
+    valor = conv(dados_form.get(campo, 0))
+    return valor if valor > 0 else seguro_padrao(preco)
 
 # 2.2) Normalizar texto (remove acento, upper, trim)
 def normalizar(s: str) -> str:
@@ -115,8 +130,8 @@ def calcular_tco_completo(dados_form):
 
     ipva_icev = conv(dados_form.get("ipva_icev", 0))
 
-    seguro_ve = conv(dados_form.get("seguro_ve", 0))
-    seguro_icev = conv(dados_form.get("seguro_icev", 0))
+    seguro_ve = seguro_formulario_ou_padrao(dados_form, "seguro_ve", preco_ve)
+    seguro_icev = seguro_formulario_ou_padrao(dados_form, "seguro_icev", preco_icev)
 
     depreciacao_ve = conv(dados_form.get("depreciacao_ve", 0)) / 100.0
     depreciacao_icev = conv(dados_form.get("depreciacao_icev", 0)) / 100.0
@@ -466,7 +481,7 @@ def montar_veiculo_ve(dados_form):
         "consumo": conv(dados_form.get("consumo_ve", 0)),
         "manut": conv(dados_form.get("manut_ve", 0)),
         "ipva": ipva_ve,
-        "seguro": conv(dados_form.get("seguro_ve", 0)),
+        "seguro": seguro_formulario_ou_padrao(dados_form, "seguro_ve", conv(dados_form.get("preco_ve", 0))),
         "depreciacao": conv(dados_form.get("depreciacao_ve", 0)) / 100.0,
     }
 
@@ -480,7 +495,7 @@ def montar_veiculo_icev(dados_form):
         "consumo": conv(dados_form.get("consumo_icev", 1)),
         "manut": conv(dados_form.get("manut_icev", 0)),
         "ipva": conv(dados_form.get("ipva_icev", 0)),
-        "seguro": conv(dados_form.get("seguro_icev", 0)),
+        "seguro": seguro_formulario_ou_padrao(dados_form, "seguro_icev", conv(dados_form.get("preco_icev", 0))),
         "depreciacao": conv(dados_form.get("depreciacao_icev", 0)) / 100.0,
     }
 
@@ -494,7 +509,7 @@ def montar_veiculo_atual(dados_form):
         "consumo": conv(dados_form.get("consumo_atual", 1)),
         "manut": conv(dados_form.get("manut_atual", 0)),
         "ipva": conv(dados_form.get("ipva_atual", 0)),
-        "seguro": conv(dados_form.get("seguro_atual", 0)),
+        "seguro": seguro_formulario_ou_padrao(dados_form, "seguro_atual", conv(dados_form.get("preco_atual", 0))),
         "depreciacao": conv(dados_form.get("depreciacao_atual", 0)) / 100.0,
     }
 
