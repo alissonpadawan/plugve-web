@@ -3,7 +3,7 @@
 # ============================================================
 # 0) IMPORTS E APP
 # ============================================================
-from flask import Blueprint, render_template, request, flash, jsonify
+from flask import Blueprint, render_template, request, flash, jsonify, redirect, url_for
 import plotly.graph_objs as go
 import plotly.io as pio
 import os
@@ -88,7 +88,7 @@ def _parse_data_aneel(v):
 # ============================================================
 @tco_bp.route("/home")
 def home():
-    return render_template("home.html")
+    return redirect(url_for("tco.simular"))
 
 @tco_bp.route("/sobre")
 def sobre():

@@ -81,6 +81,7 @@
       <div class="card result-card" id="card_resultado">
         <h2>Resumo da depreciação</h2>
         <p id="resultado_status" class="muted">Aguardando seleção do veículo.</p>
+        <p id="res_modelo_linha" class="result-model-line hidden"><strong>Modelo:</strong> <span id="res_modelo">-</span></p>
         <dl class="data-list compact resumo-inline">
           <dt>Valor FIPE atual</dt><dd id="res_valor_atual">-</dd>
           <dt>Valor ao fim do horizonte</dt><dd id="res_valor_futuro">-</dd>
@@ -92,6 +93,7 @@
         </dl>
         <div class="actions">
           <button id="btn_ver_detalhes" class="button primary hidden" type="button" disabled>Ver relatório da depreciação</button>
+          <button id="btn_apagar_curva" class="button secondary hidden" type="button" disabled>Apagar curva exploratória</button>
           <button id="btn_usar_no_tco" class="button primary hidden" type="button" disabled>Usar no TCO e fechar</button>
         </div>
       </div>

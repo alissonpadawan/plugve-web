@@ -7,7 +7,7 @@ main_bp = Blueprint("main", __name__)
 
 @main_bp.route("/")
 def index():
-    return render_template("index.html")
+    return redirect(url_for("tco.simular"))
 
 
 @main_bp.route("/depreciacao")
@@ -17,7 +17,7 @@ def depreciacao():
 
 @main_bp.route("/metodologia")
 def metodologia():
-    return render_template("metodologia.html")
+    return redirect(url_for("tco.simular"))
 
 
 @main_bp.route("/financiamento")
