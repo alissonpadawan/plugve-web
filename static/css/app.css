@@ -1223,3 +1223,12 @@ select, input {
 .result-model-line { margin: 8px 0 14px; font-size: 14px; }
 .result-model-line.hidden { display: none !important; }
 .result-model-line.low-confidence span { color: #b91c1c; font-weight: 800; }
+
+.history-chart-block {
+  margin-top: 14px;
+}
+.history-chart-block h3 {
+  font-size: 18px;
+  margin: 0 0 8px;
+  color: var(--text);
+}

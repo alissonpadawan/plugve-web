@@ -112,9 +112,15 @@
       </section>
 
       <section id="historico_render_area" class="card chart-card chart-card-history hidden">
-        <h2>Histórico FIPE da base</h2>
-        <p class="muted">Quando a curva importada trouxer histórico no relatório técnico, o Render reconstrói a visualização da coorte para auditoria.</p>
-        <div id="grafico_historico_render" class="simple-chart empty-chart">Histórico não disponível para esta curva.</div>
+        <h2>Histórico da base</h2>
+        <div class="history-chart-block">
+          <h3>Histórico FIPE nominal</h3>
+          <div id="grafico_historico_render" class="simple-chart empty-chart">Histórico nominal não disponível para esta curva.</div>
+        </div>
+        <div class="history-chart-block">
+          <h3>Histórico corrigido pelo IPCA</h3>
+          <div id="grafico_historico_ipca_render" class="simple-chart empty-chart">Histórico corrigido pelo IPCA não disponível para esta curva.</div>
+        </div>
         <div id="historico_mensal_tabela" class="history-table-wrap hidden">
           <h3>Histórico mês a mês da coorte</h3>
           <p id="historico_mensal_resumo" class="muted small-text"></p>

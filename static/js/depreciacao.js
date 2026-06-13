@@ -1015,6 +1015,198 @@ function renderizarGraficoHistoricoRender(data) {
   el.appendChild(svg);
 }
 
+
+
+// V12 - histórico nominal e histórico corrigido pelo IPCA usando prioritariamente o relatório importado do painel.
+function extrairPontosHistoricosDeTextoPlugVE(txt, modo = "nominal") {
+  txt = String(txt || "");
+  if (!txt.trim()) return [];
+  const linhas = txt.split(/\r?\n/);
+  const pontos = [];
+  let emSecao = false;
+  let encontrouSecao = false;
+  const ehCorrigido = modo === "corrigido";
+  const rePonto = /^\s*[-•]\s*(\d{4}-\d{2})\s*:\s*R\$\s*([0-9.,]+)\s*\(([^)]*)\)/i;
+
+  for (const linha of linhas) {
+    const l = String(linha || "").trim();
+    const up = l.toUpperCase();
+    if (ehCorrigido) {
+      if (/HIST[ÓO]RICO.*CORRIGIDO|CORRIGIDO.*IPCA|BASE CORRIGIDA/.test(up)) {
+        emSecao = true;
+        encontrouSecao = true;
+        continue;
+      }
+    } else {
+      if ((/PROGRESS[ÃA]O HIST[ÓO]RICA|HIST[ÓO]RICO FIPE|HIST[ÓO]RICO DA BASE/.test(up)) && !/CORRIGIDO|IPCA/.test(up)) {
+        emSecao = true;
+        encontrouSecao = true;
+        continue;
+      }
+    }
+    if (emSecao && /^\d+\.\s+[A-ZÁÉÍÓÚÂÊÔÃÕÇ]/.test(up) && !rePonto.test(l)) {
+      // Nova seção numerada do relatório.
+      if (pontos.length) break;
+    }
+    const m = rePonto.exec(l);
+    if (!m) continue;
+    if (encontrouSecao && !emSecao) continue;
+    const dataRef = m[1];
+    const valor = parseMoedaTecnica(m[2]);
+    const tipo = String(m[3] || "").trim();
+    if (Number.isFinite(valor) && valor > 0) pontos.push({ data: dataRef, valor, tipo });
+  }
+
+  // Fallback: se não achou uma seção nominal explícita, pega os pontos gerais do relatório.
+  if (!ehCorrigido && !pontos.length) {
+    const re = /^\s*[-•]\s*(\d{4}-\d{2})\s*:\s*R\$\s*([0-9.,]+)\s*\(([^)]*)\)/gmi;
+    let m;
+    while ((m = re.exec(txt)) !== null) {
+      const valor = parseMoedaTecnica(m[2]);
+      if (Number.isFinite(valor) && valor > 0) pontos.push({ data: m[1], valor, tipo: String(m[3] || "").trim() });
+    }
+  }
+
+  const vistos = new Set();
+  return pontos.filter(p => {
+    const k = `${p.data}|${Math.round(p.valor * 100)}|${p.tipo}`;
+    if (vistos.has(k)) return false;
+    vistos.add(k);
+    return true;
+  }).sort((a, b) => String(a.data).localeCompare(String(b.data)));
+}
+
+function historicoDiretoPlugVE(data, chaves) {
+  for (const chave of chaves) {
+    const bruto = chave.split('.').reduce((obj, k) => obj && obj[k], data);
+    if (Array.isArray(bruto) && bruto.length) {
+      return bruto.map(item => ({
+        data: String(item.data || item.referencia || item.data_referencia || "").slice(0, 7),
+        valor: parseMoedaTecnica(item.valor ?? item.valor_fipe ?? item.preco ?? item.price ?? 0),
+        tipo: String(item.tipo || item.observacao || item.status || "usado").trim()
+      })).filter(p => p.data && Number.isFinite(p.valor) && p.valor > 0).sort((a, b) => String(a.data).localeCompare(String(b.data)));
+    }
+  }
+  return [];
+}
+
+function extrairHistoricoNominalDoRelatorio(data) {
+  const txt = textoRelatorioCompleto(data);
+  const doRelatorio = extrairPontosHistoricosDeTextoPlugVE(txt, "nominal");
+  if (doRelatorio.length) return doRelatorio;
+  return historicoDiretoPlugVE(data, ["historico_mensal", "detalhes.historico_mensal"]);
+}
+
+function extrairHistoricoCorrigidoDoRelatorio(data) {
+  const txt = textoRelatorioCompleto(data);
+  const doRelatorio = extrairPontosHistoricosDeTextoPlugVE(txt, "corrigido");
+  if (doRelatorio.length) return doRelatorio;
+  return historicoDiretoPlugVE(data, ["historico_mensal_corrigido", "detalhes.historico_mensal_corrigido", "historico_ipca", "detalhes.historico_ipca"]);
+}
+
+function extrairHistoricoDoRelatorio(data) {
+  return extrairHistoricoNominalDoRelatorio(data);
+}
+
+function renderizarLinhaHistoricoPlugVE(el, pontos, vazioTexto = "Histórico não disponível para esta curva.") {
+  if (!el) return false;
+  el.innerHTML = "";
+  if (!pontos.length) {
+    el.classList.add("empty-chart");
+    el.textContent = vazioTexto;
+    return false;
+  }
+  el.classList.remove("empty-chart");
+  const valores = pontos.map(p => p.valor);
+  const escala = calcularEscalaAjustada(valores, 0.08);
+  const w = 980, h = 420, padL = 92, padR = 36, padT = 30, padB = 70;
+  const plotW = w - padL - padR;
+  const plotH = h - padT - padB;
+  const x = idx => padL + (idx / Math.max(1, pontos.length - 1)) * plotW;
+  const y = valor => padT + ((escala.max - valor) / escala.range) * plotH;
+  const svgNS = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(svgNS, "svg");
+  svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+  svg.setAttribute("class", "line-chart-svg grid-chart-svg");
+
+  for (let i = 0; i <= 5; i++) {
+    const yy = padT + (i / 5) * plotH;
+    const line = document.createElementNS(svgNS, "line");
+    line.setAttribute("x1", padL);
+    line.setAttribute("x2", w - padR);
+    line.setAttribute("y1", yy);
+    line.setAttribute("y2", yy);
+    line.setAttribute("class", "chart-grid-line");
+    svg.appendChild(line);
+  }
+  const gridX = Math.min(8, Math.max(2, Math.floor(pontos.length / 6)));
+  for (let i = 0; i <= gridX; i++) {
+    const idx = Math.round((i / gridX) * (pontos.length - 1));
+    const xx = x(idx);
+    const line = document.createElementNS(svgNS, "line");
+    line.setAttribute("x1", xx);
+    line.setAttribute("x2", xx);
+    line.setAttribute("y1", padT);
+    line.setAttribute("y2", h - padB);
+    line.setAttribute("class", "chart-grid-line");
+    svg.appendChild(line);
+  }
+
+  const axis = document.createElementNS(svgNS, "path");
+  axis.setAttribute("d", `M${padL} ${padT} V${h-padB} H${w-padR}`);
+  axis.setAttribute("class", "chart-axis");
+  svg.appendChild(axis);
+
+  [escala.max, (escala.max + escala.min) / 2, escala.min].forEach((valor, idx) => {
+    const t = document.createElementNS(svgNS, "text");
+    t.setAttribute("x", padL - 10);
+    t.setAttribute("y", idx === 0 ? padT + 4 : idx === 1 ? (padT + h - padB) / 2 : h - padB);
+    t.setAttribute("text-anchor", "end");
+    t.setAttribute("class", "chart-label-svg");
+    t.textContent = formatarMoedaBR(valor).replace(",00", "");
+    svg.appendChild(t);
+  });
+
+  const ticks = [0, Math.floor((pontos.length - 1) / 4), Math.floor((pontos.length - 1) / 2), Math.floor(3 * (pontos.length - 1) / 4), pontos.length - 1];
+  [...new Set(ticks)].forEach(idx => {
+    const t = document.createElementNS(svgNS, "text");
+    t.setAttribute("x", x(idx));
+    t.setAttribute("y", h - 32);
+    t.setAttribute("text-anchor", "middle");
+    t.setAttribute("class", "chart-label-svg");
+    t.textContent = pontos[idx]?.data || "";
+    svg.appendChild(t);
+  });
+
+  const d = pontos.map((p, idx) => `${idx === 0 ? "M" : "L"}${x(idx).toFixed(1)} ${y(p.valor).toFixed(1)}`).join(" ");
+  const path = document.createElementNS(svgNS, "path");
+  path.setAttribute("d", d);
+  path.setAttribute("class", "line-series base");
+  svg.appendChild(path);
+
+  const eixoX = document.createElementNS(svgNS, "text");
+  eixoX.setAttribute("x", padL + plotW / 2);
+  eixoX.setAttribute("y", h - 8);
+  eixoX.setAttribute("text-anchor", "middle");
+  eixoX.setAttribute("class", "chart-label-svg chart-axis-title");
+  eixoX.textContent = "Tempo";
+  svg.appendChild(eixoX);
+  el.appendChild(svg);
+  return true;
+}
+
+function renderizarGraficoHistoricoRender(data) {
+  const area = document.getElementById("historico_render_area");
+  const elNominal = document.getElementById("grafico_historico_render");
+  const elIpca = document.getElementById("grafico_historico_ipca_render");
+  if (!area || !elNominal) return;
+  const nominal = extrairHistoricoNominalDoRelatorio(data);
+  const corrigido = extrairHistoricoCorrigidoDoRelatorio(data);
+  const temNominal = renderizarLinhaHistoricoPlugVE(elNominal, nominal, "Histórico nominal não disponível para esta curva.");
+  const temCorrigido = renderizarLinhaHistoricoPlugVE(elIpca, corrigido, "Histórico corrigido pelo IPCA não disponível na curva importada.");
+  area.classList.toggle("hidden", !(temNominal || temCorrigido));
+}
+
 function renderizarTabelaHistoricoMensal(data) {
   const box = document.getElementById("historico_mensal_tabela");
   const corpo = document.getElementById("historico_mensal_corpo");

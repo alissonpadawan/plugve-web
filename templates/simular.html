@@ -31,7 +31,7 @@
           <span class="text-xl font-bold text-blue-600">PlugVE</span>
         </div>
         <div class="hidden md:flex space-x-6">
-          <a href="/simular" class="text-blue-600 font-semibold">Simular</a>
+          <a href="/simular" class="text-blue-600 font-semibold">Início</a>
           <a href="/depreciacao" class="text-gray-700 hover:text-blue-600 font-medium">Depreciação</a>
           <a href="/financiamento" class="text-gray-700 hover:text-blue-600 font-medium">Financiamento</a>
           <a href="/sobre" class="text-gray-700 hover:text-blue-600 font-medium">Sobre</a>
@@ -237,7 +237,7 @@
                 <input type="hidden" name="combustivel_atual" id="combustivel_atual">
 
                 <div>
-                  <label class="block text-sm font-medium">Preço do carro atual</label>
+                  <label class="block text-sm font-medium">Preço atual do veículo (R$)</label>
                   <input type="text" name="preco_atual" id="preco_atual" class="mt-1 p-2 border rounded w-full" placeholder="ex: 65000">
                 </div>
 
@@ -247,25 +247,25 @@
                 </div>
 
                 <div>
-                  <label class="block text-sm font-medium">Manutenção anual</label>
+                  <label class="block text-sm font-medium">Manutenção anual (R$)</label>
                   <input type="text" name="manut_atual" id="manut_atual" class="mt-1 p-2 border rounded w-full" placeholder="ex: 1800">
                 </div>
 
                 <div>
-                  <label class="block text-sm font-medium">IPVA anual</label>
+                  <label class="block text-sm font-medium">IPVA atual (anual)</label>
                   <input type="text" name="ipva_atual" id="ipva_atual_input" class="mt-1 p-2 border rounded w-full bg-gray-100" placeholder="Calculado automaticamente" readonly>
                 </div>
 
                 <div>
-                  <label class="block text-sm font-medium">Seguro anual</label>
+                  <label class="block text-sm font-medium">Seguro atual (anual)</label>
                   <input type="text" name="seguro_atual" id="seguro_atual" class="mt-1 p-2 border rounded w-full" placeholder="ex: 2800">
-                    <p id="seguro_status_atual" class="text-[11px] text-gray-500 mt-1">Auto: 4,7% do valor.</p>
+                    <p id="seguro_status_atual" class="text-[11px] text-gray-500 mt-1">Seguro estimado automaticamente como 4,7% do valor do veículo; edite se tiver cotação real.</p>
                 </div>
 
                 <div>
                   <label class="block text-sm font-medium">Depreciação atual (%)</label>
                   <input type="text" name="depreciacao_atual" id="depreciacao_atual" class="mt-1 p-2 border rounded w-full" placeholder="ex: 10">
-                  <div id="depreciacao_status_atual" class="mt-2 text-xs text-gray-500">Selecione na FIPE.</div>
+                  <div id="depreciacao_status_atual" class="mt-2 text-xs text-gray-500">Aguardando seleção FIPE para buscar depreciação.</div>
                   <button type="button" id="btn_depreciacao_atual" class="mt-2 px-3 py-2 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 hidden">
                     Calcular/validar depreciação
                   </button>
@@ -301,12 +301,13 @@
                   <label class="block text-xs font-medium">Ano/Combustível</label>
                   <select id="ve_ano" class="mt-1 p-2 border rounded w-full"></select>
                 </div>
-                
+                <p class="text-[11px] text-gray-500">
+                  Preço e IPVA automáticos pela FIPE.
+                </p>
               </div>
             </div>
 
             <div id="dados_ve_box" class="space-y-2 plugve-progress-hidden mt-5 border rounded-lg p-4 bg-white shadow-sm">
-              <h3 class="font-semibold text-base mb-3 text-gray-700">Dados complementares do VE</h3>
               <input type="hidden" name="modelo_ve" id="modelo_ve">
               <input type="hidden" name="ano_modelo_ve" id="ano_modelo_ve">
               <input type="hidden" name="combustivel_ve" id="combustivel_ve">
@@ -339,13 +340,13 @@
               <div>
                 <label class="block text-sm font-medium">Seguro anual VE</label>
                 <input type="text" name="seguro_ve" id="seguro_ve" class="mt-1 p-2 border rounded w-full" placeholder="ex: 4000">
-                <p id="seguro_status_ve" class="text-[11px] text-gray-500 mt-1">Auto: 4,7% do valor.</p>
+                <p id="seguro_status_ve" class="text-[11px] text-gray-500 mt-1">Seguro estimado automaticamente como 4,7% do valor do veículo; edite se tiver cotação real.</p>
               </div>
 
               <div>
                 <label class="block text-sm font-medium">Depreciação VE (%)</label>
                 <input type="text" name="depreciacao_ve" id="depreciacao_ve" class="mt-1 p-2 border rounded w-full" placeholder="ex: 8">
-                <div id="depreciacao_status_ve" class="mt-2 text-xs text-gray-500">Selecione na FIPE.</div>
+                <div id="depreciacao_status_ve" class="mt-2 text-xs text-gray-500">Aguardando seleção FIPE para buscar depreciação.</div>
                 <button type="button" id="btn_depreciacao_ve" class="mt-2 px-3 py-2 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 hidden">
                   Calcular/validar depreciação
                 </button>
@@ -374,12 +375,13 @@
                   <label class="block text-xs font-medium">Ano/Combustível</label>
                   <select id="icev_ano" class="mt-1 p-2 border rounded w-full"></select>
                 </div>
-                
+                <p class="text-[11px] text-gray-500">
+                  Preço e IPVA automáticos pela FIPE.
+                </p>
               </div>
             </div>
 
             <div id="dados_icev_box" class="space-y-2 plugve-progress-hidden mt-5 border rounded-lg p-4 bg-white shadow-sm">
-              <h3 class="font-semibold text-base mb-3 text-gray-700">Dados complementares do ICEV</h3>
               <input type="hidden" name="modelo_icev" id="modelo_icev">
               <input type="hidden" name="ano_modelo_icev" id="ano_modelo_icev">
               <input type="hidden" name="combustivel_icev" id="combustivel_icev">
@@ -407,13 +409,13 @@
               <div>
                 <label class="block text-sm font-medium">Seguro anual ICEV</label>
                 <input type="text" name="seguro_icev" id="seguro_icev" class="mt-1 p-2 border rounded w-full" placeholder="ex: 3000">
-                <p id="seguro_status_icev" class="text-[11px] text-gray-500 mt-1">Auto: 4,7% do valor.</p>
+                <p id="seguro_status_icev" class="text-[11px] text-gray-500 mt-1">Seguro estimado automaticamente como 4,7% do valor do veículo; edite se tiver cotação real.</p>
               </div>
 
               <div>
                 <label class="block text-sm font-medium">Depreciação ICEV (%)</label>
                 <input type="text" name="depreciacao_icev" id="depreciacao_icev" class="mt-1 p-2 border rounded w-full" placeholder="ex: 10">
-                <div id="depreciacao_status_icev" class="mt-2 text-xs text-gray-500">Selecione na FIPE.</div>
+                <div id="depreciacao_status_icev" class="mt-2 text-xs text-gray-500">Aguardando seleção FIPE para buscar depreciação.</div>
                 <button type="button" id="btn_depreciacao_icev" class="mt-2 px-3 py-2 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 hidden">
                   Calcular/validar depreciação
                 </button>
@@ -1215,18 +1217,27 @@
       }
     }
 
-    function preencherTaxaDepreciacaoTCO(prefixo, depreciacaoHorizonte, taxaAnual, origem) {
+    function taxaAnualPeloResultadoDepreciacao(data) {
+      const atual = Number(data?.valor_atual || 0);
+      const futuro = Number(data?.valor_futuro || 0);
+      const horizonte = Math.max(1, Number(data?.horizonte_anos || document.getElementById("anos")?.value || document.querySelector("input[name='anos']")?.value || 1));
+      if (atual > 0 && futuro > 0 && futuro < atual) {
+        return (1 - Math.pow(futuro / atual, 1 / horizonte)) * 100;
+      }
+      return Number(data?.taxa_anual_percentual || 0);
+    }
+
+    function preencherTaxaDepreciacaoTCO(prefixo, taxaAnual, depreciacaoHorizonte, origem) {
       const campo = campoDepreciacaoPorPrefixo(prefixo);
       if (!campo) return;
-      const dep = Number(depreciacaoHorizonte);
       const taxa = Number(taxaAnual);
-      if (isNaN(dep) && isNaN(taxa)) return;
-      const valorCampo = !isNaN(dep) ? dep : taxa;
-      campo.value = Number(valorCampo).toFixed(2).replace(".", ",");
+      const dep = Number(depreciacaoHorizonte);
+      if (isNaN(taxa)) return;
+      campo.value = taxa.toFixed(2).replace(".", ",");
       campo.dataset.depreciacaoValidada = "1";
       campo.dataset.origemDepreciacao = origem || "módulo de depreciação";
       campo.dataset.depreciacaoHorizonte = !isNaN(dep) ? String(dep) : "";
-      campo.dataset.taxaAnualEquivalente = !isNaN(taxa) ? String(taxa) : "";
+      campo.dataset.taxaAnualEquivalente = String(taxa);
     }
 
     async function consultarDepreciacaoTCO(prefixo, detalhe) {
@@ -1244,11 +1255,11 @@
 
         if (data && data.encontrado && Number(data.valor_futuro || 0) > 0) {
           const depHorizonte = Number(data.depreciacao_percentual || 0);
-          const taxaAnual = Number(data.taxa_anual_percentual || 0);
-          preencherTaxaDepreciacaoTCO(prefixo, depHorizonte, taxaAnual, data.origem_curva || "curva salva");
+          const taxaAnual = taxaAnualPeloResultadoDepreciacao(data);
+          preencherTaxaDepreciacaoTCO(prefixo, taxaAnual, depHorizonte, data.origem_curva || "curva salva");
           escreverStatusDepreciacaoTCO(
             prefixo,
-            `✓ Depreciação pronta: ${depHorizonte.toFixed(2).replace(".", ",")}% no horizonte.`,
+            `✓ ${taxaAnual.toFixed(2).replace(".", ",")}% a.a. (${depHorizonte.toFixed(2).replace(".", ",")}% no horizonte).`,
             "text-green-700 font-semibold"
           );
           configurarBotaoDepreciacaoTCO(prefixo, true, detalhe, "relatorio");
@@ -1286,10 +1297,10 @@
       if (!prefixo || !dados) return;
       const taxa = dados.taxa_anual_percentual ?? dados.taxa;
       if (taxa == null || isNaN(Number(taxa))) return;
-      preencherTaxaDepreciacaoTCO(prefixo, taxa, dados.origem_curva || "depreciação validada");
+      preencherTaxaDepreciacaoTCO(prefixo, Number(taxa), Number(dados.depreciacao_percentual ?? 0), dados.origem_curva || "depreciação validada");
       escreverStatusDepreciacaoTCO(
         prefixo,
-        `Depreciação validada: ${Number(dados.depreciacao_percentual ?? taxa).toFixed(2).replace(".", ",")}% no horizonte.`,
+        `Depreciação validada: ${Number(taxa).toFixed(2).replace(".", ",")}% a.a.`,
         "text-green-700 font-semibold"
       );
       configurarBotaoDepreciacaoTCO(prefixo, true, memoriaDepreciacaoTCO[prefixo], "relatorio");
@@ -1688,10 +1699,6 @@
         const uf = document.getElementById("estado_uf")?.value || "";
         const mun = document.getElementById("municipio_select")?.value || "";
         if (uf && mun) partes.push(`<span><strong>Localização:</strong> ${mun}/${uf}</span>`);
-        prefixosObrigatoriosPlugVE().forEach(prefixo => {
-          const val = nomeModeloSelecionadoNoFluxoPlugVE(prefixo);
-          if (val) partes.push(`<span><strong>${prefixo === "atual" ? "Atual" : prefixo.toUpperCase()}:</strong> ${val}</span>`);
-        });
         box.innerHTML = partes.join("");
         box.style.display = partes.length ? "block" : "none";
       }

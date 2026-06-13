@@ -133,9 +133,10 @@ def calcular_tco_completo(dados_form):
     seguro_ve = seguro_formulario_ou_padrao(dados_form, "seguro_ve", preco_ve)
     seguro_icev = seguro_formulario_ou_padrao(dados_form, "seguro_icev", preco_icev)
 
+    depreciacao_ve = conv(dados_form.get("depreciacao_ve", 0)) / 100.0
+    depreciacao_icev = conv(dados_form.get("depreciacao_icev", 0)) / 100.0
+
     anos = int(dados_form.get("anos", 1))
-    depreciacao_ve = converter_depreciacao_horizonte_para_anual(conv(dados_form.get("depreciacao_ve", 0)), anos)
-    depreciacao_icev = converter_depreciacao_horizonte_para_anual(conv(dados_form.get("depreciacao_icev", 0)), anos)
     km_ano = int(dados_form.get("km_ano", 0))
 
     tco_ve, tco_icev = preco_ve, preco_icev
@@ -472,7 +473,6 @@ def extrair_parametros_comuns(dados_form):
 # 4.9) Monta veículo elétrico futuro
 def montar_veiculo_ve(dados_form):
     ipva_ve = 0.0 if "isencao_ipva_ve" in dados_form else conv(dados_form.get("ipva_ve", 0))
-    anos = int(dados_form.get("anos", 1))
 
     return {
         "nome": dados_form.get("modelo_ve", "Veículo elétrico"),
@@ -482,13 +482,12 @@ def montar_veiculo_ve(dados_form):
         "manut": conv(dados_form.get("manut_ve", 0)),
         "ipva": ipva_ve,
         "seguro": seguro_formulario_ou_padrao(dados_form, "seguro_ve", conv(dados_form.get("preco_ve", 0))),
-        "depreciacao": converter_depreciacao_horizonte_para_anual(conv(dados_form.get("depreciacao_ve", 0)), anos),
+        "depreciacao": conv(dados_form.get("depreciacao_ve", 0)) / 100.0,
     }
 
 
 # 4.10) Monta veículo a combustão futuro
 def montar_veiculo_icev(dados_form):
-    anos = int(dados_form.get("anos", 1))
     return {
         "nome": dados_form.get("modelo_icev", "Veículo a combustão"),
         "tipo": "icev",
@@ -497,13 +496,12 @@ def montar_veiculo_icev(dados_form):
         "manut": conv(dados_form.get("manut_icev", 0)),
         "ipva": conv(dados_form.get("ipva_icev", 0)),
         "seguro": seguro_formulario_ou_padrao(dados_form, "seguro_icev", conv(dados_form.get("preco_icev", 0))),
-        "depreciacao": converter_depreciacao_horizonte_para_anual(conv(dados_form.get("depreciacao_icev", 0)), anos),
+        "depreciacao": conv(dados_form.get("depreciacao_icev", 0)) / 100.0,
     }
 
 
 # 4.11) Monta carro atual
 def montar_veiculo_atual(dados_form):
-    anos = int(dados_form.get("anos", 1))
     return {
         "nome": dados_form.get("modelo_atual", "Meu carro atual"),
         "tipo": "icev",
@@ -512,7 +510,7 @@ def montar_veiculo_atual(dados_form):
         "manut": conv(dados_form.get("manut_atual", 0)),
         "ipva": conv(dados_form.get("ipva_atual", 0)),
         "seguro": seguro_formulario_ou_padrao(dados_form, "seguro_atual", conv(dados_form.get("preco_atual", 0))),
-        "depreciacao": converter_depreciacao_horizonte_para_anual(conv(dados_form.get("depreciacao_atual", 0)), anos),
+        "depreciacao": conv(dados_form.get("depreciacao_atual", 0)) / 100.0,
     }
 
 
