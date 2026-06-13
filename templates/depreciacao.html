@@ -113,6 +113,18 @@
         <h2>Histórico FIPE da base</h2>
         <p class="muted">Quando a curva importada trouxer histórico no relatório técnico, o Render reconstrói a visualização da coorte para auditoria.</p>
         <div id="grafico_historico_render" class="simple-chart empty-chart">Histórico não disponível para esta curva.</div>
+        <div id="historico_mensal_tabela" class="history-table-wrap hidden">
+          <h3>Histórico mês a mês da coorte</h3>
+          <p id="historico_mensal_resumo" class="muted small-text"></p>
+          <div class="history-table-scroll">
+            <table class="details-table compact-details history-month-table">
+              <thead>
+                <tr><th>Referência</th><th>Valor FIPE</th><th>Tipo</th></tr>
+              </thead>
+              <tbody id="historico_mensal_corpo"></tbody>
+            </table>
+          </div>
+        </div>
       </section>
 
       <section id="detalhes_resultado" class="card report-card">
@@ -136,5 +148,5 @@
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/fipe.js') }}"></script>
-<script src="{{ url_for('static', filename='js/depreciacao.js') }}?v=20260611_v247_api_pro_timeout_direto"></script>
+<script src="{{ url_for('static', filename='js/depreciacao.js') }}?v=20260613_v7_graficos_historico"></script>
 {% endblock %}

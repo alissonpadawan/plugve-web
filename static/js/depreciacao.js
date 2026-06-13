@@ -11,6 +11,28 @@ function textoSeguro(valor) {
   return valor === null || valor === undefined || valor === "" ? "-" : String(valor);
 }
 
+function parseMoedaTecnica(valor) {
+  if (valor === null || valor === undefined) return 0;
+  let txt = String(valor).trim();
+  if (!txt) return 0;
+  txt = txt.replace(/R\$|\s/g, "").replace(/[^0-9,.-]/g, "");
+  if (!txt) return 0;
+  const temVirgula = txt.includes(",");
+  const temPonto = txt.includes(".");
+  if (temVirgula && temPonto) {
+    // Aceita tanto 62.452,00 quanto 62,452.00. O último separador indica o decimal.
+    if (txt.lastIndexOf(",") > txt.lastIndexOf(".")) {
+      txt = txt.replace(/\./g, "").replace(",", ".");
+    } else {
+      txt = txt.replace(/,/g, "");
+    }
+  } else if (temVirgula) {
+    txt = txt.replace(",", ".");
+  }
+  const n = Number(txt);
+  return Number.isFinite(n) ? n : 0;
+}
+
 function atualizarStatusResultado(texto, classe) {
   const el = document.getElementById("resultado_status");
   if (!el) return;
@@ -816,6 +838,7 @@ function renderizarGraficosDepreciacao(data) {
   renderizarGraficoBarrasResultado(data);
   renderizarGraficoProjecaoResultado(data);
   renderizarGraficoHistoricoRender(data);
+  renderizarTabelaHistoricoMensal(data);
 }
 
 
@@ -862,16 +885,20 @@ function extrairHistoricoDoRelatorio(data) {
   const txt = textoRelatorioCompleto(data);
   if (!txt.trim()) return [];
   const pontos = [];
-  const re = /^\s*-\s*(\d{4}-\d{2})\s*:\s*R\$\s*([0-9.]+(?:,[0-9]{2})?|[0-9,]+(?:\.[0-9]{2})?)\s*\(([^)]*)\)/gmi;
+  // Aceita relatórios do painel em formato BR ou EN:
+  // - 2018-03: R$ 62.452,00 (usado)
+  // - 2018-03: R$ 62,452.00 (usado)
+  const re = /^\s*[-•]\s*(\d{4}-\d{2})\s*:\s*R\$\s*([0-9.,]+)\s*\(([^)]*)\)/gmi;
   let m;
   while ((m = re.exec(txt)) !== null) {
     const dataRef = m[1];
-    const valor = Number(String(m[2]).replace(/\./g, "").replace(",", "."));
-    if (Number.isFinite(valor) && valor > 0) pontos.push({ data: dataRef, valor, tipo: m[3] || "" });
+    const valor = parseMoedaTecnica(m[2]);
+    const tipo = String(m[3] || "").trim();
+    if (Number.isFinite(valor) && valor > 0) pontos.push({ data: dataRef, valor, tipo });
   }
   const vistos = new Set();
   return pontos.filter(p => {
-    const k = `${p.data}|${p.valor}`;
+    const k = `${p.data}|${Math.round(p.valor * 100)}|${p.tipo}`;
     if (vistos.has(k)) return false;
     vistos.add(k);
     return true;
@@ -891,18 +918,46 @@ function renderizarGraficoHistoricoRender(data) {
   el.classList.remove("empty-chart");
   el.innerHTML = "";
   const valores = pontos.map(p => p.valor);
-  const escala = calcularEscalaAjustada(valores, 0.10);
-  const w = 900, h = 360, padL = 86, padR = 36, padT = 30, padB = 58;
-  const x = idx => padL + (idx / Math.max(1, pontos.length - 1)) * (w - padL - padR);
-  const y = valor => padT + ((escala.max - valor) / escala.range) * (h - padT - padB);
+  const escala = calcularEscalaAjustada(valores, 0.08);
+  const w = 980, h = 420, padL = 92, padR = 36, padT = 30, padB = 70;
+  const plotW = w - padL - padR;
+  const plotH = h - padT - padB;
+  const x = idx => padL + (idx / Math.max(1, pontos.length - 1)) * plotW;
+  const y = valor => padT + ((escala.max - valor) / escala.range) * plotH;
   const svgNS = "http://www.w3.org/2000/svg";
   const svg = document.createElementNS(svgNS, "svg");
   svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
-  svg.setAttribute("class", "line-chart-svg");
+  svg.setAttribute("class", "line-chart-svg grid-chart-svg");
+
+  const gridY = 5;
+  for (let i = 0; i <= gridY; i++) {
+    const yy = padT + (i / gridY) * plotH;
+    const line = document.createElementNS(svgNS, "line");
+    line.setAttribute("x1", padL);
+    line.setAttribute("x2", w - padR);
+    line.setAttribute("y1", yy);
+    line.setAttribute("y2", yy);
+    line.setAttribute("class", "chart-grid-line");
+    svg.appendChild(line);
+  }
+  const gridX = Math.min(8, Math.max(2, Math.floor(pontos.length / 6)));
+  for (let i = 0; i <= gridX; i++) {
+    const idx = Math.round((i / gridX) * (pontos.length - 1));
+    const xx = x(idx);
+    const line = document.createElementNS(svgNS, "line");
+    line.setAttribute("x1", xx);
+    line.setAttribute("x2", xx);
+    line.setAttribute("y1", padT);
+    line.setAttribute("y2", h - padB);
+    line.setAttribute("class", "chart-grid-line");
+    svg.appendChild(line);
+  }
+
   const axis = document.createElementNS(svgNS, "path");
   axis.setAttribute("d", `M${padL} ${padT} V${h-padB} H${w-padR}`);
   axis.setAttribute("class", "chart-axis");
   svg.appendChild(axis);
+
   [escala.max, (escala.max + escala.min) / 2, escala.min].forEach((valor, idx) => {
     const t = document.createElementNS(svgNS, "text");
     t.setAttribute("x", padL - 10);
@@ -912,25 +967,61 @@ function renderizarGraficoHistoricoRender(data) {
     t.textContent = formatarMoedaBR(valor).replace(",00", "");
     svg.appendChild(t);
   });
-  [0, Math.floor((pontos.length - 1) / 2), pontos.length - 1].forEach(idx => {
+
+  const ticks = [0, Math.floor((pontos.length - 1) / 4), Math.floor((pontos.length - 1) / 2), Math.floor(3 * (pontos.length - 1) / 4), pontos.length - 1];
+  [...new Set(ticks)].forEach(idx => {
     const t = document.createElementNS(svgNS, "text");
     t.setAttribute("x", x(idx));
-    t.setAttribute("y", h - 20);
+    t.setAttribute("y", h - 32);
     t.setAttribute("text-anchor", "middle");
     t.setAttribute("class", "chart-label-svg");
     t.textContent = pontos[idx]?.data || "";
     svg.appendChild(t);
   });
+
   const d = pontos.map((p, idx) => `${idx === 0 ? "M" : "L"}${x(idx).toFixed(1)} ${y(p.valor).toFixed(1)}`).join(" ");
   const path = document.createElementNS(svgNS, "path");
   path.setAttribute("d", d);
   path.setAttribute("class", "line-series base");
   svg.appendChild(path);
-  const nota = document.createElement("div");
-  nota.className = "chart-scale-note";
-  nota.textContent = "Escala vertical ajustada ao intervalo observado da coorte para facilitar auditoria visual; os valores originais estão preservados no relatório técnico.";
+
+  const eixoX = document.createElementNS(svgNS, "text");
+  eixoX.setAttribute("x", padL + plotW / 2);
+  eixoX.setAttribute("y", h - 8);
+  eixoX.setAttribute("text-anchor", "middle");
+  eixoX.setAttribute("class", "chart-label-svg chart-axis-title");
+  eixoX.textContent = "Tempo";
+  svg.appendChild(eixoX);
+
   el.appendChild(svg);
-  el.appendChild(nota);
+}
+
+function renderizarTabelaHistoricoMensal(data) {
+  const box = document.getElementById("historico_mensal_tabela");
+  const corpo = document.getElementById("historico_mensal_corpo");
+  if (!box || !corpo) return;
+  const pontos = extrairHistoricoDoRelatorio(data);
+  corpo.innerHTML = "";
+  if (!pontos.length) {
+    box.classList.add("hidden");
+    return;
+  }
+  pontos.forEach((p, idx) => {
+    const tr = document.createElement("tr");
+    const td1 = document.createElement("td");
+    const td2 = document.createElement("td");
+    const td3 = document.createElement("td");
+    td1.textContent = p.data;
+    td2.textContent = formatarMoedaBR(p.valor);
+    td3.textContent = p.tipo || (idx === 0 ? "zero_km" : "usado");
+    tr.appendChild(td1);
+    tr.appendChild(td2);
+    tr.appendChild(td3);
+    corpo.appendChild(tr);
+  });
+  const resumo = document.getElementById("historico_mensal_resumo");
+  if (resumo) resumo.textContent = `${pontos.length} ponto(s) históricos importados do relatório técnico do painel.`;
+  box.classList.remove("hidden");
 }
 
 
@@ -981,7 +1072,7 @@ function renderizarGraficoBarrasResultado(data) {
     { label: "Otimista", valor: cen.otimista },
     { label: "Pessimista", valor: cen.pessimista }
   ];
-  const escala = calcularEscalaAjustada(itens.map(i => i.valor), 0.18);
+  const max = Math.max(...itens.map(i => i.valor), 1);
   const chart = document.createElement("div");
   chart.className = "bar-chart-grid";
   itens.forEach(item => {
@@ -992,8 +1083,7 @@ function renderizarGraficoBarrasResultado(data) {
     value.textContent = formatarMoedaBR(item.valor);
     const bar = document.createElement("div");
     bar.className = "bar-chart-bar";
-    bar.style.height = `${Math.max(24, ((item.valor - escala.min) / escala.range) * 230)}px`;
-    bar.title = `Escala ajustada: eixo inferior aproximado ${formatarMoedaBR(escala.min)}`;
+    bar.style.height = `${Math.max(12, (item.valor / max) * 250)}px`;
     const label = document.createElement("div");
     label.className = "bar-chart-label";
     label.textContent = item.label;
@@ -1002,11 +1092,7 @@ function renderizarGraficoBarrasResultado(data) {
     wrap.appendChild(label);
     chart.appendChild(wrap);
   });
-  const nota = document.createElement("div");
-  nota.className = "chart-scale-note";
-  nota.textContent = `Barras com escala vertical ajustada ao intervalo dos cenários (base visual próxima de ${formatarMoedaBR(escala.min)}).`;
   el.appendChild(chart);
-  el.appendChild(nota);
 }
 
 function renderizarGraficoProjecaoResultado(data) {
@@ -1042,7 +1128,32 @@ function renderizarGraficoProjecaoResultado(data) {
   const svgNS = "http://www.w3.org/2000/svg";
   const svg = document.createElementNS(svgNS, "svg");
   svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
-  svg.setAttribute("class", "line-chart-svg");
+  svg.setAttribute("class", "line-chart-svg grid-chart-svg");
+
+  const plotW = w - padL - padR;
+  const plotH = h - padT - padB;
+  for (let i = 0; i <= 5; i++) {
+    const yy = padT + (i / 5) * plotH;
+    const line = document.createElementNS(svgNS, "line");
+    line.setAttribute("x1", padL);
+    line.setAttribute("x2", w - padR);
+    line.setAttribute("y1", yy);
+    line.setAttribute("y2", yy);
+    line.setAttribute("class", "chart-grid-line");
+    svg.appendChild(line);
+  }
+  const anosGrade = Math.min(10, Math.max(2, Math.round(cen.horizonte)));
+  for (let i = 0; i <= anosGrade; i++) {
+    const ano = (i / anosGrade) * cen.horizonte;
+    const xx = x(ano);
+    const line = document.createElementNS(svgNS, "line");
+    line.setAttribute("x1", xx);
+    line.setAttribute("x2", xx);
+    line.setAttribute("y1", padT);
+    line.setAttribute("y2", h - padB);
+    line.setAttribute("class", "chart-grid-line");
+    svg.appendChild(line);
+  }
 
   const axis = document.createElementNS(svgNS, "path");
   axis.setAttribute("d", `M${padL} ${padT} V${h-padB} H${w-padR}`);
@@ -1094,11 +1205,7 @@ function renderizarGraficoProjecaoResultado(data) {
     <div><span>Pessimista final</span><strong>${formatarMoedaBR(cen.pessimista)}</strong></div>
   `;
 
-  const nota = document.createElement("div");
-  nota.className = "chart-scale-note";
-  nota.textContent = "Escala vertical ajustada ao intervalo dos cenários para melhorar a leitura visual. Valores absolutos preservados nos cartões.";
   el.appendChild(svg);
-  el.appendChild(nota);
   el.appendChild(legenda);
   el.appendChild(tabela);
 }
@@ -1137,8 +1244,7 @@ function renderizarGraficoBarras(atual, futuro) {
     value.textContent = formatarMoedaBR(item.valor);
     const bar = document.createElement("div");
     bar.className = "bar-chart-bar";
-    bar.style.height = `${Math.max(24, ((item.valor - escala.min) / escala.range) * 230)}px`;
-    bar.title = `Escala ajustada: eixo inferior aproximado ${formatarMoedaBR(escala.min)}`;
+    bar.style.height = `${Math.max(12, (item.valor / max) * 250)}px`;
     const label = document.createElement("div");
     label.className = "bar-chart-label";
     label.textContent = item.label;
@@ -1147,11 +1253,7 @@ function renderizarGraficoBarras(atual, futuro) {
     wrap.appendChild(label);
     chart.appendChild(wrap);
   });
-  const nota = document.createElement("div");
-  nota.className = "chart-scale-note";
-  nota.textContent = `Barras com escala vertical ajustada ao intervalo dos cenários (base visual próxima de ${formatarMoedaBR(escala.min)}).`;
   el.appendChild(chart);
-  el.appendChild(nota);
 }
 
 function renderizarGraficoProjecao(valorAtual, taxaAnual, horizonte) {
@@ -1186,7 +1288,32 @@ function renderizarGraficoProjecao(valorAtual, taxaAnual, horizonte) {
   const svgNS = "http://www.w3.org/2000/svg";
   const svg = document.createElementNS(svgNS, "svg");
   svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
-  svg.setAttribute("class", "line-chart-svg");
+  svg.setAttribute("class", "line-chart-svg grid-chart-svg");
+
+  const plotW = w - padL - padR;
+  const plotH = h - padT - padB;
+  for (let i = 0; i <= 5; i++) {
+    const yy = padT + (i / 5) * plotH;
+    const line = document.createElementNS(svgNS, "line");
+    line.setAttribute("x1", padL);
+    line.setAttribute("x2", w - padR);
+    line.setAttribute("y1", yy);
+    line.setAttribute("y2", yy);
+    line.setAttribute("class", "chart-grid-line");
+    svg.appendChild(line);
+  }
+  const anosGrade = Math.min(10, Math.max(2, Math.round(cen.horizonte)));
+  for (let i = 0; i <= anosGrade; i++) {
+    const ano = (i / anosGrade) * cen.horizonte;
+    const xx = x(ano);
+    const line = document.createElementNS(svgNS, "line");
+    line.setAttribute("x1", xx);
+    line.setAttribute("x2", xx);
+    line.setAttribute("y1", padT);
+    line.setAttribute("y2", h - padB);
+    line.setAttribute("class", "chart-grid-line");
+    svg.appendChild(line);
+  }
 
   const axis = document.createElementNS(svgNS, "path");
   axis.setAttribute("d", `M${padL} ${padT} V${h-padB} H${w-padR}`);
@@ -1247,11 +1374,7 @@ function renderizarGraficoProjecao(valorAtual, taxaAnual, horizonte) {
     <div><span>Pessimista final</span><strong>${formatarMoedaBR(cen.pessimista)}</strong></div>
   `;
 
-  const nota = document.createElement("div");
-  nota.className = "chart-scale-note";
-  nota.textContent = "Escala vertical ajustada ao intervalo dos cenários para melhorar a leitura visual. Valores absolutos preservados nos cartões.";
   el.appendChild(svg);
-  el.appendChild(nota);
   el.appendChild(legenda);
   el.appendChild(tabela);
 }

@@ -1167,3 +1167,53 @@ select, input {
 .chart-card-history .simple-chart {
   min-height: 430px;
 }
+
+/* V27 - gráficos auditáveis do Render */
+.line-chart-svg.grid-chart-svg {
+  background: #ffffff;
+}
+.chart-grid-line {
+  stroke: #e5e7eb;
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+.chart-axis-title {
+  font-weight: 700;
+  fill: #475569;
+}
+.history-table-wrap {
+  margin-top: 18px;
+  border-top: 1px solid #e2e8f0;
+  padding-top: 14px;
+}
+.history-table-wrap.hidden {
+  display: none !important;
+}
+.history-table-wrap h3 {
+  font-size: 18px;
+  margin: 0 0 6px;
+  color: var(--text);
+}
+.history-table-scroll {
+  max-height: 360px;
+  overflow: auto;
+  border: 1px solid #dbeafe;
+  border-radius: 10px;
+  background: #fff;
+}
+.history-month-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0;
+}
+.history-month-table thead th {
+  position: sticky;
+  top: 0;
+  background: #f8fafc;
+  z-index: 1;
+}
+.history-month-table td,
+.history-month-table th {
+  text-align: left;
+  white-space: nowrap;
+}
