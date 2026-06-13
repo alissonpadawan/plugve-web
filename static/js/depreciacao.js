@@ -112,13 +112,13 @@ function limparResumo() {
     const el = document.getElementById(id);
     if (el) el.textContent = "-";
   });
-  configurarBotoesResultado(false, false);
+  configurarBotoesResultado(false, false, false);
   atualizarVisibilidadeResumo();
   const linhaModelo = document.getElementById("res_modelo_linha");
-  const modelo = document.getElementById("res_modelo");
-  if (modelo) modelo.textContent = "-";
-  linhaModelo?.classList.add("hidden");
-  linhaModelo?.classList.remove("low-confidence");
+  if (linhaModelo) {
+    linhaModelo.classList.add("hidden");
+    linhaModelo.classList.remove("low-confidence");
+  }
   mostrarGraficoBarrasArea(false);
   mostrarAuditoriaArea(false);
 }
@@ -139,7 +139,7 @@ window.resetarFluxoDepreciacao = resetarFluxoDepreciacao;
 
 function confiancaEhBaixaOuExploratoria(conf) {
   const txt = String(conf || "").trim().toLowerCase();
-  return txt.includes("explorat") || txt.includes("baixa") || txt.includes("sem conf") || txt.includes("baixa confi") || txt.includes("incerta");
+  return txt.includes("explorat") || txt.includes("baixa") || txt.includes("insuf") || txt.includes("sem conf") || txt.includes("pendente");
 }
 
 function configurarBotoesResultado(curvaEncontrada, podeCalcularFuturo, permitirApagar = false) {
@@ -178,17 +178,6 @@ function configurarBotoesResultado(curvaEncontrada, podeCalcularFuturo, permitir
   }
 }
 
-function atualizarResumoModelo(data) {
-  const linha = document.getElementById("res_modelo_linha");
-  const el = document.getElementById("res_modelo");
-  if (!linha || !el) return;
-  const veiculo = data?.detalhes?.veiculo || {};
-  const nome = [veiculo.marca, veiculo.modelo, veiculo.ano_modelo].filter(Boolean).join(" ").trim() || data?.modelo || "-";
-  el.textContent = nome || "-";
-  linha.classList.toggle("hidden", !nome || nome === "-");
-  linha.classList.toggle("low-confidence", confiancaEhBaixaOuExploratoria(data?.confianca));
-}
-
 function preencherResumo(data) {
   document.getElementById("res_valor_atual").textContent = formatarMoedaBR(data.valor_atual);
   document.getElementById("res_valor_futuro").textContent = data.valor_futuro != null && Number(data.valor_futuro) > 0 ? formatarMoedaBR(data.valor_futuro) : "-";
@@ -197,7 +186,15 @@ function preencherResumo(data) {
   document.getElementById("res_confianca").textContent = data.confianca || "-";
   document.getElementById("res_origem").textContent = data.origem_curva || "-";
   document.getElementById("res_tipo_usado").textContent = data.detalhes?.tipo_label || data.tipo_curva || "-";
-  atualizarResumoModelo(data);
+  const linhaModelo = document.getElementById("res_modelo_linha");
+  const elModelo = document.getElementById("res_modelo");
+  const veiculo = data.detalhes?.veiculo || {};
+  const nomeModelo = [veiculo.marca, veiculo.modelo, veiculo.ano_modelo].filter(Boolean).join(" ").trim();
+  if (linhaModelo && elModelo) {
+    elModelo.textContent = nomeModelo || "-";
+    linhaModelo.classList.toggle("hidden", !nomeModelo);
+    linhaModelo.classList.toggle("low-confidence", confiancaEhBaixaOuExploratoria(data.confianca));
+  }
   atualizarVisibilidadeResumo();
 }
 
@@ -904,14 +901,6 @@ function textoRelatorioCompleto(data) {
 }
 
 function extrairHistoricoDoRelatorio(data) {
-  const historicoDireto = Array.isArray(data?.historico_mensal) ? data.historico_mensal : Array.isArray(data?.detalhes?.historico_mensal) ? data.detalhes.historico_mensal : [];
-  if (historicoDireto.length) {
-    return historicoDireto.map(item => ({
-      data: String(item.data || item.referencia || item.data_referencia || "").slice(0, 7),
-      valor: parseMoedaTecnica(item.valor ?? item.valor_fipe ?? item.price ?? 0),
-      tipo: String(item.tipo || item.observacao || item.status || "usado").trim()
-    })).filter(p => p.data && Number.isFinite(p.valor) && p.valor > 0).sort((a, b) => String(a.data).localeCompare(String(b.data)));
-  }
   const txt = textoRelatorioCompleto(data);
   if (!txt.trim()) return [];
   const pontos = [];
@@ -1262,7 +1251,7 @@ function renderizarGraficoBarras(atual, futuro) {
     { label: "Otimista", valor: cen.otimista },
     { label: "Pessimista", valor: cen.pessimista }
   ];
-  const escala = calcularEscalaAjustada(itens.map(i => i.valor), 0.18);
+  const max = Math.max(...itens.map(i => i.valor), 1);
   const chart = document.createElement("div");
   chart.className = "bar-chart-grid";
 

@@ -14,7 +14,7 @@ from repositories.curvas_repository import CurvasRepository
 from repositories.historico_repository import HistoricoRepository
 from repositories.ipca_repository import IpcaRepository
 from core.motor_combustao_web import calcular_curva_combustao_por_historico, CalculoCombustaoInvalido
-from services.text_utils import detectar_eletrico, parse_float_seguro, parse_int_seguro
+from services.text_utils import detectar_eletrico, parse_float_seguro, parse_int_seguro, normalizar_texto, formatar_brl
 from services.fipe_historico_service import FipeHistoricoService
 from services.fipe_service import FipeService, FipeApiError
 
@@ -109,142 +109,109 @@ class DepreciacaoService:
                 saida[campo] = valor
         if resultado.get("relatorio_tecnico"):
             saida["relatorio_textual"] = resultado.get("relatorio_tecnico")
-        historico_mensal = self._buscar_historico_relatorio(veiculo, tipo)
+
+        historico_mensal = self._historico_mensal_local_para_relatorio(veiculo, tipo)
         if historico_mensal:
             saida["historico_mensal"] = historico_mensal
             saida.setdefault("detalhes", {})["historico_mensal"] = historico_mensal
-        relatorio_base = str(saida.get("relatorio_textual") or saida.get("relatorio_tecnico") or "").strip()
-        relatorio_final = self._garantir_relatorio_tecnico_completo(
-            resumo_saida=saida,
-            veiculo=veiculo,
-            tipo_label=tipo_label,
-            historico_mensal=historico_mensal,
-            relatorio_existente=relatorio_base,
-        )
+
+        relatorio_final = self._garantir_relatorio_com_historico(saida, veiculo, tipo_label, historico_mensal)
         if relatorio_final:
             saida["relatorio_textual"] = relatorio_final
             saida["relatorio_tecnico"] = relatorio_final
         return saida
 
 
-    @staticmethod
-    def _formatar_moeda_br(valor: Any) -> str:
-        numero = parse_float_seguro(valor, 0.0)
-        bruto = f"{numero:,.2f}"
-        return "R$ " + bruto.replace(",", "X").replace(".", ",").replace("X", ".")
-
-    def _buscar_historico_relatorio(self, veiculo: VeiculoSelecionado, tipo: str) -> list[dict[str, Any]]:
-        linhas: list[dict[str, Any]] = []
-        if tipo == "combustao":
-            try:
-                linhas = self.historico.buscar_historico_combustao_veiculo(veiculo) or []
-            except Exception:
-                linhas = []
-        else:
-            try:
-                linhas = self._buscar_historico_eletrico_local(veiculo)
-            except Exception:
-                linhas = []
-            if len(linhas) < 2:
-                try:
-                    baixado = self.fipe_historico.montar_historico_mensal(veiculo, limite_meses=84)
-                    if baixado:
-                        linhas = baixado
-                except Exception:
-                    pass
-        return self._normalizar_historico_para_relatorio(linhas)
-
-    def _buscar_historico_eletrico_local(self, veiculo: VeiculoSelecionado) -> list[dict[str, Any]]:
-        linhas = self.historico.carregar_historico_eletrico()
+    def _historico_mensal_local_para_relatorio(self, veiculo: VeiculoSelecionado, tipo: str) -> list[dict[str, Any]]:
+        """Lê histórico já persistido no Render. Não consulta FIPE e não calcula curva."""
+        try:
+            linhas = self.historico.carregar_historico_eletrico() if tipo == "eletrico" else self.historico.carregar_historico_combustao()
+        except Exception:
+            linhas = []
         if not linhas:
             return []
-        codigo_fipe = str(veiculo.codigo_fipe or "").strip()
-        if codigo_fipe:
-            por_codigo = [r for r in linhas if str(r.get("codigo_fipe", "") or r.get("CodigoFipe", "")).strip() == codigo_fipe]
-            if por_codigo:
-                return por_codigo
-        marca = str(veiculo.marca or "").strip().lower()
-        modelo = str(veiculo.modelo or "").strip().lower()
-        resultado = []
-        for row in linhas:
-            texto = " ".join(str(row.get(ch, "")) for ch in ("marca", "brand", "modelo", "model", "titulo", "veiculo", "codigo_fipe" )).lower()
-            if marca and marca not in texto:
-                continue
-            if modelo and modelo in texto:
-                resultado.append(row)
-        return resultado
 
-    def _normalizar_historico_para_relatorio(self, linhas: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        codigo = str(veiculo.codigo_fipe or "").strip()
+        candidatos = []
+        if codigo:
+            candidatos = [r for r in linhas if str(r.get("codigo_fipe") or r.get("CodigoFipe") or r.get("codeFipe") or "").strip() == codigo]
+
+        if not candidatos:
+            marca = normalizar_texto(veiculo.marca)
+            modelo = normalizar_texto(veiculo.modelo)
+            tokens_modelo = [t for t in modelo.split() if len(t) >= 3 and t not in {"flex", "aut", "mec", "16v", "8v", "eletrico", "hibrido"}]
+            for row in linhas:
+                texto = normalizar_texto(" ".join(str(row.get(ch, "")) for ch in ["marca", "brand", "modelo", "model", "titulo", "veiculo", "codigo_fipe"]))
+                if marca and marca not in texto:
+                    continue
+                if modelo and (modelo in texto or sum(1 for t in tokens_modelo if t in texto) >= max(1, min(2, len(tokens_modelo)))):
+                    candidatos.append(row)
+
         pontos: list[dict[str, Any]] = []
-        vistos: set[tuple[str, str, int]] = set()
-        for row in linhas or []:
-            data_ref = str(row.get("data_referencia") or row.get("mes_referencia") or row.get("data") or row.get("referenceMonth") or row.get("mes") or "").strip()
+        vistos: set[tuple[str, int, str]] = set()
+        for row in candidatos:
+            data_ref = str(row.get("data_referencia") or row.get("mes_referencia") or row.get("referencia") or row.get("data") or row.get("referenceMonth") or row.get("mes") or "").strip()
             if len(data_ref) >= 7:
                 data_ref = data_ref[:7]
-            valor = parse_float_seguro(row.get("valor_fipe") or row.get("price") or row.get("valor") or row.get("Valor") or row.get("preco"), 0.0)
+            valor = parse_float_seguro(row.get("valor_fipe") or row.get("valor") or row.get("Valor") or row.get("price") or row.get("preco"), 0.0)
             if not data_ref or valor <= 0:
                 continue
-            tipo = str(row.get("tipo") or row.get("observacao") or row.get("status") or "usado").strip() or "usado"
-            chave = (data_ref, tipo.lower(), round(valor * 100))
+            tipo_ponto = str(row.get("tipo") or row.get("observacao") or row.get("status") or "usado").strip() or "usado"
+            chave = (data_ref, round(valor * 100), tipo_ponto.lower())
             if chave in vistos:
                 continue
             vistos.add(chave)
-            pontos.append({"data": data_ref, "valor": round(valor, 2), "tipo": tipo})
+            pontos.append({"data": data_ref, "valor": round(valor, 2), "tipo": tipo_ponto})
         pontos.sort(key=lambda item: item.get("data", ""))
         return pontos
 
-    def _garantir_relatorio_tecnico_completo(
-        self,
-        *,
-        resumo_saida: dict[str, Any],
-        veiculo: VeiculoSelecionado,
-        tipo_label: str,
-        historico_mensal: list[dict[str, Any]],
-        relatorio_existente: str,
-    ) -> str:
-        texto = str(relatorio_existente or "").strip()
-        if texto and "4. PROGRESSÃO HISTÓRICA COLETADA DA COORTE" in texto and "RELATÓRIO TÉCNICO DE AUDITORIA DA DEPRECIAÇÃO" in texto:
-            return texto
+    def _garantir_relatorio_com_historico(self, saida: dict[str, Any], veiculo: VeiculoSelecionado, tipo_label: str, historico_mensal: list[dict[str, Any]]) -> str:
+        existente = str(saida.get("relatorio_textual") or saida.get("relatorio_tecnico") or "").strip()
+        if existente and ("4. PROGRESSÃO HISTÓRICA COLETADA DA COORTE" in existente or "PROGRESSÃO HISTÓRICA" in existente):
+            return existente
 
         linhas: list[str] = []
-        linhas.append("RELATÓRIO TÉCNICO DE AUDITORIA DA DEPRECIAÇÃO")
-        linhas.append("")
-        linhas.append(f"Veículo analisado: {veiculo.marca} {veiculo.modelo} ({tipo_label}).")
-        linhas.append(f"Horizonte da análise: {resumo_saida.get('horizonte_anos', veiculo.horizonte_anos)} ano(s).")
-        valor_atual = parse_float_seguro(resumo_saida.get("valor_atual"), 0.0)
-        valor_futuro = parse_float_seguro(resumo_saida.get("valor_futuro"), 0.0)
-        taxa = parse_float_seguro(resumo_saida.get("taxa_anual_percentual"), 0.0)
-        dep = parse_float_seguro(resumo_saida.get("depreciacao_percentual"), 0.0)
-        if valor_atual > 0:
-            linhas.append(f"Valor FIPE inicial: {self._formatar_moeda_br(valor_atual)}.")
-        if valor_futuro > 0:
-            linhas.append(f"Valor estimado ao final do horizonte: {self._formatar_moeda_br(valor_futuro)}.")
-        if valor_atual > 0 and valor_futuro > 0:
-            linhas.append(f"Perda econômica estimada no período: {self._formatar_moeda_br(max(0.0, valor_atual - valor_futuro))}.")
-        if dep > 0:
-            linhas.append(f"Depreciação acumulada: {dep:.2f}".replace(".", ",") + "%.")
-        if taxa > 0:
-            linhas.append(f"Taxa média anual utilizada: {taxa:.2f}".replace(".", ",") + "% a.a.")
-        linhas.append("")
-        linhas.append(f"Origem técnica da curva: {resumo_saida.get('origem_curva') or 'curva salva'}.")
-        linhas.append(f"Nível de confiança: {resumo_saida.get('confianca') or '-'}.")
-        linhas.append(f"Pontos históricos considerados: {int(resumo_saida.get('pontos_historicos') or len(historico_mensal) or 0)}.")
-        linhas.append(f"Janela histórica observada: {int(resumo_saida.get('janela_historica_meses') or 0)} meses.")
-        detalhes = resumo_saida.get("detalhes") or {}
-        aud = detalhes.get("auditoria_historico") or {}
-        linhas.append(f"Proxy aplicado: {'Sim' if aud.get('proxy_aplicado') else 'Não'}.")
-        linhas.append("")
-        linhas.append("Interpretação: o gráfico de barras compara o valor inicial do veículo com os valores futuros estimados nos cenários base, otimista e pessimista. A curva de depreciação mostra a evolução do valor ao longo do tempo, permitindo validar visualmente a taxa aplicada antes de transportar a informação para o TCO.")
-        if texto and texto not in "\n".join(linhas):
-            linhas.append("")
-            linhas.append("Trecho adicional importado do cálculo original:")
-            linhas.append(texto)
+        if existente:
+            linhas.append(existente)
+        else:
+            valor_atual = parse_float_seguro(saida.get("valor_atual"), 0.0)
+            valor_futuro = parse_float_seguro(saida.get("valor_futuro"), 0.0)
+            taxa = parse_float_seguro(saida.get("taxa_anual_percentual"), 0.0)
+            dep = parse_float_seguro(saida.get("depreciacao_percentual"), 0.0)
+            linhas.extend([
+                "RELATÓRIO TÉCNICO DE AUDITORIA DA DEPRECIAÇÃO",
+                "",
+                f"Veículo analisado: {veiculo.marca} {veiculo.modelo} ({tipo_label}).",
+                f"Horizonte da análise: {saida.get('horizonte_anos', veiculo.horizonte_anos)} ano(s).",
+            ])
+            if valor_atual > 0:
+                linhas.append(f"Valor FIPE inicial: {formatar_brl(valor_atual)}.")
+            if valor_futuro > 0:
+                linhas.append(f"Valor estimado ao final do horizonte: {formatar_brl(valor_futuro)}.")
+            if valor_atual > 0 and valor_futuro > 0:
+                linhas.append(f"Perda econômica estimada no período: {formatar_brl(max(0.0, valor_atual - valor_futuro))}.")
+            if dep > 0:
+                linhas.append(f"Depreciação acumulada: {dep:.2f}".replace(".", ",") + "%.")
+            if taxa > 0:
+                linhas.append(f"Taxa média anual utilizada: {taxa:.2f}".replace(".", ",") + "% a.a.")
+            linhas.extend([
+                "",
+                f"Origem técnica da curva: {saida.get('origem_curva') or 'curva salva'}.",
+                f"Nível de confiança: {saida.get('confianca') or '-'}.",
+                f"Pontos históricos considerados: {int(saida.get('pontos_historicos') or len(historico_mensal) or 0)}.",
+                f"Janela histórica observada: {int(saida.get('janela_historica_meses') or 0)} meses.",
+                "",
+                "Interpretação: o gráfico de barras compara o valor inicial do veículo com os valores futuros estimados nos cenários base, otimista e pessimista. A curva de depreciação mostra a evolução do valor ao longo do tempo, permitindo validar visualmente a taxa aplicada antes de transportar a informação para o TCO.",
+            ])
+
         if historico_mensal:
-            linhas.append("")
-            linhas.append("4. PROGRESSÃO HISTÓRICA COLETADA DA COORTE")
-            linhas.append("- Observação: esta tabela mostra a coleta bruta da coorte fixa. Se o modo pandemia for Excluir, os anos 2020-2022 ficam registrados aqui, mas não entram no ajuste matemático.")
+            linhas.extend([
+                "",
+                "4. PROGRESSÃO HISTÓRICA COLETADA DA COORTE",
+                "- Observação: esta tabela mostra a coleta bruta da coorte fixa. Se o modo pandemia for Excluir, os anos 2020-2022 ficam registrados aqui, mas não entram no ajuste matemático.",
+            ])
             for ponto in historico_mensal:
-                linhas.append(f"- {ponto.get('data')}: {self._formatar_moeda_br(ponto.get('valor'))} ({ponto.get('tipo')})")
+                linhas.append(f"- {ponto.get('data')}: {formatar_brl(ponto.get('valor'))} ({ponto.get('tipo')})")
         return "\n".join(linhas).strip()
 
 

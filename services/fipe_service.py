@@ -684,11 +684,18 @@ class FipeService:
         bloqueados = self._ler_bloqueados().get(str(codigo_marca), {})
         modelos = data.get("modelos", [])
         zero_km = self._ler_modelos_zero_km().get(str(codigo_marca), {})
+        novos = self._ler_modelos_novos().get(str(codigo_marca), {})
+        varridas = self._ler_marcas_varridas()
         modelos_filtrados = [m for m in modelos if str(m.get("codigo")) not in bloqueados]
         for modelo in modelos_filtrados:
-            if str(modelo.get("codigo")) in zero_km:
+            codigo_modelo = str(modelo.get("codigo"))
+            if codigo_modelo in zero_km:
                 modelo["tem_zero_km"] = True
+            if codigo_modelo in novos:
+                modelo["modelo_novo"] = True
+            modelo["marca_varrida"] = str(codigo_marca) in varridas
         data["modelos"] = modelos_filtrados
+        data["marca_varrida"] = str(codigo_marca) in varridas
         data["modelos_bloqueados_ocultos"] = len(modelos) - len(modelos_filtrados)
         if modelos and not data["modelos"] and bloqueados:
             nome_marca = ""

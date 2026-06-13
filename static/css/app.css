@@ -1218,15 +1218,8 @@ select, input {
   white-space: nowrap;
 }
 
-/* V28 - destaque de confiança e ações de limpeza */
-.result-model-line {
-  margin: 8px 0 14px;
-  font-size: 14px;
-}
-.result-model-line.hidden {
-  display: none !important;
-}
-.result-model-line.low-confidence span {
-  color: #b91c1c;
-  font-weight: 800;
-}
+
+/* V9 - destaque de curvas de baixa confiança */
+.result-model-line { margin: 8px 0 14px; font-size: 14px; }
+.result-model-line.hidden { display: none !important; }
+.result-model-line.low-confidence span { color: #b91c1c; font-weight: 800; }

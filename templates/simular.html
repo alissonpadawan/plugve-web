@@ -9,11 +9,12 @@
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
   <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
   <style>
-    .flow-summary-chip{display:inline-flex;align-items:center;padding:.35rem .7rem;border-radius:9999px;background:#eff6ff;color:#1d4ed8;font-size:.75rem;font-weight:700;margin:.15rem .35rem .15rem 0}
-    .flow-hidden{display:none !important;}
-    .vehicle-detail-box.flow-hidden,.usage-block.flow-hidden,.flow-hidden{display:none !important;}
-    .select-meta-note{font-size:11px;color:#64748b;margin-top:6px;}
-    .card-cenario-selected{border-color:#2563eb;box-shadow:0 8px 24px rgba(37,99,235,.12);background:#eff6ff;}
+    .plugve-flow-summary{display:none;margin:.5rem 0 1rem;padding:.45rem .75rem;border:1px solid #e5e7eb;border-radius:.5rem;background:#f9fafb;color:#4b5563;font-size:.78rem;line-height:1.35}
+    .plugve-flow-summary strong{color:#1f2937}
+    .plugve-flow-summary span+span::before{content:" | ";color:#9ca3af;margin:0 .35rem}
+    .plugve-progress-hidden{display:none !important}
+    .plugve-card-selected{border-color:#2563eb !important;background:#eff6ff !important;box-shadow:0 6px 18px rgba(37,99,235,.12)}
+    .plugve-select-note{font-size:11px;color:#6b7280;margin-top:3px}
   </style>
 </head>
 
@@ -62,15 +63,10 @@
       Simulador de Custo Total de Propriedade (TCO)
     </h1>
 
-    <p class="mb-4 text-gray-700 text-sm">
+    <p class="mb-3 text-gray-700 text-sm">
       Escolha primeiro o tipo de comparação. Depois informe sua localização. Só então os campos da simulação serão liberados.
     </p>
-
-    <section id="resumo_fluxo" class="mb-6 border rounded-lg p-4 bg-blue-50 hidden">
-      <h2 class="font-semibold text-base text-blue-700 mb-2">Resumo da seleção</h2>
-      <div id="resumo_fluxo_chips"></div>
-      <p class="text-xs text-gray-500 mt-2">O fluxo vai liberando os campos em etapas para deixar a simulação mais limpa.</p>
-    </section>
+    <div id="plugve_fluxo_resumo" class="plugve-flow-summary"></div>
 
     <!-- =========================================================
       3) FORMULÁRIO
@@ -132,6 +128,7 @@
               Compare seu carro atual com duas possibilidades futuras: um elétrico e outro a combustão.
             </p>
           </button>
+
           <button
             type="button"
             class="card-cenario text-left border rounded-xl p-4 bg-white hover:border-blue-500 hover:shadow transition"
@@ -140,10 +137,9 @@
           >
             <h3 class="font-semibold text-blue-700 text-base mb-2">Calcular a depreciação do meu veículo</h3>
             <p class="text-sm text-gray-600">
-              Abre diretamente o módulo de depreciação para auditar a curva do veículo.
+              Abre o módulo de depreciação para validar a curva do veículo.
             </p>
           </button>
-
         </div>
 
         <p id="descricao_tipo_comparacao" class="text-xs text-gray-500 mt-4">
@@ -154,7 +150,7 @@
       <!-- =========================================================
         3.2) LOCALIZAÇÃO
       ========================================================= -->
-      <section id="secao_localizacao" class="border rounded-lg p-4 hidden">
+      <section id="secao_localizacao" class="border rounded-lg p-4 plugve-progress-hidden">
         <h2 class="font-semibold text-lg mb-3 text-gray-800">Localização</h2>
         <p class="text-xs text-gray-500 mb-3">
           Informe o estado e o município onde o veículo será utilizado. Isso será usado para calcular IPVA, preço médio da gasolina e tarifa de energia.
@@ -220,11 +216,11 @@
                 <div>
                   <label class="block text-xs font-medium">Marca</label>
                   <select id="atual_marca" class="mt-1 p-2 border rounded w-full"></select>
-                  <p class="select-meta-note">✓ curva pronta | negrito = modelo com zero km identificado.</p>
                 </div>
                 <div>
                   <label class="block text-xs font-medium">Modelo</label>
                   <select id="atual_modelo" class="mt-1 p-2 border rounded w-full"></select>
+                  <p class="plugve-select-note">✓ = curva pronta; negrito = modelo zero km; vermelho = pendente/novo.</p>
                 </div>
                 <div>
                   <label class="block text-xs font-medium">Ano/Combustível</label>
@@ -233,7 +229,7 @@
               </div>
             </div>
 
-            <div id="dados_carro_atual_box" class="border rounded-lg p-4 vehicle-detail-box flow-hidden">
+            <div id="dados_carro_atual_box" class="border rounded-lg p-4 plugve-progress-hidden">
               <h3 class="font-semibold text-base mb-3 text-gray-700">Dados do carro atual</h3>
 
               <div class="space-y-2">
@@ -301,11 +297,11 @@
                 <div>
                   <label class="block text-xs font-medium">Marca</label>
                   <select id="ve_marca" class="mt-1 p-2 border rounded w-full"></select>
-                  <p class="select-meta-note">✓ curva pronta | negrito = modelo com zero km identificado.</p>
                 </div>
                 <div>
                   <label class="block text-xs font-medium">Modelo</label>
                   <select id="ve_modelo" class="mt-1 p-2 border rounded w-full"></select>
+                  <p class="plugve-select-note">✓ = curva pronta; negrito = modelo zero km; vermelho = pendente/novo.</p>
                 </div>
                 <div>
                   <label class="block text-xs font-medium">Ano/Combustível</label>
@@ -317,7 +313,7 @@
               </div>
             </div>
 
-            <div id="dados_ve_box" class="space-y-2 vehicle-detail-box flow-hidden">
+            <div id="dados_ve_box" class="space-y-2 plugve-progress-hidden">
               <div>
                 <label class="block text-sm font-medium">Modelo do VE</label>
                 <input type="text" name="modelo_ve" id="modelo_ve" class="mt-1 p-2 border rounded w-full" placeholder="Ex: BYD Dolphin Plus">
@@ -380,11 +376,11 @@
                 <div>
                   <label class="block text-xs font-medium">Marca</label>
                   <select id="icev_marca" class="mt-1 p-2 border rounded w-full"></select>
-                  <p class="select-meta-note">✓ curva pronta | negrito = modelo com zero km identificado.</p>
                 </div>
                 <div>
                   <label class="block text-xs font-medium">Modelo</label>
                   <select id="icev_modelo" class="mt-1 p-2 border rounded w-full"></select>
+                  <p class="plugve-select-note">✓ = curva pronta; negrito = modelo zero km; vermelho = pendente/novo.</p>
                 </div>
                 <div>
                   <label class="block text-xs font-medium">Ano/Combustível</label>
@@ -396,7 +392,7 @@
               </div>
             </div>
 
-            <div id="dados_icev_box" class="space-y-2 vehicle-detail-box flow-hidden">
+            <div id="dados_icev_box" class="space-y-2 plugve-progress-hidden">
               <div>
                 <label class="block text-sm font-medium">Modelo do ICEV</label>
                 <input type="text" name="modelo_icev" id="modelo_icev" class="mt-1 p-2 border rounded w-full" placeholder="Ex: Corolla 2.0 Flex">
@@ -446,7 +442,7 @@
         <!-- =========================================================
           3.3.3) ENERGIA / COMBUSTÍVEL / USO
         ========================================================= -->
-        <section id="bloco_parametros_uso" class="border rounded-lg p-4 usage-block flow-hidden">
+        <section id="bloco_parametros_uso" class="border rounded-lg p-4 plugve-progress-hidden">
           <h2 class="font-semibold text-lg mb-3 text-gray-800">Energia, Combustível e Uso</h2>
 
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -520,7 +516,7 @@
         </section>
 
         <div class="mt-4">
-          <button id="btn_simular" type="submit" class="w-full bg-blue-600 text-white p-3 rounded hover:bg-blue-700">
+          <button id="btn_simular" type="submit" class="w-full bg-blue-600 text-white p-3 rounded hover:bg-blue-700 plugve-progress-hidden">
             Simular
           </button>
         </div>
@@ -618,17 +614,36 @@
     // =========================================================
     // 6.1) FUNÇÕES AUXILIARES
     // =========================================================
-    function limparValorMonetario(valorBruto) {
-      if (!valorBruto) return "";
-      let s = String(valorBruto);
-      s = s.replace("R$", "").trim();
-      s = s.replace(/\./g, "").replace(",", ".");
-      return s;
+    function numeroBRParaFloat(valor) {
+      if (valor === null || valor === undefined) return 0;
+      let txt = String(valor).replace(/R\$/g, "").replace(/%/g, "").trim();
+      if (!txt) return 0;
+      txt = txt.replace(/\s/g, "");
+      const temVirgula = txt.includes(",");
+      const temPonto = txt.includes(".");
+      if (temVirgula && temPonto) {
+        if (txt.lastIndexOf(",") > txt.lastIndexOf(".")) txt = txt.replace(/\./g, "").replace(",", ".");
+        else txt = txt.replace(/,/g, "");
+      } else if (temVirgula) {
+        txt = txt.replace(/\./g, "").replace(",", ".");
+      } else if (temPonto) {
+        const partes = txt.split(".");
+        if (partes.length > 2) txt = txt.replace(/\./g, "");
+        else if (partes[1] && partes[1].length === 3 && partes[0].length <= 3) txt = txt.replace(/\./g, "");
+      }
+      const n = Number(txt);
+      return Number.isFinite(n) ? n : 0;
     }
 
     function formatarMoedaBR(valor) {
-      if (valor == null || isNaN(valor)) return "";
-      return valor.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const n = Number(valor);
+      if (valor == null || isNaN(n)) return "";
+      return n.toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function limparValorMonetario(valorBruto) {
+      const n = numeroBRParaFloat(valorBruto);
+      return n ? formatarMoedaBR(n) : "";
     }
 
     function formatarNumero5(valor) {
@@ -659,14 +674,6 @@
     // O campo continua editável porque a cotação real depende de perfil, CEP, cobertura, franquia e seguradora.
     const PERCENTUAL_SEGURO_PADRAO = 0.047;
 
-    function numeroBRParaFloat(valor) {
-      if (valor === null || valor === undefined) return 0;
-      const txt = String(valor).replace("R$", "").trim();
-      if (!txt) return 0;
-      const normalizado = txt.replace(/\./g, "").replace(",", ".");
-      const n = Number(normalizado);
-      return Number.isFinite(n) ? n : 0;
-    }
 
     function classificarTipoVeiculoTCO(modelo, combustivel, codigoAno) {
       const texto = `${modelo || ""} ${combustivel || ""} ${codigoAno || ""}`.toLowerCase();
@@ -762,7 +769,7 @@
       const el = document.getElementById(id);
       if (!el) return;
       if (mostrar) {
-        el.classList.remove("hidden");
+        el.classList.remove("hidden", "plugve-detail-hidden", "plugve-collapse");
       } else {
         el.classList.add("hidden");
       }
@@ -775,112 +782,6 @@
       });
     }
 
-    const catalogoCurvasTCO = { modelosComCurva: new Set() };
-    let cenarioConfirmadoFluxo = false;
-
-    function normalizarTextoSimular(valor) {
-      return String(valor || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
-    }
-
-    function modeloTemCurvaSimular(nome) {
-      const chave = normalizarTextoSimular(nome);
-      return !!(chave && catalogoCurvasTCO.modelosComCurva.has(chave));
-    }
-
-    async function carregarIndicadoresCatalogoSimular() {
-      try {
-        const resp = await fetch('/api/depreciacao/painel');
-        const data = await resp.json();
-        const itens = [...(data.curvas_combustao || []), ...(data.curvas_eletrico || [])];
-        catalogoCurvasTCO.modelosComCurva = new Set(itens.flatMap(item => [item.titulo, item.modelo]).map(item => normalizarTextoSimular(item || '')).filter(Boolean));
-      } catch (e) {
-        console.warn('Não foi possível carregar indicadores do catálogo para os selects FIPE.', e);
-      }
-    }
-
-    function aplicarMarcacaoMarcaOption(opt, marca) {
-      const varrida = !!marca?.marca_varrida;
-      const nome = String(marca?.nome || '');
-      opt.textContent = varrida ? `✓ ${nome}` : `• ${nome}`;
-      opt.style.fontWeight = varrida ? '700' : '400';
-      opt.dataset.marcaVarrida = varrida ? '1' : '0';
-    }
-
-    function aplicarMarcacaoModeloOption(opt, mod) {
-      const nome = String(mod?.nome || '');
-      const temCurva = modeloTemCurvaSimular(nome);
-      const temZeroKm = !!mod?.tem_zero_km;
-      opt.textContent = `${temCurva ? '✓ ' : ''}${nome}`;
-      opt.style.fontWeight = temZeroKm ? '800' : '400';
-      opt.dataset.temZeroKm = temZeroKm ? '1' : '0';
-      opt.dataset.temCurva = temCurva ? '1' : '0';
-      opt.dataset.nome = nome;
-    }
-
-    function prefixosObrigatoriosPorCenario() {
-      const tipo = document.getElementById('tipo_comparacao')?.value || 'dois_carros_novos';
-      if (tipo === 'trocar_por_eletrico') return ['atual', 've'];
-      if (tipo === 'trocar_e_comparar_opcoes') return ['atual', 've', 'icev'];
-      return ['ve', 'icev'];
-    }
-
-    function prefixoSelecionado(prefixo) {
-      return !!(document.getElementById(`${prefixo}_ano`)?.value);
-    }
-
-    function atualizarResumoFluxo() {
-      const box = document.getElementById('resumo_fluxo');
-      const chips = document.getElementById('resumo_fluxo_chips');
-      if (!box || !chips) return;
-      const tipo = document.getElementById('tipo_comparacao')?.value || '';
-      const nomes = {
-        dois_carros_novos: 'Comparar dois carros',
-        trocar_por_eletrico: 'Trocar meu carro atual por um elétrico',
-        trocar_e_comparar_opcoes: 'Trocar meu carro atual e comparar opções'
-      };
-      const uf = document.getElementById('estado_uf')?.value || '';
-      const municipio = document.getElementById('municipio_select')?.value || '';
-      const itens = [];
-      if (cenarioConfirmadoFluxo && nomes[tipo]) itens.push(`<span class="flow-summary-chip">Cenário: ${nomes[tipo]}</span>`);
-      if (uf && municipio) itens.push(`<span class="flow-summary-chip">Localização: ${municipio}/${uf}</span>`);
-      prefixosObrigatoriosPorCenario().forEach(prefixo => {
-        const nome = document.getElementById(`modelo_${prefixo === 'atual' ? 'atual' : prefixo}`)?.value || '';
-        if (nome) itens.push(`<span class="flow-summary-chip">${prefixo === 'atual' ? 'Atual' : prefixo.toUpperCase()}: ${nome}</span>`);
-      });
-      chips.innerHTML = itens.join('');
-      box.classList.toggle('hidden', itens.length === 0);
-    }
-
-    function revelarBlocosDetalhesConformeFluxo() {
-      const obrigatorios = prefixosObrigatoriosPorCenario();
-      const todosSelecionados = obrigatorios.every(prefixoSelecionado);
-      mostrarElemento('dados_ve_box', todosSelecionados && obrigatorios.includes('ve'));
-      mostrarElemento('dados_icev_box', todosSelecionados && obrigatorios.includes('icev'));
-      mostrarElemento('dados_carro_atual_box', todosSelecionados && obrigatorios.includes('atual'));
-      mostrarElemento('bloco_parametros_uso', todosSelecionados);
-      atualizarResumoFluxo();
-    }
-
-    function aplicarFormatacaoCamposBR() {
-      const monetarios = ['preco_atual','manut_atual','seguro_atual','ipva_atual_input','preco_ve','manut_ve','seguro_ve','ipva_ve_input','preco_icev','manut_icev','seguro_icev','ipva_icev_input','energia_input'];
-      monetarios.forEach(id => {
-        const el = document.getElementById(id) || document.querySelector(`input[name='${id.replace('_input','')}']`);
-        if (!el) return;
-        el.addEventListener('blur', function(){
-          const v = numeroBRParaFloat(this.value);
-          if (v) this.value = formatarMoedaBR(v);
-        });
-      });
-      ['consumo_atual','consumo_ve','consumo_icev','depreciacao_atual','depreciacao_ve','depreciacao_icev','aumento_energia_input','aumento_combustivel_input'].forEach(id => {
-        const el = document.getElementById(id);
-        if (!el) return;
-        el.addEventListener('blur', function(){
-          const v = numeroBRParaFloat(this.value);
-          if (Number.isFinite(v) && this.value !== '') this.value = v.toFixed(2).replace('.', ',');
-        });
-      });
-    }
-
     // =========================================================
     // 6.2) CONTROLE DE CENÁRIO
     // =========================================================
@@ -888,11 +789,13 @@
       const tipo = document.getElementById("tipo_comparacao").value;
       document.querySelectorAll(".card-cenario").forEach(card => {
         const ativo = card.dataset.cenario === tipo;
-        card.classList.toggle('card-cenario-selected', ativo);
-        card.classList.toggle("border-blue-600", ativo);
-        card.classList.toggle("bg-blue-100", ativo);
-        card.classList.toggle("shadow-md", ativo);
-        card.classList.toggle("border-gray-200", !ativo);
+        if (ativo) {
+          card.classList.add("border-blue-600", "bg-blue-100", "shadow-md");
+          card.classList.remove("border-gray-200");
+        } else {
+          card.classList.remove("border-blue-600", "bg-blue-100", "shadow-md");
+          card.classList.add("border-gray-200");
+        }
       });
     }
 
@@ -933,8 +836,6 @@
         setRequired(["modelo_icev", "preco_icev", "consumo_icev"], true);
       }
 
-      mostrarElemento('secao_localizacao', cenarioConfirmadoFluxo);
-      revelarBlocosDetalhesConformeFluxo();
       atualizarCardsCenario();
       atualizarLiberacaoAreaSimulacao();
     }
@@ -942,31 +843,19 @@
     function atualizarLiberacaoAreaSimulacao() {
       const liberado = localizacaoValida();
       const status = document.getElementById("status_liberacao");
+
       mostrarElemento("area_simulacao", liberado);
-      const secaoLocal = document.getElementById('secao_localizacao');
-      if (secaoLocal) secaoLocal.classList.toggle('hidden', !cenarioConfirmadoFluxo || liberado);
+
       if (liberado) {
-        status.textContent = "Localização preenchida. Os campos FIPE foram liberados. Os demais dados aparecerão depois que os veículos forem selecionados.";
+        status.textContent = "Localização preenchida. Os campos da simulação foram liberados.";
       } else {
         status.textContent = "Preencha UF e município para liberar os campos da simulação.";
       }
-      revelarBlocosDetalhesConformeFluxo();
-      atualizarResumoFluxo();
     }
 
     function selecionarCenario(tipo) {
-      if (tipo === 'apenas_depreciacao') {
-        window.location.href = '/depreciacao';
-        return;
-      }
-      cenarioConfirmadoFluxo = true;
       document.getElementById("tipo_comparacao").value = tipo;
-      const secaoTipo = document.getElementById('secao_tipo_comparacao');
-      if (secaoTipo) secaoTipo.classList.add('hidden');
-      const secaoLocal = document.getElementById('secao_localizacao');
-      if (secaoLocal) secaoLocal.classList.remove('hidden');
       atualizarInterfacePorCenario();
-      atualizarResumoFluxo();
     }
 
     // =========================================================
@@ -1082,7 +971,7 @@
         marcas.forEach(m => {
           const opt = document.createElement("option");
           opt.value = m.codigo;
-          aplicarMarcacaoMarcaOption(opt, m);
+          opt.textContent = m.nome;
           select.appendChild(opt);
         });
       } catch (e) {
@@ -1115,7 +1004,7 @@
         (data.modelos || []).forEach(mod => {
           const opt = document.createElement("option");
           opt.value = mod.codigo;
-          aplicarMarcacaoModeloOption(opt, mod);
+          opt.textContent = mod.nome;
           selectModelo.appendChild(opt);
         });
       } catch (e) {
@@ -1230,8 +1119,7 @@
         const resp = await fetch(`/fipe/preco?codigo_marca=${marca}&codigo_modelo=${modelo}&codigo_ano=${ano}`);
         const data = await resp.json();
 
-        const valorNumerico = numeroBRParaFloat(data.Valor);
-        const valor = formatarMoedaBR(valorNumerico);
+        const valor = limparValorMonetario(data.Valor);
         const nomeModelo = data.Modelo || modeloSelect.options[modeloSelect.selectedIndex].text;
         const textoAnoOriginal = anoSelect.options[anoSelect.selectedIndex].text;
         const anoModeloStr = anoModeloParaCalculo(ano, data.AnoModelo || data.Ano || "");
@@ -1267,8 +1155,6 @@
 
         const detalheDepreciacao = montarDetalheDepreciacaoTCO(prefixo, data, marcaSelect, modeloSelect, anoSelect, valor, nomeModelo, anoModeloStr, combustivelStr);
         await consultarDepreciacaoTCO(prefixo, detalheDepreciacao);
-        revelarBlocosDetalhesConformeFluxo();
-        atualizarResumoFluxo();
       } catch (e) {
         console.error("Erro ao buscar preço FIPE:", e);
         alert("Erro ao consultar FIPE.");
@@ -1317,7 +1203,7 @@
         ano_modelo: anoModeloStr || "",
         combustivel: combustivelStr || "",
         codigo_fipe: data.CodigoFipe || "",
-        valor_atual: Number(valor || 0),
+        valor_atual: numeroBRParaFloat(valor || data.Valor || 0),
         valor_texto: data.Valor || ""
       };
     }
@@ -1616,16 +1502,14 @@
       });
 
       // cenário inicial
-      carregarIndicadoresCatalogoSimular().then(() => {
-        carregarMarcas("ve_marca");
-        carregarMarcas("icev_marca");
-        carregarMarcas("atual_marca");
-      });
       atualizarCardsCenario();
       atualizarInterfacePorCenario();
-      aplicarFormatacaoCamposBR();
 
       // fipe
+      carregarMarcas("ve_marca");
+      carregarMarcas("icev_marca");
+      carregarMarcas("atual_marca");
+
       document.getElementById("ve_marca")?.addEventListener("change", function () {
         carregarModelos("ve_marca", "ve_modelo", "ve_ano");
       });
@@ -1731,8 +1615,289 @@
       renderEnergiaBreakdown(0, null);
       setBreakdownDisabled(true);
       atualizarLiberacaoAreaSimulacao();
-      atualizarResumoFluxo();
     });
+  </script>
+
+
+  <script>
+    (function () {
+      let cenarioConfirmadoPlugVE = false;
+      let detalhesLiberadosPlugVE = false;
+      const catalogoCurvasPlugVE = { modelos: new Set() };
+
+      function normPlugVE(valor) {
+        return String(valor || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+      }
+
+      const catalogoPromisePlugVE = fetch("/api/depreciacao/painel")
+        .then(resp => resp.json())
+        .then(data => {
+          const itens = [...(data.curvas_combustao || []), ...(data.curvas_eletrico || [])];
+          catalogoCurvasPlugVE.modelos = new Set(itens.flatMap(item => [item.titulo, item.modelo]).map(normPlugVE).filter(Boolean));
+        })
+        .catch(() => {});
+
+      function modeloTemCurvaPlugVE(nomeModelo) {
+        const n = normPlugVE(nomeModelo);
+        if (!n) return false;
+        if (catalogoCurvasPlugVE.modelos.has(n)) return true;
+        for (const curva of catalogoCurvasPlugVE.modelos) {
+          if (curva && (curva.includes(n) || n.includes(curva))) return true;
+        }
+        return false;
+      }
+
+      function setHiddenPlugVE(id, esconder) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.classList.toggle("hidden", !!esconder);
+        el.classList.toggle("plugve-progress-hidden", !!esconder);
+      }
+
+      function tipoAtualPlugVE() {
+        return document.getElementById("tipo_comparacao")?.value || "dois_carros_novos";
+      }
+
+      function nomeCenarioPlugVE(tipo) {
+        return {
+          dois_carros_novos: "Comparar dois carros",
+          trocar_por_eletrico: "Trocar meu carro atual por um elétrico",
+          trocar_e_comparar_opcoes: "Trocar meu carro atual e comparar opções"
+        }[tipo] || "Comparação";
+      }
+
+      function prefixosObrigatoriosPlugVE() {
+        const tipo = tipoAtualPlugVE();
+        if (tipo === "trocar_por_eletrico") return ["atual", "ve"];
+        if (tipo === "trocar_e_comparar_opcoes") return ["atual", "ve", "icev"];
+        return ["ve", "icev"];
+      }
+
+      function prefixoSelecionadoPlugVE(prefixo) {
+        return !!document.getElementById(`${prefixo}_ano`)?.value;
+      }
+
+      function todosVeiculosSelecionadosPlugVE() {
+        return prefixosObrigatoriosPlugVE().every(prefixoSelecionadoPlugVE);
+      }
+
+      function campoModeloPorPrefixoPlugVE(prefixo) {
+        if (prefixo === "atual") return "modelo_atual";
+        if (prefixo === "icev") return "modelo_icev";
+        return "modelo_ve";
+      }
+
+      function atualizarResumoTopoPlugVE() {
+        const box = document.getElementById("plugve_fluxo_resumo");
+        if (!box) return;
+        const partes = [];
+        if (cenarioConfirmadoPlugVE) partes.push(`<span><strong>Comparação:</strong> ${nomeCenarioPlugVE(tipoAtualPlugVE())}</span>`);
+        const uf = document.getElementById("estado_uf")?.value || "";
+        const mun = document.getElementById("municipio_select")?.value || "";
+        if (uf && mun) partes.push(`<span><strong>Localização:</strong> ${mun}/${uf}</span>`);
+        prefixosObrigatoriosPlugVE().forEach(prefixo => {
+          const val = document.getElementById(campoModeloPorPrefixoPlugVE(prefixo))?.value || "";
+          if (val) partes.push(`<span><strong>${prefixo === "atual" ? "Atual" : prefixo.toUpperCase()}:</strong> ${val}</span>`);
+        });
+        box.innerHTML = partes.join("");
+        box.style.display = partes.length ? "block" : "none";
+      }
+
+      function atualizarRequiredPlugVE() {
+        const ids = [
+          "modelo_atual", "preco_atual", "consumo_atual", "manut_atual", "seguro_atual", "depreciacao_atual",
+          "modelo_ve", "preco_ve", "consumo_ve", "manut_ve", "seguro_ve", "depreciacao_ve",
+          "modelo_icev", "preco_icev", "consumo_icev", "manut_icev", "seguro_icev", "depreciacao_icev"
+        ];
+        ids.forEach(id => { const el = document.getElementById(id); if (el) el.required = false; });
+        if (!detalhesLiberadosPlugVE) return;
+        const usar = prefixosObrigatoriosPlugVE();
+        if (usar.includes("atual")) ["modelo_atual", "preco_atual", "consumo_atual"].forEach(id => { const e = document.getElementById(id); if (e) e.required = true; });
+        if (usar.includes("ve")) ["modelo_ve", "preco_ve", "consumo_ve"].forEach(id => { const e = document.getElementById(id); if (e) e.required = true; });
+        if (usar.includes("icev")) ["modelo_icev", "preco_icev", "consumo_icev"].forEach(id => { const e = document.getElementById(id); if (e) e.required = true; });
+      }
+
+      function atualizarDetalhesProgressivosPlugVE() {
+        const localOk = typeof localizacaoValida === "function" ? localizacaoValida() : false;
+        detalhesLiberadosPlugVE = localOk && todosVeiculosSelecionadosPlugVE();
+        const usar = prefixosObrigatoriosPlugVE();
+        setHiddenPlugVE("dados_carro_atual_box", !(detalhesLiberadosPlugVE && usar.includes("atual")));
+        setHiddenPlugVE("dados_ve_box", !(detalhesLiberadosPlugVE && usar.includes("ve")));
+        setHiddenPlugVE("dados_icev_box", !(detalhesLiberadosPlugVE && usar.includes("icev")));
+        setHiddenPlugVE("bloco_parametros_uso", !detalhesLiberadosPlugVE);
+        setHiddenPlugVE("btn_simular", !detalhesLiberadosPlugVE);
+        atualizarRequiredPlugVE();
+        atualizarResumoTopoPlugVE();
+      }
+
+      window.atualizarCardsCenario = function () {
+        const tipo = tipoAtualPlugVE();
+        document.querySelectorAll(".card-cenario").forEach(card => {
+          const ativo = card.dataset.cenario === tipo;
+          card.classList.toggle("plugve-card-selected", ativo);
+          card.classList.toggle("border-blue-600", ativo);
+          card.classList.toggle("bg-blue-100", ativo);
+          card.classList.toggle("shadow-md", ativo);
+          card.classList.toggle("border-gray-200", !ativo);
+        });
+      };
+
+      window.atualizarInterfacePorCenario = function () {
+        const tipo = tipoAtualPlugVE();
+        const tituloIcev = document.getElementById("titulo_icev");
+        const descricao = document.getElementById("descricao_tipo_comparacao");
+        if (tipo === "dois_carros_novos") {
+          setHiddenPlugVE("bloco_carro_atual", true);
+          setHiddenPlugVE("coluna_icev", false);
+          if (tituloIcev) tituloIcev.textContent = "Veículo a Combustão (ICEV)";
+          if (descricao) descricao.textContent = "Você está comparando diretamente dois carros: um elétrico e um a combustão.";
+        } else if (tipo === "trocar_por_eletrico") {
+          setHiddenPlugVE("bloco_carro_atual", false);
+          setHiddenPlugVE("coluna_icev", true);
+          if (descricao) descricao.textContent = "Você vai comparar seu carro atual com um carro elétrico.";
+        } else if (tipo === "trocar_e_comparar_opcoes") {
+          setHiddenPlugVE("bloco_carro_atual", false);
+          setHiddenPlugVE("coluna_icev", false);
+          if (tituloIcev) tituloIcev.textContent = "Outra opção a combustão";
+          if (descricao) descricao.textContent = "Você vai comparar seu carro atual com duas opções futuras: um elétrico e outro carro a combustão.";
+        }
+        window.atualizarCardsCenario();
+        if (typeof window.atualizarLiberacaoAreaSimulacao === "function") window.atualizarLiberacaoAreaSimulacao();
+      };
+
+      window.atualizarLiberacaoAreaSimulacao = function () {
+        const liberado = typeof localizacaoValida === "function" ? localizacaoValida() : false;
+        const status = document.getElementById("status_liberacao");
+        setHiddenPlugVE("secao_localizacao", !cenarioConfirmadoPlugVE || liberado);
+        setHiddenPlugVE("area_simulacao", !liberado);
+        if (status) {
+          status.textContent = liberado
+            ? "Localização preenchida. Selecione os veículos FIPE; os campos complementares aparecem depois."
+            : "Preencha UF e município para liberar a seleção FIPE.";
+        }
+        atualizarDetalhesProgressivosPlugVE();
+      };
+
+      window.selecionarCenario = function (tipo) {
+        if (tipo === "apenas_depreciacao") {
+          window.location.href = "/depreciacao";
+          return;
+        }
+        cenarioConfirmadoPlugVE = true;
+        const campo = document.getElementById("tipo_comparacao");
+        if (campo) campo.value = tipo;
+        setHiddenPlugVE("secao_tipo_comparacao", true);
+        setHiddenPlugVE("secao_localizacao", false);
+        window.atualizarInterfacePorCenario();
+        atualizarResumoTopoPlugVE();
+      };
+
+      window.carregarMarcas = async function (selectId) {
+        const select = document.getElementById(selectId);
+        if (!select) return;
+        select.innerHTML = "<option value=''>Carregando...</option>";
+        try {
+          const resp = await fetch("/fipe/marcas");
+          const marcas = await resp.json();
+          select.innerHTML = "<option value=''>Selecione</option>";
+          (marcas || []).forEach(m => {
+            const opt = document.createElement("option");
+            opt.value = m.codigo;
+            opt.textContent = m.nome;
+            if (m.marca_varrida === false) opt.style.color = "#b91c1c";
+            select.appendChild(opt);
+          });
+        } catch (e) {
+          select.innerHTML = "<option value=''>Erro ao carregar</option>";
+        }
+      };
+
+      window.carregarModelos = async function (selectMarcaId, selectModeloId, selectAnoId) {
+        await catalogoPromisePlugVE;
+        const marcaEl = document.getElementById(selectMarcaId);
+        const selectModelo = document.getElementById(selectModeloId);
+        const selectAno = document.getElementById(selectAnoId);
+        if (!marcaEl || !selectModelo || !selectAno) return;
+        const marca = marcaEl.value;
+        selectModelo.innerHTML = "<option value=''>Carregando modelos...</option>";
+        selectModelo.disabled = true;
+        selectAno.innerHTML = "<option value=''>Selecione</option>";
+        if (!marca) {
+          selectModelo.innerHTML = "<option value=''>Selecione</option>";
+          selectModelo.disabled = false;
+          return;
+        }
+        try {
+          const resp = await fetch(`/fipe/modelos?codigo_marca=${marca}`);
+          const data = await resp.json();
+          selectModelo.innerHTML = "<option value=''>Selecione</option>";
+          (data.modelos || []).forEach(mod => {
+            const opt = document.createElement("option");
+            const nome = mod.nome || "";
+            opt.value = mod.codigo;
+            opt.textContent = `${modeloTemCurvaPlugVE(nome) ? "✓ " : ""}${nome}`;
+            opt.dataset.nome = nome;
+            if (mod.tem_zero_km) opt.style.fontWeight = "800";
+            if (mod.modelo_novo) opt.style.color = "#b91c1c";
+            selectModelo.appendChild(opt);
+          });
+        } catch (e) {
+          selectModelo.innerHTML = "<option value=''>Erro ao carregar modelos</option>";
+        } finally {
+          selectModelo.disabled = false;
+        }
+      };
+
+      const preencherOriginalPlugVE = window.preencherPorFipe;
+      window.preencherPorFipe = async function (prefixo) {
+        if (typeof preencherOriginalPlugVE === "function") await preencherOriginalPlugVE(prefixo);
+        const mapPreco = { atual: "preco_atual", ve: "preco_ve", icev: "preco_icev" };
+        const mapIpva = { atual: "ipva_atual_input", ve: "ipva_ve_input", icev: "ipva_icev_input" };
+        const mapSeguro = { atual: "seguro_atual", ve: "seguro_ve", icev: "seguro_icev" };
+        [mapPreco[prefixo], mapIpva[prefixo], mapSeguro[prefixo]].forEach(id => {
+          const el = document.getElementById(id);
+          if (!el || !el.value) return;
+          const n = numeroBRParaFloat(el.value);
+          if (n > 0) el.value = formatarMoedaBR(n);
+        });
+        atualizarDetalhesProgressivosPlugVE();
+      };
+
+      function aplicarFormatacaoBlurPlugVE() {
+        ["preco_atual", "manut_atual", "ipva_atual_input", "seguro_atual", "preco_ve", "manut_ve", "ipva_ve_input", "seguro_ve", "preco_icev", "manut_icev", "ipva_icev_input", "seguro_icev"].forEach(id => {
+          const el = document.getElementById(id);
+          if (!el) return;
+          el.addEventListener("blur", function () {
+            const n = numeroBRParaFloat(this.value);
+            if (n > 0) this.value = formatarMoedaBR(n);
+          });
+        });
+        ["consumo_atual", "consumo_ve", "consumo_icev", "depreciacao_atual", "depreciacao_ve", "depreciacao_icev", "aumento_energia_input", "aumento_combustivel_input"].forEach(id => {
+          const el = document.getElementById(id);
+          if (!el) return;
+          el.addEventListener("blur", function () {
+            const n = numeroBRParaFloat(this.value);
+            if (Number.isFinite(n) && String(this.value || "").trim()) this.value = n.toFixed(2).replace(".", ",");
+          });
+        });
+      }
+
+      document.addEventListener("DOMContentLoaded", function () {
+        aplicarFormatacaoBlurPlugVE();
+        setHiddenPlugVE("secao_localizacao", true);
+        setHiddenPlugVE("area_simulacao", true);
+        atualizarDetalhesProgressivosPlugVE();
+        document.querySelector("form")?.addEventListener("submit", function (ev) {
+          if (!detalhesLiberadosPlugVE) {
+            ev.preventDefault();
+            alert("Selecione os veículos pela FIPE antes de simular. Os campos complementares serão liberados em seguida.");
+          }
+        });
+        ["ve_ano", "icev_ano", "atual_ano", "estado_uf", "municipio_select"].forEach(id => {
+          document.getElementById(id)?.addEventListener("change", window.atualizarLiberacaoAreaSimulacao);
+        });
+      });
+    })();
   </script>
 
 </body>
