@@ -64,7 +64,7 @@
     </h1>
 
     <p class="mb-3 text-gray-700 text-sm">
-      Escolha primeiro o tipo de comparação. Depois informe sua localização. Só então os campos da simulação serão liberados.
+      
     </p>
     <div id="plugve_fluxo_resumo" class="plugve-flow-summary"></div>
 
@@ -89,7 +89,7 @@
       <section id="secao_tipo_comparacao" class="border rounded-lg p-4 bg-blue-50">
         <h2 class="font-semibold text-lg mb-3 text-blue-700">Escolha o tipo de comparação</h2>
         <p class="text-sm text-gray-600 mb-4">
-          Clique em uma opção abaixo para começar. Depois disso, informe sua localização para liberar o restante da simulação.
+          
         </p>
 
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -153,7 +153,7 @@
       <section id="secao_localizacao" class="border rounded-lg p-4 plugve-progress-hidden">
         <h2 class="font-semibold text-lg mb-3 text-gray-800">Localização</h2>
         <p class="text-xs text-gray-500 mb-3">
-          Informe o estado e o município onde o veículo será utilizado. Isso será usado para calcular IPVA, preço médio da gasolina e tarifa de energia.
+          
         </p>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
@@ -190,7 +190,7 @@
         </p>
 
         <p class="text-[11px] text-gray-400 mt-2">
-          O botão de localização usa o GPS do navegador e serviços públicos (IBGE / OpenStreetMap). Pode falhar se o navegador bloquear a permissão ou se o serviço estiver fora do ar.
+          
         </p>
       </section>
 
@@ -228,7 +228,7 @@
               </div>
             </div>
 
-            <div id="dados_carro_atual_box" class="border rounded-lg p-4 plugve-progress-hidden mt-3">
+            <div id="dados_carro_atual_box" class="border rounded-lg p-4 plugve-progress-hidden mt-5 bg-white shadow-sm">
               <h3 class="font-semibold text-base mb-3 text-gray-700">Dados complementares do carro atual</h3>
 
               <div class="space-y-2">
@@ -237,7 +237,7 @@
                 <input type="hidden" name="combustivel_atual" id="combustivel_atual">
 
                 <div>
-                  <label class="block text-sm font-medium">Preço atual do veículo (R$)</label>
+                  <label class="block text-sm font-medium">Preço do carro atual</label>
                   <input type="text" name="preco_atual" id="preco_atual" class="mt-1 p-2 border rounded w-full" placeholder="ex: 65000">
                 </div>
 
@@ -247,25 +247,25 @@
                 </div>
 
                 <div>
-                  <label class="block text-sm font-medium">Manutenção anual (R$)</label>
+                  <label class="block text-sm font-medium">Manutenção anual</label>
                   <input type="text" name="manut_atual" id="manut_atual" class="mt-1 p-2 border rounded w-full" placeholder="ex: 1800">
                 </div>
 
                 <div>
-                  <label class="block text-sm font-medium">IPVA atual (anual)</label>
+                  <label class="block text-sm font-medium">IPVA anual</label>
                   <input type="text" name="ipva_atual" id="ipva_atual_input" class="mt-1 p-2 border rounded w-full bg-gray-100" placeholder="Calculado automaticamente" readonly>
                 </div>
 
                 <div>
-                  <label class="block text-sm font-medium">Seguro atual (anual)</label>
+                  <label class="block text-sm font-medium">Seguro anual</label>
                   <input type="text" name="seguro_atual" id="seguro_atual" class="mt-1 p-2 border rounded w-full" placeholder="ex: 2800">
-                    <p id="seguro_status_atual" class="text-[11px] text-gray-500 mt-1">Seguro estimado automaticamente como 4,7% do valor do veículo; edite se tiver cotação real.</p>
+                    <p id="seguro_status_atual" class="text-[11px] text-gray-500 mt-1">Auto: 4,7% do valor.</p>
                 </div>
 
                 <div>
                   <label class="block text-sm font-medium">Depreciação atual (%)</label>
                   <input type="text" name="depreciacao_atual" id="depreciacao_atual" class="mt-1 p-2 border rounded w-full" placeholder="ex: 10">
-                  <div id="depreciacao_status_atual" class="mt-2 text-xs text-gray-500">Aguardando seleção FIPE para buscar depreciação.</div>
+                  <div id="depreciacao_status_atual" class="mt-2 text-xs text-gray-500">Selecione na FIPE.</div>
                   <button type="button" id="btn_depreciacao_atual" class="mt-2 px-3 py-2 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 hidden">
                     Calcular/validar depreciação
                   </button>
@@ -301,19 +301,18 @@
                   <label class="block text-xs font-medium">Ano/Combustível</label>
                   <select id="ve_ano" class="mt-1 p-2 border rounded w-full"></select>
                 </div>
-                <p class="text-[11px] text-gray-500">
-                  Assim que você escolher o ano/combustível, o preço e o IPVA do VE serão preenchidos automaticamente.
-                </p>
+                
               </div>
             </div>
 
-            <div id="dados_ve_box" class="space-y-2 plugve-progress-hidden border-t border-dashed border-gray-300 pt-4 mt-5">
+            <div id="dados_ve_box" class="space-y-2 plugve-progress-hidden mt-5 border rounded-lg p-4 bg-white shadow-sm">
+              <h3 class="font-semibold text-base mb-3 text-gray-700">Dados complementares do VE</h3>
               <input type="hidden" name="modelo_ve" id="modelo_ve">
               <input type="hidden" name="ano_modelo_ve" id="ano_modelo_ve">
               <input type="hidden" name="combustivel_ve" id="combustivel_ve">
 
               <div>
-                <label class="block text-sm font-medium">Preço do VE (R$)</label>
+                <label class="block text-sm font-medium">Preço do VE</label>
                 <input type="text" name="preco_ve" id="preco_ve" class="mt-1 p-2 border rounded w-full" placeholder="ex: 150000">
               </div>
 
@@ -323,12 +322,12 @@
               </div>
 
               <div>
-                <label class="block text-sm font-medium">Manutenção anual VE (R$)</label>
+                <label class="block text-sm font-medium">Manutenção anual VE</label>
                 <input type="text" name="manut_ve" id="manut_ve" class="mt-1 p-2 border rounded w-full" placeholder="ex: 800">
               </div>
 
               <div>
-                <label class="block text-sm font-medium">IPVA VE (anual)</label>
+                <label class="block text-sm font-medium">IPVA anual VE</label>
                 <input type="text" name="ipva_ve" id="ipva_ve_input" class="mt-1 p-2 border rounded w-full bg-gray-100" placeholder="Calculado automaticamente" readonly>
 
                 <label class="flex items-center mt-2 text-xs">
@@ -338,15 +337,15 @@
               </div>
 
               <div>
-                <label class="block text-sm font-medium">Seguro VE (anual)</label>
+                <label class="block text-sm font-medium">Seguro anual VE</label>
                 <input type="text" name="seguro_ve" id="seguro_ve" class="mt-1 p-2 border rounded w-full" placeholder="ex: 4000">
-                <p id="seguro_status_ve" class="text-[11px] text-gray-500 mt-1">Seguro estimado automaticamente como 4,7% do valor do veículo; edite se tiver cotação real.</p>
+                <p id="seguro_status_ve" class="text-[11px] text-gray-500 mt-1">Auto: 4,7% do valor.</p>
               </div>
 
               <div>
                 <label class="block text-sm font-medium">Depreciação VE (%)</label>
                 <input type="text" name="depreciacao_ve" id="depreciacao_ve" class="mt-1 p-2 border rounded w-full" placeholder="ex: 8">
-                <div id="depreciacao_status_ve" class="mt-2 text-xs text-gray-500">Aguardando seleção FIPE para buscar depreciação.</div>
+                <div id="depreciacao_status_ve" class="mt-2 text-xs text-gray-500">Selecione na FIPE.</div>
                 <button type="button" id="btn_depreciacao_ve" class="mt-2 px-3 py-2 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 hidden">
                   Calcular/validar depreciação
                 </button>
@@ -375,19 +374,18 @@
                   <label class="block text-xs font-medium">Ano/Combustível</label>
                   <select id="icev_ano" class="mt-1 p-2 border rounded w-full"></select>
                 </div>
-                <p class="text-[11px] text-gray-500">
-                  Ao escolher o ano/combustível, o preço e o IPVA do ICEV também serão preenchidos automaticamente.
-                </p>
+                
               </div>
             </div>
 
-            <div id="dados_icev_box" class="space-y-2 plugve-progress-hidden border-t border-dashed border-gray-300 pt-4 mt-5">
+            <div id="dados_icev_box" class="space-y-2 plugve-progress-hidden mt-5 border rounded-lg p-4 bg-white shadow-sm">
+              <h3 class="font-semibold text-base mb-3 text-gray-700">Dados complementares do ICEV</h3>
               <input type="hidden" name="modelo_icev" id="modelo_icev">
               <input type="hidden" name="ano_modelo_icev" id="ano_modelo_icev">
               <input type="hidden" name="combustivel_icev" id="combustivel_icev">
 
               <div>
-                <label class="block text-sm font-medium">Preço do ICEV (R$)</label>
+                <label class="block text-sm font-medium">Preço do ICEV</label>
                 <input type="text" name="preco_icev" id="preco_icev" class="mt-1 p-2 border rounded w-full" placeholder="ex: 85000">
               </div>
 
@@ -397,25 +395,25 @@
               </div>
 
               <div>
-                <label class="block text-sm font-medium">Manutenção anual ICEV (R$)</label>
+                <label class="block text-sm font-medium">Manutenção anual ICEV</label>
                 <input type="text" name="manut_icev" id="manut_icev" class="mt-1 p-2 border rounded w-full" placeholder="ex: 1200">
               </div>
 
               <div>
-                <label class="block text-sm font-medium">IPVA ICEV (anual)</label>
+                <label class="block text-sm font-medium">IPVA anual ICEV</label>
                 <input type="text" name="ipva_icev" id="ipva_icev_input" class="mt-1 p-2 border rounded w-full bg-gray-100" placeholder="Calculado automaticamente" readonly>
               </div>
 
               <div>
-                <label class="block text-sm font-medium">Seguro ICEV (anual)</label>
+                <label class="block text-sm font-medium">Seguro anual ICEV</label>
                 <input type="text" name="seguro_icev" id="seguro_icev" class="mt-1 p-2 border rounded w-full" placeholder="ex: 3000">
-                <p id="seguro_status_icev" class="text-[11px] text-gray-500 mt-1">Seguro estimado automaticamente como 4,7% do valor do veículo; edite se tiver cotação real.</p>
+                <p id="seguro_status_icev" class="text-[11px] text-gray-500 mt-1">Auto: 4,7% do valor.</p>
               </div>
 
               <div>
                 <label class="block text-sm font-medium">Depreciação ICEV (%)</label>
                 <input type="text" name="depreciacao_icev" id="depreciacao_icev" class="mt-1 p-2 border rounded w-full" placeholder="ex: 10">
-                <div id="depreciacao_status_icev" class="mt-2 text-xs text-gray-500">Aguardando seleção FIPE para buscar depreciação.</div>
+                <div id="depreciacao_status_icev" class="mt-2 text-xs text-gray-500">Selecione na FIPE.</div>
                 <button type="button" id="btn_depreciacao_icev" class="mt-2 px-3 py-2 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 hidden">
                   Calcular/validar depreciação
                 </button>
@@ -832,7 +830,7 @@
       mostrarElemento("area_simulacao", liberado);
 
       if (liberado) {
-        status.textContent = "Localização preenchida. Os campos da simulação foram liberados.";
+        status.textContent = "";
       } else {
         status.textContent = "Preencha UF e município para liberar os campos da simulação.";
       }
@@ -1217,12 +1215,18 @@
       }
     }
 
-    function preencherTaxaDepreciacaoTCO(prefixo, taxa, origem) {
+    function preencherTaxaDepreciacaoTCO(prefixo, depreciacaoHorizonte, taxaAnual, origem) {
       const campo = campoDepreciacaoPorPrefixo(prefixo);
-      if (!campo || taxa == null || isNaN(Number(taxa))) return;
-      campo.value = Number(taxa).toFixed(2).replace(".", ",");
+      if (!campo) return;
+      const dep = Number(depreciacaoHorizonte);
+      const taxa = Number(taxaAnual);
+      if (isNaN(dep) && isNaN(taxa)) return;
+      const valorCampo = !isNaN(dep) ? dep : taxa;
+      campo.value = Number(valorCampo).toFixed(2).replace(".", ",");
       campo.dataset.depreciacaoValidada = "1";
       campo.dataset.origemDepreciacao = origem || "módulo de depreciação";
+      campo.dataset.depreciacaoHorizonte = !isNaN(dep) ? String(dep) : "";
+      campo.dataset.taxaAnualEquivalente = !isNaN(taxa) ? String(taxa) : "";
     }
 
     async function consultarDepreciacaoTCO(prefixo, detalhe) {
@@ -1238,11 +1242,13 @@
         });
         const data = await resp.json();
 
-        if (data && data.encontrado && Number(data.taxa_anual_percentual) > 0) {
-          preencherTaxaDepreciacaoTCO(prefixo, data.taxa_anual_percentual, data.origem_curva || "curva salva");
+        if (data && data.encontrado && Number(data.valor_futuro || 0) > 0) {
+          const depHorizonte = Number(data.depreciacao_percentual || 0);
+          const taxaAnual = Number(data.taxa_anual_percentual || 0);
+          preencherTaxaDepreciacaoTCO(prefixo, depHorizonte, taxaAnual, data.origem_curva || "curva salva");
           escreverStatusDepreciacaoTCO(
             prefixo,
-            `✓ Depreciação pronta: ${Number(data.taxa_anual_percentual).toFixed(2).replace(".", ",")}% a.a. (${data.confianca || "sem classificação"}).`,
+            `✓ Depreciação pronta: ${depHorizonte.toFixed(2).replace(".", ",")}% no horizonte.`,
             "text-green-700 font-semibold"
           );
           configurarBotaoDepreciacaoTCO(prefixo, true, detalhe, "relatorio");
@@ -1255,11 +1261,11 @@
           campo.dataset.depreciacaoValidada = "0";
           campo.dataset.origemDepreciacao = "";
         }
-        escreverStatusDepreciacaoTCO(prefixo, "Curva salva não encontrada no Render. Processe no painel local e envie a curva pronta.", "text-yellow-700 font-semibold");
+        escreverStatusDepreciacaoTCO(prefixo, "Sem curva pronta no Render.", "text-yellow-700 font-semibold");
         configurarBotaoDepreciacaoTCO(prefixo, false, detalhe, "calcular");
       } catch (e) {
         console.error("Erro ao consultar depreciação no TCO:", e);
-        escreverStatusDepreciacaoTCO(prefixo, "Erro ao consultar depreciação. Você pode preencher manualmente ou abrir o módulo.", "text-red-700 font-semibold");
+        escreverStatusDepreciacaoTCO(prefixo, "Erro ao consultar depreciação.", "text-red-700 font-semibold");
         configurarBotaoDepreciacaoTCO(prefixo, true, detalhe, "calcular");
       }
     }
@@ -1283,7 +1289,7 @@
       preencherTaxaDepreciacaoTCO(prefixo, taxa, dados.origem_curva || "depreciação validada");
       escreverStatusDepreciacaoTCO(
         prefixo,
-        `Depreciação calculada e validada: ${Number(taxa).toFixed(2).replace(".", ",")}% a.a.`,
+        `Depreciação validada: ${Number(dados.depreciacao_percentual ?? taxa).toFixed(2).replace(".", ",")}% no horizonte.`,
         "text-green-700 font-semibold"
       );
       configurarBotaoDepreciacaoTCO(prefixo, true, memoriaDepreciacaoTCO[prefixo], "relatorio");
