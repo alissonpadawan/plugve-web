@@ -207,256 +207,329 @@ def calcular_tco_completo(dados_form):
     }
 
 
-# 4.2) Helper visual
+# 4.2) Helpers visuais e numéricos
+CORES_GRAFICOS = ["#2563EB", "#16A34A", "#F97316", "#7C3AED"]
+
+
 def real_format(valor):
-    return f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    return f"R$ {float(valor or 0):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+
+def percentual_format(valor):
+    return f"{float(valor or 0) * 100:.2f}%".replace(".", ",")
+
+
+def taxa_relativa(valor: float, base: float) -> float:
+    try:
+        valor = float(valor or 0)
+        base = float(base or 0)
+        return valor / base if base > 0 and valor > 0 else 0.0
+    except Exception:
+        return 0.0
+
+
+def nome_curto(nome: str, limite: int = 36) -> str:
+    nome = str(nome or "Veículo").strip()
+    return nome if len(nome) <= limite else nome[: limite - 1].rstrip() + "…"
 
 
 # 4.3) Layout padrão dos gráficos
-def obter_layout_web():
+def obter_layout_web(titulo: str = ""):
     return {
-        "width": 700,
-        "height": 450,
-        "legend": dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-        "margin": dict(l=50, r=50, t=40, b=40),
+        "title": {"text": titulo, "x": 0.02, "xanchor": "left", "font": {"size": 18, "color": "#0F172A"}},
+        "template": "plotly_white",
+        "height": 430,
+        "autosize": True,
+        "font": {"family": "Inter, Arial, sans-serif", "size": 12, "color": "#334155"},
+        "legend": {"orientation": "h", "yanchor": "bottom", "y": 1.04, "xanchor": "left", "x": 0},
+        "margin": {"l": 70, "r": 30, "t": 78, "b": 70},
+        "hovermode": "x unified",
+        "paper_bgcolor": "#FFFFFF",
+        "plot_bgcolor": "#FFFFFF",
     }
 
 
+def html_grafico(fig):
+    fig.update_xaxes(showgrid=True, gridcolor="#E5E7EB", zeroline=False)
+    fig.update_yaxes(showgrid=True, gridcolor="#E5E7EB", zeroline=False)
+    return pio.to_html(
+        fig,
+        include_plotlyjs=False,
+        full_html=False,
+        default_width="100%",
+        config={"displayModeBar": False, "responsive": True, "locale": "pt-BR"},
+    )
+
+
 # 4.4) Projeção genérica de um veículo
+# Regra V26: energia e combustível sobem a.a.; IPVA e seguro acompanham o valor de mercado do veículo.
 def calcular_projecao_veiculo(veiculo, comum):
     nome = veiculo.get("nome", "Veículo")
     tipo = veiculo.get("tipo", "icev")  # ve ou icev
 
-    preco = float(veiculo.get("preco", 0))
-    consumo = float(veiculo.get("consumo", 0))
-    manut = float(veiculo.get("manut", 0))
-    ipva = float(veiculo.get("ipva", 0))
-    seguro = float(veiculo.get("seguro", 0))
-    depreciacao = float(veiculo.get("depreciacao", 0))
+    preco = max(0.0, float(veiculo.get("preco", 0) or 0))
+    consumo = max(0.0, float(veiculo.get("consumo", 0) or 0))
+    manut = max(0.0, float(veiculo.get("manut", 0) or 0))
+    ipva_inicial = max(0.0, float(veiculo.get("ipva", 0) or 0))
+    seguro_inicial = max(0.0, float(veiculo.get("seguro", 0) or 0))
+    depreciacao = max(0.0, min(float(veiculo.get("depreciacao", 0) or 0), 0.95))
 
-    energia_inicial = float(comum.get("energia", 0))
-    combustivel_inicial = float(comum.get("combustivel", 0))
-    aumento_energia = float(comum.get("aumento_energia", 0))
-    aumento_combustivel = float(comum.get("aumento_combustivel", 0))
-    anos = int(comum.get("anos", 1))
-    km_ano = int(comum.get("km_ano", 0))
+    energia_inicial = max(0.0, float(comum.get("energia", 0) or 0))
+    combustivel_inicial = max(0.0, float(comum.get("combustivel", 0) or 0))
+    aumento_energia = float(comum.get("aumento_energia", 0) or 0)
+    aumento_combustivel = float(comum.get("aumento_combustivel", 0) or 0)
+    anos = max(1, int(comum.get("anos", 1) or 1))
+    km_ano = max(0, int(comum.get("km_ano", 0) or 0))
 
-    tco = preco
-    tco_s = preco
-    preco_atual = preco
+    taxa_ipva = taxa_relativa(ipva_inicial, preco)
+    taxa_seguro = taxa_relativa(seguro_inicial, preco)
 
-    energia_anual = energia_inicial
-    combustivel_anual = combustivel_inicial
+    valor_mercado = preco
+    gasto_operacional_acumulado = 0.0
 
     anos_lista = []
+    anos_eixo = ["Hoje"]
     tco_lista = []
     tco_lista_s = []
+    valor_mercado_lista = [valor_mercado]
+    depreciacao_acumulada_lista = [0.0]
+    gasto_operacional_lista = []
+    custo_uso_lista = []
+    ipva_lista = []
+    seguro_lista = []
+    manut_lista = []
+    preco_energia_lista = []
+    preco_combustivel_lista = []
 
     for ano in range(1, anos + 1):
-        if ano > 1:
-            energia_anual *= 1 + aumento_energia
-            combustivel_anual *= 1 + aumento_combustivel
+        energia_ano = energia_inicial * ((1 + aumento_energia) ** (ano - 1))
+        combustivel_ano = combustivel_inicial * ((1 + aumento_combustivel) ** (ano - 1))
 
-        preco_atual *= 1 - depreciacao
+        # IPVA e seguro do ano usam o valor de mercado vigente no início do ano.
+        ipva_ano = valor_mercado * taxa_ipva
+        seguro_ano = valor_mercado * taxa_seguro
 
         if tipo == "ve":
-            custo_uso = km_ano * consumo * energia_anual
+            custo_uso = km_ano * consumo * energia_ano
         else:
-            custo_uso = (km_ano / consumo * combustivel_anual) if consumo > 0 else 0.0
+            custo_uso = (km_ano / consumo * combustivel_ano) if consumo > 0 else 0.0
 
-        custo_anual = custo_uso + manut + ipva + seguro
+        custo_anual = custo_uso + manut + ipva_ano + seguro_ano
+        gasto_operacional_acumulado += custo_anual
 
-        tco += custo_anual
-        tco_s += custo_anual
-
-        tco_lista.append(tco - preco_atual)
-        tco_lista_s.append(tco_s - preco)
+        # Valor estimado de revenda ao fim do ano.
+        valor_mercado = valor_mercado * (1 - depreciacao)
+        perda_depreciacao = max(0.0, preco - valor_mercado)
+        tco_com_depreciacao = gasto_operacional_acumulado + perda_depreciacao
 
         anos_lista.append(f"Ano {ano}")
+        anos_eixo.append(f"Ano {ano}")
+        tco_lista.append(tco_com_depreciacao)
+        tco_lista_s.append(gasto_operacional_acumulado)
+        valor_mercado_lista.append(valor_mercado)
+        depreciacao_acumulada_lista.append(perda_depreciacao)
+        gasto_operacional_lista.append(gasto_operacional_acumulado)
+        custo_uso_lista.append(custo_uso)
+        ipva_lista.append(ipva_ano)
+        seguro_lista.append(seguro_ano)
+        manut_lista.append(manut)
+        preco_energia_lista.append(energia_ano)
+        preco_combustivel_lista.append(combustivel_ano)
 
     total_km = anos * km_ano if anos > 0 and km_ano > 0 else 1
+    valor_revenda_final = valor_mercado_lista[-1]
+    perda_depreciacao_final = max(0.0, preco - valor_revenda_final)
+    gasto_operacional_final = gasto_operacional_lista[-1] if gasto_operacional_lista else 0.0
+    tco_final = tco_lista[-1] if tco_lista else 0.0
+    tco_final_s = tco_lista_s[-1] if tco_lista_s else 0.0
 
     return {
         "nome": nome,
+        "nome_curto": nome_curto(nome),
         "tipo": tipo,
+        "preco_inicial": preco,
+        "taxa_depreciacao": depreciacao,
+        "taxa_ipva": taxa_ipva,
+        "taxa_seguro": taxa_seguro,
+        "valor_revenda_final": valor_revenda_final,
+        "perda_depreciacao_final": perda_depreciacao_final,
+        "gasto_operacional_final": gasto_operacional_final,
         "anos_lista": anos_lista,
-        "tco_final": tco - preco_atual,
-        "tco_final_s": tco_s - preco,
-        "custo_km": (tco - preco_atual) / total_km,
-        "custo_km_s": (tco_s - preco) / total_km,
+        "anos_eixo": anos_eixo,
+        "tco_final": tco_final,
+        "tco_final_s": tco_final_s,
+        "custo_km": tco_final / total_km,
+        "custo_km_s": tco_final_s / total_km,
         "tco_lista": tco_lista,
         "tco_lista_s": tco_lista_s,
+        "valor_mercado_lista": valor_mercado_lista,
+        "depreciacao_acumulada_lista": depreciacao_acumulada_lista,
+        "gasto_operacional_lista": gasto_operacional_lista,
+        "custo_uso_lista": custo_uso_lista,
+        "ipva_lista": ipva_lista,
+        "seguro_lista": seguro_lista,
+        "manut_lista": manut_lista,
+        "preco_energia_lista": preco_energia_lista,
+        "preco_combustivel_lista": preco_combustivel_lista,
     }
 
 
 # 4.5) Gera gráficos de comparação entre 2 veículos
 def gerar_graficos_dupla(v1, v2):
-    layout_web = obter_layout_web()
+    cor1, cor2 = CORES_GRAFICOS[0], CORES_GRAFICOS[1]
 
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(
-        x=v1["anos_lista"],
-        y=v1["tco_lista"],
-        mode="lines+markers",
-        name=v1["nome"],
+    fig_tco = go.Figure()
+    fig_tco.add_trace(go.Scatter(
+        x=v1["anos_lista"], y=v1["tco_lista"], mode="lines+markers", name=v1["nome_curto"],
+        line={"color": cor1, "width": 3, "shape": "spline"}, marker={"size": 8},
+        customdata=[v1["nome"]] * len(v1["anos_lista"]),
+        hovertemplate="%{customdata}<br>%{x}<br>TCO: R$ %{y:,.2f}<extra></extra>",
     ))
-    fig.add_trace(go.Scatter(
-        x=v2["anos_lista"],
-        y=v2["tco_lista"],
-        mode="lines+markers",
-        name=v2["nome"],
+    fig_tco.add_trace(go.Scatter(
+        x=v2["anos_lista"], y=v2["tco_lista"], mode="lines+markers", name=v2["nome_curto"],
+        line={"color": cor2, "width": 3, "shape": "spline"}, marker={"size": 8},
+        customdata=[v2["nome"]] * len(v2["anos_lista"]),
+        hovertemplate="%{customdata}<br>%{x}<br>TCO: R$ %{y:,.2f}<extra></extra>",
     ))
-    fig.update_layout(title_text="TCO acumulado COM depreciação", **layout_web)
+    fig_tco.update_layout(**obter_layout_web("TCO acumulado com depreciação"), yaxis_title="Custo acumulado (R$)")
 
-    fig_s = go.Figure()
-    fig_s.add_trace(go.Scatter(
-        x=v1["anos_lista"],
-        y=v1["tco_lista_s"],
-        mode="lines+markers",
-        name=v1["nome"],
+    fig_gastos = go.Figure()
+    fig_gastos.add_trace(go.Scatter(
+        x=v1["anos_lista"], y=v1["tco_lista_s"], mode="lines+markers", name=v1["nome_curto"],
+        line={"color": cor1, "width": 3, "shape": "spline"}, marker={"size": 8},
+        customdata=[v1["nome"]] * len(v1["anos_lista"]),
+        hovertemplate="%{customdata}<br>%{x}<br>Gasto operacional: R$ %{y:,.2f}<extra></extra>",
     ))
-    fig_s.add_trace(go.Scatter(
-        x=v2["anos_lista"],
-        y=v2["tco_lista_s"],
-        mode="lines+markers",
-        name=v2["nome"],
+    fig_gastos.add_trace(go.Scatter(
+        x=v2["anos_lista"], y=v2["tco_lista_s"], mode="lines+markers", name=v2["nome_curto"],
+        line={"color": cor2, "width": 3, "shape": "spline"}, marker={"size": 8},
+        customdata=[v2["nome"]] * len(v2["anos_lista"]),
+        hovertemplate="%{customdata}<br>%{x}<br>Gasto operacional: R$ %{y:,.2f}<extra></extra>",
     ))
-    fig_s.update_layout(title_text="TCO acumulado SEM depreciação", **layout_web)
+    fig_gastos.update_layout(**obter_layout_web("Gastos acumulados de uso"), yaxis_title="Gasto acumulado (R$)")
 
     fig_custo_km = go.Figure()
     fig_custo_km.add_trace(go.Bar(
-        x=[v1["nome"], v2["nome"]],
-        y=[v1["custo_km"], v2["custo_km"]],
+        y=[v1["nome_curto"], v2["nome_curto"]],
+        x=[v1["custo_km"], v2["custo_km"]],
+        orientation="h",
         text=[real_format(v1["custo_km"]), real_format(v2["custo_km"])],
-        textposition="auto",
+        textposition="outside",
+        marker={"color": [cor1, cor2], "line": {"color": "#FFFFFF", "width": 1}},
+        customdata=[v1["nome"], v2["nome"]],
+        hovertemplate="%{customdata}<br>Custo por km: R$ %{x:,.2f}<extra></extra>",
     ))
-    fig_custo_km.update_layout(
-        title_text="Custo por quilômetro rodado (R$/km)",
-        width=500,
-        height=400,
-        yaxis_title="R$ / km",
-    )
+    fig_custo_km.update_layout(**obter_layout_web("Custo por quilômetro rodado"), xaxis_title="R$/km", yaxis_title="")
+    fig_custo_km.update_yaxes(autorange="reversed")
+
+    fig_revenda = go.Figure()
+    fig_revenda.add_trace(go.Scatter(
+        x=v1["anos_eixo"], y=v1["valor_mercado_lista"], mode="lines+markers", name=v1["nome_curto"],
+        line={"color": cor1, "width": 3, "shape": "spline"}, marker={"size": 8},
+        fill="tozeroy", fillcolor="rgba(37, 99, 235, 0.10)",
+        customdata=[v1["nome"]] * len(v1["anos_eixo"]),
+        hovertemplate="%{customdata}<br>%{x}<br>Valor estimado: R$ %{y:,.2f}<extra></extra>",
+    ))
+    fig_revenda.add_trace(go.Scatter(
+        x=v2["anos_eixo"], y=v2["valor_mercado_lista"], mode="lines+markers", name=v2["nome_curto"],
+        line={"color": cor2, "width": 3, "shape": "spline"}, marker={"size": 8},
+        fill="tozeroy", fillcolor="rgba(22, 163, 74, 0.10)",
+        customdata=[v2["nome"]] * len(v2["anos_eixo"]),
+        hovertemplate="%{customdata}<br>%{x}<br>Valor estimado: R$ %{y:,.2f}<extra></extra>",
+    ))
+    fig_revenda.update_layout(**obter_layout_web("Valor estimado de revenda"), yaxis_title="Valor de mercado (R$)")
+
+    def grafico_depreciacao_individual(v, cor):
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(
+            x=v["anos_eixo"], y=v["valor_mercado_lista"], mode="lines+markers", name="Valor de revenda",
+            line={"color": cor, "width": 3, "shape": "spline"}, marker={"size": 8},
+            fill="tozeroy", fillcolor="rgba(37, 99, 235, 0.10)",
+            hovertemplate="%{x}<br>Valor estimado: R$ %{y:,.2f}<extra></extra>",
+        ))
+        fig.update_layout(**obter_layout_web(f"Depreciação — {nome_curto(v['nome'], 42)}"), yaxis_title="Valor de mercado (R$)")
+        return html_grafico(fig)
 
     return {
-        "grafico": pio.to_html(fig, include_plotlyjs=False, full_html=False),
-        "grafico_sem_depreciacao": pio.to_html(fig_s, include_plotlyjs=False, full_html=False),
-        "grafico_custo_km": pio.to_html(fig_custo_km, include_plotlyjs=False, full_html=False),
+        "grafico": html_grafico(fig_tco),
+        "grafico_sem_depreciacao": html_grafico(fig_gastos),
+        "grafico_custo_km": html_grafico(fig_custo_km),
+        "grafico_revenda_comparativo": html_grafico(fig_revenda),
+        "grafico_depreciacao_v1": grafico_depreciacao_individual(v1, cor1),
+        "grafico_depreciacao_v2": grafico_depreciacao_individual(v2, cor2),
     }
 
 
 # 4.6) Empacota 1 comparação pronta para renderização
 def montar_bloco_resultado(titulo, v1, v2):
     graficos = gerar_graficos_dupla(v1, v2)
+    vencedor = v1 if v1["tco_final"] <= v2["tco_final"] else v2
+    outro = v2 if vencedor is v1 else v1
+    economia = max(0.0, outro["tco_final"] - vencedor["tco_final"])
+
+    def resumo(v):
+        return {
+            "nome": v["nome"],
+            "nome_curto": v["nome_curto"],
+            "tco_final": real_format(v["tco_final"]),
+            "custo_km": real_format(v["custo_km"]),
+            "tco_final_s": real_format(v["tco_final_s"]),
+            "custo_km_s": real_format(v["custo_km_s"]),
+            "preco_inicial": real_format(v["preco_inicial"]),
+            "gasto_operacional": real_format(v["gasto_operacional_final"]),
+            "perda_depreciacao": real_format(v["perda_depreciacao_final"]),
+            "valor_revenda": real_format(v["valor_revenda_final"]),
+            "taxa_depreciacao": percentual_format(v["taxa_depreciacao"]),
+            "taxa_ipva": percentual_format(v["taxa_ipva"]),
+            "taxa_seguro": percentual_format(v["taxa_seguro"]),
+        }
+
+    resumo_v1 = resumo(v1)
+    resumo_v2 = resumo(v2)
 
     return {
         "titulo": titulo,
+        "vencedor_nome": vencedor["nome"],
+        "economia": real_format(economia),
+        "detalhes": [resumo_v1, resumo_v2],
         "resumo_com": [
-            {
-                "nome": v1["nome"],
-                "tco_final": real_format(v1["tco_final"]),
-                "custo_km": real_format(v1["custo_km"]),
-            },
-            {
-                "nome": v2["nome"],
-                "tco_final": real_format(v2["tco_final"]),
-                "custo_km": real_format(v2["custo_km"]),
-            },
+            {"nome": resumo_v1["nome"], "tco_final": resumo_v1["tco_final"], "custo_km": resumo_v1["custo_km"]},
+            {"nome": resumo_v2["nome"], "tco_final": resumo_v2["tco_final"], "custo_km": resumo_v2["custo_km"]},
         ],
         "resumo_sem": [
-            {
-                "nome": v1["nome"],
-                "tco_final": real_format(v1["tco_final_s"]),
-                "custo_km": real_format(v1["custo_km_s"]),
-            },
-            {
-                "nome": v2["nome"],
-                "tco_final": real_format(v2["tco_final_s"]),
-                "custo_km": real_format(v2["custo_km_s"]),
-            },
+            {"nome": resumo_v1["nome"], "tco_final": resumo_v1["tco_final_s"], "custo_km": resumo_v1["custo_km_s"]},
+            {"nome": resumo_v2["nome"], "tco_final": resumo_v2["tco_final_s"], "custo_km": resumo_v2["custo_km_s"]},
         ],
         "grafico": graficos["grafico"],
         "grafico_sem_depreciacao": graficos["grafico_sem_depreciacao"],
         "grafico_custo_km": graficos["grafico_custo_km"],
+        "grafico_revenda_comparativo": graficos["grafico_revenda_comparativo"],
+        "grafico_depreciacao_v1": graficos["grafico_depreciacao_v1"],
+        "grafico_depreciacao_v2": graficos["grafico_depreciacao_v2"],
     }
 
 
-# 4.7) Converte resultado antigo para o novo formato de tela
+# 4.7) Conversor antigo mantido apenas por compatibilidade interna.
 def montar_bloco_resultado_cenario_original(dados_calculados):
-    layout_web = obter_layout_web()
-
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(
-        x=dados_calculados["anos_lista"],
-        y=dados_calculados["tco_ve_lista"],
-        mode="lines+markers",
-        name=dados_calculados["modelo_ve"],
-    ))
-    fig.add_trace(go.Scatter(
-        x=dados_calculados["anos_lista"],
-        y=dados_calculados["tco_icev_lista"],
-        mode="lines+markers",
-        name=dados_calculados["modelo_icev"],
-    ))
-    fig.update_layout(title_text="TCO acumulado COM depreciação", **layout_web)
-
-    fig_s = go.Figure()
-    fig_s.add_trace(go.Scatter(
-        x=dados_calculados["anos_lista"],
-        y=dados_calculados["tco_ve_lista_s"],
-        mode="lines+markers",
-        name=dados_calculados["modelo_ve"],
-    ))
-    fig_s.add_trace(go.Scatter(
-        x=dados_calculados["anos_lista"],
-        y=dados_calculados["tco_icev_lista_s"],
-        mode="lines+markers",
-        name=dados_calculados["modelo_icev"],
-    ))
-    fig_s.update_layout(title_text="TCO acumulado SEM depreciação", **layout_web)
-
-    fig_custo_km = go.Figure()
-    fig_custo_km.add_trace(go.Bar(
-        x=[dados_calculados["modelo_ve"], dados_calculados["modelo_icev"]],
-        y=[dados_calculados["custo_km_ve"], dados_calculados["custo_km_icev"]],
-        text=[real_format(dados_calculados["custo_km_ve"]), real_format(dados_calculados["custo_km_icev"])],
-        textposition="auto",
-    ))
-    fig_custo_km.update_layout(
-        title_text="Custo por quilômetro rodado (R$/km)",
-        width=500,
-        height=400,
-        yaxis_title="R$ / km",
-    )
-
     return {
         "titulo": "Comparação direta entre os dois carros selecionados",
+        "vencedor_nome": "",
+        "economia": real_format(0),
+        "detalhes": [],
         "resumo_com": [
-            {
-                "nome": dados_calculados["modelo_ve"],
-                "tco_final": real_format(dados_calculados["tco_ve_final"]),
-                "custo_km": real_format(dados_calculados["custo_km_ve"]),
-            },
-            {
-                "nome": dados_calculados["modelo_icev"],
-                "tco_final": real_format(dados_calculados["tco_icev_final"]),
-                "custo_km": real_format(dados_calculados["custo_km_icev"]),
-            },
+            {"nome": dados_calculados["modelo_ve"], "tco_final": real_format(dados_calculados["tco_ve_final"]), "custo_km": real_format(dados_calculados["custo_km_ve"])},
+            {"nome": dados_calculados["modelo_icev"], "tco_final": real_format(dados_calculados["tco_icev_final"]), "custo_km": real_format(dados_calculados["custo_km_icev"])},
         ],
         "resumo_sem": [
-            {
-                "nome": dados_calculados["modelo_ve"],
-                "tco_final": real_format(dados_calculados["tco_ve_final_s"]),
-                "custo_km": real_format(dados_calculados["custo_km_ve_s"]),
-            },
-            {
-                "nome": dados_calculados["modelo_icev"],
-                "tco_final": real_format(dados_calculados["tco_icev_final_s"]),
-                "custo_km": real_format(dados_calculados["custo_km_icev_s"]),
-            },
+            {"nome": dados_calculados["modelo_ve"], "tco_final": real_format(dados_calculados["tco_ve_final_s"]), "custo_km": real_format(dados_calculados["custo_km_ve_s"])},
+            {"nome": dados_calculados["modelo_icev"], "tco_final": real_format(dados_calculados["tco_icev_final_s"]), "custo_km": real_format(dados_calculados["custo_km_icev_s"])},
         ],
-        "grafico": pio.to_html(fig, include_plotlyjs=False, full_html=False),
-        "grafico_sem_depreciacao": pio.to_html(fig_s, include_plotlyjs=False, full_html=False),
-        "grafico_custo_km": pio.to_html(fig_custo_km, include_plotlyjs=False, full_html=False),
+        "grafico": "",
+        "grafico_sem_depreciacao": "",
+        "grafico_custo_km": "",
+        "grafico_revenda_comparativo": "",
+        "grafico_depreciacao_v1": "",
+        "grafico_depreciacao_v2": "",
     }
 
 
@@ -533,9 +606,20 @@ def simular():
             # CENÁRIO 1) Comparar dois carros
             # ----------------------------------------------------
             if tipo_comparacao == "dois_carros_novos":
-                dados_calculados = calcular_tco_completo(request.form)
+                comum = extrair_parametros_comuns(request.form)
+
+                carro_eletrico = montar_veiculo_ve(request.form)
+                carro_combustao = montar_veiculo_icev(request.form)
+
+                proj_eletrico = calcular_projecao_veiculo(carro_eletrico, comum)
+                proj_combustao = calcular_projecao_veiculo(carro_combustao, comum)
+
                 comparacoes.append(
-                    montar_bloco_resultado_cenario_original(dados_calculados)
+                    montar_bloco_resultado(
+                        "Comparação direta entre os dois carros selecionados",
+                        proj_eletrico,
+                        proj_combustao,
+                    )
                 )
 
             # ----------------------------------------------------
@@ -594,6 +678,7 @@ def simular():
             resultado_final = {
                 "tipo_comparacao": tipo_comparacao,
                 "comparacoes": comparacoes,
+                "form_values": request.form.to_dict(flat=True),
             }
 
         except Exception as e:

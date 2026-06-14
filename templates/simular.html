@@ -15,6 +15,16 @@
     .plugve-progress-hidden{display:none !important}
     .plugve-card-selected{border-color:#2563eb !important;background:#eff6ff !important;box-shadow:0 6px 18px rgba(37,99,235,.12)}
     .plugve-select-note{font-size:11px;color:#6b7280;margin-top:3px}
+    .plugve-chart-card{border:1px solid #e5e7eb;border-radius:1rem;background:#fff;box-shadow:0 10px 28px rgba(15,23,42,.06);padding:1rem;overflow:hidden}
+    .plugve-metric-card{border:1px solid #e5e7eb;border-radius:1rem;background:linear-gradient(180deg,#ffffff 0%,#f8fafc 100%);padding:1rem;box-shadow:0 8px 22px rgba(15,23,42,.04)}
+    .plugve-result-actions{display:flex;gap:.75rem;flex-wrap:wrap;justify-content:flex-end;align-items:center}
+    .plugve-page-break{break-inside:avoid;page-break-inside:avoid}
+    @media print{
+      header, footer, #form_simulacao_tco, .no-print{display:none !important}
+      body{background:#fff !important;color:#111827 !important}
+      main{max-width:100% !important;margin:0 !important;padding:0 !important;box-shadow:none !important;border-radius:0 !important}
+      .plugve-chart-card,.plugve-metric-card{box-shadow:none !important;border:1px solid #d1d5db !important}
+    }
   </style>
 </head>
 
@@ -71,7 +81,7 @@
     <!-- =========================================================
       3) FORMULÁRIO
     ========================================================= -->
-    <form method="POST" action="/simular" class="space-y-6">
+    <form id="form_simulacao_tco" method="POST" action="/simular" class="space-y-6 {% if resultado and resultado.comparacoes %}hidden{% endif %}">
 
       <!-- =========================================================
         3.0) CAMPO OCULTO DO TIPO DE COMPARAÇÃO
@@ -215,15 +225,15 @@
               <div class="space-y-2">
                 <div>
                   <label class="block text-xs font-medium">Marca</label>
-                  <select id="atual_marca" class="mt-1 p-2 border rounded w-full"></select>
+                  <select name="atual_marca_codigo" id="atual_marca" class="mt-1 p-2 border rounded w-full"></select>
                 </div>
                 <div>
                   <label class="block text-xs font-medium">Modelo</label>
-                  <select id="atual_modelo" class="mt-1 p-2 border rounded w-full"></select>
+                  <select name="atual_modelo_codigo" id="atual_modelo" class="mt-1 p-2 border rounded w-full"></select>
                 </div>
                 <div>
                   <label class="block text-xs font-medium">Ano/Combustível</label>
-                  <select id="atual_ano" class="mt-1 p-2 border rounded w-full"></select>
+                  <select name="atual_ano_codigo" id="atual_ano" class="mt-1 p-2 border rounded w-full"></select>
                 </div>
               </div>
             </div>
@@ -291,15 +301,15 @@
               <div class="space-y-2">
                 <div>
                   <label class="block text-xs font-medium">Marca</label>
-                  <select id="ve_marca" class="mt-1 p-2 border rounded w-full"></select>
+                  <select name="ve_marca_codigo" id="ve_marca" class="mt-1 p-2 border rounded w-full"></select>
                 </div>
                 <div>
                   <label class="block text-xs font-medium">Modelo</label>
-                  <select id="ve_modelo" class="mt-1 p-2 border rounded w-full"></select>
+                  <select name="ve_modelo_codigo" id="ve_modelo" class="mt-1 p-2 border rounded w-full"></select>
                 </div>
                 <div>
                   <label class="block text-xs font-medium">Ano/Combustível</label>
-                  <select id="ve_ano" class="mt-1 p-2 border rounded w-full"></select>
+                  <select name="ve_ano_codigo" id="ve_ano" class="mt-1 p-2 border rounded w-full"></select>
                 </div>
                 <p class="text-[11px] text-gray-500">
                   Preço e IPVA automáticos pela FIPE.
@@ -365,15 +375,15 @@
               <div class="space-y-2">
                 <div>
                   <label class="block text-xs font-medium">Marca</label>
-                  <select id="icev_marca" class="mt-1 p-2 border rounded w-full"></select>
+                  <select name="icev_marca_codigo" id="icev_marca" class="mt-1 p-2 border rounded w-full"></select>
                 </div>
                 <div>
                   <label class="block text-xs font-medium">Modelo</label>
-                  <select id="icev_modelo" class="mt-1 p-2 border rounded w-full"></select>
+                  <select name="icev_modelo_codigo" id="icev_modelo" class="mt-1 p-2 border rounded w-full"></select>
                 </div>
                 <div>
                   <label class="block text-xs font-medium">Ano/Combustível</label>
-                  <select id="icev_ano" class="mt-1 p-2 border rounded w-full"></select>
+                  <select name="icev_ano_codigo" id="icev_ano" class="mt-1 p-2 border rounded w-full"></select>
                 </div>
                 <p class="text-[11px] text-gray-500">
                   Preço e IPVA automáticos pela FIPE.
@@ -512,71 +522,100 @@
       4) RESULTADOS
     ========================================================= -->
     {% if resultado and resultado.comparacoes %}
-      <section class="mt-10">
+      <section id="secao_resultados_tco" class="mt-10 plugve-page-break">
         <div class="bg-white rounded-xl shadow-md p-6">
-          <h2 class="text-2xl font-bold text-blue-700 mb-6">Resumo dos Resultados</h2>
+          <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-6 no-print">
+            <div>
+              <h2 class="text-2xl font-bold text-blue-700">Resumo dos Resultados</h2>
+              <p class="text-sm text-gray-500 mt-1">
+                Resultado calculado. Use “Voltar e editar valores” para ajustar a simulação sem apagar os campos preenchidos.
+              </p>
+            </div>
+            <div class="plugve-result-actions">
+              <button type="button" id="btn_voltar_editar_tco" class="px-4 py-2 rounded-lg border border-blue-600 text-blue-700 font-semibold hover:bg-blue-50">
+                Voltar e editar valores
+              </button>
+              <button type="button" id="btn_exportar_pdf_tco" class="px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700">
+                Exportar PDF
+              </button>
+            </div>
+          </div>
+
+          <h2 class="text-2xl font-bold text-blue-700 mb-6 hidden print:block">Resumo dos Resultados</h2>
 
           {% for comp in resultado.comparacoes %}
-            <div class="mb-12">
-              <h3 class="font-semibold text-xl mb-4 text-gray-800">{{ comp.titulo }}</h3>
+            <div class="mb-14 plugve-page-break">
+              <div class="mb-5">
+                <h3 class="font-semibold text-xl text-gray-900">{{ comp.titulo }}</h3>
+                {% if comp.vencedor_nome %}
+                  <p class="text-sm text-gray-600 mt-1">
+                    Menor TCO no horizonte: <b>{{ comp.vencedor_nome }}</b>. Diferença estimada: <b>{{ comp.economia }}</b>.
+                  </p>
+                {% endif %}
+              </div>
 
-              <div class="mb-8">
-                <h4 class="font-semibold text-lg mb-2 text-gray-700">
-                  Cenário 1: Com depreciação (considerando valor de revenda)
-                </h4>
-
-                <ul class="list-disc list-inside mb-2 text-base space-y-1">
-                  {% for item in comp.resumo_com %}
-                    <li>
-                      <b>{{ item.nome }}:</b>
-                      TCO final = {{ item.tco_final }} |
-                      Custo por km = {{ item.custo_km }}
-                    </li>
+              {% if comp.detalhes %}
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">
+                  {% for item in comp.detalhes %}
+                    <div class="plugve-metric-card">
+                      <p class="text-xs uppercase tracking-wide text-gray-500 mb-1">Carro {{ loop.index }}</p>
+                      <h4 class="font-bold text-blue-700 text-lg mb-3">{{ item.nome }}</h4>
+                      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                        <div><span class="text-gray-500">Valor inicial FIPE</span><br><b>{{ item.preco_inicial }}</b></div>
+                        <div><span class="text-gray-500">Valor de revenda estimado</span><br><b>{{ item.valor_revenda }}</b></div>
+                        <div><span class="text-gray-500">Gasto de uso acumulado</span><br><b>{{ item.gasto_operacional }}</b></div>
+                        <div><span class="text-gray-500">Perda por depreciação</span><br><b>{{ item.perda_depreciacao }}</b></div>
+                        <div><span class="text-gray-500">TCO final</span><br><b>{{ item.tco_final }}</b></div>
+                        <div><span class="text-gray-500">Custo por km</span><br><b>{{ item.custo_km }}</b></div>
+                      </div>
+                      <p class="text-[11px] text-gray-500 mt-3">
+                        Taxa de depreciação: {{ item.taxa_depreciacao }} a.a. | IPVA projetado sobre {{ item.taxa_ipva }} do valor do carro | Seguro projetado sobre {{ item.taxa_seguro }} do valor do carro.
+                      </p>
+                    </div>
                   {% endfor %}
-                </ul>
+                </div>
+              {% endif %}
 
-                {% if comp.grafico_custo_km %}
-                  <div class="my-6 flex justify-center">
-                    {{ comp.grafico_custo_km | safe }}
+              {% if comp.grafico_custo_km %}
+                <div class="plugve-chart-card mb-6">
+                  {{ comp.grafico_custo_km | safe }}
+                </div>
+              {% endif %}
+
+              {% if comp.grafico %}
+                <div class="plugve-chart-card mb-6">
+                  {{ comp.grafico | safe }}
+                </div>
+              {% endif %}
+
+              {% if comp.grafico_sem_depreciacao %}
+                <div class="plugve-chart-card mb-6">
+                  {{ comp.grafico_sem_depreciacao | safe }}
+                </div>
+              {% endif %}
+
+              <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                {% if comp.grafico_depreciacao_v1 %}
+                  <div class="plugve-chart-card">
+                    {{ comp.grafico_depreciacao_v1 | safe }}
                   </div>
                 {% endif %}
-
-                <div class="mb-4">
-                  <span class="text-sm text-gray-500">Gráfico TCO acumulado com depreciação:</span>
-                  <div class="mt-2 flex justify-center">
-                    {{ comp.grafico | safe }}
+                {% if comp.grafico_depreciacao_v2 %}
+                  <div class="plugve-chart-card">
+                    {{ comp.grafico_depreciacao_v2 | safe }}
                   </div>
-                </div>
+                {% endif %}
               </div>
 
-              <hr class="my-6 border-gray-300">
-
-              <div class="mb-4">
-                <h4 class="font-semibold text-lg mb-2 text-gray-700">
-                  Cenário 2: Sem depreciação (sem considerar valor de revenda)
-                </h4>
-
-                <ul class="list-disc list-inside mb-2 text-base space-y-1">
-                  {% for item in comp.resumo_sem %}
-                    <li>
-                      <b>{{ item.nome }}:</b>
-                      TCO final = {{ item.tco_final }} |
-                      Custo por km = {{ item.custo_km }}
-                    </li>
-                  {% endfor %}
-                </ul>
-
-                <div class="mb-4">
-                  <span class="text-sm text-gray-500">Gráfico TCO acumulado sem depreciação:</span>
-                  <div class="mt-2 flex justify-center">
-                    {{ comp.grafico_sem_depreciacao | safe }}
-                  </div>
+              {% if comp.grafico_revenda_comparativo %}
+                <div class="plugve-chart-card mb-6">
+                  {{ comp.grafico_revenda_comparativo | safe }}
                 </div>
-              </div>
+              {% endif %}
             </div>
 
             {% if not loop.last %}
-              <hr class="my-8 border-gray-400">
+              <hr class="my-8 border-gray-300">
             {% endif %}
           {% endfor %}
         </div>
@@ -595,6 +634,11 @@
   <!-- =========================================================
     6) SCRIPTS
   ========================================================= -->
+  <script>
+    window.PLUGVE_TCO_TEM_RESULTADO = {{ 'true' if resultado and resultado.comparacoes else 'false' }};
+    window.PLUGVE_TCO_FORM_POST = {{ (resultado.get('form_values', {}) if resultado else {}) | tojson }};
+  </script>
+
   <script>
     // =========================================================
     // 6.1) FUNÇÕES AUXILIARES
@@ -634,6 +678,90 @@
     function formatarNumero5(valor) {
       if (valor == null || isNaN(valor)) return "";
       return Number(valor).toFixed(5).replace(".", ",");
+    }
+
+    const PLUGVE_TCO_STORAGE_KEY = "plugve_tco_form_state_v26";
+
+    function capturarEstadoFormularioTCO() {
+      const form = document.getElementById("form_simulacao_tco");
+      if (!form || !window.sessionStorage) return;
+      const estado = { byId: {}, byName: {} };
+      form.querySelectorAll("input, select, textarea").forEach(el => {
+        const item = {
+          value: el.value,
+          checked: !!el.checked,
+          type: (el.type || el.tagName || "").toLowerCase(),
+          selectedText: el.tagName === "SELECT" ? (el.options[el.selectedIndex]?.textContent || "") : ""
+        };
+        if (el.id) estado.byId[el.id] = item;
+        if (el.name) estado.byName[el.name] = item;
+      });
+      try { sessionStorage.setItem(PLUGVE_TCO_STORAGE_KEY, JSON.stringify(estado)); } catch (e) {}
+    }
+
+    function estadoServidorFormularioTCO() {
+      const dados = window.PLUGVE_TCO_FORM_POST || {};
+      const estado = { byId: {}, byName: {} };
+      Object.keys(dados).forEach(nome => {
+        estado.byName[nome] = { value: dados[nome], checked: dados[nome] === "on", type: "text", selectedText: "" };
+      });
+      return estado;
+    }
+
+    function aplicarEstadoFormularioTCO(estado) {
+      if (!estado) return;
+      const aplicar = (el, item) => {
+        if (!el || !item) return;
+        const tag = (el.tagName || "").toUpperCase();
+        const tipo = (el.type || "").toLowerCase();
+        if (tipo === "checkbox" || tipo === "radio") {
+          el.checked = !!item.checked || item.value === "on" || item.value === "true";
+          return;
+        }
+        if (tag === "SELECT") {
+          const valor = item.value || "";
+          if (valor && !Array.from(el.options).some(opt => opt.value === valor)) {
+            const opt = document.createElement("option");
+            opt.value = valor;
+            opt.textContent = item.selectedText || valor;
+            opt.dataset.restaurado = "1";
+            el.appendChild(opt);
+          }
+          el.value = valor;
+          return;
+        }
+        if (item.value !== undefined && item.value !== null) el.value = item.value;
+      };
+
+      Object.entries(estado.byName || {}).forEach(([nome, item]) => {
+        document.querySelectorAll(`[name="${CSS.escape(nome)}"]`).forEach(el => aplicar(el, item));
+      });
+      Object.entries(estado.byId || {}).forEach(([id, item]) => aplicar(document.getElementById(id), item));
+    }
+
+    function restaurarEstadoFormularioTCO() {
+      aplicarEstadoFormularioTCO(estadoServidorFormularioTCO());
+      try {
+        const salvo = JSON.parse(sessionStorage.getItem(PLUGVE_TCO_STORAGE_KEY) || "null");
+        aplicarEstadoFormularioTCO(salvo);
+      } catch (e) {}
+    }
+
+    function mostrarFormularioEdicaoTCO() {
+      const form = document.getElementById("form_simulacao_tco");
+      const resultados = document.getElementById("secao_resultados_tco");
+      if (form) form.classList.remove("hidden");
+      if (resultados) resultados.classList.add("hidden");
+      restaurarEstadoFormularioTCO();
+      const tipo = document.getElementById("tipo_comparacao")?.value || "dois_carros_novos";
+      if (typeof window.selecionarCenario === "function") window.selecionarCenario(tipo);
+      if (typeof window.atualizarInterfacePorCenario === "function") window.atualizarInterfacePorCenario();
+      if (typeof window.atualizarLiberacaoAreaSimulacao === "function") window.atualizarLiberacaoAreaSimulacao();
+      setTimeout(restaurarEstadoFormularioTCO, 100);
+      setTimeout(() => {
+        if (typeof window.atualizarLiberacaoAreaSimulacao === "function") window.atualizarLiberacaoAreaSimulacao();
+        form?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 250);
     }
 
     function codigoAnoFipeZeroKm(codigoAno) {
@@ -1723,7 +1851,10 @@
       }
 
       function prefixoSelecionadoPlugVE(prefixo) {
-        return !!document.getElementById(`${prefixo}_ano`)?.value;
+        const anoSelecionado = !!document.getElementById(`${prefixo}_ano`)?.value;
+        const nomePreenchido = !!document.getElementById(`modelo_${prefixo}`)?.value;
+        const precoPreenchido = !!document.getElementById(`preco_${prefixo}`)?.value;
+        return anoSelecionado || (nomePreenchido && precoPreenchido);
       }
 
       function todosVeiculosSelecionadosPlugVE() {
@@ -2051,6 +2182,28 @@
           clearTimeout(timerHorizontePlugVE);
           timerHorizontePlugVE = setTimeout(reprocessarHorizonteDepreciacaoPlugVE, 450);
         });
+
+        document.getElementById("btn_voltar_editar_tco")?.addEventListener("click", mostrarFormularioEdicaoTCO);
+        document.getElementById("btn_exportar_pdf_tco")?.addEventListener("click", function () {
+          window.print();
+        });
+
+        document.getElementById("form_simulacao_tco")?.addEventListener("submit", function (ev) {
+          if (!detalhesLiberadosPlugVE) {
+            ev.preventDefault();
+            alert("Selecione os veículos pela FIPE antes de simular. Os campos complementares serão liberados em seguida.");
+            return;
+          }
+          capturarEstadoFormularioTCO();
+        });
+
+        restaurarEstadoFormularioTCO();
+        if (window.PLUGVE_TCO_TEM_RESULTADO) {
+          setHiddenPlugVE("secao_tipo_comparacao", true);
+          document.getElementById("form_simulacao_tco")?.classList.add("hidden");
+        }
+        setTimeout(restaurarEstadoFormularioTCO, 250);
+        setTimeout(restaurarEstadoFormularioTCO, 900);
       });
     })();
   </script>
