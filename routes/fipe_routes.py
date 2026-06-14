@@ -66,8 +66,9 @@ def catalogo_estado():
 
 @fipe_bp.route("/marcas")
 def marcas():
+    contexto = request.args.get("contexto", "").strip()
     try:
-        return jsonify(fipe_service.listar_marcas())
+        return jsonify(fipe_service.listar_marcas(contexto=contexto))
     except Exception as exc:
         return _erro_fipe_response(exc)
 
@@ -75,10 +76,12 @@ def marcas():
 @fipe_bp.route("/modelos")
 def modelos():
     codigo_marca = request.args.get("codigo_marca", "").strip()
+    contexto = request.args.get("contexto", "").strip()
+    nome_marca = request.args.get("nome_marca", "").strip()
     if not codigo_marca:
         return jsonify({"modelos": []})
     try:
-        return jsonify(fipe_service.listar_modelos(codigo_marca))
+        return jsonify(fipe_service.listar_modelos(codigo_marca, contexto=contexto, nome_marca=nome_marca))
     except Exception as exc:
         resp, status = _erro_fipe_response(exc)
         data = resp.get_json() or {}
@@ -90,10 +93,11 @@ def modelos():
 def anos():
     codigo_marca = request.args.get("codigo_marca", "").strip()
     codigo_modelo = request.args.get("codigo_modelo", "").strip()
+    contexto = request.args.get("contexto", "").strip()
     if not codigo_marca or not codigo_modelo:
         return jsonify([])
     try:
-        return jsonify(fipe_service.listar_anos(codigo_marca, codigo_modelo))
+        return jsonify(fipe_service.listar_anos(codigo_marca, codigo_modelo, contexto=contexto))
     except Exception as exc:
         return _erro_fipe_response(exc)
 

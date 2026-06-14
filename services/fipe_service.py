@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import csv
 import json
 import os
 from datetime import datetime, timedelta, timezone
@@ -9,6 +10,13 @@ from typing import Any
 
 import requests
 from flask import current_app
+
+from services.tipo_veiculo_service import (
+    classificar_tipo_veiculo,
+    contexto_fipe,
+    marca_permitida_no_contexto,
+    tipo_permitido_no_contexto,
+)
 
 
 class FipeApiError(Exception):
@@ -663,55 +671,126 @@ class FipeService:
             "HistoricoPreco": data.get("priceHistory", []),
         }
 
-    def listar_marcas(self):
+    @staticmethod
+    @lru_cache(maxsize=8)
+    def _ler_marcas_curvas_eletricas_csv(path_str: str) -> tuple[str, ...]:
+        marcas: set[str] = set()
+        path = Path(path_str)
+        if not path.exists():
+            return tuple()
+        try:
+            with path.open("r", encoding="utf-8-sig", newline="") as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    marca = (row.get("marca") or "").strip()
+                    if not marca:
+                        titulo = (row.get("titulo") or row.get("\ufefftitulo") or "").strip()
+                        if titulo:
+                            marca = titulo.split()[0]
+                    if marca:
+                        marcas.add(marca)
+        except Exception:
+            return tuple()
+        return tuple(sorted(marcas))
+
+    def _marcas_com_curvas_eletricas(self) -> set[str]:
+        marcas: set[str] = set()
+        for chave in ("ARQUIVO_CURVAS_ELETRICO", "ARQUIVO_CURVAS_ELETRICO_BASE"):
+            path = current_app.config.get(chave)
+            if path:
+                marcas.update(self._ler_marcas_curvas_eletricas_csv(str(path)))
+        return marcas
+
+    def _nome_marca_por_codigo(self, codigo_marca: str) -> str:
+        codigo_marca = str(codigo_marca or "").strip()
+        if not codigo_marca:
+            return ""
+        try:
+            for marca in self._normalizar_marcas(self._get_json("marcas")):
+                if str(marca.get("codigo")) == codigo_marca:
+                    return str(marca.get("nome") or "")
+        except Exception:
+            return ""
+        return ""
+
+    def listar_marcas(self, contexto: str | None = None):
+        ctx = contexto_fipe(contexto or "")
         marcas = self._normalizar_marcas(self._get_json("marcas"))
         bloqueadas = self._ler_marcas_bloqueadas()
         varridas = self._ler_marcas_varridas()
+        marcas_ev_extras = self._marcas_com_curvas_eletricas() if ctx == "ve" else set()
         resultado = []
         for marca in marcas:
             codigo = str(marca.get("codigo"))
+            nome = marca.get("nome", "")
             if codigo in bloqueadas:
+                continue
+            if ctx and not marca_permitida_no_contexto(nome, ctx, extras_ve=marcas_ev_extras):
                 continue
             item = dict(marca)
             item["marca_varrida"] = codigo in varridas
+            item["contexto_fipe"] = ctx or "auto"
             resultado.append(item)
         return resultado
 
-    def listar_modelos(self, codigo_marca: str, filtrar_bloqueados: bool = True):
+    def listar_modelos(self, codigo_marca: str, filtrar_bloqueados: bool = True, contexto: str | None = None, nome_marca: str = ""):
+        ctx = contexto_fipe(contexto or "")
         data = self._normalizar_modelos(self._get_json(f"marcas/{codigo_marca}/modelos"))
-        if not filtrar_bloqueados:
+        marca_nome = nome_marca or self._nome_marca_por_codigo(str(codigo_marca))
+        if not filtrar_bloqueados and not ctx:
             return data
-        bloqueados = self._ler_bloqueados().get(str(codigo_marca), {})
+        bloqueados = self._ler_bloqueados().get(str(codigo_marca), {}) if filtrar_bloqueados else {}
         modelos = data.get("modelos", [])
         zero_km = self._ler_modelos_zero_km().get(str(codigo_marca), {})
         novos = self._ler_modelos_novos().get(str(codigo_marca), {})
         varridas = self._ler_marcas_varridas()
-        modelos_filtrados = [m for m in modelos if str(m.get("codigo")) not in bloqueados]
-        for modelo in modelos_filtrados:
+        modelos_filtrados = []
+        ocultos_bloqueados = 0
+        ocultos_contexto = 0
+        for modelo in modelos:
             codigo_modelo = str(modelo.get("codigo"))
+            if codigo_modelo in bloqueados:
+                ocultos_bloqueados += 1
+                continue
+            item = dict(modelo)
+            tipo_modelo = classificar_tipo_veiculo(item.get("nome", ""), marca=marca_nome)
+            item["tipo_plugve"] = tipo_modelo
+            item["contexto_fipe"] = ctx or "auto"
+            if ctx and not tipo_permitido_no_contexto(ctx, tipo_modelo):
+                ocultos_contexto += 1
+                continue
             if codigo_modelo in zero_km:
-                modelo["tem_zero_km"] = True
+                item["tem_zero_km"] = True
             if codigo_modelo in novos:
-                modelo["modelo_novo"] = True
-            modelo["marca_varrida"] = str(codigo_marca) in varridas
+                item["modelo_novo"] = True
+            item["marca_varrida"] = str(codigo_marca) in varridas
+            modelos_filtrados.append(item)
         data["modelos"] = modelos_filtrados
         data["marca_varrida"] = str(codigo_marca) in varridas
-        data["modelos_bloqueados_ocultos"] = len(modelos) - len(modelos_filtrados)
-        if modelos and not data["modelos"] and bloqueados:
-            nome_marca = ""
+        data["contexto_fipe"] = ctx or "auto"
+        data["modelos_bloqueados_ocultos"] = ocultos_bloqueados
+        data["modelos_ocultos_contexto"] = ocultos_contexto
+        if filtrar_bloqueados and modelos and not data["modelos"] and bloqueados and not ctx:
+            nome_marca = marca_nome
             try:
-                for marca in self.listar_marcas():
-                    if str(marca.get("codigo")) == str(codigo_marca):
-                        nome_marca = marca.get("nome", "")
-                        break
+                if not nome_marca:
+                    for marca in self.listar_marcas():
+                        if str(marca.get("codigo")) == str(codigo_marca):
+                            nome_marca = marca.get("nome", "")
+                            break
             except Exception:
                 pass
             self.bloquear_marca_antiga(str(codigo_marca), nome_marca)
             data["marca_bloqueada"] = True
         return data
 
-    def listar_anos(self, codigo_marca: str, codigo_modelo: str):
-        return self._normalizar_anos(self._get_json(f"marcas/{codigo_marca}/modelos/{codigo_modelo}/anos"))
+    def listar_anos(self, codigo_marca: str, codigo_modelo: str, contexto: str | None = None):
+        anos = self._normalizar_anos(self._get_json(f"marcas/{codigo_marca}/modelos/{codigo_modelo}/anos"))
+        ctx = contexto_fipe(contexto or "")
+        if ctx:
+            for ano in anos:
+                ano["contexto_fipe"] = ctx
+        return anos
 
     def consultar_preco(self, codigo_marca: str, codigo_modelo: str, codigo_ano: str):
         return self._normalizar_preco(self._get_json(f"marcas/{codigo_marca}/modelos/{codigo_modelo}/anos/{codigo_ano}"))

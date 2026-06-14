@@ -14,6 +14,8 @@ import pandas as pd
 import unicodedata
 from functools import lru_cache
 
+from services.fipe_service import FipeService, FipeApiError
+
 tco_bp = Blueprint("tco", __name__)
 
 # ============================================================
@@ -1231,56 +1233,63 @@ def preco_energia():
 # 9) FIPE (CARROS)
 # ============================================================
 FIPE_BASE = "https://parallelum.com.br/fipe/api/v1/carros"
+_tco_fipe_service = FipeService()
 
-@lru_cache(maxsize=512)
-def _fipe_get_json_cache(endpoint: str):
-    resp = requests.get(f"{FIPE_BASE}/{endpoint.lstrip('/')}", timeout=20)
-    resp.raise_for_status()
-    return resp.json()
+def _erro_fipe_tco(exc: Exception, fallback, status: int = 500):
+    if isinstance(exc, FipeApiError):
+        code = exc.status_code or status
+        if code < 400:
+            code = status
+        payload = exc.to_dict()
+        if isinstance(fallback, dict):
+            payload.update({k: v for k, v in fallback.items() if k not in payload})
+        return jsonify(payload), code
+    print("Erro FIPE TCO:", exc)
+    return jsonify(fallback), status
 
 @tco_bp.route("/fipe/marcas")
 def fipe_marcas():
+    contexto = (request.args.get("contexto") or request.args.get("tipo") or "").strip()
     try:
-        return jsonify(_fipe_get_json_cache("marcas"))
+        return jsonify(_tco_fipe_service.listar_marcas(contexto=contexto))
     except Exception as e:
-        print("Erro FIPE /marcas:", e)
-        return jsonify([]), 500
+        return _erro_fipe_tco(e, [])
 
 @tco_bp.route("/fipe/modelos")
 def fipe_modelos():
-    codigo_marca = request.args.get("codigo_marca")
+    codigo_marca = (request.args.get("codigo_marca") or "").strip()
+    contexto = (request.args.get("contexto") or request.args.get("tipo") or "").strip()
+    nome_marca = (request.args.get("nome_marca") or "").strip()
     if not codigo_marca:
         return jsonify({"modelos": []})
     try:
-        return jsonify(_fipe_get_json_cache(f"marcas/{codigo_marca}/modelos"))
+        return jsonify(_tco_fipe_service.listar_modelos(codigo_marca, contexto=contexto, nome_marca=nome_marca))
     except Exception as e:
-        print("Erro FIPE /modelos:", e)
-        return jsonify({"modelos": []}), 500
+        return _erro_fipe_tco(e, {"modelos": []})
 
 @tco_bp.route("/fipe/anos")
 def fipe_anos():
-    codigo_marca = request.args.get("codigo_marca")
-    codigo_modelo = request.args.get("codigo_modelo")
+    codigo_marca = (request.args.get("codigo_marca") or "").strip()
+    codigo_modelo = (request.args.get("codigo_modelo") or "").strip()
+    contexto = (request.args.get("contexto") or request.args.get("tipo") or "").strip()
     if not codigo_marca or not codigo_modelo:
         return jsonify([])
     try:
-        return jsonify(_fipe_get_json_cache(f"marcas/{codigo_marca}/modelos/{codigo_modelo}/anos"))
+        return jsonify(_tco_fipe_service.listar_anos(codigo_marca, codigo_modelo, contexto=contexto))
     except Exception as e:
-        print("Erro FIPE /anos:", e)
-        return jsonify([]), 500
+        return _erro_fipe_tco(e, [])
 
 @tco_bp.route("/fipe/preco")
 def fipe_preco():
-    codigo_marca = request.args.get("codigo_marca")
-    codigo_modelo = request.args.get("codigo_modelo")
-    codigo_ano = request.args.get("codigo_ano")
+    codigo_marca = (request.args.get("codigo_marca") or "").strip()
+    codigo_modelo = (request.args.get("codigo_modelo") or "").strip()
+    codigo_ano = (request.args.get("codigo_ano") or "").strip()
     if not (codigo_marca and codigo_modelo and codigo_ano):
         return jsonify({"erro": "Parâmetros incompletos"}), 400
     try:
-        return jsonify(_fipe_get_json_cache(f"marcas/{codigo_marca}/modelos/{codigo_modelo}/anos/{codigo_ano}"))
+        return jsonify(_tco_fipe_service.consultar_preco(codigo_marca, codigo_modelo, codigo_ano))
     except Exception as e:
-        print("Erro FIPE /preco:", e)
-        return jsonify({"erro": "Erro ao consultar FIPE"}), 500
+        return _erro_fipe_tco(e, {"erro": "Erro ao consultar FIPE"})
 
 # ============================================================
 # 10) IPVA (MANTIDO COMO ESTAVA - ACADÊMICO)
