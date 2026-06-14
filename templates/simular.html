@@ -5,9 +5,7 @@
     0) HEAD
   ========================================================= -->
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Simulador TCO | Aroeira Calculadora Veicular</title>
-  <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/favicon.png') }}">
+  <title>Simulador TCO | PlugVE</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
   <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
   <style>
@@ -15,10 +13,9 @@
     .plugve-flow-summary strong{color:#1f2937}
     .plugve-flow-summary span+span::before{content:" | ";color:#9ca3af;margin:0 .35rem}
     .plugve-progress-hidden{display:none !important}
-    .plugve-card-selected{border-color:#1F5A3D !important;background:#EEF3EA !important;box-shadow:0 6px 18px rgba(31,90,61,.14)}
+    .plugve-card-selected{border-color:#2563eb !important;background:#eff6ff !important;box-shadow:0 6px 18px rgba(37,99,235,.12)}
     .plugve-select-note{font-size:11px;color:#6b7280;margin-top:3px}
   </style>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/aroeira-tailwind.css') }}">
 </head>
 
 <body class="bg-gray-50 text-gray-800">
@@ -26,23 +23,19 @@
   <!-- =========================================================
     1) HEADER
   ========================================================= -->
-  <header class="aroeira-header sticky top-0 z-50">
+  <header class="bg-white shadow-md sticky top-0 z-50">
     <nav class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="flex items-center justify-between h-20">
-        <a class="aroeira-brand" href="/" aria-label="Aroeira Calculadora Veicular">
-          <img src="{{ url_for('static', filename='img/logo_aroeira_simbolo.png') }}" alt="Símbolo Aroeira">
-          <span>
-            <span class="aroeira-brand-title">Aroeira</span>
-            <span class="aroeira-brand-subtitle">Calculadora Veicular</span>
-          </span>
-        </a>
-        <div class="hidden md:flex space-x-2 aroeira-nav">
-          <a href="/">Início</a>
-          <a href="/simular" class="aroeira-nav-active">Simular</a>
-          <a href="/depreciacao">Depreciação</a>
-          <a href="/financiamento">Financiamento</a>
-          <a href="/sobre">Sobre</a>
-          <a href="/contato">Contato</a>
+      <div class="flex items-center justify-between h-16">
+        <div class="flex items-center space-x-2">
+          <img src="{{ url_for('static', filename='img/carro.png') }}" alt="Logo" class="h-6 w-6">
+          <span class="text-xl font-bold text-blue-600">PlugVE</span>
+        </div>
+        <div class="hidden md:flex space-x-6">
+          <a href="/simular" class="text-blue-600 font-semibold">Início</a>
+          <a href="/depreciacao" class="text-gray-700 hover:text-blue-600 font-medium">Depreciação</a>
+          <a href="/financiamento" class="text-gray-700 hover:text-blue-600 font-medium">Financiamento</a>
+          <a href="/sobre" class="text-gray-700 hover:text-blue-600 font-medium">Sobre</a>
+          <a href="/contato" class="text-gray-700 hover:text-blue-600 font-medium">Contato</a>
         </div>
       </div>
     </nav>
@@ -596,7 +589,7 @@
     5) FOOTER
   ========================================================= -->
   <footer class="bg-white shadow text-center p-4 mt-6">
-    <p class="text-sm text-gray-500">&copy; 2025 Aroeira Calculadora Veicular. Todos os direitos reservados.</p>
+    <p class="text-sm text-gray-500">&copy; 2025 PlugVE. Todos os direitos reservados.</p>
   </footer>
 
   <!-- =========================================================

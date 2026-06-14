@@ -1,25 +1,24 @@
 {% extends "base.html" %}
 
-{% block title %}Metodologia | Aroeira Calculadora Veicular{% endblock %}
+{% block title %}Metodologia | PlugVE Web{% endblock %}
 
 {% block content %}
 <section class="card">
-  <p class="eyebrow">Metodologia</p>
-  <h1>Como a Aroeira organiza a análise veicular</h1>
+  <h1>Metodologia</h1>
   <p>
-    A plataforma compara o Custo Total de Propriedade entre veículos elétricos, híbridos e a combustão, incorporando consulta FIPE, custos energéticos, custos de combustível, IPVA, seguro, manutenção e depreciação.
+    A plataforma PlugVE Web foi estruturada para comparar o Custo Total de Propriedade entre veículos elétricos e veículos a combustão, incorporando consulta FIPE, custos energéticos, custos de combustível, IPVA, seguro, manutenção e depreciação.
   </p>
   <h2>Camada de TCO</h2>
   <p>
-    O simulador TCO calcula o custo acumulado com e sem valor de revenda, permitindo comparar cenários de troca de veículo e alternativas entre tecnologias veiculares.
+    O simulador TCO calcula o custo acumulado com e sem valor de revenda, permitindo comparar cenários de troca de veículo e alternativas entre VE e ICEV.
   </p>
   <h2>Camada de depreciação</h2>
   <p>
-    O módulo de depreciação consulta veículos pela FIPE, procura curvas salvas e apresenta uma camada de auditoria técnica para valor atual, valor futuro e confiança da curva.
+    O módulo de depreciação consulta veículos pela FIPE, procura curvas salvas, calcula curvas sob demanda para combustão e apresenta uma primeira camada de auditoria técnica.
   </p>
   <h2>Arquitetura</h2>
   <p>
-    O site no Render consome curvas prontas. O processamento pesado de curvas permanece fora do Render para preservar a estabilidade da aplicação online.
+    O projeto foi organizado em rotas, serviços, repositórios, núcleo de cálculo, templates e arquivos estáticos, evitando concentração de regras em um único arquivo principal.
   </p>
 </section>
 {% endblock %}

@@ -1,14 +1,14 @@
 {% extends "base.html" %}
 
-{% block title %}Depreciação | Aroeira Calculadora Veicular{% endblock %}
+{% block title %}Depreciação | PlugVE Web{% endblock %}
 
 {% block content %}
-<button id="btn_toggle_base_provisoria" class="button secondary base-drawer-toggle" type="button">Ver curvas salvas</button>
+<button id="btn_toggle_base_provisoria" class="button secondary base-drawer-toggle" type="button">Mostrar curvas salvas</button>
 <div id="base_drawer_backdrop" class="base-drawer-backdrop hidden"></div>
 <section class="depr-workspace depr-workspace-final">
   <aside id="base_provisoria_drawer" class="card depr-sidebar base-drawer hidden-drawer">
     <div class="drawer-header"><h2>Curvas salvas</h2><button id="btn_fechar_base_provisoria" class="drawer-close" type="button">×</button></div>
-    <p class="muted small-text">Consulta das curvas já cadastradas na base online.</p>
+    <p class="muted small-text">Consulta técnica das curvas já cadastradas no Render.</p>
 
     <div class="side-stats">
       <div><span>Modelos cadastrados</span><strong id="side_modelos">-</strong></div>
@@ -35,9 +35,7 @@
     <section class="card consulta-card">
       <div class="section-header compact-header">
         <div>
-          <p class="eyebrow">Curvas de mercado</p>
           <h1>Depreciação veicular</h1>
-          <p class="muted small-text">Consulte FIPE, identifique curva pronta e visualize valor atual, projeção, confiança e origem técnica.</p>
         </div>
       </div>
 
@@ -100,7 +98,7 @@
         </div>
       </div>
       <div id="card_grafico_barras" class="card chart-card chart-card-bars hidden">
-        <h2>Comparativo de cenários</h2>
+        <h2>Gráfico de barras</h2>
         <p class="muted">Comparação entre valor inicial, cenário base, cenário otimista e cenário pessimista.</p>
         <div id="grafico_barras" class="simple-chart empty-chart">Selecione um veículo com curva pronta.</div>
       </div>
@@ -114,7 +112,7 @@
       </section>
 
       <section id="historico_render_area" class="card chart-card chart-card-history hidden">
-        <h2>Histórico da curva</h2>
+        <h2>Histórico da base</h2>
         <div class="history-chart-block">
           <h3>Histórico FIPE nominal</h3>
           <div id="grafico_historico_render" class="simple-chart empty-chart">Histórico nominal não disponível para esta curva.</div>

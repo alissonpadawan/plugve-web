@@ -1,59 +1,36 @@
 {% extends "base.html" %}
 
-{% block title %}Início | Aroeira Calculadora Veicular{% endblock %}
+{% block title %}Início | PlugVE Web{% endblock %}
 
 {% block content %}
-<section class="hero card hero-layout">
-  <div class="hero-content">
-    <p class="eyebrow">Plataforma de análise veicular</p>
-    <h1>Aroeira Calculadora Veicular</h1>
-    <p class="hero-lead">Inteligência em custo, depreciação e mobilidade sustentável.</p>
-    <p class="muted hero-text">
-      Simule o Custo Total de Propriedade, consulte curvas de depreciação e apoie decisões de compra, troca ou comparação entre veículos elétricos, híbridos e a combustão.
-    </p>
-    <div class="actions">
-      <a class="button primary" href="/simular">Simular TCO</a>
-      <a class="button secondary" href="/depreciacao">Consultar depreciação</a>
-    </div>
-  </div>
-  <div class="hero-visual" aria-hidden="true">
-    <img class="hero-mark" src="{{ url_for('static', filename='img/logo_aroeira_simbolo.png') }}" alt="">
+<section class="hero card">
+  <h1>PlugVE Web</h1>
+  <p>
+    Plataforma web para comparação de Custo Total de Propriedade (TCO) e análise de depreciação veicular com base em dados FIPE, energia, combustível e curvas técnicas.
+  </p>
+  <div class="actions">
+    <a class="button primary" href="/simular">Abrir Simulador TCO</a>
+    <a class="button secondary" href="/depreciacao">Abrir Depreciação</a>
   </div>
 </section>
 
-<section class="grid four feature-grid">
-  <article class="card feature-card">
-    <span class="pill">TCO</span>
-    <h2>Custo total</h2>
-    <p>Compara aquisição, energia, combustível, IPVA, seguro, manutenção e depreciação em um horizonte configurável.</p>
-  </article>
-  <article class="card feature-card">
-    <span class="pill">Depreciação</span>
-    <h2>Curvas prontas</h2>
-    <p>Consulta FIPE e usa curvas já processadas para apresentar valor atual, valor futuro, confiança e origem técnica.</p>
-  </article>
-  <article class="card feature-card">
-    <span class="pill">Mobilidade</span>
-    <h2>Elétricos e híbridos</h2>
-    <p>Apoia comparações entre tecnologias veiculares sem transformar a interface em uma planilha técnica.</p>
-  </article>
-  <article class="card feature-card">
-    <span class="pill">Método</span>
-    <h2>Base acadêmica</h2>
-    <p>Organiza dados e premissas para apresentação técnica, com foco em clareza, rastreabilidade e decisão.</p>
-  </article>
+<section class="grid two">
+  <div class="card">
+    <h2>Simulador TCO</h2>
+    <p>Compara veículos elétricos e a combustão considerando aquisição, energia, combustível, IPVA, seguro, manutenção e depreciação.</p>
+    <a class="button primary" href="/simular">Simular TCO</a>
+  </div>
+  <div class="card">
+    <h2>Depreciação veicular</h2>
+    <p>Consulta FIPE, localiza curvas salvas, calcula curva sob demanda para combustão e apresenta auditoria inicial do resultado.</p>
+    <a class="button primary" href="/depreciacao">Calcular depreciação</a>
+  </div>
 </section>
 
-<section class="card split-card">
-  <div>
-    <h2>Feita para análise clara</h2>
-    <p class="muted">
-      Aroeira combina consulta de mercado, premissas operacionais e curvas de depreciação em uma experiência simples para simulação e apresentação de resultados.
-    </p>
-  </div>
-  <div class="actions compact-actions">
-    <a class="button primary" href="/simular">Abrir simulador</a>
-    <a class="button secondary" href="/sobre">Conhecer o projeto</a>
-  </div>
+<section class="card">
+  <h2>Versão online de apresentação</h2>
+  <p class="muted">
+    Sistema integrado para apoiar a análise técnico-econômica entre veículos elétricos e a combustão, reunindo calculadora TCO, consulta FIPE e módulo de depreciação em uma única aplicação web.
+  </p>
 </section>
 {% endblock %}

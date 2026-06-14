@@ -88,7 +88,7 @@ def _parse_data_aneel(v):
 # ============================================================
 @tco_bp.route("/home")
 def home():
-    return redirect(url_for("main.index"))
+    return redirect(url_for("tco.simular"))
 
 @tco_bp.route("/sobre")
 def sobre():
