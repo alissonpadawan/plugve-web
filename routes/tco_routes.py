@@ -228,6 +228,104 @@ def taxa_relativa(valor: float, base: float) -> float:
         return 0.0
 
 
+def inteiro_form(dados_form, campo: str, padrao: int = 0) -> int:
+    try:
+        return int(round(conv(dados_form.get(campo, padrao))))
+    except Exception:
+        return padrao
+
+
+def financiamento_ativo_form(dados_form, prefixo: str) -> bool:
+    valor = str(dados_form.get(f"fin_{prefixo}_ativo", "")).strip().lower()
+    return valor in {"1", "true", "on", "sim", "yes"}
+
+
+def calcular_financiamento_form(dados_form, prefixo: str, preco: float) -> dict:
+    """
+    Calcula financiamento pelo sistema Price.
+    No TCO, entra como custo financeiro somente o juro pago no horizonte,
+    para não contar o preço do veículo duas vezes quando já há depreciação/valor de revenda.
+    """
+    preco = max(0.0, float(preco or 0.0))
+    ativo = financiamento_ativo_form(dados_form, prefixo)
+    entrada = max(0.0, conv(dados_form.get(f"fin_{prefixo}_entrada", 0)))
+    entrada_pct = max(0.0, conv(dados_form.get(f"fin_{prefixo}_entrada_pct", 0)) / 100.0)
+    if entrada <= 0 and entrada_pct > 0:
+        entrada = preco * min(entrada_pct, 1.0)
+    taxa_mensal = max(0.0, conv(dados_form.get(f"fin_{prefixo}_juros_mensal", 0)) / 100.0)
+    meses = max(0, inteiro_form(dados_form, f"fin_{prefixo}_meses", 0))
+    custos = max(0.0, conv(dados_form.get(f"fin_{prefixo}_custos", 0)))
+
+    principal = max(0.0, preco + custos - entrada)
+    if not ativo or meses <= 0 or principal <= 0:
+        return {
+            "ativo": False,
+            "entrada": 0.0,
+            "entrada_pct": 0.0,
+            "principal": 0.0,
+            "taxa_mensal": 0.0,
+            "meses": 0,
+            "custos": 0.0,
+            "parcela": 0.0,
+            "total_parcelas": 0.0,
+            "total_pago": 0.0,
+            "juros_total": 0.0,
+        }
+
+    if taxa_mensal > 0:
+        fator = (1 + taxa_mensal) ** meses
+        parcela = principal * (taxa_mensal * fator) / (fator - 1)
+    else:
+        parcela = principal / meses
+
+    total_parcelas = parcela * meses
+    juros_total = max(0.0, total_parcelas - principal)
+    total_pago = entrada + total_parcelas
+
+    return {
+        "ativo": True,
+        "entrada": entrada,
+        "principal": principal,
+        "taxa_mensal": taxa_mensal,
+        "meses": meses,
+        "custos": custos,
+        "parcela": parcela,
+        "total_parcelas": total_parcelas,
+        "total_pago": total_pago,
+        "juros_total": juros_total,
+    }
+
+
+def juros_financiamento_por_ano(financiamento: dict, anos: int) -> list:
+    if not financiamento or not financiamento.get("ativo"):
+        return [0.0] * max(0, int(anos or 0))
+
+    anos = max(0, int(anos or 0))
+    principal = max(0.0, float(financiamento.get("principal", 0.0) or 0.0))
+    taxa = max(0.0, float(financiamento.get("taxa_mensal", 0.0) or 0.0))
+    meses = max(0, int(financiamento.get("meses", 0) or 0))
+    parcela = max(0.0, float(financiamento.get("parcela", 0.0) or 0.0))
+
+    juros_anuais = [0.0] * anos
+    saldo = principal
+    if principal <= 0 or meses <= 0 or parcela <= 0:
+        return juros_anuais
+
+    for mes in range(1, min(meses, anos * 12) + 1):
+        juros_mes = saldo * taxa if taxa > 0 else 0.0
+        amortizacao = parcela - juros_mes if taxa > 0 else parcela
+        if amortizacao < 0:
+            amortizacao = 0.0
+        saldo = max(0.0, saldo - amortizacao)
+        ano_idx = (mes - 1) // 12
+        if 0 <= ano_idx < anos:
+            juros_anuais[ano_idx] += juros_mes
+        if saldo <= 0:
+            break
+
+    return juros_anuais
+
+
 def nome_curto(nome: str, limite: int = 36) -> str:
     nome = str(nome or "Veículo").strip()
     return nome if len(nome) <= limite else nome[: limite - 1].rstrip() + "…"
@@ -273,6 +371,7 @@ def calcular_projecao_veiculo(veiculo, comum):
     ipva_inicial = max(0.0, float(veiculo.get("ipva", 0) or 0))
     seguro_inicial = max(0.0, float(veiculo.get("seguro", 0) or 0))
     depreciacao = max(0.0, min(float(veiculo.get("depreciacao", 0) or 0), 0.95))
+    financiamento = veiculo.get("financiamento") or {}
 
     energia_inicial = max(0.0, float(comum.get("energia", 0) or 0))
     combustivel_inicial = max(0.0, float(comum.get("combustivel", 0) or 0))
@@ -300,6 +399,8 @@ def calcular_projecao_veiculo(veiculo, comum):
     manut_lista = []
     preco_energia_lista = []
     preco_combustivel_lista = []
+    financiamento_juros_lista = []
+    financiamento_juros_anuais = juros_financiamento_por_ano(financiamento, anos)
 
     for ano in range(1, anos + 1):
         energia_ano = energia_inicial * ((1 + aumento_energia) ** (ano - 1))
@@ -314,7 +415,8 @@ def calcular_projecao_veiculo(veiculo, comum):
         else:
             custo_uso = (km_ano / consumo * combustivel_ano) if consumo > 0 else 0.0
 
-        custo_anual = custo_uso + manut + ipva_ano + seguro_ano
+        juros_financiamento_ano = financiamento_juros_anuais[ano - 1] if ano - 1 < len(financiamento_juros_anuais) else 0.0
+        custo_anual = custo_uso + manut + ipva_ano + seguro_ano + juros_financiamento_ano
         gasto_operacional_acumulado += custo_anual
 
         # Valor estimado de revenda ao fim do ano.
@@ -335,6 +437,7 @@ def calcular_projecao_veiculo(veiculo, comum):
         manut_lista.append(manut)
         preco_energia_lista.append(energia_ano)
         preco_combustivel_lista.append(combustivel_ano)
+        financiamento_juros_lista.append(juros_financiamento_ano)
 
     total_km = anos * km_ano if anos > 0 and km_ano > 0 else 1
     valor_revenda_final = valor_mercado_lista[-1]
@@ -342,6 +445,7 @@ def calcular_projecao_veiculo(veiculo, comum):
     gasto_operacional_final = gasto_operacional_lista[-1] if gasto_operacional_lista else 0.0
     tco_final = tco_lista[-1] if tco_lista else 0.0
     tco_final_s = tco_lista_s[-1] if tco_lista_s else 0.0
+    juros_financiamento_horizonte = sum(financiamento_juros_lista)
 
     return {
         "nome": nome,
@@ -354,6 +458,8 @@ def calcular_projecao_veiculo(veiculo, comum):
         "valor_revenda_final": valor_revenda_final,
         "perda_depreciacao_final": perda_depreciacao_final,
         "gasto_operacional_final": gasto_operacional_final,
+        "financiamento": financiamento,
+        "juros_financiamento_horizonte": juros_financiamento_horizonte,
         "anos_lista": anos_lista,
         "anos_eixo": anos_eixo,
         "tco_final": tco_final,
@@ -371,6 +477,7 @@ def calcular_projecao_veiculo(veiculo, comum):
         "manut_lista": manut_lista,
         "preco_energia_lista": preco_energia_lista,
         "preco_combustivel_lista": preco_combustivel_lista,
+        "financiamento_juros_lista": financiamento_juros_lista,
     }
 
 
@@ -406,7 +513,7 @@ def gerar_graficos_dupla(v1, v2):
         customdata=[v2["nome"]] * len(v2["anos_lista"]),
         hovertemplate="%{customdata}<br>%{x}<br>Gasto operacional: R$ %{y:,.2f}<extra></extra>",
     ))
-    fig_gastos.update_layout(**obter_layout_web("Gastos acumulados de uso"), yaxis_title="Gasto acumulado (R$)")
+    fig_gastos.update_layout(**obter_layout_web("Gastos acumulados de uso e financiamento"), yaxis_title="Gasto acumulado (R$)")
 
     fig_custo_km = go.Figure()
     fig_custo_km.add_trace(go.Bar(
@@ -482,6 +589,15 @@ def montar_bloco_resultado(titulo, v1, v2):
             "taxa_depreciacao": percentual_format(v["taxa_depreciacao"]),
             "taxa_ipva": percentual_format(v["taxa_ipva"]),
             "taxa_seguro": percentual_format(v["taxa_seguro"]),
+            "financiamento_ativo": bool((v.get("financiamento") or {}).get("ativo")),
+            "valor_financiado": real_format((v.get("financiamento") or {}).get("principal", 0)),
+            "entrada_financiamento": real_format((v.get("financiamento") or {}).get("entrada", 0)),
+            "parcela_financiamento": real_format((v.get("financiamento") or {}).get("parcela", 0)),
+            "prazo_financiamento": int((v.get("financiamento") or {}).get("meses", 0) or 0),
+            "taxa_financiamento": percentual_format((v.get("financiamento") or {}).get("taxa_mensal", 0)),
+            "total_financiamento": real_format((v.get("financiamento") or {}).get("total_pago", 0)),
+            "juros_financiamento_total": real_format((v.get("financiamento") or {}).get("juros_total", 0)),
+            "juros_financiamento_horizonte": real_format(v.get("juros_financiamento_horizonte", 0)),
         }
 
     resumo_v1 = resumo(v1)
@@ -549,43 +665,49 @@ def extrair_parametros_comuns(dados_form):
 def montar_veiculo_ve(dados_form):
     ipva_ve = 0.0 if "isencao_ipva_ve" in dados_form else conv(dados_form.get("ipva_ve", 0))
 
+    preco = conv(dados_form.get("preco_ve", 0))
     return {
         "nome": dados_form.get("modelo_ve", "Veículo elétrico"),
         "tipo": "ve",
-        "preco": conv(dados_form.get("preco_ve", 0)),
+        "preco": preco,
         "consumo": conv(dados_form.get("consumo_ve", 0)),
         "manut": conv(dados_form.get("manut_ve", 0)),
         "ipva": ipva_ve,
-        "seguro": seguro_formulario_ou_padrao(dados_form, "seguro_ve", conv(dados_form.get("preco_ve", 0))),
+        "seguro": seguro_formulario_ou_padrao(dados_form, "seguro_ve", preco),
         "depreciacao": conv(dados_form.get("depreciacao_ve", 0)) / 100.0,
+        "financiamento": calcular_financiamento_form(dados_form, "ve", preco),
     }
 
 
 # 4.10) Monta veículo a combustão futuro
 def montar_veiculo_icev(dados_form):
+    preco = conv(dados_form.get("preco_icev", 0))
     return {
         "nome": dados_form.get("modelo_icev", "Veículo a combustão"),
         "tipo": "icev",
-        "preco": conv(dados_form.get("preco_icev", 0)),
+        "preco": preco,
         "consumo": conv(dados_form.get("consumo_icev", 1)),
         "manut": conv(dados_form.get("manut_icev", 0)),
         "ipva": conv(dados_form.get("ipva_icev", 0)),
-        "seguro": seguro_formulario_ou_padrao(dados_form, "seguro_icev", conv(dados_form.get("preco_icev", 0))),
+        "seguro": seguro_formulario_ou_padrao(dados_form, "seguro_icev", preco),
         "depreciacao": conv(dados_form.get("depreciacao_icev", 0)) / 100.0,
+        "financiamento": calcular_financiamento_form(dados_form, "icev", preco),
     }
 
 
 # 4.11) Monta carro atual
 def montar_veiculo_atual(dados_form):
+    preco = conv(dados_form.get("preco_atual", 0))
     return {
         "nome": dados_form.get("modelo_atual", "Meu carro atual"),
         "tipo": "icev",
-        "preco": conv(dados_form.get("preco_atual", 0)),
+        "preco": preco,
         "consumo": conv(dados_form.get("consumo_atual", 1)),
         "manut": conv(dados_form.get("manut_atual", 0)),
         "ipva": conv(dados_form.get("ipva_atual", 0)),
-        "seguro": seguro_formulario_ou_padrao(dados_form, "seguro_atual", conv(dados_form.get("preco_atual", 0))),
+        "seguro": seguro_formulario_ou_padrao(dados_form, "seguro_atual", preco),
         "depreciacao": conv(dados_form.get("depreciacao_atual", 0)) / 100.0,
+        "financiamento": calcular_financiamento_form(dados_form, "atual", preco),
     }
 
 

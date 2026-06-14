@@ -19,6 +19,16 @@
     .plugve-metric-card{border:1px solid #e5e7eb;border-radius:1rem;background:linear-gradient(180deg,#ffffff 0%,#f8fafc 100%);padding:1rem;box-shadow:0 8px 22px rgba(15,23,42,.04)}
     .plugve-result-actions{display:flex;gap:.75rem;flex-wrap:wrap;justify-content:flex-end;align-items:center}
     .plugve-page-break{break-inside:avoid;page-break-inside:avoid}
+    .plugve-finance-box{border:1px dashed #cbd5e1;border-radius:.75rem;background:#f8fafc;padding:.65rem;margin-top:.55rem}
+    .plugve-finance-box strong{color:#0f172a}
+    .plugve-finance-summary{font-size:.76rem;color:#475569;line-height:1.35}
+    .plugve-finance-modal{position:fixed;inset:0;z-index:100;background:rgba(15,23,42,.55);display:flex;align-items:flex-start;justify-content:center;padding:4vh 1rem;overflow:auto}
+    .plugve-finance-modal.hidden{display:none !important}
+    .plugve-finance-panel{width:min(1080px,100%);background:#fff;border-radius:1.1rem;box-shadow:0 24px 80px rgba(15,23,42,.28);overflow:hidden}
+    .plugve-finance-header{padding:1.2rem 1.4rem;border-bottom:1px solid #e5e7eb;background:linear-gradient(180deg,#eff6ff 0%,#ffffff 100%)}
+    .plugve-finance-body{padding:1.25rem}
+    .plugve-finance-vehicle{border:1px solid #e5e7eb;border-radius:1rem;padding:1rem;background:#fff;box-shadow:0 10px 25px rgba(15,23,42,.04)}
+    .plugve-finance-total{background:#f8fafc;border:1px solid #e2e8f0;border-radius:.75rem;padding:.7rem;font-size:.8rem;color:#334155}
     @media print{
       header, footer, #form_simulacao_tco, .no-print{display:none !important}
       body{background:#fff !important;color:#111827 !important}
@@ -41,7 +51,7 @@
           <span class="text-xl font-bold text-blue-600">PlugVE</span>
         </div>
         <div class="hidden md:flex space-x-6">
-          <a href="/simular" class="text-blue-600 font-semibold">Início</a>
+          <a href="/simular" id="link_inicio_tco" data-plugve-reset="1" class="text-blue-600 font-semibold">Início</a>
           <a href="/depreciacao" class="text-gray-700 hover:text-blue-600 font-medium">Depreciação</a>
           <a href="/financiamento" class="text-gray-700 hover:text-blue-600 font-medium">Financiamento</a>
           <a href="/sobre" class="text-gray-700 hover:text-blue-600 font-medium">Sobre</a>
@@ -249,6 +259,26 @@
                 <div>
                   <label class="block text-sm font-medium">Preço atual do veículo (R$)</label>
                   <input type="text" name="preco_atual" id="preco_atual" class="mt-1 p-2 border rounded w-full" placeholder="ex: 65000">
+                  <div id="fin_box_atual" class="plugve-finance-box">
+                    <input type="hidden" name="fin_atual_ativo" id="fin_atual_ativo" value="0">
+                    <input type="hidden" name="fin_atual_entrada_pct" id="fin_atual_entrada_pct" value="0">
+                    <input type="hidden" name="fin_atual_entrada" id="fin_atual_entrada" value="0">
+                    <input type="hidden" name="fin_atual_juros_mensal" id="fin_atual_juros_mensal" value="0">
+                    <input type="hidden" name="fin_atual_meses" id="fin_atual_meses" value="0">
+                    <input type="hidden" name="fin_atual_custos" id="fin_atual_custos" value="0">
+                    <input type="hidden" name="fin_atual_principal" id="fin_atual_principal" value="0">
+                    <input type="hidden" name="fin_atual_parcela" id="fin_atual_parcela" value="0">
+                    <input type="hidden" name="fin_atual_total_pago" id="fin_atual_total_pago" value="0">
+                    <input type="hidden" name="fin_atual_juros_total" id="fin_atual_juros_total" value="0">
+                    <div class="flex items-start justify-between gap-3">
+                      <div id="fin_resumo_atual" class="plugve-finance-summary">
+                        <strong>Financiamento:</strong> não configurado.
+                      </div>
+                      <button type="button" data-fin-prefix="atual" class="btn_financiamento_tco px-3 py-1.5 bg-slate-700 text-white text-xs rounded hover:bg-slate-800 whitespace-nowrap">
+                        Financiamento
+                      </button>
+                    </div>
+                  </div>
                 </div>
 
                 <div>
@@ -325,6 +355,26 @@
               <div>
                 <label class="block text-sm font-medium">Preço do VE</label>
                 <input type="text" name="preco_ve" id="preco_ve" class="mt-1 p-2 border rounded w-full" placeholder="ex: 150000">
+                  <div id="fin_box_ve" class="plugve-finance-box">
+                    <input type="hidden" name="fin_ve_ativo" id="fin_ve_ativo" value="0">
+                    <input type="hidden" name="fin_ve_entrada_pct" id="fin_ve_entrada_pct" value="0">
+                    <input type="hidden" name="fin_ve_entrada" id="fin_ve_entrada" value="0">
+                    <input type="hidden" name="fin_ve_juros_mensal" id="fin_ve_juros_mensal" value="0">
+                    <input type="hidden" name="fin_ve_meses" id="fin_ve_meses" value="0">
+                    <input type="hidden" name="fin_ve_custos" id="fin_ve_custos" value="0">
+                    <input type="hidden" name="fin_ve_principal" id="fin_ve_principal" value="0">
+                    <input type="hidden" name="fin_ve_parcela" id="fin_ve_parcela" value="0">
+                    <input type="hidden" name="fin_ve_total_pago" id="fin_ve_total_pago" value="0">
+                    <input type="hidden" name="fin_ve_juros_total" id="fin_ve_juros_total" value="0">
+                    <div class="flex items-start justify-between gap-3">
+                      <div id="fin_resumo_ve" class="plugve-finance-summary">
+                        <strong>Financiamento:</strong> não configurado.
+                      </div>
+                      <button type="button" data-fin-prefix="ve" class="btn_financiamento_tco px-3 py-1.5 bg-slate-700 text-white text-xs rounded hover:bg-slate-800 whitespace-nowrap">
+                        Financiamento
+                      </button>
+                    </div>
+                  </div>
               </div>
 
               <div>
@@ -399,6 +449,26 @@
               <div>
                 <label class="block text-sm font-medium">Preço do ICEV</label>
                 <input type="text" name="preco_icev" id="preco_icev" class="mt-1 p-2 border rounded w-full" placeholder="ex: 85000">
+                  <div id="fin_box_icev" class="plugve-finance-box">
+                    <input type="hidden" name="fin_icev_ativo" id="fin_icev_ativo" value="0">
+                    <input type="hidden" name="fin_icev_entrada_pct" id="fin_icev_entrada_pct" value="0">
+                    <input type="hidden" name="fin_icev_entrada" id="fin_icev_entrada" value="0">
+                    <input type="hidden" name="fin_icev_juros_mensal" id="fin_icev_juros_mensal" value="0">
+                    <input type="hidden" name="fin_icev_meses" id="fin_icev_meses" value="0">
+                    <input type="hidden" name="fin_icev_custos" id="fin_icev_custos" value="0">
+                    <input type="hidden" name="fin_icev_principal" id="fin_icev_principal" value="0">
+                    <input type="hidden" name="fin_icev_parcela" id="fin_icev_parcela" value="0">
+                    <input type="hidden" name="fin_icev_total_pago" id="fin_icev_total_pago" value="0">
+                    <input type="hidden" name="fin_icev_juros_total" id="fin_icev_juros_total" value="0">
+                    <div class="flex items-start justify-between gap-3">
+                      <div id="fin_resumo_icev" class="plugve-finance-summary">
+                        <strong>Financiamento:</strong> não configurado.
+                      </div>
+                      <button type="button" data-fin-prefix="icev" class="btn_financiamento_tco px-3 py-1.5 bg-slate-700 text-white text-xs rounded hover:bg-slate-800 whitespace-nowrap">
+                        Financiamento
+                      </button>
+                    </div>
+                  </div>
               </div>
 
               <div>
@@ -519,6 +589,49 @@
     </form>
 
     <!-- =========================================================
+      3.4) ABA/MODAL DE FINANCIAMENTO DO TCO
+    ========================================================= -->
+    <section id="modal_financiamento_tco" class="plugve-finance-modal hidden no-print" aria-hidden="true">
+      <div class="plugve-finance-panel">
+        <div class="plugve-finance-header">
+          <div class="flex items-start justify-between gap-4">
+            <div>
+              <h2 class="text-xl font-bold text-blue-700">Financiamento dos veículos selecionados</h2>
+              <p class="text-sm text-gray-600 mt-1">
+                Configure as condições de financiamento de cada carro. Cada veículo pode ter juros, entrada e prazo diferentes.
+              </p>
+            </div>
+            <button type="button" id="btn_fechar_financiamento_tco" class="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">
+              Fechar
+            </button>
+          </div>
+        </div>
+
+        <div class="plugve-finance-body">
+          <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
+            <p class="text-sm text-gray-600">
+              O TCO considera como custo financeiro os juros pagos no horizonte da simulação, evitando contar o valor do carro duas vezes.
+            </p>
+            <button type="button" id="btn_replicar_financiamento_tco" class="px-3 py-2 bg-slate-100 border border-slate-300 text-slate-700 text-sm rounded hover:bg-slate-200">
+              Replicar condições do primeiro carro
+            </button>
+          </div>
+
+          <div id="financeiro_veiculos_tco" class="grid grid-cols-1 lg:grid-cols-2 gap-4"></div>
+
+          <div class="mt-5 flex flex-col md:flex-row md:justify-end gap-3">
+            <button type="button" id="btn_limpar_financiamento_tco" class="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">
+              Limpar financiamentos
+            </button>
+            <button type="button" id="btn_salvar_financiamento_tco" class="px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700">
+              Salvar financiamento
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================================================
       4) RESULTADOS
     ========================================================= -->
     {% if resultado and resultado.comparacoes %}
@@ -532,6 +645,9 @@
               </p>
             </div>
             <div class="plugve-result-actions">
+              <button type="button" id="btn_nova_consulta_tco" class="px-4 py-2 rounded-lg border border-red-500 text-red-600 font-semibold hover:bg-red-50">
+                Fazer nova consulta
+              </button>
               <button type="button" id="btn_voltar_editar_tco" class="px-4 py-2 rounded-lg border border-blue-600 text-blue-700 font-semibold hover:bg-blue-50">
                 Voltar e editar valores
               </button>
@@ -563,13 +679,19 @@
                       <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                         <div><span class="text-gray-500">Valor inicial FIPE</span><br><b>{{ item.preco_inicial }}</b></div>
                         <div><span class="text-gray-500">Valor de revenda estimado</span><br><b>{{ item.valor_revenda }}</b></div>
-                        <div><span class="text-gray-500">Gasto de uso acumulado</span><br><b>{{ item.gasto_operacional }}</b></div>
+                        {% if item.financiamento_ativo %}
+                          <div><span class="text-gray-500">Valor financiado</span><br><b>{{ item.valor_financiado }}</b></div>
+                          <div><span class="text-gray-500">Parcela estimada</span><br><b>{{ item.parcela_financiamento }}</b> <span class="text-gray-500">/ {{ item.prazo_financiamento }} meses</span></div>
+                          <div><span class="text-gray-500">Juros no horizonte</span><br><b>{{ item.juros_financiamento_horizonte }}</b></div>
+                          <div><span class="text-gray-500">Total pago no financiamento</span><br><b>{{ item.total_financiamento }}</b></div>
+                        {% endif %}
+                        <div><span class="text-gray-500">Gasto operacional acumulado</span><br><b>{{ item.gasto_operacional }}</b></div>
                         <div><span class="text-gray-500">Perda por depreciação</span><br><b>{{ item.perda_depreciacao }}</b></div>
                         <div><span class="text-gray-500">TCO final</span><br><b>{{ item.tco_final }}</b></div>
                         <div><span class="text-gray-500">Custo por km</span><br><b>{{ item.custo_km }}</b></div>
                       </div>
                       <p class="text-[11px] text-gray-500 mt-3">
-                        Taxa de depreciação: {{ item.taxa_depreciacao }} a.a. | IPVA projetado sobre {{ item.taxa_ipva }} do valor do carro | Seguro projetado sobre {{ item.taxa_seguro }} do valor do carro.
+                        Taxa de depreciação: {{ item.taxa_depreciacao }} a.a. | IPVA projetado sobre {{ item.taxa_ipva }} do valor do carro | Seguro projetado sobre {{ item.taxa_seguro }} do valor do carro{% if item.financiamento_ativo %} | Financiamento: {{ item.taxa_financiamento }} a.m., entrada {{ item.entrada_financiamento }}, juros totais {{ item.juros_financiamento_total }}{% endif %}.
                       </p>
                     </div>
                   {% endfor %}
@@ -681,6 +803,313 @@
     }
 
     const PLUGVE_TCO_STORAGE_KEY = "plugve_tco_form_state_v26";
+    const PLUGVE_TCO_FIN_PREFIXES = ["atual", "ve", "icev"];
+
+    function limparEstadoPersistenteTCO() {
+      try {
+        sessionStorage.removeItem(PLUGVE_TCO_STORAGE_KEY);
+        PLUGVE_TCO_FIN_PREFIXES.forEach(prefixo => {
+          sessionStorage.removeItem(`plugve_tco_fin_${prefixo}`);
+          localStorage.removeItem(`plugve_depreciacao_validada_${prefixo}`);
+          sessionStorage.removeItem(`plugve_tco_depreciacao_${prefixo}`);
+        });
+      } catch (e) {}
+    }
+
+    if (new URLSearchParams(window.location.search).has("nova")) {
+      limparEstadoPersistenteTCO();
+      if (window.history && window.history.replaceState) window.history.replaceState({}, document.title, "/simular");
+    }
+
+    function novaConsultaTCO() {
+      limparEstadoPersistenteTCO();
+      window.location.href = "/simular?nova=1";
+    }
+
+    function campoValor(prefixo) {
+      if (prefixo === "atual") return document.getElementById("preco_atual");
+      if (prefixo === "ve") return document.getElementById("preco_ve");
+      return document.getElementById("preco_icev");
+    }
+
+    function campoModelo(prefixo) {
+      if (prefixo === "atual") return document.getElementById("modelo_atual");
+      if (prefixo === "ve") return document.getElementById("modelo_ve");
+      return document.getElementById("modelo_icev");
+    }
+
+    function rotuloPrefixoFinanciamento(prefixo) {
+      if (prefixo === "atual") return "Carro atual";
+      if (prefixo === "ve") return "Veículo elétrico";
+      return "Veículo a combustão";
+    }
+
+    function prefixosFinanciamentoCenarioTCO() {
+      const tipo = document.getElementById("tipo_comparacao")?.value || "dois_carros_novos";
+      if (tipo === "trocar_por_eletrico") return ["atual", "ve"];
+      if (tipo === "trocar_e_comparar_opcoes") return ["atual", "ve", "icev"];
+      return ["ve", "icev"];
+    }
+
+    function prefixosFinanciamentoSelecionadosTCO() {
+      return prefixosFinanciamentoCenarioTCO().filter(prefixo => {
+        const preco = numeroBRParaFloat(campoValor(prefixo)?.value || 0);
+        const nome = campoModelo(prefixo)?.value || "";
+        return preco > 0 || nome;
+      });
+    }
+
+    function calcularFinanciamentoTCO(preco, entradaPct, taxaMensalPct, meses, custos) {
+      preco = Math.max(0, Number(preco || 0));
+      entradaPct = Math.max(0, Math.min(100, Number(entradaPct || 0)));
+      taxaMensalPct = Math.max(0, Number(taxaMensalPct || 0));
+      meses = Math.max(0, Math.round(Number(meses || 0)));
+      custos = Math.max(0, Number(custos || 0));
+
+      const entrada = preco * (entradaPct / 100);
+      const principal = Math.max(0, preco + custos - entrada);
+      if (meses <= 0 || principal <= 0) {
+        return { entrada, principal: 0, parcela: 0, totalParcelas: 0, totalPago: 0, jurosTotal: 0 };
+      }
+      const taxa = taxaMensalPct / 100;
+      let parcela = principal / meses;
+      if (taxa > 0) {
+        const fator = Math.pow(1 + taxa, meses);
+        parcela = principal * (taxa * fator) / (fator - 1);
+      }
+      const totalParcelas = parcela * meses;
+      const jurosTotal = Math.max(0, totalParcelas - principal);
+      const totalPago = entrada + totalParcelas;
+      return { entrada, principal, parcela, totalParcelas, totalPago, jurosTotal };
+    }
+
+    function valorHiddenFin(prefixo, campo, padrao = "0") {
+      return document.getElementById(`fin_${prefixo}_${campo}`)?.value || padrao;
+    }
+
+    function setHiddenFin(prefixo, campo, valor) {
+      const el = document.getElementById(`fin_${prefixo}_${campo}`);
+      if (el) el.value = valor;
+    }
+
+    function financiamentoAtivo(prefixo) {
+      return valorHiddenFin(prefixo, "ativo", "0") === "1";
+    }
+
+    function nomeVeiculoFinanciamento(prefixo) {
+      const nome = campoModelo(prefixo)?.value || "";
+      if (nome) return nome;
+      const selModelo = document.getElementById(`${prefixo}_modelo`);
+      const selAno = document.getElementById(`${prefixo}_ano`);
+      const modelo = selModelo?.options?.[selModelo.selectedIndex]?.textContent?.replace(/^✓\s*/, "").trim() || "";
+      const ano = selAno?.options?.[selAno.selectedIndex]?.textContent?.trim() || "";
+      return `${modelo}${ano ? ` ${ano}` : ""}`.trim() || rotuloPrefixoFinanciamento(prefixo);
+    }
+
+    function preencherFinanciamentoHidden(prefixo, ativo, entradaPct, taxaMensalPct, meses, custos) {
+      const preco = numeroBRParaFloat(campoValor(prefixo)?.value || 0);
+      const calc = calcularFinanciamentoTCO(preco, entradaPct, taxaMensalPct, meses, custos);
+      setHiddenFin(prefixo, "ativo", ativo ? "1" : "0");
+      setHiddenFin(prefixo, "entrada_pct", ativo ? String(entradaPct || 0).replace(".", ",") : "0");
+      setHiddenFin(prefixo, "entrada", ativo ? formatarMoedaBR(calc.entrada) : "0");
+      setHiddenFin(prefixo, "juros_mensal", ativo ? String(taxaMensalPct || 0).replace(".", ",") : "0");
+      setHiddenFin(prefixo, "meses", ativo ? String(meses || 0) : "0");
+      setHiddenFin(prefixo, "custos", ativo ? formatarMoedaBR(custos || 0) : "0");
+      setHiddenFin(prefixo, "principal", ativo ? formatarMoedaBR(calc.principal) : "0");
+      setHiddenFin(prefixo, "parcela", ativo ? formatarMoedaBR(calc.parcela) : "0");
+      setHiddenFin(prefixo, "total_pago", ativo ? formatarMoedaBR(calc.totalPago) : "0");
+      setHiddenFin(prefixo, "juros_total", ativo ? formatarMoedaBR(calc.jurosTotal) : "0");
+      atualizarResumoFinanciamento(prefixo);
+    }
+
+    function atualizarResumoFinanciamento(prefixo) {
+      const resumo = document.getElementById(`fin_resumo_${prefixo}`);
+      if (!resumo) return;
+      if (!financiamentoAtivo(prefixo)) {
+        resumo.innerHTML = "<strong>Financiamento:</strong> não configurado.";
+        return;
+      }
+      const principal = valorHiddenFin(prefixo, "principal", "0");
+      const parcela = valorHiddenFin(prefixo, "parcela", "0");
+      const juros = valorHiddenFin(prefixo, "juros_total", "0");
+      const total = valorHiddenFin(prefixo, "total_pago", "0");
+      const meses = valorHiddenFin(prefixo, "meses", "0");
+      resumo.innerHTML = `<strong>Valor financiado:</strong> ${principal}<br><span>Total estimado: ${total} | Parcela: ${parcela} em ${meses} meses | Juros: ${juros}</span>`;
+    }
+
+    function atualizarTodosResumosFinanciamento() {
+      PLUGVE_TCO_FIN_PREFIXES.forEach(atualizarResumoFinanciamento);
+    }
+
+    function recalcularFinanciamentoPrefixo(prefixo) {
+      if (!financiamentoAtivo(prefixo)) {
+        atualizarResumoFinanciamento(prefixo);
+        return;
+      }
+      preencherFinanciamentoHidden(
+        prefixo,
+        true,
+        numeroBRParaFloat(valorHiddenFin(prefixo, "entrada_pct", "0")),
+        numeroBRParaFloat(valorHiddenFin(prefixo, "juros_mensal", "0")),
+        Number(valorHiddenFin(prefixo, "meses", "0")),
+        numeroBRParaFloat(valorHiddenFin(prefixo, "custos", "0"))
+      );
+    }
+
+    function previewFinanciamentoCard(card) {
+      const prefixo = card?.dataset?.prefixo;
+      if (!prefixo) return;
+      const ativo = card.querySelector("[data-fin-campo='ativo']")?.checked;
+      const preco = numeroBRParaFloat(campoValor(prefixo)?.value || 0);
+      const entradaPct = numeroBRParaFloat(card.querySelector("[data-fin-campo='entrada_pct']")?.value || 0);
+      const taxa = numeroBRParaFloat(card.querySelector("[data-fin-campo='juros_mensal']")?.value || 0);
+      const meses = Number(card.querySelector("[data-fin-campo='meses']")?.value || 0);
+      const custos = numeroBRParaFloat(card.querySelector("[data-fin-campo='custos']")?.value || 0);
+      const calc = ativo ? calcularFinanciamentoTCO(preco, entradaPct, taxa, meses, custos) : null;
+      const alvo = card.querySelector("[data-fin-preview]");
+      if (!alvo) return;
+      if (!ativo || !calc || calc.principal <= 0 || meses <= 0) {
+        alvo.innerHTML = "Financiamento desativado para este veículo.";
+        return;
+      }
+      alvo.innerHTML = `
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div><span class="text-gray-500">Entrada</span><br><b>${formatarMoedaBR(calc.entrada)}</b></div>
+          <div><span class="text-gray-500">Valor financiado</span><br><b>${formatarMoedaBR(calc.principal)}</b></div>
+          <div><span class="text-gray-500">Parcela</span><br><b>${formatarMoedaBR(calc.parcela)}</b></div>
+          <div><span class="text-gray-500">Total pago</span><br><b>${formatarMoedaBR(calc.totalPago)}</b></div>
+          <div><span class="text-gray-500">Juros totais</span><br><b>${formatarMoedaBR(calc.jurosTotal)}</b></div>
+          <div><span class="text-gray-500">Prazo</span><br><b>${meses} meses</b></div>
+        </div>`;
+    }
+
+    function montarCardFinanciamento(prefixo, indice) {
+      const ativo = financiamentoAtivo(prefixo);
+      const entradaPct = valorHiddenFin(prefixo, "entrada_pct", "20");
+      const juros = valorHiddenFin(prefixo, "juros_mensal", "1,49");
+      const meses = valorHiddenFin(prefixo, "meses", "60");
+      const custos = valorHiddenFin(prefixo, "custos", "0");
+      const preco = numeroBRParaFloat(campoValor(prefixo)?.value || 0);
+      const nome = nomeVeiculoFinanciamento(prefixo);
+      const card = document.createElement("div");
+      card.className = "plugve-finance-vehicle";
+      card.dataset.prefixo = prefixo;
+      card.innerHTML = `
+        <div class="flex items-start justify-between gap-3 mb-3">
+          <div>
+            <p class="text-xs uppercase tracking-wide text-gray-500">Carro ${indice + 1}</p>
+            <h3 class="font-bold text-blue-700">${nome}</h3>
+            <p class="text-sm text-gray-600">Valor do carro: <b>${formatarMoedaBR(preco)}</b></p>
+          </div>
+          <label class="flex items-center text-sm text-gray-700 select-none">
+            <input type="checkbox" data-fin-campo="ativo" class="mr-2" ${ativo ? "checked" : ""}>
+            Usar financiamento
+          </label>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+          <div>
+            <label class="block text-xs font-medium">Entrada (%)</label>
+            <input type="text" data-fin-campo="entrada_pct" value="${entradaPct || "20"}" class="mt-1 p-2 border rounded w-full" placeholder="ex: 20">
+          </div>
+          <div>
+            <label class="block text-xs font-medium">Juros (% a.m.)</label>
+            <input type="text" data-fin-campo="juros_mensal" value="${juros || "1,49"}" class="mt-1 p-2 border rounded w-full" placeholder="ex: 1,49">
+          </div>
+          <div>
+            <label class="block text-xs font-medium">Prazo (meses)</label>
+            <input type="number" data-fin-campo="meses" value="${meses && meses !== "0" ? meses : "60"}" min="1" max="120" class="mt-1 p-2 border rounded w-full">
+          </div>
+          <div>
+            <label class="block text-xs font-medium">Custos financiados (R$)</label>
+            <input type="text" data-fin-campo="custos" value="${custos && custos !== "0" ? custos : "0"}" class="mt-1 p-2 border rounded w-full" placeholder="ex: 0">
+          </div>
+        </div>
+        <div data-fin-preview class="plugve-finance-total mt-4"></div>
+      `;
+      if (!ativo && valorHiddenFin(prefixo, "meses", "0") === "0") {
+        card.querySelector("[data-fin-campo='ativo']").checked = true;
+      }
+      card.querySelectorAll("input").forEach(input => {
+        input.addEventListener("input", () => previewFinanciamentoCard(card));
+        input.addEventListener("change", () => previewFinanciamentoCard(card));
+      });
+      previewFinanciamentoCard(card);
+      return card;
+    }
+
+    function abrirFinanciamentoTCO(prefixoInicial = "") {
+      const modal = document.getElementById("modal_financiamento_tco");
+      const container = document.getElementById("financeiro_veiculos_tco");
+      if (!modal || !container) return;
+      const prefixos = prefixosFinanciamentoSelecionadosTCO();
+      if (!prefixos.length) {
+        alert("Selecione os veículos pela FIPE antes de configurar o financiamento.");
+        return;
+      }
+      container.innerHTML = "";
+      prefixos.forEach((prefixo, idx) => container.appendChild(montarCardFinanciamento(prefixo, idx)));
+      modal.classList.remove("hidden");
+      modal.setAttribute("aria-hidden", "false");
+      if (prefixoInicial) {
+        setTimeout(() => container.querySelector(`[data-prefixo='${prefixoInicial}']`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 100);
+      }
+    }
+
+    function fecharFinanciamentoTCO() {
+      const modal = document.getElementById("modal_financiamento_tco");
+      if (!modal) return;
+      modal.classList.add("hidden");
+      modal.setAttribute("aria-hidden", "true");
+    }
+
+    function salvarFinanciamentoTCO() {
+      document.querySelectorAll("#financeiro_veiculos_tco .plugve-finance-vehicle").forEach(card => {
+        const prefixo = card.dataset.prefixo;
+        const ativo = !!card.querySelector("[data-fin-campo='ativo']")?.checked;
+        const entradaPct = numeroBRParaFloat(card.querySelector("[data-fin-campo='entrada_pct']")?.value || 0);
+        const taxa = numeroBRParaFloat(card.querySelector("[data-fin-campo='juros_mensal']")?.value || 0);
+        const meses = Number(card.querySelector("[data-fin-campo='meses']")?.value || 0);
+        const custos = numeroBRParaFloat(card.querySelector("[data-fin-campo='custos']")?.value || 0);
+        preencherFinanciamentoHidden(prefixo, ativo, entradaPct, taxa, meses, custos);
+      });
+      capturarEstadoFormularioTCO();
+      fecharFinanciamentoTCO();
+    }
+
+    function replicarFinanciamentoPrimeiroTCO() {
+      const cards = Array.from(document.querySelectorAll("#financeiro_veiculos_tco .plugve-finance-vehicle"));
+      if (cards.length < 2) return;
+      const primeiro = cards[0];
+      const campos = ["ativo", "entrada_pct", "juros_mensal", "meses", "custos"];
+      cards.slice(1).forEach(card => {
+        campos.forEach(campo => {
+          const origem = primeiro.querySelector(`[data-fin-campo='${campo}']`);
+          const destino = card.querySelector(`[data-fin-campo='${campo}']`);
+          if (!origem || !destino) return;
+          if (destino.type === "checkbox") destino.checked = origem.checked;
+          else destino.value = origem.value;
+        });
+        previewFinanciamentoCard(card);
+      });
+    }
+
+    function limparFinanciamentosTCO() {
+      PLUGVE_TCO_FIN_PREFIXES.forEach(prefixo => preencherFinanciamentoHidden(prefixo, false, 0, 0, 0, 0));
+      document.querySelectorAll("#financeiro_veiculos_tco .plugve-finance-vehicle").forEach(card => {
+        const ativo = card.querySelector("[data-fin-campo='ativo']");
+        const entrada = card.querySelector("[data-fin-campo='entrada_pct']");
+        const juros = card.querySelector("[data-fin-campo='juros_mensal']");
+        const meses = card.querySelector("[data-fin-campo='meses']");
+        const custos = card.querySelector("[data-fin-campo='custos']");
+        if (ativo) ativo.checked = false;
+        if (entrada) entrada.value = "0";
+        if (juros) juros.value = "0";
+        if (meses) meses.value = "0";
+        if (custos) custos.value = "0";
+        previewFinanciamentoCard(card);
+      });
+      capturarEstadoFormularioTCO();
+    }
 
     function capturarEstadoFormularioTCO() {
       const form = document.getElementById("form_simulacao_tco");
@@ -745,6 +1174,7 @@
         const salvo = JSON.parse(sessionStorage.getItem(PLUGVE_TCO_STORAGE_KEY) || "null");
         aplicarEstadoFormularioTCO(salvo);
       } catch (e) {}
+      atualizarTodosResumosFinanciamento();
     }
 
     function mostrarFormularioEdicaoTCO() {
@@ -2119,6 +2549,7 @@
           if (n > 0) el.value = formatarMoedaBR(n);
         });
         atualizarEstiloSelectModeloPlugVE(document.getElementById(`${prefixo}_modelo`));
+        recalcularFinanciamentoPrefixo(prefixo);
         atualizarDetalhesProgressivosPlugVE();
       };
 
@@ -2183,10 +2614,37 @@
           timerHorizontePlugVE = setTimeout(reprocessarHorizonteDepreciacaoPlugVE, 450);
         });
 
+        document.getElementById("btn_nova_consulta_tco")?.addEventListener("click", novaConsultaTCO);
         document.getElementById("btn_voltar_editar_tco")?.addEventListener("click", mostrarFormularioEdicaoTCO);
         document.getElementById("btn_exportar_pdf_tco")?.addEventListener("click", function () {
           window.print();
         });
+
+        document.querySelectorAll("[data-plugve-reset='1']").forEach(link => {
+          link.addEventListener("click", function () {
+            limparEstadoPersistenteTCO();
+          });
+        });
+
+        document.querySelectorAll(".btn_financiamento_tco").forEach(btn => {
+          btn.addEventListener("click", function () {
+            abrirFinanciamentoTCO(this.dataset.finPrefix || "");
+          });
+        });
+        document.getElementById("btn_fechar_financiamento_tco")?.addEventListener("click", fecharFinanciamentoTCO);
+        document.getElementById("btn_salvar_financiamento_tco")?.addEventListener("click", salvarFinanciamentoTCO);
+        document.getElementById("btn_replicar_financiamento_tco")?.addEventListener("click", replicarFinanciamentoPrimeiroTCO);
+        document.getElementById("btn_limpar_financiamento_tco")?.addEventListener("click", limparFinanciamentosTCO);
+        document.getElementById("modal_financiamento_tco")?.addEventListener("click", function (ev) {
+          if (ev.target === this) fecharFinanciamentoTCO();
+        });
+
+        ["atual", "ve", "icev"].forEach(prefixo => {
+          campoValor(prefixo)?.addEventListener("blur", () => recalcularFinanciamentoPrefixo(prefixo));
+          campoValor(prefixo)?.addEventListener("change", () => recalcularFinanciamentoPrefixo(prefixo));
+        });
+
+        atualizarTodosResumosFinanciamento();
 
         document.getElementById("form_simulacao_tco")?.addEventListener("submit", function (ev) {
           if (!detalhesLiberadosPlugVE) {
