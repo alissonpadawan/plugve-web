@@ -40,15 +40,7 @@
         </div>
       </div>
 
-      <div class="grid two consulta-row">
-        <div class="field">
-          <label for="tipo_veiculo">Tipo</label>
-          <select id="tipo_veiculo">
-            <option value="auto">Detectar automaticamente</option>
-            <option value="combustao">Combustão</option>
-            <option value="eletrico">Elétrico ou híbrido</option>
-          </select>
-        </div>
+      <div class="consulta-row consulta-horizonte-row">
         <div class="field">
           <label for="horizonte_anos">Horizonte da análise, em anos</label>
           <input id="horizonte_anos" type="number" min="1" max="20" step="1" value="5">
@@ -78,6 +70,14 @@
       </div>
     </section>
 
+    <section id="pdf_header_depreciacao" class="pdf-report-header" aria-hidden="true">
+      <img src="{{ url_for('static', filename='img/logo_curve_horizontal.png') }}" alt="CurVE Calculadora Veicular">
+      <div>
+        <strong>Relatório de depreciação veicular</strong>
+        <span id="pdf_data_emissao">Data de emissão: -</span>
+      </div>
+    </section>
+
     <section id="resultado_area" class="hidden result-top-grid">
       <div class="card result-card" id="card_resultado">
         <h2>Resumo da depreciação</h2>
@@ -94,6 +94,7 @@
         </dl>
         <div class="actions">
           <button id="btn_ver_detalhes" class="button primary hidden" type="button" disabled>Ver detalhes</button>
+          <button id="btn_exportar_pdf" class="button secondary hidden" type="button" disabled>Exportar PDF</button>
           <button id="btn_apagar_curva" class="button secondary hidden" type="button" disabled>Apagar curva</button>
           <button id="btn_usar_no_tco" class="button primary hidden" type="button" disabled>Usar no TCO e fechar</button>
         </div>
@@ -122,18 +123,6 @@
           <h3>Histórico corrigido pelo IPCA</h3>
           <div id="grafico_historico_ipca_render" class="simple-chart empty-chart">Histórico corrigido pelo IPCA não disponível para esta curva.</div>
         </div>
-        <div id="historico_mensal_tabela" class="history-table-wrap hidden">
-          <h3>Histórico mês a mês da coorte</h3>
-          <p id="historico_mensal_resumo" class="muted small-text"></p>
-          <div class="history-table-scroll">
-            <table class="details-table compact-details history-month-table">
-              <thead>
-                <tr><th>Referência</th><th>Valor FIPE</th><th>Tipo</th></tr>
-              </thead>
-              <tbody id="historico_mensal_corpo"></tbody>
-            </table>
-          </div>
-        </div>
       </section>
 
       <section id="detalhes_resultado" class="card report-card">
@@ -157,5 +146,5 @@
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/fipe.js') }}"></script>
-<script src="{{ url_for('static', filename='js/depreciacao.js') }}?v=20260613_v7_graficos_historico"></script>
+<script src="{{ url_for('static', filename='js/depreciacao.js') }}?v=20260615_v8_pdf_graficos"></script>
 {% endblock %}

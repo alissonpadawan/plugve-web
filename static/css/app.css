@@ -1393,3 +1393,167 @@ textarea { resize: vertical; }
 .bar-chart-bar.base { background: var(--primary); }
 .bar-chart-bar.otimista { background: var(--primary-dark); }
 .bar-chart-bar.pessimista { background: var(--accent); }
+
+/* V28 - ajustes de apresentação da depreciação e exportação em PDF */
+.consulta-horizonte-row {
+  max-width: 360px;
+}
+
+.pdf-report-header {
+  display: none;
+}
+
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+
+  html,
+  body {
+    background: #fff !important;
+    color: #111827 !important;
+  }
+
+  .topbar,
+  .footer,
+  .depr-sidebar,
+  .base-drawer,
+  .base-drawer-backdrop,
+  #btn_toggle_base_provisoria,
+  .consulta-card,
+  .actions,
+  #calculo_feedback {
+    display: none !important;
+  }
+
+  .page,
+  .page:has(.depr-workspace-final),
+  .container,
+  .page:has(.depr-workspace-final) .container {
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+
+  .depr-workspace,
+  .depr-workspace-final,
+  .depr-main,
+  #resultado_area,
+  #auditoria_area,
+  #historico_render_area,
+  #card_grafico_barras {
+    display: block !important;
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  .pdf-report-header {
+    display: flex !important;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    border-bottom: 2px solid #168A4A;
+    padding-bottom: 10px;
+    margin-bottom: 14px;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .pdf-report-header img {
+    width: 170px;
+    height: auto;
+    object-fit: contain;
+  }
+
+  .pdf-report-header div {
+    text-align: right;
+    font-size: 12px;
+    color: #374151;
+  }
+
+  .pdf-report-header strong {
+    display: block;
+    color: #0B1720;
+    font-size: 18px;
+    margin-bottom: 4px;
+  }
+
+  .result-top-grid,
+  .auditoria-final {
+    display: block !important;
+  }
+
+  .card,
+  .result-top-grid .result-card,
+  .result-top-grid .chart-card-bars,
+  .auditoria-final .chart-card,
+  .auditoria-final .chart-card-curve,
+  .chart-card-history {
+    box-shadow: none !important;
+    border: 1px solid #D1D5DB !important;
+    border-radius: 10px !important;
+    padding: 12px !important;
+    margin: 0 0 12px !important;
+    min-height: 0 !important;
+    height: auto !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .simple-chart,
+  .auditoria-final .simple-chart,
+  .result-top-grid .simple-chart,
+  .auditoria-final #grafico_projecao,
+  .auditoria-final .chart-card-curve #grafico_projecao {
+    min-height: 0 !important;
+    height: auto !important;
+    padding: 8px !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+
+  .line-chart-svg,
+  .auditoria-final .line-chart-svg,
+  .auditoria-final .chart-card-curve .line-chart-svg {
+    min-height: 250px !important;
+    max-height: 285px !important;
+  }
+
+  .bar-chart-grid,
+  .result-top-grid .bar-chart-grid {
+    min-height: 230px !important;
+    height: 230px !important;
+  }
+
+  .bar-chart-item,
+  .result-top-grid .bar-chart-item {
+    height: 230px !important;
+  }
+
+  .bar-chart-bar,
+  .result-top-grid .bar-chart-bar {
+    max-height: 185px !important;
+  }
+
+  .projection-summary,
+  .auditoria-final .projection-summary,
+  .auditoria-final .chart-card-curve .projection-summary {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: 6px !important;
+  }
+
+  .technical-report {
+    white-space: pre-wrap !important;
+    font-size: 10.5px !important;
+    line-height: 1.35 !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  h1, h2, h3 {
+    color: #0B1720 !important;
+  }
+}

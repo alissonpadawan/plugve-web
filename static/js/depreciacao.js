@@ -147,6 +147,7 @@ function configurarBotoesResultado(curvaEncontrada, podeCalcularFuturo, permitir
   const btnCalcular = document.getElementById("btn_calcular_futuro");
   const btnUsarTCO = document.getElementById("btn_usar_no_tco");
   const btnApagar = document.getElementById("btn_apagar_curva");
+  const btnPdf = document.getElementById("btn_exportar_pdf");
   const btnDiag = document.getElementById("btn_diagnostico_coorte");
 
   if (btnDetalhes) {
@@ -171,6 +172,11 @@ function configurarBotoesResultado(curvaEncontrada, podeCalcularFuturo, permitir
     btnApagar.disabled = !(curvaEncontrada && permitirApagar);
   }
 
+  if (btnPdf) {
+    btnPdf.classList.toggle("hidden", !curvaEncontrada);
+    btnPdf.disabled = !curvaEncontrada;
+  }
+
   if (btnDiag) {
     const mostrarDiag = curvaEncontrada || podeCalcularFuturo;
     btnDiag.classList.toggle("hidden", !mostrarDiag);
@@ -179,9 +185,13 @@ function configurarBotoesResultado(curvaEncontrada, podeCalcularFuturo, permitir
 }
 
 function preencherResumo(data) {
-  document.getElementById("res_valor_atual").textContent = formatarMoedaBR(data.valor_atual);
-  document.getElementById("res_valor_futuro").textContent = data.valor_futuro != null && Number(data.valor_futuro) > 0 ? formatarMoedaBR(data.valor_futuro) : "-";
-  document.getElementById("res_depreciacao").textContent = data.depreciacao_percentual != null && Number(data.depreciacao_percentual) > 0 ? `${Number(data.depreciacao_percentual).toFixed(2).replace(".", ",")}%` : "-";
+  const cen = obterCenariosDoResultado(data);
+  const valorAtual = Number(cen.atual || data.valor_atual || 0);
+  const valorFuturo = Number(cen.base || data.valor_futuro || 0);
+  const depCalculada = valorAtual > 0 && valorFuturo > 0 ? ((valorAtual - valorFuturo) / valorAtual) * 100 : Number(data.depreciacao_percentual || 0);
+  document.getElementById("res_valor_atual").textContent = valorAtual > 0 ? formatarMoedaBR(valorAtual) : "-";
+  document.getElementById("res_valor_futuro").textContent = valorFuturo > 0 ? formatarMoedaBR(valorFuturo) : "-";
+  document.getElementById("res_depreciacao").textContent = depCalculada > 0 ? `${depCalculada.toFixed(2).replace(".", ",")}%` : "-";
   document.getElementById("res_taxa").textContent = data.taxa_anual_percentual != null && Number(data.taxa_anual_percentual) > 0 ? `${Number(data.taxa_anual_percentual).toFixed(2).replace(".", ",")}% a.a.` : "-";
   document.getElementById("res_confianca").textContent = data.confianca || "-";
   document.getElementById("res_origem").textContent = data.origem_curva || "-";
@@ -249,11 +259,12 @@ function montarRelatorioTextual(data, origem = "curva") {
   const veiculo = detalhes.veiculo || ultimoDetalheFipe || {};
   const modelo = veiculo.modelo || detalhes.modelo || data?.modelo || "veículo selecionado";
   const marca = veiculo.marca || detalhes.marca || data?.marca || "";
-  const horizonte = Number(data?.horizonte_anos || document.getElementById("horizonte_anos")?.value || 5);
-  const valorAtual = Number(data?.valor_atual || veiculo.valor_atual || 0);
-  const valorFuturo = Number(data?.valor_futuro || 0);
+  const cenarios = obterCenariosDoResultado(data);
+  const horizonte = Number(cenarios.horizonte || data?.horizonte_anos || document.getElementById("horizonte_anos")?.value || 5);
+  const valorAtual = Number(cenarios.atual || data?.valor_atual || veiculo.valor_atual || 0);
+  const valorFuturo = Number(cenarios.base || data?.valor_futuro || 0);
   const taxa = Number(data?.taxa_anual_percentual || 0);
-  const dep = Number(data?.depreciacao_percentual || 0);
+  const dep = valorAtual > 0 && valorFuturo > 0 ? ((valorAtual - valorFuturo) / valorAtual) * 100 : Number(data?.depreciacao_percentual || 0);
   const confianca = data?.confianca || detalhes.confianca;
   const pontos = data?.pontos_historicos || detalhes.pontos_historicos;
   const janela = data?.janela_historica_meses || detalhes.janela_historica_meses;
@@ -857,7 +868,6 @@ function renderizarGraficosDepreciacao(data) {
   renderizarGraficoBarrasResultado(data);
   renderizarGraficoProjecaoResultado(data);
   renderizarGraficoHistoricoRender(data);
-  renderizarTabelaHistoricoMensal(data);
 }
 
 
@@ -891,6 +901,128 @@ function calcularEscalaAjustada(valores, margemRelativa = 0.12) {
   if (min < 0) min = 0;
   if (max <= min) max = min + 1;
   return { min, max, range: max - min };
+}
+
+function calcularEscalaLinearPainel(valores, divisoes = 5) {
+  const nums = (valores || []).map(Number).filter(v => Number.isFinite(v) && v > 0);
+  if (!nums.length) return { min: 0, max: 1, range: 1, ticks: [1, 0.5, 0] };
+  const minValor = Math.min(...nums);
+  const maxValor = Math.max(...nums);
+  const bruto = Math.max(1, maxValor - minValor);
+  const alvoStep = bruto / Math.max(1, divisoes);
+  const potencia = Math.pow(10, Math.floor(Math.log10(alvoStep)));
+  const fracao = alvoStep / potencia;
+  let niceFracao = 1;
+  if (fracao <= 1) niceFracao = 1;
+  else if (fracao <= 2) niceFracao = 2;
+  else if (fracao <= 2.5) niceFracao = 2.5;
+  else if (fracao <= 5) niceFracao = 5;
+  else niceFracao = 10;
+  const step = niceFracao * potencia;
+  const margem = Math.max(bruto * 0.04, step * 0.15);
+  let min = Math.floor((minValor - margem) / step) * step;
+  let max = Math.ceil((maxValor + margem) / step) * step;
+  if (min < 0 && minValor > step) min = 0;
+  if (max <= min) max = min + step;
+  const ticks = [];
+  for (let v = max; v >= min - step * 0.001; v -= step) {
+    ticks.push(Math.max(0, Math.round(v * 100) / 100));
+    if (ticks.length > 12) break;
+  }
+  return { min, max, range: max - min, step, ticks };
+}
+
+function valorNumericoPositivo(valor) {
+  const n = parseMoedaTecnica(valor);
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
+function extrairNumeroPorPadroes(texto, padroes) {
+  const txt = String(texto || "");
+  for (const padrao of padroes) {
+    const m = padrao.exec(txt);
+    if (m && m[1]) {
+      const n = valorNumericoPositivo(m[1]);
+      if (n > 0) return n;
+    }
+  }
+  return 0;
+}
+
+function extrairCenariosDoRelatorioTecnico(data) {
+  const txt = textoRelatorioCompleto(data);
+  if (!txt.trim()) return {};
+  const valorAtual = extrairNumeroPorPadroes(txt, [
+    /Valor\s+FIPE\s+atual\s*:\s*R\$\s*([0-9.,]+)/i,
+    /Valor\s+atual\s+FIPE\s*:\s*R\$\s*([0-9.,]+)/i,
+    /Preço\s+FIPE\s+real\s+atual\s*:\s*R\$\s*([0-9.,]+)/i,
+    /Valor\s+FIPE\s+inicial\s*:\s*R\$\s*([0-9.,]+)/i
+  ]);
+  const base = extrairNumeroPorPadroes(txt, [
+    /Valor\s+futuro\s+base\s*:\s*R\$\s*([0-9.,]+)/i,
+    /Valor\s+futuro\s+estimado(?:\s*\([^)]*\))?\s*:\s*R\$\s*([0-9.,]+)/i,
+    /Valor\s+estimado\s+ao\s+final\s+do\s+horizonte\s*:\s*R\$\s*([0-9.,]+)/i
+  ]);
+  const otimista = extrairNumeroPorPadroes(txt, [
+    /Valor\s+futuro\s+otimista\s*:\s*R\$\s*([0-9.,]+)/i,
+    /Otimista\s+final\s*:?\s*R\$\s*([0-9.,]+)/i
+  ]);
+  const pessimista = extrairNumeroPorPadroes(txt, [
+    /Valor\s+futuro\s+pessimista\s*:\s*R\$\s*([0-9.,]+)/i,
+    /Pessimista\s+final\s*:?\s*R\$\s*([0-9.,]+)/i
+  ]);
+  let horizonte = extrairNumeroPorPadroes(txt, [
+    /Horizonte(?:\s+selecionado|\s+da\s+análise)?\s*:?\s*([0-9]+(?:[,.][0-9]+)?)\s*anos?/i
+  ]);
+  if (!horizonte) {
+    const m = /Valor\s+futuro\s+estimado\s*\((\d+)\s*meses\)/i.exec(txt) || /Horizonte[^\n]*(\d+)\s*meses/i.exec(txt);
+    if (m && m[1]) horizonte = Math.max(1, Number(m[1]) / 12);
+  }
+  return { valorAtual, base, otimista, pessimista, horizonte };
+}
+
+function horizonteRelatorioDoResultado(data) {
+  const curva = data?.detalhes?.curva || {};
+  const rel = extrairCenariosDoRelatorioTecnico(data);
+  const candidatosRelatorio = [data?.horizonte_relatorio_anos, curva.horizonte_relatorio_anos, rel.horizonte];
+  for (const valor of candidatosRelatorio) {
+    const n = parseMoedaTecnica(valor);
+    if (Number.isFinite(n) && n > 0) return n;
+  }
+
+  const temValorFinalDoPainel = primeiroValorPositivo(
+    rel.base,
+    rel.otimista,
+    rel.pessimista,
+    curva.valor_futuro_base,
+    curva.valor_futuro_otimista,
+    curva.valor_futuro_pessimista,
+    data?.valor_futuro_base,
+    data?.valor_futuro_otimista,
+    data?.valor_futuro_pessimista
+  ) > 0;
+  if (temValorFinalDoPainel) return 5;
+
+  const candidatosTela = [data?.horizonte_anos, document.getElementById("horizonte_anos")?.value];
+  for (const valor of candidatosTela) {
+    const n = parseMoedaTecnica(valor);
+    if (Number.isFinite(n) && n > 0) return n;
+  }
+  return 5;
+}
+
+function valorCurvaPorHorizonte(curva, horizonte, tipo = "base") {
+  const h = Math.max(1, Math.round(Number(horizonte || 0)));
+  const mapa = tipo === "base"
+    ? [`valor_${h}ano`, "valor_futuro_base", "valor_futuro", "valor_estimado_futuro_principal"]
+    : tipo === "otimista"
+      ? [`valor_${h}ano_otimista`, "valor_futuro_otimista", "valor_otimista_final"]
+      : [`valor_${h}ano_pessimista`, "valor_futuro_pessimista", "valor_pessimista_final"];
+  for (const chave of mapa) {
+    const n = valorNumericoPositivo(curva?.[chave]);
+    if (n > 0) return n;
+  }
+  return 0;
 }
 
 function textoRelatorioCompleto(data) {
@@ -1031,14 +1163,15 @@ function extrairPontosHistoricosDeTextoPlugVE(txt, modo = "nominal") {
   for (const linha of linhas) {
     const l = String(linha || "").trim();
     const up = l.toUpperCase();
+    const ehTituloSecao = !/^[-•]/.test(l) && (/^\d+\.\s+/.test(l) || /^[A-ZÁÉÍÓÚÂÊÔÃÕÇ0-9 ._-]+$/.test(l));
     if (ehCorrigido) {
-      if (/HIST[ÓO]RICO.*CORRIGIDO|CORRIGIDO.*IPCA|BASE CORRIGIDA/.test(up)) {
+      if (ehTituloSecao && (/HIST[ÓO]RICO.*CORRIGIDO.*IPCA|HIST[ÓO]RICO.*IPCA|BASE CORRIGIDA.*IPCA|CORRIGIDO PELO IPCA/.test(up))) {
         emSecao = true;
         encontrouSecao = true;
         continue;
       }
     } else {
-      if ((/PROGRESS[ÃA]O HIST[ÓO]RICA|HIST[ÓO]RICO FIPE|HIST[ÓO]RICO DA BASE/.test(up)) && !/CORRIGIDO|IPCA/.test(up)) {
+      if (ehTituloSecao && (/PROGRESS[ÃA]O HIST[ÓO]RICA|HIST[ÓO]RICO FIPE|HIST[ÓO]RICO DA BASE/.test(up)) && !/CORRIGIDO|IPCA/.test(up)) {
         emSecao = true;
         encontrouSecao = true;
         continue;
@@ -1050,6 +1183,7 @@ function extrairPontosHistoricosDeTextoPlugVE(txt, modo = "nominal") {
     }
     const m = rePonto.exec(l);
     if (!m) continue;
+    if (ehCorrigido && !emSecao) continue;
     if (encontrouSecao && !emSecao) continue;
     const dataRef = m[1];
     const valor = parseMoedaTecnica(m[2]);
@@ -1076,32 +1210,74 @@ function extrairPontosHistoricosDeTextoPlugVE(txt, modo = "nominal") {
   }).sort((a, b) => String(a.data).localeCompare(String(b.data)));
 }
 
-function historicoDiretoPlugVE(data, chaves) {
+function historicoDiretoPlugVE(data, chaves, camposPreferenciais = []) {
+  const camposPadrao = [
+    ...camposPreferenciais,
+    "valor", "valor_fipe", "preco", "price", "preco_nominal", "preco_corrigido"
+  ];
+  const vistosCampos = [];
+  camposPadrao.forEach(campo => {
+    if (campo && !vistosCampos.includes(campo)) vistosCampos.push(campo);
+  });
+
   for (const chave of chaves) {
     const bruto = chave.split('.').reduce((obj, k) => obj && obj[k], data);
     if (Array.isArray(bruto) && bruto.length) {
-      return bruto.map(item => ({
-        data: String(item.data || item.referencia || item.data_referencia || "").slice(0, 7),
-        valor: parseMoedaTecnica(item.valor ?? item.valor_fipe ?? item.preco ?? item.price ?? 0),
-        tipo: String(item.tipo || item.observacao || item.status || "usado").trim()
-      })).filter(p => p.data && Number.isFinite(p.valor) && p.valor > 0).sort((a, b) => String(a.data).localeCompare(String(b.data)));
+      const pontos = bruto.map(item => {
+        let valor = 0;
+        for (const campo of vistosCampos) {
+          valor = parseMoedaTecnica(item?.[campo]);
+          if (Number.isFinite(valor) && valor > 0) break;
+        }
+        return {
+          data: String(item.data || item.referencia || item.data_referencia || item.mes_referencia || item.mes || "").slice(0, 7),
+          valor,
+          tipo: String(item.tipo || item.observacao || item.status || "usado").trim()
+        };
+      }).filter(p => p.data && Number.isFinite(p.valor) && p.valor > 0).sort((a, b) => String(a.data).localeCompare(String(b.data)));
+      if (pontos.length) return pontos;
     }
   }
   return [];
 }
 
+function seriesHistoricasSaoIguais(a, b) {
+  if (!Array.isArray(a) || !Array.isArray(b) || !a.length || a.length !== b.length) return false;
+  let iguais = 0;
+  for (let i = 0; i < a.length; i += 1) {
+    if (String(a[i]?.data || "") !== String(b[i]?.data || "")) return false;
+    const va = Number(a[i]?.valor || 0);
+    const vb = Number(b[i]?.valor || 0);
+    if (va > 0 && vb > 0 && Math.abs(va - vb) <= Math.max(1, va * 0.002)) iguais += 1;
+  }
+  return iguais >= Math.max(3, Math.floor(a.length * 0.92));
+}
+
 function extrairHistoricoNominalDoRelatorio(data) {
+  const direto = historicoDiretoPlugVE(data, ["historico_mensal", "detalhes.historico_mensal"], ["preco_nominal", "valor_fipe", "valor", "preco"]);
+  if (direto.length) return direto;
   const txt = textoRelatorioCompleto(data);
   const doRelatorio = extrairPontosHistoricosDeTextoPlugVE(txt, "nominal");
   if (doRelatorio.length) return doRelatorio;
-  return historicoDiretoPlugVE(data, ["historico_mensal", "detalhes.historico_mensal"]);
+  return [];
 }
 
 function extrairHistoricoCorrigidoDoRelatorio(data) {
+  const direto = historicoDiretoPlugVE(data, [
+    "historico_mensal_corrigido",
+    "detalhes.historico_mensal_corrigido",
+    "historico_ipca",
+    "detalhes.historico_ipca"
+  ], ["preco_corrigido", "valor", "valor_corrigido", "preco_real"]);
+  const nominal = extrairHistoricoNominalDoRelatorio(data);
+  if (direto.length && !seriesHistoricasSaoIguais(direto, nominal)) return direto;
+
   const txt = textoRelatorioCompleto(data);
   const doRelatorio = extrairPontosHistoricosDeTextoPlugVE(txt, "corrigido");
-  if (doRelatorio.length) return doRelatorio;
-  return historicoDiretoPlugVE(data, ["historico_mensal_corrigido", "detalhes.historico_mensal_corrigido", "historico_ipca", "detalhes.historico_ipca"]);
+  if (doRelatorio.length && !seriesHistoricasSaoIguais(doRelatorio, nominal)) return doRelatorio;
+
+  // Se não houver série IPCA real, não desenha a nominal de novo como se fosse corrigida.
+  return [];
 }
 
 function extrairHistoricoDoRelatorio(data) {
@@ -1247,20 +1423,60 @@ function extrairValorCenario(data, nomes) {
   return 0;
 }
 
+function taxaAnualAPartirDoValorFinal(valorAtual, valorFinal, horizonte) {
+  const atual = Number(valorAtual || 0);
+  const final = Number(valorFinal || 0);
+  const anos = Math.max(1, Number(horizonte || 1));
+  if (!(atual > 0) || !(final > 0)) return 0;
+  const taxa = 1 - Math.pow(final / atual, 1 / anos);
+  return Number.isFinite(taxa) ? Math.max(0, taxa) : 0;
+}
+
+function primeiroValorPositivo(...valores) {
+  for (const valor of valores) {
+    const n = valorNumericoPositivo(valor);
+    if (n > 0) return n;
+  }
+  return 0;
+}
+
 function obterCenariosDoResultado(data) {
-  const atual = Number(data?.valor_atual || 0);
-  const base = Number(data?.valor_futuro || 0);
-  const taxa = Number(data?.taxa_anual_percentual || 0);
-  const horizonte = Number(data?.horizonte_anos || document.getElementById("horizonte_anos")?.value || 5);
+  const detalhes = data?.detalhes || {};
+  const curva = detalhes.curva || {};
+  const rel = extrairCenariosDoRelatorioTecnico(data);
+  const horizonte = horizonteRelatorioDoResultado(data);
+  const atual = primeiroValorPositivo(rel.valorAtual, data?.valor_atual, curva.valor_fipe_atual, curva.preco_atual_real);
+  const taxa = primeiroValorPositivo(data?.taxa_anual_percentual, curva.depreciacao_media_anual_principal_percentual, curva.depreciacao_media_anual_percentual);
   const calculado = calcularCenarios(atual, taxa, horizonte);
+
+  const base = primeiroValorPositivo(
+    rel.base,
+    valorCurvaPorHorizonte(curva, horizonte, "base"),
+    data?.valor_futuro_base,
+    data?.valor_futuro,
+    calculado.base
+  );
+  const otimista = primeiroValorPositivo(
+    rel.otimista,
+    valorCurvaPorHorizonte(curva, horizonte, "otimista"),
+    data?.valor_futuro_otimista,
+    calculado.otimista
+  );
+  const pessimista = primeiroValorPositivo(
+    rel.pessimista,
+    valorCurvaPorHorizonte(curva, horizonte, "pessimista"),
+    data?.valor_futuro_pessimista,
+    calculado.pessimista
+  );
+
   return {
     atual,
-    base: base || calculado.base,
-    otimista: extrairValorCenario(data, ["valor_futuro_otimista"]) || calculado.otimista,
-    pessimista: extrairValorCenario(data, ["valor_futuro_pessimista"]) || calculado.pessimista,
-    taxaBase: calculado.taxaBase,
-    taxaOtimista: calculado.taxaOtimista,
-    taxaPessimista: calculado.taxaPessimista,
+    base,
+    otimista,
+    pessimista,
+    taxaBase: taxaAnualAPartirDoValorFinal(atual, base, horizonte) || calculado.taxaBase,
+    taxaOtimista: taxaAnualAPartirDoValorFinal(atual, otimista, horizonte) || calculado.taxaOtimista,
+    taxaPessimista: taxaAnualAPartirDoValorFinal(atual, pessimista, horizonte) || calculado.taxaPessimista,
     horizonte
   };
 }
@@ -1306,45 +1522,64 @@ function renderizarGraficoBarrasResultado(data) {
   el.appendChild(chart);
 }
 
+function formatarHorizonteLabel(anos) {
+  const n = Number(anos || 0);
+  if (!Number.isFinite(n) || n <= 0) return "-";
+  if (n < 1) return `${Math.round(n * 12)} meses`;
+  const inteiro = Math.abs(n - Math.round(n)) < 0.01;
+  const texto = inteiro ? String(Math.round(n)) : n.toFixed(1).replace(".", ",");
+  return `${texto} ${Math.abs(n - 1) < 0.01 ? "ano" : "anos"}`;
+}
+
 function renderizarGraficoProjecaoResultado(data) {
   const el = document.getElementById("grafico_projecao");
   if (!el) return;
   el.classList.remove("empty-chart");
   el.innerHTML = "";
   const cen = obterCenariosDoResultado(data);
-  if (!cen.atual || !cen.base || !cen.horizonte) {
+  const horizonte = Math.max(1, Number(cen.horizonte || 5));
+  if (!cen.atual || !cen.base || !horizonte) {
     el.classList.add("empty-chart");
     el.textContent = "Curva ainda não disponível.";
     return;
   }
-  const anos = Array.from({ length: Math.max(1, Math.round(cen.horizonte)) + 1 }, (_, i) => i);
-  const taxaBase = 1 - Math.pow(cen.base / cen.atual, 1 / Math.max(1, cen.horizonte));
-  const taxaOt = 1 - Math.pow(cen.otimista / cen.atual, 1 / Math.max(1, cen.horizonte));
-  const taxaPe = 1 - Math.pow(cen.pessimista / cen.atual, 1 / Math.max(1, cen.horizonte));
+
+  const meses = Math.max(1, Math.round(horizonte * 12));
+  const mesesSerie = Array.from({ length: meses + 1 }, (_, i) => i);
   const series = [
-    { nome: "Base", taxa: taxaBase, classe: "base" },
-    { nome: "Otimista", taxa: taxaOt, classe: "otimista" },
-    { nome: "Pessimista", taxa: taxaPe, classe: "pessimista" }
+    { nome: "Base", taxa: cen.taxaBase, classe: "base", final: cen.base },
+    { nome: "Otimista", taxa: cen.taxaOtimista, classe: "otimista", final: cen.otimista },
+    { nome: "Pessimista", taxa: cen.taxaPessimista, classe: "pessimista", final: cen.pessimista }
   ].map(serie => ({
     ...serie,
-    pontos: anos.map(ano => ({ ano, valor: cen.atual * Math.pow(1 - serie.taxa, ano) }))
+    pontos: mesesSerie.map(mes => {
+      const ano = (mes / meses) * horizonte;
+      return { mes, ano, valor: cen.atual * Math.pow(1 - serie.taxa, ano) };
+    })
   }));
 
-  const todos = series.flatMap(s => s.pontos.map(p => p.valor)).concat([cen.atual]);
-  const escala = calcularEscalaAjustada(todos, 0.12);
-  const w = 900, h = 360, padL = 86, padR = 36, padT = 30, padB = 52;
-  const x = ano => padL + (ano / Math.max(1, cen.horizonte)) * (w - padL - padR);
-  const y = valor => padT + ((escala.max - valor) / escala.range) * (h - padT - padB);
+  // Garante que o último ponto visual bata exatamente com os valores finais exibidos no relatório do painel.
+  series.forEach(serie => {
+    if (serie.pontos.length && Number.isFinite(serie.final) && serie.final > 0) {
+      serie.pontos[serie.pontos.length - 1].valor = serie.final;
+    }
+  });
+
+  const todos = series.flatMap(s => s.pontos.map(p => p.valor)).concat([cen.atual, cen.base, cen.otimista, cen.pessimista]);
+  const escala = calcularEscalaLinearPainel(todos, 5);
+  const w = 900, h = 360, padL = 92, padR = 36, padT = 30, padB = 56;
+  const plotW = w - padL - padR;
+  const plotH = h - padT - padB;
+  const x = mes => padL + (mes / Math.max(1, meses)) * plotW;
+  const y = valor => padT + ((escala.max - valor) / escala.range) * plotH;
 
   const svgNS = "http://www.w3.org/2000/svg";
   const svg = document.createElementNS(svgNS, "svg");
   svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
   svg.setAttribute("class", "line-chart-svg grid-chart-svg");
 
-  const plotW = w - padL - padR;
-  const plotH = h - padT - padB;
-  for (let i = 0; i <= 5; i++) {
-    const yy = padT + (i / 5) * plotH;
+  (escala.ticks || []).forEach(valor => {
+    const yy = y(valor);
     const line = document.createElementNS(svgNS, "line");
     line.setAttribute("x1", padL);
     line.setAttribute("x2", w - padR);
@@ -1352,11 +1587,20 @@ function renderizarGraficoProjecaoResultado(data) {
     line.setAttribute("y2", yy);
     line.setAttribute("class", "chart-grid-line");
     svg.appendChild(line);
-  }
-  const anosGrade = Math.min(10, Math.max(2, Math.round(cen.horizonte)));
+
+    const label = document.createElementNS(svgNS, "text");
+    label.setAttribute("x", padL - 12);
+    label.setAttribute("y", yy + 4);
+    label.setAttribute("text-anchor", "end");
+    label.setAttribute("class", "chart-label-svg");
+    label.textContent = formatarMoedaBR(valor).replace(",00", "");
+    svg.appendChild(label);
+  });
+
+  const anosGrade = Math.min(10, Math.max(2, Math.round(horizonte)));
   for (let i = 0; i <= anosGrade; i++) {
-    const ano = (i / anosGrade) * cen.horizonte;
-    const xx = x(ano);
+    const mes = (i / anosGrade) * meses;
+    const xx = x(mes);
     const line = document.createElementNS(svgNS, "line");
     line.setAttribute("x1", xx);
     line.setAttribute("x2", xx);
@@ -1371,28 +1615,20 @@ function renderizarGraficoProjecaoResultado(data) {
   axis.setAttribute("class", "chart-axis");
   svg.appendChild(axis);
 
-  [0, Math.ceil(cen.horizonte / 2), cen.horizonte].forEach(ano => {
+  const rotulosX = [0, meses / 2, meses];
+  rotulosX.forEach((mesRotulo, idx) => {
     const t = document.createElementNS(svgNS, "text");
-    t.setAttribute("x", x(ano));
-    t.setAttribute("y", h - 18);
-    t.setAttribute("text-anchor", "middle");
+    t.setAttribute("x", x(mesRotulo));
+    t.setAttribute("y", h - 20);
+    t.setAttribute("text-anchor", idx === 0 ? "start" : idx === 2 ? "end" : "middle");
     t.setAttribute("class", "chart-label-svg");
-    t.textContent = ano === 0 ? "Hoje" : `${ano} anos`;
-    svg.appendChild(t);
-  });
-
-  [escala.max, (escala.max + escala.min) / 2, escala.min].forEach((valor, idx) => {
-    const t = document.createElementNS(svgNS, "text");
-    t.setAttribute("x", padL - 12);
-    t.setAttribute("y", idx === 0 ? padT + 4 : idx === 1 ? (padT + h - padB) / 2 : h - padB);
-    t.setAttribute("text-anchor", "end");
-    t.setAttribute("class", "chart-label-svg");
-    t.textContent = formatarMoedaBR(valor).replace(",00", "");
+    const anos = (mesRotulo / Math.max(1, meses)) * horizonte;
+    t.textContent = idx === 0 ? "Hoje" : formatarHorizonteLabel(anos);
     svg.appendChild(t);
   });
 
   series.forEach(serie => {
-    const d = serie.pontos.map((p, idx) => `${idx === 0 ? "M" : "L"}${x(p.ano).toFixed(1)} ${y(p.valor).toFixed(1)}`).join(" ");
+    const d = serie.pontos.map((p, idx) => `${idx === 0 ? "M" : "L"}${x(p.mes).toFixed(1)} ${y(p.valor).toFixed(1)}`).join(" ");
     const path = document.createElementNS(svgNS, "path");
     path.setAttribute("d", d);
     path.setAttribute("class", `line-series ${serie.classe}`);
@@ -1590,6 +1826,28 @@ function renderizarGraficoProjecao(valorAtual, taxaAnual, horizonte) {
   el.appendChild(tabela);
 }
 
+function atualizarCabecalhoPDFDepreciacao() {
+  const dataEl = document.getElementById("pdf_data_emissao");
+  if (dataEl) {
+    dataEl.textContent = `Data de emissão: ${new Date().toLocaleString("pt-BR")}`;
+  }
+}
+
+function exportarPDFDepreciacao() {
+  if (!ultimoResumoDepreciacao || !ultimoResumoDepreciacao.encontrado) {
+    window.alert("Selecione primeiro um veículo com curva de depreciação pronta.");
+    return;
+  }
+  mostrarResultadoArea(true);
+  mostrarGraficoBarrasArea(true);
+  mostrarAuditoriaArea(true);
+  preencherResumo(ultimoResumoDepreciacao);
+  preencherRelatorio(ultimoResumoDepreciacao, "curva salva");
+  renderizarGraficosDepreciacao(ultimoResumoDepreciacao);
+  atualizarCabecalhoPDFDepreciacao();
+  setTimeout(() => window.print(), 150);
+}
+
 function aplicarChecksModelosFipe() {
   const select = document.getElementById("fipe_modelo");
   if (!select) return;
@@ -1643,6 +1901,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   document.getElementById("btn_ver_detalhes")?.addEventListener("click", mostrarDetalhes);
+  document.getElementById("btn_exportar_pdf")?.addEventListener("click", exportarPDFDepreciacao);
   document.getElementById("btn_usar_no_tco")?.addEventListener("click", usarResultadoNoTCOEFechar);
   document.getElementById("btn_calcular_futuro")?.addEventListener("click", solicitarCalculoSobDemanda);
   document.getElementById("btn_diagnostico_coorte")?.addEventListener("click", solicitarDiagnosticoCoorte);
