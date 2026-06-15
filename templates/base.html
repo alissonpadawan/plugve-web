@@ -3,7 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{% block title %}PlugVE Web{% endblock %}</title>
+  <title>{% block title %}CurVE | Calculadora Veicular{% endblock %}</title>
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/favicon.png') }}">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/favicon-180.png') }}">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
@@ -11,13 +13,16 @@
 <body>
   <header class="topbar">
     <div class="container nav">
-      <a class="brand" href="/simular">PlugVE Web</a>
-      <nav>
-        <a href="/simular">Início</a>
-        <a href="/depreciacao">Depreciação</a>
-        <a href="/financiamento">Financiamento</a>
-        <a href="/sobre">Sobre</a>
-        <a href="/contato">Contato</a>
+      <a class="brand" href="/simular" aria-label="CurVE Calculadora Veicular">
+        <img src="{{ url_for('static', filename='img/logo_curve_horizontal.png') }}" alt="CurVE Calculadora Veicular">
+      </a>
+      <nav class="site-nav" aria-label="Menu principal">
+        <a href="/" class="{% if request.path == '/' %}active{% endif %}">Início</a>
+        <a href="/simular" class="{% if request.path.startswith('/simular') %}active{% endif %}">Simular</a>
+        <a href="/depreciacao" class="{% if request.path.startswith('/depreciacao') %}active{% endif %}">Depreciação</a>
+        <a href="/financiamento" class="{% if request.path.startswith('/financiamento') %}active{% endif %}">Financiamento</a>
+        <a href="/sobre" class="{% if request.path.startswith('/sobre') %}active{% endif %}">Sobre</a>
+        <a href="/contato" class="{% if request.path.startswith('/contato') %}active{% endif %}">Contato</a>
       </nav>
     </div>
   </header>
@@ -27,7 +32,7 @@
   </main>
 
   <footer class="footer">
-    <div class="container">PlugVE Web - TCO e Depreciação Veicular</div>
+    <div class="container">CurVE — Calculadora Veicular para TCO, depreciação e decisão com dados.</div>
   </footer>
 
   {% block scripts %}{% endblock %}

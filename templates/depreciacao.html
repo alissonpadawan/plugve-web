@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Depreciação | PlugVE Web{% endblock %}
+{% block title %}Depreciação | CurVE{% endblock %}
 
 {% block content %}
 <button id="btn_toggle_base_provisoria" class="button secondary base-drawer-toggle" type="button">Mostrar curvas salvas</button>
@@ -36,6 +36,7 @@
       <div class="section-header compact-header">
         <div>
           <h1>Depreciação veicular</h1>
+          <p class="muted small-text">Consulte FIPE, selecione o horizonte e visualize a curva de valor do veículo com resultado resumido e relatório técnico.</p>
         </div>
       </div>
 
@@ -92,7 +93,7 @@
           <dt>Tipo usado</dt><dd id="res_tipo_usado">-</dd>
         </dl>
         <div class="actions">
-          <button id="btn_ver_detalhes" class="button primary hidden" type="button" disabled>Ver relatório da depreciação</button>
+          <button id="btn_ver_detalhes" class="button primary hidden" type="button" disabled>Ver detalhes</button>
           <button id="btn_apagar_curva" class="button secondary hidden" type="button" disabled>Apagar curva</button>
           <button id="btn_usar_no_tco" class="button primary hidden" type="button" disabled>Usar no TCO e fechar</button>
         </div>

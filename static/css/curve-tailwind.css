@@ -1,0 +1,210 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@500;600;700&display=swap');
+
+:root {
+  --curve-bg: #F7F9F7;
+  --curve-card: #FFFFFF;
+  --curve-text: #14232C;
+  --curve-strong: #1F2933;
+  --curve-muted: #6B7280;
+  --curve-line: #E5E7EB;
+  --curve-primary: #168A4A;
+  --curve-primary-dark: #0F5F36;
+  --curve-navy-dark: #0B1720;
+  --curve-soft: #EAF5EF;
+  --curve-soft-2: #F1F8F4;
+  --curve-accent: #C99A3D;
+  --curve-danger: #B91C1C;
+}
+
+html { font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+body {
+  background:
+    radial-gradient(circle at top left, rgba(22, 138, 74, .08), transparent 30rem),
+    linear-gradient(180deg, var(--curve-bg) 0%, #EFF6F2 100%) !important;
+  color: var(--curve-text) !important;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
+}
+h1, h2, h3, h4 { font-family: 'Sora', 'Inter', system-ui, sans-serif; letter-spacing: -.025em; }
+.font-bold, .font-semibold { letter-spacing: -.01em; }
+
+.curve-header {
+  background: rgba(255, 255, 255, .96) !important;
+  border-bottom: 1px solid var(--curve-line) !important;
+  box-shadow: none !important;
+  backdrop-filter: blur(12px);
+}
+.curve-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: .65rem;
+  color: var(--curve-text);
+  text-decoration: none;
+}
+.curve-brand-logo {
+  height: 3rem;
+  width: min(260px, 48vw);
+  object-fit: contain;
+  object-position: left center;
+  display: block;
+}
+.curve-nav a {
+  border-radius: 999px;
+  padding: .55rem .72rem;
+  color: var(--curve-strong) !important;
+  font-weight: 600;
+  transition: background .18s ease, color .18s ease, box-shadow .18s ease;
+}
+.curve-nav a:hover {
+  background: var(--curve-soft);
+  color: var(--curve-primary-dark) !important;
+}
+.curve-nav .curve-nav-active {
+  background: var(--curve-soft);
+  color: var(--curve-primary-dark) !important;
+  box-shadow: inset 0 -2px 0 var(--curve-primary);
+}
+
+main.bg-white,
+.bg-white.shadow,
+.bg-white.shadow-md,
+form.bg-white,
+.bg-white.p-6,
+.bg-white.p-8,
+.plugve-chart-card,
+.plugve-metric-card,
+.plugve-finance-panel,
+.plugve-finance-vehicle {
+  border: 1px solid var(--curve-line);
+  box-shadow: 0 10px 28px rgba(20, 35, 44, .05) !important;
+}
+main.bg-white,
+.curve-shell { border-radius: 1rem !important; }
+
+.text-blue-500,
+.text-blue-600,
+.text-blue-700 { color: var(--curve-primary) !important; }
+.text-gray-900,
+.text-gray-800 { color: var(--curve-text) !important; }
+.text-gray-700 { color: var(--curve-strong) !important; }
+.text-gray-600,
+.text-gray-500,
+.text-gray-400 { color: var(--curve-muted) !important; }
+.bg-blue-50 { background-color: var(--curve-soft) !important; }
+.bg-blue-100 { background-color: #DDEDE5 !important; }
+.bg-blue-500,
+.bg-blue-600 { background-color: var(--curve-primary) !important; }
+.hover\:bg-blue-600:hover,
+.hover\:bg-blue-700:hover { background-color: var(--curve-primary-dark) !important; }
+.hover\:bg-blue-50:hover { background-color: var(--curve-soft) !important; }
+.border-blue-100 { border-color: #CFE8DA !important; }
+.border-blue-500,
+.border-blue-600 { border-color: var(--curve-primary) !important; }
+.hover\:border-blue-500:hover { border-color: var(--curve-primary) !important; }
+.focus\:ring-blue-500:focus { --tw-ring-color: rgba(22, 138, 74, .22) !important; }
+.focus\:border-blue-500:focus { border-color: var(--curve-primary) !important; }
+
+.border { border-color: var(--curve-line); }
+.rounded-lg { border-radius: .8rem !important; }
+.rounded-xl { border-radius: 1rem !important; }
+.shadow, .shadow-sm, .shadow-md { box-shadow: 0 10px 28px rgba(20, 35, 44, .05) !important; }
+
+input, select, textarea {
+  border-color: var(--curve-line) !important;
+  color: var(--curve-text) !important;
+  min-height: 2.65rem;
+  border-radius: .65rem !important;
+  background: #fff !important;
+}
+input:focus, select:focus, textarea:focus {
+  outline: 3px solid rgba(22, 138, 74, .14) !important;
+  border-color: var(--curve-primary) !important;
+}
+input[type="checkbox"] {
+  min-height: auto;
+  width: auto;
+  accent-color: var(--curve-primary);
+}
+
+.card-cenario {
+  border-color: rgba(20, 35, 44, .12) !important;
+  min-height: 10.25rem;
+}
+.card-cenario:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 28px rgba(20, 35, 44, .08) !important;
+}
+.plugve-card-selected {
+  border-color: var(--curve-primary) !important;
+  background: var(--curve-soft) !important;
+  box-shadow: 0 10px 24px rgba(22, 138, 74, .14) !important;
+}
+.plugve-flow-summary {
+  background: #F8FBF9 !important;
+  border-color: #CFE8DA !important;
+  color: var(--curve-muted) !important;
+}
+.plugve-flow-summary strong { color: var(--curve-text) !important; }
+
+#btn_simular,
+button[type="submit"],
+button.bg-blue-600,
+button.bg-blue-500 {
+  border-radius: .8rem !important;
+  background: var(--curve-primary) !important;
+  box-shadow: 0 10px 20px rgba(22, 138, 74, .16) !important;
+  font-weight: 700;
+}
+#btn_simular:hover,
+button[type="submit"]:hover,
+button.bg-blue-600:hover,
+button.bg-blue-500:hover { background: var(--curve-primary-dark) !important; }
+
+button.border-blue-600,
+a.border-blue-600 {
+  background: #fff !important;
+  color: var(--curve-primary-dark) !important;
+  border-color: var(--curve-primary) !important;
+}
+button.border-blue-600:hover,
+a.border-blue-600:hover { background: var(--curve-soft) !important; }
+
+section[id^="secao_"],
+section[id^="bloco_"],
+#coluna_icev,
+#dados_ve_box,
+#dados_icev_box,
+#dados_carro_atual_box,
+.bg-gray-50.border,
+.bg-blue-50.border,
+.plugve-finance-box,
+.plugve-finance-total {
+  border-color: rgba(20, 35, 44, .12) !important;
+}
+.plugve-finance-header {
+  background: linear-gradient(180deg, var(--curve-soft) 0%, #ffffff 100%) !important;
+}
+.plugve-energy-tooltip-trigger { color: var(--curve-primary-dark) !important; }
+.plugve-metric-card,
+.plugve-finance-box,
+.plugve-finance-total {
+  background: linear-gradient(180deg, #ffffff 0%, #F8FBF9 100%) !important;
+}
+.plugve-metric-card b,
+.plugve-finance-total b,
+#secao_resultados_tco b {
+  font-variant-numeric: tabular-nums;
+}
+
+footer.bg-white {
+  background: rgba(255,255,255,.78) !important;
+  border-top: 1px solid var(--curve-line) !important;
+  box-shadow: none !important;
+}
+a.text-blue-600 { color: var(--curve-primary) !important; }
+
+@media (max-width: 760px) {
+  .curve-brand-logo { height: 2.65rem; width: min(230px, 72vw); }
+  .curve-nav { gap: .35rem; justify-content: flex-start; }
+  .curve-nav a { padding: .45rem .55rem; }
+}

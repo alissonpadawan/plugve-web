@@ -1,36 +1,43 @@
 {% extends "base.html" %}
 
-{% block title %}Início | PlugVE Web{% endblock %}
+{% block title %}CurVE | Calculadora Veicular{% endblock %}
 
 {% block content %}
 <section class="hero card">
-  <h1>PlugVE Web</h1>
+  <span class="home-kicker">Calculadora Veicular</span>
+  <h1>Cur<span class="curve-accent">VE</span> Calculadora Veicular</h1>
   <p>
-    Plataforma web para comparação de Custo Total de Propriedade (TCO) e análise de depreciação veicular com base em dados FIPE, energia, combustível e curvas técnicas.
+    TCO, depreciação e energia em uma análise veicular inteligente para apoiar decisões de compra, troca e uso.
   </p>
   <div class="actions">
-    <a class="button primary" href="/simular">Abrir Simulador TCO</a>
-    <a class="button secondary" href="/depreciacao">Abrir Depreciação</a>
+    <a class="button primary" href="/simular">Simular TCO</a>
+    <a class="button secondary" href="/depreciacao">Consultar Depreciação</a>
   </div>
 </section>
 
-<section class="grid two">
+<section class="grid four home-feature-grid">
   <div class="card">
-    <h2>Simulador TCO</h2>
-    <p>Compara veículos elétricos e a combustão considerando aquisição, energia, combustível, IPVA, seguro, manutenção e depreciação.</p>
-    <a class="button primary" href="/simular">Simular TCO</a>
+    <h2>Custo Total de Propriedade</h2>
+    <p class="muted">Compare aquisição, operação, impostos, seguro, manutenção, financiamento e valor de revenda.</p>
   </div>
   <div class="card">
-    <h2>Depreciação veicular</h2>
-    <p>Consulta FIPE, localiza curvas salvas, calcula curva sob demanda para combustão e apresenta auditoria inicial do resultado.</p>
-    <a class="button primary" href="/depreciacao">Calcular depreciação</a>
+    <h2>Depreciação Veicular</h2>
+    <p class="muted">Consulte FIPE, curvas salvas e projeções de valor ao longo do horizonte escolhido.</p>
+  </div>
+  <div class="card">
+    <h2>Energia e Combustível</h2>
+    <p class="muted">Inclua custos de energia elétrica e combustível na leitura econômica do veículo.</p>
+  </div>
+  <div class="card">
+    <h2>Decisão com Dados</h2>
+    <p class="muted">Transforme premissas técnicas em indicadores claros para análise veicular.</p>
   </div>
 </section>
 
 <section class="card">
-  <h2>Versão online de apresentação</h2>
+  <h2>Plataforma técnica para apresentação acadêmica</h2>
   <p class="muted">
-    Sistema integrado para apoiar a análise técnico-econômica entre veículos elétricos e a combustão, reunindo calculadora TCO, consulta FIPE e módulo de depreciação em uma única aplicação web.
+    A CurVE reúne simulação de TCO, consulta FIPE e depreciação em uma interface única, limpa e orientada à tomada de decisão.
   </p>
 </section>
 {% endblock %}

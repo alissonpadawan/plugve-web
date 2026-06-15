@@ -208,7 +208,7 @@ def calcular_tco_completo(dados_form):
 
 
 # 4.2) Helpers visuais e numéricos
-CORES_GRAFICOS = ["#2563EB", "#16A34A", "#F97316", "#7C3AED"]
+CORES_GRAFICOS = ["#168A4A", "#14232C", "#C99A3D", "#6B7280"]
 
 
 def real_format(valor):
@@ -334,11 +334,11 @@ def nome_curto(nome: str, limite: int = 36) -> str:
 # 4.3) Layout padrão dos gráficos
 def obter_layout_web(titulo: str = ""):
     return {
-        "title": {"text": titulo, "x": 0.02, "xanchor": "left", "font": {"size": 18, "color": "#0F172A"}},
+        "title": {"text": titulo, "x": 0.02, "xanchor": "left", "font": {"size": 18, "color": "#14232C"}},
         "template": "plotly_white",
         "height": 430,
         "autosize": True,
-        "font": {"family": "Inter, Arial, sans-serif", "size": 12, "color": "#334155"},
+        "font": {"family": "Inter, Arial, sans-serif", "size": 12, "color": "#1F2933"},
         "legend": {"orientation": "h", "yanchor": "bottom", "y": 1.04, "xanchor": "left", "x": 0},
         "margin": {"l": 70, "r": 30, "t": 78, "b": 70},
         "hovermode": "x unified",
@@ -533,14 +533,14 @@ def gerar_graficos_dupla(v1, v2):
     fig_revenda.add_trace(go.Scatter(
         x=v1["anos_eixo"], y=v1["valor_mercado_lista"], mode="lines+markers", name=v1["nome_curto"],
         line={"color": cor1, "width": 3, "shape": "spline"}, marker={"size": 8},
-        fill="tozeroy", fillcolor="rgba(37, 99, 235, 0.10)",
+        fill="tozeroy", fillcolor="rgba(22, 138, 74, 0.10)",
         customdata=[v1["nome"]] * len(v1["anos_eixo"]),
         hovertemplate="%{customdata}<br>%{x}<br>Valor estimado: R$ %{y:,.2f}<extra></extra>",
     ))
     fig_revenda.add_trace(go.Scatter(
         x=v2["anos_eixo"], y=v2["valor_mercado_lista"], mode="lines+markers", name=v2["nome_curto"],
         line={"color": cor2, "width": 3, "shape": "spline"}, marker={"size": 8},
-        fill="tozeroy", fillcolor="rgba(22, 163, 74, 0.10)",
+        fill="tozeroy", fillcolor="rgba(20, 35, 44, 0.08)",
         customdata=[v2["nome"]] * len(v2["anos_eixo"]),
         hovertemplate="%{customdata}<br>%{x}<br>Valor estimado: R$ %{y:,.2f}<extra></extra>",
     ))
@@ -551,7 +551,7 @@ def gerar_graficos_dupla(v1, v2):
         fig.add_trace(go.Scatter(
             x=v["anos_eixo"], y=v["valor_mercado_lista"], mode="lines+markers", name="Valor de revenda",
             line={"color": cor, "width": 3, "shape": "spline"}, marker={"size": 8},
-            fill="tozeroy", fillcolor="rgba(37, 99, 235, 0.10)",
+            fill="tozeroy", fillcolor="rgba(22, 138, 74, 0.10)",
             hovertemplate="%{x}<br>Valor estimado: R$ %{y:,.2f}<extra></extra>",
         ))
         fig.update_layout(**obter_layout_web(f"Depreciação — {nome_curto(v['nome'], 42)}"), yaxis_title="Valor de mercado (R$)")

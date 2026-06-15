@@ -1293,7 +1293,7 @@ function renderizarGraficoBarrasResultado(data) {
     value.className = "bar-chart-value";
     value.textContent = formatarMoedaBR(item.valor);
     const bar = document.createElement("div");
-    bar.className = "bar-chart-bar";
+    bar.className = `bar-chart-bar ${String(item.label || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")}`;
     bar.style.height = `${Math.max(12, (item.valor / max) * 250)}px`;
     const label = document.createElement("div");
     label.className = "bar-chart-label";
@@ -1454,7 +1454,7 @@ function renderizarGraficoBarras(atual, futuro) {
     value.className = "bar-chart-value";
     value.textContent = formatarMoedaBR(item.valor);
     const bar = document.createElement("div");
-    bar.className = "bar-chart-bar";
+    bar.className = `bar-chart-bar ${String(item.label || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")}`;
     bar.style.height = `${Math.max(12, (item.valor / max) * 250)}px`;
     const label = document.createElement("div");
     label.className = "bar-chart-label";
