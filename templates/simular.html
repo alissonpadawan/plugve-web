@@ -29,6 +29,10 @@
     .plugve-finance-body{padding:1.25rem}
     .plugve-finance-vehicle{border:1px solid #e5e7eb;border-radius:1rem;padding:1rem;background:#fff;box-shadow:0 10px 25px rgba(15,23,42,.04)}
     .plugve-finance-total{background:#f8fafc;border:1px solid #e2e8f0;border-radius:.75rem;padding:.7rem;font-size:.8rem;color:#334155}
+    .plugve-energy-tooltip{position:relative;display:inline-block}
+    .plugve-energy-tooltip-trigger{font-weight:700;color:#2563eb;text-decoration:underline;text-decoration-style:dotted;cursor:help}
+    .plugve-energy-tooltip-panel{display:none;position:absolute;left:0;top:1.35rem;z-index:90;width:340px;max-width:85vw;background:#fff;border:1px solid #e5e7eb;border-radius:.85rem;box-shadow:0 18px 45px rgba(15,23,42,.18);padding:.85rem;color:#374151}
+    .plugve-energy-tooltip:hover .plugve-energy-tooltip-panel{display:block}
     @media print{
       header, footer, #form_simulacao_tco, .no-print{display:none !important}
       body{background:#fff !important;color:#111827 !important}
@@ -53,7 +57,6 @@
         <div class="hidden md:flex space-x-6">
           <a href="/simular" id="link_inicio_tco" data-plugve-reset="1" class="text-blue-600 font-semibold">Início</a>
           <a href="/depreciacao" class="text-gray-700 hover:text-blue-600 font-medium">Depreciação</a>
-          <a href="/financiamento" class="text-gray-700 hover:text-blue-600 font-medium">Financiamento</a>
           <a href="/sobre" class="text-gray-700 hover:text-blue-600 font-medium">Sobre</a>
           <a href="/contato" class="text-gray-700 hover:text-blue-600 font-medium">Contato</a>
         </div>
@@ -272,10 +275,10 @@
                     <input type="hidden" name="fin_atual_juros_total" id="fin_atual_juros_total" value="0">
                     <div class="flex items-start justify-between gap-3">
                       <div id="fin_resumo_atual" class="plugve-finance-summary">
-                        <strong>Financiamento:</strong> não configurado.
+                        
                       </div>
-                      <button type="button" data-fin-prefix="atual" class="btn_financiamento_tco px-3 py-1.5 bg-slate-700 text-white text-xs rounded hover:bg-slate-800 whitespace-nowrap">
-                        Financiamento
+                      <button type="button" data-fin-prefix="atual" class="btn_financiamento_tco px-3 py-1.5 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 whitespace-nowrap">
+                        Vou financiar
                       </button>
                     </div>
                   </div>
@@ -293,13 +296,13 @@
 
                 <div>
                   <label class="block text-sm font-medium">IPVA atual (anual)</label>
-                  <input type="text" name="ipva_atual" id="ipva_atual_input" class="mt-1 p-2 border rounded w-full bg-gray-100" placeholder="Calculado automaticamente" readonly>
+                  <input type="text" name="ipva_atual" id="ipva_atual_input" class="mt-1 p-2 border rounded w-full" placeholder="Calculado automaticamente">
                 </div>
 
                 <div>
                   <label class="block text-sm font-medium">Seguro atual (anual)</label>
                   <input type="text" name="seguro_atual" id="seguro_atual" class="mt-1 p-2 border rounded w-full" placeholder="ex: 2800">
-                    <p id="seguro_status_atual" class="text-[11px] text-gray-500 mt-1">Seguro estimado automaticamente como 4,7% do valor do veículo; edite se tiver cotação real.</p>
+                    <p id="seguro_status_atual" class="hidden"></p>
                 </div>
 
                 <div>
@@ -368,10 +371,10 @@
                     <input type="hidden" name="fin_ve_juros_total" id="fin_ve_juros_total" value="0">
                     <div class="flex items-start justify-between gap-3">
                       <div id="fin_resumo_ve" class="plugve-finance-summary">
-                        <strong>Financiamento:</strong> não configurado.
+                        
                       </div>
-                      <button type="button" data-fin-prefix="ve" class="btn_financiamento_tco px-3 py-1.5 bg-slate-700 text-white text-xs rounded hover:bg-slate-800 whitespace-nowrap">
-                        Financiamento
+                      <button type="button" data-fin-prefix="ve" class="btn_financiamento_tco px-3 py-1.5 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 whitespace-nowrap">
+                        Vou financiar
                       </button>
                     </div>
                   </div>
@@ -389,7 +392,7 @@
 
               <div>
                 <label class="block text-sm font-medium">IPVA anual VE</label>
-                <input type="text" name="ipva_ve" id="ipva_ve_input" class="mt-1 p-2 border rounded w-full bg-gray-100" placeholder="Calculado automaticamente" readonly>
+                <input type="text" name="ipva_ve" id="ipva_ve_input" class="mt-1 p-2 border rounded w-full" placeholder="Calculado automaticamente">
 
                 <label class="flex items-center mt-2 text-xs">
                   <input type="checkbox" name="isencao_ipva_ve" id="isencao_ipva_checkbox" class="mr-2">
@@ -400,7 +403,7 @@
               <div>
                 <label class="block text-sm font-medium">Seguro anual VE</label>
                 <input type="text" name="seguro_ve" id="seguro_ve" class="mt-1 p-2 border rounded w-full" placeholder="ex: 4000">
-                <p id="seguro_status_ve" class="text-[11px] text-gray-500 mt-1">Seguro estimado automaticamente como 4,7% do valor do veículo; edite se tiver cotação real.</p>
+                <p id="seguro_status_ve" class="hidden"></p>
               </div>
 
               <div>
@@ -462,10 +465,10 @@
                     <input type="hidden" name="fin_icev_juros_total" id="fin_icev_juros_total" value="0">
                     <div class="flex items-start justify-between gap-3">
                       <div id="fin_resumo_icev" class="plugve-finance-summary">
-                        <strong>Financiamento:</strong> não configurado.
+                        
                       </div>
-                      <button type="button" data-fin-prefix="icev" class="btn_financiamento_tco px-3 py-1.5 bg-slate-700 text-white text-xs rounded hover:bg-slate-800 whitespace-nowrap">
-                        Financiamento
+                      <button type="button" data-fin-prefix="icev" class="btn_financiamento_tco px-3 py-1.5 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 whitespace-nowrap">
+                        Vou financiar
                       </button>
                     </div>
                   </div>
@@ -483,13 +486,13 @@
 
               <div>
                 <label class="block text-sm font-medium">IPVA anual ICEV</label>
-                <input type="text" name="ipva_icev" id="ipva_icev_input" class="mt-1 p-2 border rounded w-full bg-gray-100" placeholder="Calculado automaticamente" readonly>
+                <input type="text" name="ipva_icev" id="ipva_icev_input" class="mt-1 p-2 border rounded w-full" placeholder="Calculado automaticamente">
               </div>
 
               <div>
                 <label class="block text-sm font-medium">Seguro anual ICEV</label>
                 <input type="text" name="seguro_icev" id="seguro_icev" class="mt-1 p-2 border rounded w-full" placeholder="ex: 3000">
-                <p id="seguro_status_icev" class="text-[11px] text-gray-500 mt-1">Seguro estimado automaticamente como 4,7% do valor do veículo; edite se tiver cotação real.</p>
+                <p id="seguro_status_icev" class="hidden"></p>
               </div>
 
               <div>
@@ -514,7 +517,7 @@
 
             <div>
               <div class="flex items-center justify-between">
-                <label class="block text-sm font-medium">Custo energia (R$/kWh)</label>
+                <label class="block text-sm font-medium">Custo energia kW/h</label>
 
                 <label class="flex items-center text-xs text-gray-600 select-none">
                   <input type="checkbox" id="energia_manual_checkbox" class="mr-2">
@@ -532,22 +535,15 @@
               >
 
               <p id="status_energia" class="text-[11px] text-gray-500 mt-1">
-                Pode ajustar manualmente. Ao escolher UF e município, o valor será atualizado com a tarifa da ANEEL (com impostos).
+                Selecione UF e município para buscar a tarifa da ANEEL.
               </p>
-
-              <p id="status_energia_vigencia" class="text-[11px] text-gray-400 mt-1"></p>
-
-              <div id="energia_breakdown_wrap" class="mt-3">
-                <div class="w-full h-3 rounded overflow-hidden bg-gray-200 flex" id="energia_bar"></div>
-                <div class="mt-2 space-y-1 text-[11px]" id="energia_legenda"></div>
-              </div>
             </div>
 
             <div>
-              <label class="block text-sm font-medium">Custo combustível (R$/l)</label>
+              <label class="block text-sm font-medium">Valor ANP combustível (R$/l)</label>
               <input type="text" name="combustivel" value="5,80" class="mt-1 p-2 border rounded w-full" required>
               <p id="status_combustivel" class="text-[11px] text-gray-500 mt-1">
-                Pode ajustar manualmente. Ao escolher UF e município, o valor será atualizado com o último dado da ANP.
+                Valor preenchido com o preço médio mais recente disponível na ANP. Você pode ajustar manualmente.
               </p>
             </div>
 
@@ -802,6 +798,28 @@
       return Number(valor).toFixed(5).replace(".", ",");
     }
 
+    function escaparHTMLPlugVE(valor) {
+      return String(valor ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function montarStatusEnergiaPlugVE(texto, distribuidora, vigenciaTexto) {
+      const status = document.getElementById("status_energia");
+      if (!status) return;
+      const textoSeguro = escaparHTMLPlugVE(texto || "Tarifa de energia");
+      const distribuidoraSegura = escaparHTMLPlugVE(distribuidora || "");
+      const vigenciaSegura = escaparHTMLPlugVE(vigenciaTexto || "");
+      if (!distribuidoraSegura) {
+        status.textContent = textoSeguro;
+        return;
+      }
+      status.innerHTML = `${textoSeguro} (<span class="plugve-energy-tooltip"><span class="plugve-energy-tooltip-trigger">${distribuidoraSegura}</span><span class="plugve-energy-tooltip-panel"><span class="block text-xs font-semibold text-gray-700 mb-2">Composição da tarifa de energia</span><span id="status_energia_vigencia" class="block text-[11px] text-gray-400 mb-2">${vigenciaSegura}</span><div id="energia_breakdown_wrap" class="mt-2"><div class="w-full h-3 rounded overflow-hidden bg-gray-200 flex" id="energia_bar"></div><div class="mt-2 space-y-1 text-[11px]" id="energia_legenda"></div></div></span></span>)`;
+    }
+
     const PLUGVE_TCO_STORAGE_KEY = "plugve_tco_form_state_v26";
     const PLUGVE_TCO_FIN_PREFIXES = ["atual", "ve", "icev"];
 
@@ -926,7 +944,7 @@
       const resumo = document.getElementById(`fin_resumo_${prefixo}`);
       if (!resumo) return;
       if (!financiamentoAtivo(prefixo)) {
-        resumo.innerHTML = "<strong>Financiamento:</strong> não configurado.";
+        resumo.innerHTML = "";
         return;
       }
       const principal = valorHiddenFin(prefixo, "principal", "0");
@@ -935,6 +953,8 @@
       const total = valorHiddenFin(prefixo, "total_pago", "0");
       const meses = valorHiddenFin(prefixo, "meses", "0");
       resumo.innerHTML = `<strong>Valor financiado:</strong> ${principal}<br><span>Total estimado: ${total} | Parcela: ${parcela} em ${meses} meses | Juros: ${juros}</span>`;
+      const botao = document.querySelector(`.btn_financiamento_tco[data-fin-prefix='${prefixo}']`);
+      if (botao) botao.textContent = "Editar financiamento";
     }
 
     function atualizarTodosResumosFinanciamento() {
@@ -1303,16 +1323,14 @@
       const jaManual = seguroEl.dataset.editadoManual === "1";
       const eraAuto = seguroEl.dataset.autoSeguro === "1" || !String(seguroEl.value || "").trim();
       if (jaManual && !forcar && !eraAuto) {
-        if (status) status.textContent = "Seguro editado manualmente pelo usuário.";
+        if (status) status.textContent = "";
         return;
       }
       const seguro = preco * PERCENTUAL_SEGURO_PADRAO;
       seguroEl.value = formatarMoedaBR(seguro);
       seguroEl.dataset.autoSeguro = "1";
       seguroEl.dataset.editadoManual = "0";
-      if (status) {
-        status.textContent = "Seguro estimado automaticamente como 4,7% do valor do veículo. Edite se tiver cotação real.";
-      }
+      if (status) status.textContent = "";
     }
 
     function limparCamposVeiculo(prefixo) {
@@ -1864,7 +1882,7 @@
           preencherTaxaDepreciacaoTCO(prefixo, taxaAnual, depHorizonte, data.origem_curva || "curva salva");
           escreverStatusDepreciacaoTCO(
             prefixo,
-            `✓ ${taxaAnual.toFixed(2).replace(".", ",")}% a.a. (${depHorizonte.toFixed(2).replace(".", ",")}% no horizonte).`,
+            `✓ ${taxaAnual.toFixed(2).replace(".", ",")}% a.a.`,
             "text-green-700 font-semibold"
           );
           configurarBotaoDepreciacaoTCO(prefixo, true, detalhe, "relatorio");
@@ -2033,12 +2051,9 @@
 
     function aplicarFallbackEnergiaLocal(uf, motivo) {
       const energiaInput = document.getElementById("energia_input");
-      const status = document.getElementById("status_energia");
-      const vig = document.getElementById("status_energia_vigencia");
       const valor = TARIFA_FALLBACK_JS_UF[String(uf || "").toUpperCase()] || 0.80;
       if (energiaInput) energiaInput.value = formatarNumero5(valor);
-      if (status) status.textContent = `${motivo || "Consulta ANEEL indisponível"}. Valor preenchido por estimativa local para ${uf}. Pode ajustar manualmente.`;
-      if (vig) vig.textContent = "Estimativa local usada como fallback técnico.";
+      montarStatusEnergiaPlugVE(`${motivo || "Consulta ANEEL indisponível"}. Estimativa local`, `Fallback ${String(uf || "").toUpperCase()}`, "Estimativa local usada como fallback técnico.");
       renderEnergiaBreakdown(0, null);
       setBreakdownDisabled(true);
     }
@@ -2048,21 +2063,18 @@
       const municipio = document.getElementById("municipio_select").value;
       const energiaInput = document.getElementById("energia_input");
       const status = document.getElementById("status_energia");
-      const vig = document.getElementById("status_energia_vigencia");
       const manual = document.getElementById("energia_manual_checkbox").checked;
 
       if (!energiaInput || !status) return;
       if (!uf || !municipio) return;
 
       if (manual) {
-        status.textContent = "Modo manual ativo: o valor não será atualizado automaticamente e o detalhamento fica desativado.";
-        if (vig) vig.textContent = "";
+        montarStatusEnergiaPlugVE("Modo manual ativo. O valor não será atualizado automaticamente.", "", "");
         setBreakdownDisabled(true);
         return;
       }
 
       status.textContent = "Buscando tarifa de energia na ANEEL (com impostos)...";
-      if (vig) vig.textContent = "";
       setBreakdownDisabled(false);
 
       try {
@@ -2073,17 +2085,10 @@
         if (data && data.tarifa_kwh !== null && data.tarifa_kwh !== undefined && !isNaN(Number(data.tarifa_kwh))) {
           energiaInput.value = formatarNumero5(Number(data.tarifa_kwh));
 
-          status.textContent = data.mensagem
-            ? data.mensagem
-            : `Tarifa obtida para ${data.distribuidora || "distribuidora"} (com impostos).`;
-
-          if (vig) {
-            if (data.vigencia_inicio || data.vigencia_fim) {
-              vig.textContent = `Vigência: ${data.vigencia_inicio || "?"} até ${data.vigencia_fim || "?"}`;
-            } else {
-              vig.textContent = "";
-            }
-          }
+          const vigenciaEnergia = (data.vigencia_inicio || data.vigencia_fim)
+            ? `Vigência: ${data.vigencia_inicio || "?"} até ${data.vigencia_fim || "?"}`
+            : "";
+          montarStatusEnergiaPlugVE("Tarifa B1 Residencial", data.distribuidora || "Equatorial GO", vigenciaEnergia);
 
           renderEnergiaBreakdown(Number(data.tarifa_kwh), data.detalhe || null);
 
@@ -2179,9 +2184,9 @@
 
         if (isencaoCheckbox.checked) {
           ipvaVeInput.value = "0,00";
-          ipvaVeInput.style.backgroundColor = "#e9ecef";
+          ipvaVeInput.style.backgroundColor = "#ffffff";
         } else {
-          ipvaVeInput.style.backgroundColor = "#f3f4f6";
+          ipvaVeInput.style.backgroundColor = "#ffffff";
           atualizarIpva("ve");
         }
       }
@@ -2210,7 +2215,7 @@
             this.dataset.editadoManual = "1";
             this.dataset.autoSeguro = "0";
             const status = statusSeguroPorPrefixo(prefixo);
-            if (status) status.textContent = "Seguro editado manualmente pelo usuário.";
+            if (status) status.textContent = "";
           });
         }
         if (preco) {
