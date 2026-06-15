@@ -307,11 +307,13 @@
 
                 <div>
                   <label class="block text-sm font-medium">Depreciação atual (%)</label>
-                  <input type="text" name="depreciacao_atual" id="depreciacao_atual" class="mt-1 p-2 border rounded w-full" placeholder="ex: 10">
+                  <div class="mt-1 flex gap-2 items-center">
+                    <input type="text" name="depreciacao_atual" id="depreciacao_atual" class="p-2 border rounded w-full" placeholder="ex: 10">
+                    <button type="button" id="btn_depreciacao_atual" class="px-3 py-2 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 hidden whitespace-nowrap">
+                      Ver relatório
+                    </button>
+                  </div>
                   <div id="depreciacao_status_atual" class="mt-2 text-xs text-gray-500">Aguardando seleção FIPE para buscar depreciação.</div>
-                  <button type="button" id="btn_depreciacao_atual" class="mt-2 px-3 py-2 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 hidden">
-                    Calcular/validar depreciação
-                  </button>
                 </div>
               </div>
             </div>
@@ -392,12 +394,13 @@
 
               <div>
                 <label class="block text-sm font-medium">IPVA anual VE</label>
-                <input type="text" name="ipva_ve" id="ipva_ve_input" class="mt-1 p-2 border rounded w-full" placeholder="Calculado automaticamente">
-
-                <label class="flex items-center mt-2 text-xs">
-                  <input type="checkbox" name="isencao_ipva_ve" id="isencao_ipva_checkbox" class="mr-2">
-                  Isenção de IPVA para VE (forçar IPVA = 0)
-                </label>
+                <div class="mt-1 flex flex-col sm:flex-row gap-2 sm:items-center">
+                  <input type="text" name="ipva_ve" id="ipva_ve_input" class="p-2 border rounded w-full" placeholder="Calculado automaticamente">
+                  <label class="flex items-center px-3 py-2 border rounded bg-gray-50 text-xs text-gray-700 whitespace-nowrap select-none">
+                    <input type="checkbox" name="isencao_ipva_ve" id="isencao_ipva_checkbox" class="mr-2">
+                    Isenção VE
+                  </label>
+                </div>
               </div>
 
               <div>
@@ -408,11 +411,13 @@
 
               <div>
                 <label class="block text-sm font-medium">Depreciação VE (%)</label>
-                <input type="text" name="depreciacao_ve" id="depreciacao_ve" class="mt-1 p-2 border rounded w-full" placeholder="ex: 8">
+                <div class="mt-1 flex gap-2 items-center">
+                  <input type="text" name="depreciacao_ve" id="depreciacao_ve" class="p-2 border rounded w-full" placeholder="ex: 8">
+                  <button type="button" id="btn_depreciacao_ve" class="px-3 py-2 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 hidden whitespace-nowrap">
+                    Ver relatório
+                  </button>
+                </div>
                 <div id="depreciacao_status_ve" class="mt-2 text-xs text-gray-500">Aguardando seleção FIPE para buscar depreciação.</div>
-                <button type="button" id="btn_depreciacao_ve" class="mt-2 px-3 py-2 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 hidden">
-                  Calcular/validar depreciação
-                </button>
               </div>
             </div>
           </div>
@@ -497,11 +502,13 @@
 
               <div>
                 <label class="block text-sm font-medium">Depreciação ICEV (%)</label>
-                <input type="text" name="depreciacao_icev" id="depreciacao_icev" class="mt-1 p-2 border rounded w-full" placeholder="ex: 10">
+                <div class="mt-1 flex gap-2 items-center">
+                  <input type="text" name="depreciacao_icev" id="depreciacao_icev" class="p-2 border rounded w-full" placeholder="ex: 10">
+                  <button type="button" id="btn_depreciacao_icev" class="px-3 py-2 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 hidden whitespace-nowrap">
+                    Ver relatório
+                  </button>
+                </div>
                 <div id="depreciacao_status_icev" class="mt-2 text-xs text-gray-500">Aguardando seleção FIPE para buscar depreciação.</div>
-                <button type="button" id="btn_depreciacao_icev" class="mt-2 px-3 py-2 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 hidden">
-                  Calcular/validar depreciação
-                </button>
               </div>
             </div>
           </div>
@@ -516,14 +523,8 @@
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
 
             <div>
-              <div class="flex items-center justify-between">
-                <label class="block text-sm font-medium">Custo energia kW/h</label>
-
-                <label class="flex items-center text-xs text-gray-600 select-none">
-                  <input type="checkbox" id="energia_manual_checkbox" class="mr-2">
-                  Usar valor manual
-                </label>
-              </div>
+              <label class="block text-sm font-medium">Custo energia kW/h</label>
+              <input type="checkbox" id="energia_manual_checkbox" class="hidden" aria-hidden="true" tabindex="-1">
 
               <input
                 type="text"
@@ -540,10 +541,10 @@
             </div>
 
             <div>
-              <label class="block text-sm font-medium">Valor ANP combustível (R$/l)</label>
+              <label class="block text-sm font-medium">Valor do combustível (R$/l)</label>
               <input type="text" name="combustivel" value="5,80" class="mt-1 p-2 border rounded w-full" required>
               <p id="status_combustivel" class="text-[11px] text-gray-500 mt-1">
-                Valor preenchido com o preço médio mais recente disponível na ANP. Você pode ajustar manualmente.
+                Valor médio ANP.
               </p>
             </div>
 
@@ -1829,7 +1830,7 @@
       btn.classList.toggle("hidden", !mostrar);
       btn.disabled = !mostrar;
       if (mostrar) {
-        btn.textContent = modo === "relatorio" ? "Ver relatório da depreciação" : "Calcular depreciação";
+        btn.textContent = modo === "relatorio" ? "Ver relatório" : "Validar";
         btn.classList.toggle("bg-green-600", modo === "relatorio");
         btn.classList.toggle("hover:bg-green-700", modo === "relatorio");
         btn.classList.toggle("bg-blue-600", modo !== "relatorio");
@@ -1963,7 +1964,7 @@
 
       if (!uf || !municipio || !campoComb) return;
 
-      if (status) status.textContent = "Buscando preço médio da gasolina na ANP...";
+      if (status) status.textContent = "Buscando valor médio ANP...";
 
       try {
         const params = new URLSearchParams({ uf, municipio });
@@ -1973,14 +1974,14 @@
         if (data && data.preco) {
           campoComb.value = data.preco.toFixed(3).replace(".", ",");
           if (status) {
-            status.textContent = "Valor preenchido com o último preço médio de gasolina da ANP para esse município/estado. Você pode ajustar se quiser.";
+            status.textContent = "Valor médio ANP.";
           }
         } else {
-          if (status) status.textContent = "Não foi possível obter o preço na ANP. Mantenha ou ajuste o valor manualmente.";
+          if (status) status.textContent = "Valor médio ANP indisponível. Ajuste manualmente.";
         }
       } catch (e) {
         console.error("Erro ao buscar preço da gasolina:", e);
-        if (status) status.textContent = "Erro ao consultar a ANP. Mantenha ou ajuste o valor manualmente.";
+        if (status) status.textContent = "Erro ao consultar ANP. Ajuste manualmente.";
       }
     }
 
@@ -2063,7 +2064,7 @@
       const municipio = document.getElementById("municipio_select").value;
       const energiaInput = document.getElementById("energia_input");
       const status = document.getElementById("status_energia");
-      const manual = document.getElementById("energia_manual_checkbox").checked;
+      const manual = Boolean(document.getElementById("energia_manual_checkbox")?.checked);
 
       if (!energiaInput || !status) return;
       if (!uf || !municipio) return;
