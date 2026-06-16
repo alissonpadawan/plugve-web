@@ -7,7 +7,6 @@ let diagnosticoV1917Ciclos = 0;
 let terminalV1917Linhas = [];
 let timerHorizonteDepreciacao = null;
 let consultaDepreciacaoSeq = 0;
-let abaPrincipalDepreciacao = "resultado";
 const DIAGNOSTICO_V1917_MAX_CICLOS = 180;
 
 function textoSeguro(valor) {
@@ -65,7 +64,6 @@ function mostrarAuditoriaCalculoArea(mostrar = true) {
 
 function selecionarAbaPrincipalDepreciacao(aba = "resultado") {
   const desejada = aba === "auditoria" ? "auditoria" : "resultado";
-  abaPrincipalDepreciacao = desejada;
   const temResultado = Boolean(ultimoResumoDepreciacao && ultimoResumoDepreciacao.encontrado);
   const tabs = document.getElementById("depreciacao_abas");
   if (tabs) tabs.classList.toggle("hidden", !temResultado);
@@ -178,7 +176,6 @@ function limparResumo() {
 
 function resetarFluxoDepreciacao() {
   consultaDepreciacaoSeq += 1;
-  abaPrincipalDepreciacao = "resultado";
   if (timerHorizonteDepreciacao) clearTimeout(timerHorizonteDepreciacao);
   ultimoResumoDepreciacao = null;
   ultimoJobDiagnosticoV1917 = null;
@@ -200,7 +197,7 @@ function confiancaEhBaixaOuExploratoria(conf) {
 }
 
 function configurarBotoesResultado(curvaEncontrada, podeCalcularFuturo, permitirApagar = false) {
-  const btnDetalhes = document.getElementById("btn_ver_detalhes");
+  const btnAuditoria = document.getElementById("btn_auditoria");
   const btnCalcular = document.getElementById("btn_calcular_futuro");
   const btnUsarTCO = document.getElementById("btn_usar_no_tco");
   const btnApagar = document.getElementById("btn_apagar_curva");
@@ -208,9 +205,9 @@ function configurarBotoesResultado(curvaEncontrada, podeCalcularFuturo, permitir
   const btnNovaConsulta = document.getElementById("btn_nova_consulta");
   const btnDiag = document.getElementById("btn_diagnostico_coorte");
 
-  if (btnDetalhes) {
-    btnDetalhes.classList.toggle("hidden", !curvaEncontrada);
-    btnDetalhes.disabled = !curvaEncontrada;
+  if (btnAuditoria) {
+    btnAuditoria.classList.toggle("hidden", !curvaEncontrada);
+    btnAuditoria.disabled = !curvaEncontrada;
   }
 
   if (btnCalcular) {
@@ -664,7 +661,7 @@ function montarRelatorioHTMLProfissional(data) {
     </section>
 
     <section class="report-section">
-      <p class="report-kicker">Auditoria matemática</p>
+      <p class="report-kicker">Auditoria técnica</p>
       <h3>Parâmetros técnicos usados</h3>
       <p class="report-lead">A memória técnica abaixo resume os parâmetros necessários para auditar o cálculo sem expor mensagens internas do sistema.</p>
       <table class="professional-report-table"><tbody>${tabelaAuditoria}</tbody></table>
@@ -779,7 +776,7 @@ async function consultarResumoDepreciacao(detalheFipe) {
       renderizarGraficosDepreciacao(data);
       renderizarAuditoriaCalculo(data);
       mostrarAbasDepreciacao(true);
-      selecionarAbaPrincipalDepreciacao(abaPrincipalDepreciacao === "auditoria" ? "auditoria" : "resultado");
+      selecionarAbaPrincipalDepreciacao("resultado");
       if (estaEmModoBridgeTCO()) mostrarDetalhes();
     } else {
       atualizarFeedbackCalculo("Curva não encontrada. Processamento deve ser feito no painel local.", 100, false);
@@ -2626,6 +2623,26 @@ function exportarPDFDepreciacao() {
   setTimeout(() => window.print(), 150);
 }
 
+function abrirAuditoriaDepreciacao() {
+  if (!ultimoResumoDepreciacao || !ultimoResumoDepreciacao.encontrado) {
+    window.alert("Selecione primeiro um veículo com curva de depreciação pronta.");
+    return;
+  }
+  try {
+    const chave = `aud_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+    const pacote = {
+      gerado_em: new Date().toISOString(),
+      origem: "CurVE - depreciação veicular",
+      resultado: ultimoResumoDepreciacao
+    };
+    localStorage.setItem(`curve_auditoria_depreciacao_${chave}`, JSON.stringify(pacote));
+    window.open(`/depreciacao/auditoria?key=${encodeURIComponent(chave)}`, "_blank");
+  } catch (erro) {
+    console.error(erro);
+    window.alert("Não consegui abrir a auditoria técnica. Tente novamente.");
+  }
+}
+
 function exportarAuditoriaMatematica() {
   if (!ultimoResumoDepreciacao || !ultimoResumoDepreciacao.encontrado) {
     window.alert("Selecione primeiro um veículo com curva de depreciação pronta.");
@@ -2693,7 +2710,7 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("horizonte_anos")?.addEventListener("input", reaplicarHorizonteAtual);
   document.getElementById("horizonte_anos")?.addEventListener("change", reaplicarHorizonteAtual);
 
-  document.getElementById("btn_ver_detalhes")?.addEventListener("click", mostrarDetalhes);
+  document.getElementById("btn_auditoria")?.addEventListener("click", abrirAuditoriaDepreciacao);
   document.getElementById("tab_resultado_depreciacao")?.addEventListener("click", () => selecionarAbaPrincipalDepreciacao("resultado"));
   document.getElementById("tab_auditoria_depreciacao")?.addEventListener("click", () => selecionarAbaPrincipalDepreciacao("auditoria"));
   document.getElementById("btn_voltar_resultado")?.addEventListener("click", () => selecionarAbaPrincipalDepreciacao("resultado"));

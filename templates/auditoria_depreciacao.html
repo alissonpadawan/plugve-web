@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Auditoria | CurVE</title>
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/favicon.png') }}">
+  <style>
+    :root {
+      --paper: #f6f5f0;
+      --ink: #111827;
+      --muted: #4b5563;
+      --grid: #d1d5db;
+      --line-a: #2563eb;
+      --line-b: #ea580c;
+      --line-c: #16a34a;
+      --line-d: #7c3aed;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: "Courier New", Consolas, monospace;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+    .audit-page {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 24px 28px 48px;
+    }
+    .audit-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 24px;
+      align-items: flex-start;
+      border-bottom: 2px solid #111827;
+      padding-bottom: 14px;
+      margin-bottom: 18px;
+    }
+    .audit-top h1 {
+      margin: 0 0 4px;
+      font-size: 24px;
+      letter-spacing: -0.02em;
+    }
+    .audit-top p { margin: 0; color: var(--muted); }
+    .audit-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    .audit-actions button,
+    .audit-actions a {
+      border: 1px solid #111827;
+      background: transparent;
+      color: #111827;
+      font: inherit;
+      padding: 7px 10px;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .audit-actions button:hover,
+    .audit-actions a:hover { background: #111827; color: white; }
+    .audit-status {
+      white-space: pre-wrap;
+      border-left: 4px solid #111827;
+      padding-left: 10px;
+      margin: 14px 0 18px;
+      color: #111827;
+    }
+    .audit-section {
+      margin: 24px 0 30px;
+      break-inside: avoid;
+    }
+    .audit-section h2 {
+      margin: 0 0 10px;
+      font-size: 17px;
+      text-transform: uppercase;
+      letter-spacing: .02em;
+      border-bottom: 1px solid #9ca3af;
+      padding-bottom: 5px;
+    }
+    pre.audit-code,
+    .audit-log {
+      margin: 0;
+      padding: 0;
+      white-space: pre-wrap;
+      font: inherit;
+      color: #111827;
+    }
+    .audit-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+    .audit-plot {
+      margin: 14px 0 20px;
+      background: #fff;
+      border: 1px solid #9ca3af;
+      padding: 10px;
+      break-inside: avoid;
+    }
+    .audit-plot h3 {
+      margin: 0 0 8px;
+      font-size: 14px;
+      text-align: center;
+      font-weight: 700;
+    }
+    .audit-plot svg {
+      width: 100%;
+      height: auto;
+      display: block;
+      background: white;
+    }
+    .legend {
+      display: flex;
+      gap: 14px;
+      justify-content: center;
+      margin-top: 6px;
+      font-size: 12px;
+    }
+    .legend span::before {
+      content: "";
+      display: inline-block;
+      width: 18px;
+      height: 2px;
+      background: currentColor;
+      vertical-align: middle;
+      margin-right: 5px;
+    }
+    .legend .base { color: var(--line-a); }
+    .legend .otimista { color: var(--line-b); }
+    .legend .pessimista { color: var(--line-c); }
+    .legend .ipca { color: var(--line-d); }
+    .audit-table-wrap {
+      overflow: auto;
+      max-height: 70vh;
+      border-top: 1px solid #111827;
+      border-bottom: 1px solid #111827;
+      background: rgba(255,255,255,.55);
+    }
+    table.audit-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    .audit-table th,
+    .audit-table td {
+      padding: 5px 7px;
+      border-bottom: 1px solid #d1d5db;
+      text-align: right;
+    }
+    .audit-table th:first-child,
+    .audit-table td:first-child,
+    .audit-table th:nth-child(2),
+    .audit-table td:nth-child(2) { text-align: left; }
+    .audit-table thead th {
+      position: sticky;
+      top: 0;
+      background: #e5e7eb;
+      color: #111827;
+      z-index: 2;
+    }
+    .audit-note {
+      color: #374151;
+      margin: 8px 0 0;
+    }
+    .hidden { display: none !important; }
+    @media (max-width: 900px) {
+      .audit-grid { grid-template-columns: 1fr; }
+      .audit-top { flex-direction: column; }
+      .audit-actions { justify-content: flex-start; }
+    }
+    @media print {
+      body { background: white; }
+      .audit-page { max-width: none; padding: 0; }
+      .audit-actions { display: none; }
+      .audit-table-wrap { max-height: none; overflow: visible; }
+      .audit-section { page-break-inside: avoid; }
+      .audit-plot { page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <main class="audit-page">
+    <header class="audit-top">
+      <div>
+        <h1>CurVE :: auditoria da depreciação</h1>
+        <p>Memória técnica, equações e pontos usados na construção dos gráficos.</p>
+      </div>
+      <div class="audit-actions">
+        <a href="/depreciacao">voltar</a>
+        <button type="button" onclick="window.print()">imprimir / PDF</button>
+      </div>
+    </header>
+    <div id="audit_status" class="audit-status">>> carregando pacote de auditoria...</div>
+    <section class="audit-section">
+      <h2>0. Resumo numérico</h2>
+      <pre id="audit_summary" class="audit-code">aguardando dados...</pre>
+    </section>
+    <section class="audit-section">
+      <h2>1. Dados de entrada e parâmetros</h2>
+      <pre id="audit_inputs" class="audit-code">aguardando dados...</pre>
+    </section>
+    <section class="audit-section">
+      <h2>2. Equações aplicadas</h2>
+      <pre id="audit_equations" class="audit-code">aguardando dados...</pre>
+      <p class="audit-note">A linha dos gráficos é uma interpolação visual entre pontos mensais. A tabela mensal é a memória auditável.</p>
+    </section>
+    <section class="audit-section">
+      <h2>3. Plots técnicos</h2>
+      <div class="audit-grid">
+        <div class="audit-plot">
+          <h3>Projeção mensal de valor</h3>
+          <div id="plot_projection"></div>
+          <div class="legend"><span class="base">base</span><span class="otimista">otimista</span><span class="pessimista">pessimista</span></div>
+        </div>
+        <div class="audit-plot">
+          <h3>Depreciação acumulada - cenário base</h3>
+          <div id="plot_depreciation"></div>
+          <div class="legend"><span class="base">D_m</span></div>
+        </div>
+        <div class="audit-plot" id="plot_history_nominal_box">
+          <h3>Histórico FIPE nominal da base</h3>
+          <div id="plot_history_nominal"></div>
+          <div class="legend"><span class="base">nominal</span></div>
+        </div>
+        <div class="audit-plot" id="plot_history_ipca_box">
+          <h3>Histórico corrigido pelo IPCA</h3>
+          <div id="plot_history_ipca"></div>
+          <div class="legend"><span class="ipca">IPCA</span></div>
+        </div>
+      </div>
+    </section>
+    <section class="audit-section">
+      <h2>4. Memória de cálculo mês a mês</h2>
+      <div id="audit_month_table">aguardando dados...</div>
+    </section>
+    <section class="audit-section">
+      <h2>5. Leitura técnica</h2>
+      <pre id="audit_interpretation" class="audit-code">aguardando dados...</pre>
+    </section>
+  </main>
+  <script src="{{ url_for('static', filename='js/auditoria_depreciacao.js') }}?v=20260616_v34_auditoria_externa"></script>
+</body>
+</html>

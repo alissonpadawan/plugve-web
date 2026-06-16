@@ -78,11 +78,6 @@
       </div>
     </section>
 
-    <section id="depreciacao_abas" class="depreciacao-tabs hidden" role="tablist" aria-label="Visualização do relatório de depreciação">
-      <button id="tab_resultado_depreciacao" class="depreciacao-tab active" type="button" role="tab" aria-selected="true">Resultado</button>
-      <button id="tab_auditoria_depreciacao" class="depreciacao-tab" type="button" role="tab" aria-selected="false">Auditoria matemática</button>
-    </section>
-
     <section id="resultado_area" class="hidden result-top-grid">
       <div class="card result-card" id="card_resultado">
         <h2>Resultado da depreciação</h2>
@@ -100,7 +95,7 @@
           <dt>Categoria</dt><dd id="res_tipo_usado">-</dd>
         </dl>
         <div class="actions">
-          <button id="btn_ver_detalhes" class="button primary hidden" type="button" disabled>Ver detalhes</button>
+          <button id="btn_auditoria" class="button primary hidden" type="button" disabled>Auditoria</button>
           <button id="btn_exportar_pdf" class="button secondary hidden" type="button" disabled>Exportar PDF</button>
           <button id="btn_nova_consulta" class="button secondary hidden" type="button">Nova consulta</button>
           <button id="btn_apagar_curva" class="button secondary hidden" type="button" disabled>Apagar curva</button>
@@ -149,28 +144,13 @@
       </section>
     </section>
 
-    <section id="auditoria_calculo_area" class="hidden audit-view">
-      <div class="card audit-card">
-        <div class="section-header audit-lab-header">
-          <div>
-            <p class="audit-kicker">Auditoria matemática</p>
-            <h2>Memória de cálculo da depreciação</h2>
-            <p class="muted">Equações, parâmetros e série mensal usada para construir a projeção exibida no resultado.</p>
-          </div>
-          <div class="actions audit-actions">
-            <button id="btn_voltar_resultado" class="button secondary" type="button">Resultado</button>
-            <button id="btn_exportar_auditoria_pdf" class="button secondary" type="button">Exportar auditoria</button>
-          </div>
-        </div>
-        <div id="auditoria_calculo_texto" class="audit-terminal">Aguardando seleção do veículo.</div>
-      </div>
-    </section>
+
 
   </main>
 </section>
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/fipe.js') }}?v=20260616_v33_auditoria_matematica"></script>
-<script src="{{ url_for('static', filename='js/depreciacao.js') }}?v=20260616_v33_auditoria_matematica"></script>
+<script src="{{ url_for('static', filename='js/fipe.js') }}?v=20260616_v34_auditoria_externa"></script>
+<script src="{{ url_for('static', filename='js/depreciacao.js') }}?v=20260616_v34_auditoria_externa"></script>
 {% endblock %}

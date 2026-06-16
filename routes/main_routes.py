@@ -15,6 +15,11 @@ def depreciacao():
     return render_template("depreciacao.html")
 
 
+@main_bp.route("/depreciacao/auditoria")
+def depreciacao_auditoria():
+    return render_template("auditoria_depreciacao.html")
+
+
 @main_bp.route("/metodologia")
 def metodologia():
     return redirect(url_for("tco.simular"))
