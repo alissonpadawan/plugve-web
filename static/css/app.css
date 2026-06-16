@@ -1394,6 +1394,17 @@ textarea { resize: vertical; }
 .bar-chart-bar.otimista { background: var(--primary-dark); }
 .bar-chart-bar.pessimista { background: var(--accent); }
 
+
+/* V29 - alinhamento da seleção FIPE e leitura dos novos campos de depreciação */
+#fipe_search_area.consulta-row.grid.three {
+  align-items: end;
+}
+
+#fipe_search_area.consulta-row.grid.three .field,
+#fipe_search_area.consulta-row.grid.three .field + .field {
+  margin-top: 0 !important;
+}
+
 /* V28 - ajustes de apresentação da depreciação e exportação em PDF */
 .consulta-horizonte-row {
   max-width: 360px;
@@ -1413,6 +1424,8 @@ textarea { resize: vertical; }
   body {
     background: #fff !important;
     color: #111827 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
   .topbar,
@@ -1524,18 +1537,59 @@ textarea { resize: vertical; }
 
   .bar-chart-grid,
   .result-top-grid .bar-chart-grid {
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    align-items: end !important;
+    justify-items: center !important;
     min-height: 230px !important;
     height: 230px !important;
+    overflow: visible !important;
   }
 
   .bar-chart-item,
   .result-top-grid .bar-chart-item {
     height: 230px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    overflow: visible !important;
   }
 
   .bar-chart-bar,
   .result-top-grid .bar-chart-bar {
+    display: block !important;
+    width: 42px !important;
+    min-height: 12px !important;
     max-height: 185px !important;
+    opacity: 1 !important;
+    border-radius: 4px 4px 0 0 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .bar-chart-bar.inicial,
+  .result-top-grid .bar-chart-bar.inicial {
+    background-color: #14232C !important;
+    border: 1.5pt solid #14232C !important;
+  }
+
+  .bar-chart-bar.base,
+  .result-top-grid .bar-chart-bar.base {
+    background-color: #168A4A !important;
+    border: 1.5pt solid #168A4A !important;
+  }
+
+  .bar-chart-bar.otimista,
+  .result-top-grid .bar-chart-bar.otimista {
+    background-color: #0F5F36 !important;
+    border: 1.5pt solid #0F5F36 !important;
+  }
+
+  .bar-chart-bar.pessimista,
+  .result-top-grid .bar-chart-bar.pessimista {
+    background-color: #C99A3D !important;
+    border: 1.5pt solid #C99A3D !important;
   }
 
   .projection-summary,

@@ -108,7 +108,7 @@ function atualizarTerminalV1917(data) {
 }
 
 function limparResumo() {
-  ["res_valor_atual", "res_valor_futuro", "res_depreciacao", "res_taxa", "res_confianca", "res_origem", "res_tipo_usado", "res_modelo"].forEach(id => {
+  ["res_valor_atual", "res_valor_futuro", "res_horizonte", "res_depreciacao", "res_taxa", "res_taxa_total", "res_confianca", "res_origem", "res_tipo_usado", "res_modelo"].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.textContent = "-";
   });
@@ -188,11 +188,14 @@ function preencherResumo(data) {
   const cen = obterCenariosDoResultado(data);
   const valorAtual = Number(cen.atual || data.valor_atual || 0);
   const valorFuturo = Number(cen.base || data.valor_futuro || 0);
+  const horizonte = Math.max(1, Number(cen.horizonte || data.horizonte_anos || document.getElementById("horizonte_anos")?.value || 5));
   const depCalculada = valorAtual > 0 && valorFuturo > 0 ? ((valorAtual - valorFuturo) / valorAtual) * 100 : Number(data.depreciacao_percentual || 0);
   document.getElementById("res_valor_atual").textContent = valorAtual > 0 ? formatarMoedaBR(valorAtual) : "-";
   document.getElementById("res_valor_futuro").textContent = valorFuturo > 0 ? formatarMoedaBR(valorFuturo) : "-";
+  document.getElementById("res_horizonte").textContent = horizonte > 0 ? formatarHorizonteLabel(horizonte) : "-";
   document.getElementById("res_depreciacao").textContent = depCalculada > 0 ? `${depCalculada.toFixed(2).replace(".", ",")}%` : "-";
   document.getElementById("res_taxa").textContent = data.taxa_anual_percentual != null && Number(data.taxa_anual_percentual) > 0 ? `${Number(data.taxa_anual_percentual).toFixed(2).replace(".", ",")}% a.a.` : "-";
+  document.getElementById("res_taxa_total").textContent = depCalculada > 0 ? `${depCalculada.toFixed(2).replace(".", ",")}%` : "-";
   document.getElementById("res_confianca").textContent = data.confianca || "-";
   document.getElementById("res_origem").textContent = data.origem_curva || "-";
   document.getElementById("res_tipo_usado").textContent = data.detalhes?.tipo_label || data.tipo_curva || "-";
@@ -219,7 +222,7 @@ function atualizarVisibilidadeResumo() {
 }
 
 function limparResumoParcialApenasValor(valorAtual) {
-  ["res_valor_futuro", "res_depreciacao", "res_taxa", "res_confianca", "res_origem", "res_tipo_usado"].forEach(id => {
+  ["res_valor_futuro", "res_horizonte", "res_depreciacao", "res_taxa", "res_taxa_total", "res_confianca", "res_origem", "res_tipo_usado"].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.textContent = "-";
   });
@@ -324,6 +327,13 @@ function preencherRelatorio(data, origem = "curva") {
   const curva = detalhes.curva || {};
   const familia = detalhes.familia || {};
   const auditoria = detalhes.auditoria_historico || data?.motor?.auditoria_historico || {};
+  const cenariosDetalhe = obterCenariosDoResultado(data);
+  const valorAtualDetalhe = Number(cenariosDetalhe.atual || data?.valor_atual || 0);
+  const valorFuturoDetalhe = Number(cenariosDetalhe.base || data?.valor_futuro || 0);
+  const horizonteDetalhe = Math.max(1, Number(cenariosDetalhe.horizonte || data?.horizonte_anos || document.getElementById("horizonte_anos")?.value || 5));
+  const depDetalhe = valorAtualDetalhe > 0 && valorFuturoDetalhe > 0
+    ? ((valorAtualDetalhe - valorFuturoDetalhe) / valorAtualDetalhe) * 100
+    : Number(data?.depreciacao_percentual || 0);
 
   corpo.innerHTML = "";
   adicionarDetalhe(corpo, "Resultado", data?.mensagem || "Curva carregada.");
@@ -331,6 +341,8 @@ function preencherRelatorio(data, origem = "curva") {
   adicionarDetalhe(corpo, "Origem", data?.origem_curva || detalhes.origem_curva || origem);
   adicionarDetalhe(corpo, "Confiança", data?.confianca || detalhes.confianca);
   adicionarDetalhe(corpo, "Taxa anual", data?.taxa_anual_percentual ? `${Number(data.taxa_anual_percentual).toFixed(2).replace(".", ",")}% a.a.` : "-");
+  adicionarDetalhe(corpo, "Taxa de depreciação total", depDetalhe > 0 ? `${depDetalhe.toFixed(2).replace(".", ",")}%` : "-");
+  adicionarDetalhe(corpo, "Horizonte da análise", formatarHorizonteLabel(horizonteDetalhe));
   adicionarDetalhe(corpo, "Pontos históricos", data?.pontos_historicos || detalhes.pontos_historicos);
   adicionarDetalhe(corpo, "Janela histórica", data?.janela_historica_meses ? `${data.janela_historica_meses} meses` : detalhes.janela_historica_meses ? `${detalhes.janela_historica_meses} meses` : "-");
   adicionarDetalhe(corpo, "Período inicial", detalhes.periodo_inicial || curva.periodo_inicial);
@@ -1069,7 +1081,7 @@ function renderizarGraficoHistoricoRender(data) {
   el.classList.remove("empty-chart");
   el.innerHTML = "";
   const valores = pontos.map(p => p.valor);
-  const escala = calcularEscalaAjustada(valores, 0.08);
+  const escala = calcularEscalaLinearPainel(valores, 5);
   const w = 980, h = 420, padL = 92, padR = 36, padT = 30, padB = 70;
   const plotW = w - padL - padR;
   const plotH = h - padT - padB;
@@ -1108,16 +1120,6 @@ function renderizarGraficoHistoricoRender(data) {
   axis.setAttribute("d", `M${padL} ${padT} V${h-padB} H${w-padR}`);
   axis.setAttribute("class", "chart-axis");
   svg.appendChild(axis);
-
-  [escala.max, (escala.max + escala.min) / 2, escala.min].forEach((valor, idx) => {
-    const t = document.createElementNS(svgNS, "text");
-    t.setAttribute("x", padL - 10);
-    t.setAttribute("y", idx === 0 ? padT + 4 : idx === 1 ? (padT + h - padB) / 2 : h - padB);
-    t.setAttribute("text-anchor", "end");
-    t.setAttribute("class", "chart-label-svg");
-    t.textContent = formatarMoedaBR(valor).replace(",00", "");
-    svg.appendChild(t);
-  });
 
   const ticks = [0, Math.floor((pontos.length - 1) / 4), Math.floor((pontos.length - 1) / 2), Math.floor(3 * (pontos.length - 1) / 4), pontos.length - 1];
   [...new Set(ticks)].forEach(idx => {
@@ -1294,7 +1296,7 @@ function renderizarLinhaHistoricoPlugVE(el, pontos, vazioTexto = "Histórico nã
   }
   el.classList.remove("empty-chart");
   const valores = pontos.map(p => p.valor);
-  const escala = calcularEscalaAjustada(valores, 0.08);
+  const escala = calcularEscalaLinearPainel(valores, 5);
   const w = 980, h = 420, padL = 92, padR = 36, padT = 30, padB = 70;
   const plotW = w - padL - padR;
   const plotH = h - padT - padB;
@@ -1305,8 +1307,8 @@ function renderizarLinhaHistoricoPlugVE(el, pontos, vazioTexto = "Histórico nã
   svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
   svg.setAttribute("class", "line-chart-svg grid-chart-svg");
 
-  for (let i = 0; i <= 5; i++) {
-    const yy = padT + (i / 5) * plotH;
+  (escala.ticks || []).forEach(valor => {
+    const yy = y(valor);
     const line = document.createElementNS(svgNS, "line");
     line.setAttribute("x1", padL);
     line.setAttribute("x2", w - padR);
@@ -1314,7 +1316,15 @@ function renderizarLinhaHistoricoPlugVE(el, pontos, vazioTexto = "Histórico nã
     line.setAttribute("y2", yy);
     line.setAttribute("class", "chart-grid-line");
     svg.appendChild(line);
-  }
+
+    const label = document.createElementNS(svgNS, "text");
+    label.setAttribute("x", padL - 10);
+    label.setAttribute("y", yy + 4);
+    label.setAttribute("text-anchor", "end");
+    label.setAttribute("class", "chart-label-svg");
+    label.textContent = formatarMoedaBR(valor).replace(",00", "");
+    svg.appendChild(label);
+  });
   const gridX = Math.min(8, Math.max(2, Math.floor(pontos.length / 6)));
   for (let i = 0; i <= gridX; i++) {
     const idx = Math.round((i / gridX) * (pontos.length - 1));
@@ -1332,16 +1342,6 @@ function renderizarLinhaHistoricoPlugVE(el, pontos, vazioTexto = "Histórico nã
   axis.setAttribute("d", `M${padL} ${padT} V${h-padB} H${w-padR}`);
   axis.setAttribute("class", "chart-axis");
   svg.appendChild(axis);
-
-  [escala.max, (escala.max + escala.min) / 2, escala.min].forEach((valor, idx) => {
-    const t = document.createElementNS(svgNS, "text");
-    t.setAttribute("x", padL - 10);
-    t.setAttribute("y", idx === 0 ? padT + 4 : idx === 1 ? (padT + h - padB) / 2 : h - padB);
-    t.setAttribute("text-anchor", "end");
-    t.setAttribute("class", "chart-label-svg");
-    t.textContent = formatarMoedaBR(valor).replace(",00", "");
-    svg.appendChild(t);
-  });
 
   const ticks = [0, Math.floor((pontos.length - 1) / 4), Math.floor((pontos.length - 1) / 2), Math.floor(3 * (pontos.length - 1) / 4), pontos.length - 1];
   [...new Set(ticks)].forEach(idx => {
@@ -1774,16 +1774,6 @@ function renderizarGraficoProjecao(valorAtual, taxaAnual, horizonte) {
     t.setAttribute("text-anchor", "middle");
     t.setAttribute("class", "chart-label-svg");
     t.textContent = ano === 0 ? "Atual" : `${ano}a`;
-    svg.appendChild(t);
-  });
-
-  [escala.max, (escala.max + escala.min) / 2, escala.min].forEach((valor, idx) => {
-    const t = document.createElementNS(svgNS, "text");
-    t.setAttribute("x", padL - 10);
-    t.setAttribute("y", idx === 0 ? padT + 4 : idx === 1 ? (padT + h - padB) / 2 : h - padB);
-    t.setAttribute("text-anchor", "end");
-    t.setAttribute("class", "chart-label-svg");
-    t.textContent = formatarMoedaBR(valor).replace(",00", "");
     svg.appendChild(t);
   });
 

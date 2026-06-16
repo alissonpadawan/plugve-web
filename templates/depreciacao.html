@@ -86,8 +86,10 @@
         <dl class="data-list compact resumo-inline">
           <dt>Valor FIPE atual</dt><dd id="res_valor_atual">-</dd>
           <dt>Valor ao fim do horizonte</dt><dd id="res_valor_futuro">-</dd>
+          <dt>Horizonte de análise</dt><dd id="res_horizonte">-</dd>
           <dt>Depreciação acumulada</dt><dd id="res_depreciacao">-</dd>
           <dt>Taxa anual média</dt><dd id="res_taxa">-</dd>
+          <dt>Taxa de depreciação total</dt><dd id="res_taxa_total">-</dd>
           <dt>Confiança</dt><dd id="res_confianca">-</dd>
           <dt>Origem técnica</dt><dd id="res_origem">-</dd>
           <dt>Tipo usado</dt><dd id="res_tipo_usado">-</dd>
@@ -146,5 +148,5 @@
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/fipe.js') }}"></script>
-<script src="{{ url_for('static', filename='js/depreciacao.js') }}?v=20260615_v8_pdf_graficos"></script>
+<script src="{{ url_for('static', filename='js/depreciacao.js') }}?v=20260615_v9_horizonte_pdf_barras"></script>
 {% endblock %}
