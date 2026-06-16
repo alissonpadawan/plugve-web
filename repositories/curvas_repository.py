@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import re
 from datetime import datetime
 from functools import lru_cache
 from pathlib import Path
@@ -12,7 +13,7 @@ from repositories.familias_repository import FamiliasRepository
 from repositories.historico_repository import HistoricoRepository
 from core.modelos import VeiculoSelecionado
 from core.classificacao import classificar_confianca_combustao, classificar_confianca_eletrico
-from services.text_utils import normalizar_texto, parse_float_seguro, parse_int_seguro
+from services.text_utils import normalizar_texto, parse_float_seguro, parse_int_seguro, formatar_brl
 
 
 class CurvasRepository:
@@ -717,28 +718,270 @@ class CurvasRepository:
                 return valor
         return 0.0
 
+    @staticmethod
+    def _parse_data_base_operacao(texto: Any) -> datetime | None:
+        """Converte a referência FIPE para o primeiro dia do mês.
+
+        O painel local calcula a idade de entrada usando a data-base FIPE
+        da operação. A API pode retornar formatos como ``2026-06``,
+        ``junho de 2026`` ou ``junho/2026``.
+        """
+        txt = str(texto or "").strip().lower()
+        if not txt:
+            return None
+        m = re.search(r"((?:19|20)\d{2})[-/](\d{1,2})", txt)
+        if m:
+            try:
+                ano = int(m.group(1))
+                mes = int(m.group(2))
+                if 1 <= mes <= 12:
+                    return datetime(ano, mes, 1)
+            except Exception:
+                pass
+        meses = {
+            "janeiro": 1, "jan": 1,
+            "fevereiro": 2, "fev": 2,
+            "março": 3, "marco": 3, "mar": 3,
+            "abril": 4, "abr": 4,
+            "maio": 5, "mai": 5,
+            "junho": 6, "jun": 6,
+            "julho": 7, "jul": 7,
+            "agosto": 8, "ago": 8,
+            "setembro": 9, "set": 9,
+            "outubro": 10, "out": 10,
+            "novembro": 11, "nov": 11,
+            "dezembro": 12, "dez": 12,
+        }
+        ano_match = re.search(r"((?:19|20)\d{2})", txt)
+        if ano_match:
+            for nome, mes in meses.items():
+                if nome in txt:
+                    try:
+                        return datetime(int(ano_match.group(1)), mes, 1)
+                    except Exception:
+                        return None
+        return None
+
+    def _data_base_operacao(self, curva: dict[str, Any], veiculo: VeiculoSelecionado) -> datetime:
+        candidatos = [
+            getattr(veiculo, "mes_referencia", ""),
+            getattr(veiculo, "referencia_fipe", ""),
+            curva.get("mes_referencia"),
+            curva.get("referencia_fipe"),
+            curva.get("referenceMonth"),
+            curva.get("data_base_fipe"),
+            curva.get("data_coleta"),
+            curva.get("data_importacao_render"),
+            curva.get("data_salvamento"),
+        ]
+        for item in candidatos:
+            data = self._parse_data_base_operacao(item)
+            if data is not None:
+                return data
+        agora = datetime.now()
+        return datetime(agora.year, agora.month, 1)
+
+    @staticmethod
+    def _ano_modelo_int_selecionado(veiculo: VeiculoSelecionado) -> int | None:
+        codigo_ano = str(veiculo.codigo_ano or "").strip()
+        texto_ano = str(veiculo.ano_modelo or "").strip()
+        if codigo_ano.startswith("32000") or "zero" in texto_ano.lower():
+            return None
+        for valor in (texto_ano, codigo_ano):
+            m = re.search(r"(19|20)\d{2}", str(valor or ""))
+            if m:
+                try:
+                    return int(m.group(0))
+                except Exception:
+                    return None
+        return None
+
+    def _idade_entrada_meses_combustao(self, curva: dict[str, Any], veiculo: VeiculoSelecionado) -> tuple[int, float, str]:
+        ano_modelo = self._ano_modelo_int_selecionado(veiculo)
+        data_base = self._data_base_operacao(curva, veiculo)
+        if not ano_modelo:
+            return 0, 0.0, data_base.strftime("%Y-%m")
+        idade_meses = (data_base.year - int(ano_modelo)) * 12 + max(0, data_base.month - 1)
+        idade_meses = max(0, int(idade_meses))
+        return idade_meses, idade_meses / 12.0, data_base.strftime("%Y-%m")
+
+    @staticmethod
+    def _fator_taper_idade(idade_meses: int) -> float:
+        idade_anos = max(0.0, float(idade_meses) / 12.0)
+        if idade_anos <= 1.0:
+            return 1.00
+        if idade_anos <= 3.0:
+            return 1.00 - ((idade_anos - 1.0) / 2.0) * 0.15
+        if idade_anos <= 5.0:
+            return 0.85 - ((idade_anos - 3.0) / 2.0) * 0.15
+        if idade_anos <= 8.0:
+            return 0.70 - ((idade_anos - 5.0) / 3.0) * 0.15
+        if idade_anos <= 12.0:
+            return 0.55 - ((idade_anos - 8.0) / 4.0) * 0.10
+        return 0.45
+
+    def _fator_cumulativo_por_idade(self, taxa_mensal_percentual: float, idade_entrada_meses: int, horizonte_meses: int) -> float:
+        taxa_base = max(0.0, float(taxa_mensal_percentual or 0.0) / 100.0)
+        fator = 1.0
+        for passo in range(max(0, int(horizonte_meses or 0))):
+            idade_mes_atual = max(0, int(idade_entrada_meses or 0)) + passo
+            taxa_mes = max(0.0, taxa_base * self._fator_taper_idade(idade_mes_atual))
+            fator *= (1.0 - taxa_mes)
+        return fator
+
+    @staticmethod
+    def _taxa_anual_efetiva_do_fator(fator: float, horizonte_meses: int) -> float:
+        try:
+            meses = max(0, int(horizonte_meses or 0))
+            fator_float = float(fator or 0.0)
+            if meses <= 0 or fator_float <= 0:
+                return 0.0
+            anos = meses / 12.0
+            if anos <= 0:
+                return 0.0
+            taxa = (1.0 - (fator_float ** (1.0 / anos))) * 100.0
+            return max(0.0, taxa)
+        except Exception:
+            return 0.0
+
+    def _projecao_mensal_combustao(self, valor_atual: float, taxa_mensal_hibrida: float, idade_entrada_meses: int, horizonte_meses: int) -> list[dict[str, Any]]:
+        pontos: list[dict[str, Any]] = []
+        if valor_atual <= 0 or horizonte_meses < 0:
+            return pontos
+        for mes in range(max(0, int(horizonte_meses)) + 1):
+            fator_base = self._fator_cumulativo_por_idade(taxa_mensal_hibrida, idade_entrada_meses, mes)
+            fator_ot = self._fator_cumulativo_por_idade(taxa_mensal_hibrida * 0.80, idade_entrada_meses, mes)
+            fator_pe = self._fator_cumulativo_por_idade(taxa_mensal_hibrida * 1.20, idade_entrada_meses, mes)
+            pontos.append({
+                "mes": mes,
+                "idade_meses": max(0, int(idade_entrada_meses or 0)) + mes,
+                "valor_base": round(valor_atual * fator_base, 2),
+                "valor_otimista": round(valor_atual * fator_ot, 2),
+                "valor_pessimista": round(valor_atual * fator_pe, 2),
+                "fator_base": round(fator_base, 10),
+                "fator_otimista": round(fator_ot, 10),
+                "fator_pessimista": round(fator_pe, 10),
+            })
+        return pontos
+
+    def _montar_relatorio_combustao_reaplicado(
+        self,
+        curva: dict[str, Any],
+        veiculo: VeiculoSelecionado,
+        origem_curva: str,
+        valor_atual: float,
+        valor_futuro: float,
+        valor_futuro_otimista: float,
+        valor_futuro_pessimista: float,
+        taxa_mensal_hibrida: float,
+        taxa_anual_referencia: float,
+        taxa_anual_efetiva: float,
+        idade_entrada_meses: int,
+        idade_entrada_anos: float,
+        horizonte: int,
+        horizonte_meses: int,
+        data_base_fipe: str,
+        pontos: int,
+        janela: int,
+        confianca: str,
+        relatorio_original: str,
+    ) -> str:
+        titulo = " ".join(parte for parte in [veiculo.marca, veiculo.modelo, str(veiculo.ano_modelo or "").strip()] if parte).strip()
+        codigo_fipe = str(veiculo.codigo_fipe or curva.get("codigo_fipe") or "").strip()
+        modelo_base = str(curva.get("veiculo") or curva.get("modelo") or curva.get("titulo") or "").strip()
+        ano_base = str(curva.get("ano_base") or curva.get("ano_modelo") or curva.get("data_base_modelo") or "").strip()
+        depreciacao_pct = ((valor_atual - valor_futuro) / valor_atual * 100.0) if valor_atual > 0 else 0.0
+        linhas = [
+            "RELATÓRIO TÉCNICO DE AUDITORIA DA DEPRECIAÇÃO",
+            "",
+            "1. RESULTADO APLICADO AO VEÍCULO CONSULTADO",
+            f"Veículo consultado: {titulo or '-'}",
+            f"Código FIPE: {codigo_fipe or '-'}",
+            f"Valor FIPE atual selecionado: {formatar_brl(valor_atual)}",
+            f"Referência/Data-base FIPE: {data_base_fipe or '-'}",
+            f"Horizonte da análise: {horizonte} ano(s) ({horizonte_meses} meses)",
+            f"Idade de entrada na curva: {idade_entrada_anos:.2f} ano(s) ({idade_entrada_meses} meses)",
+            "",
+            "2. CURVA UTILIZADA",
+            f"Origem da curva: {origem_curva or 'curva salva combustão'}",
+            f"Modelo-base/curva de referência: {modelo_base or '-'}",
+            f"Ano/coorte base: {ano_base or '-'}",
+            f"Pontos históricos: {pontos}",
+            f"Janela histórica: {janela} meses",
+            f"Confiança: {confianca or '-'}",
+            "",
+            "3. TAXAS E PROJEÇÃO",
+            f"Taxa mensal híbrida base da curva: {taxa_mensal_hibrida:.4f}% a.m.",
+            f"Taxa anual equivalente de referência da curva: {taxa_anual_referencia:.2f}% a.a.",
+            f"Taxa anual efetiva aplicada ao horizonte: {taxa_anual_efetiva:.2f}% a.a.",
+            f"Taxa de depreciação total no horizonte: {depreciacao_pct:.2f}%",
+            f"Valor futuro base: {formatar_brl(valor_futuro)}",
+            f"Valor futuro otimista: {formatar_brl(valor_futuro_otimista)}",
+            f"Valor futuro pessimista: {formatar_brl(valor_futuro_pessimista)}",
+            "",
+            "4. OBSERVAÇÃO METODOLÓGICA",
+            "O site aplicou a curva salva sobre o valor FIPE do ano/combustível selecionado. Para veículos usados, a projeção começa na idade atual do veículo dentro da curva, usando o mesmo offset de idade e o mesmo taper mensal do painel local.",
+        ]
+        original = str(relatorio_original or "").strip()
+        if original:
+            linhas.extend([
+                "",
+                "5. RELATÓRIO TÉCNICO ORIGINAL EXPORTADO COM A CURVA",
+                original,
+            ])
+        return "\n".join(linhas).strip()
+
     def _montar_resultado_combustao(self, curva: dict[str, Any], veiculo: VeiculoSelecionado, tipo_match: str) -> dict[str, Any]:
-        horizonte = veiculo.horizonte_anos
-        valor_atual = veiculo.valor_atual or parse_float_seguro(curva.get("valor_fipe_atual"), 0.0)
-        taxa_anual = parse_float_seguro(curva.get("depreciacao_media_anual_principal_percentual"), 0.0)
-        valor_futuro = self._valor_cenario_curva(curva, horizonte, "base")
+        """Aplica a curva salva ao valor FIPE selecionado.
 
-        valor_taxa = valor_atual * ((1.0 - taxa_anual / 100.0) ** horizonte) if taxa_anual > 0 and valor_atual > 0 else 0.0
-        # Proteção contra curva antiga/distorcida ainda existente no CSV persistente:
-        # se o valor salvo divergir demais da taxa técnica exibida, usa a taxa da curva.
-        if valor_futuro <= 0:
-            valor_futuro = valor_taxa
-        elif valor_taxa > 0 and valor_futuro > 0:
-            razao = valor_futuro / valor_taxa
-            if razao < 0.65 or razao > 1.35:
+        Esta rotina replica a etapa leve do painel local: a curva já existe e
+        não é recalculada; o site apenas reaplica a taxa mensal híbrida sobre o
+        valor FIPE atual escolhido, considerando o offset de idade quando o ano
+        selecionado não é zero km.
+        """
+        horizonte = max(1, int(veiculo.horizonte_anos or 5))
+        horizonte_meses = int(round(float(horizonte) * 12))
+        valor_atual = float(veiculo.valor_atual or parse_float_seguro(curva.get("valor_fipe_atual"), 0.0))
+        taxa_mensal_hibrida = parse_float_seguro(curva.get("taxa_mensal_hibrida_percentual"), 0.0)
+        taxa_anual_referencia = parse_float_seguro(curva.get("depreciacao_media_anual_principal_percentual"), 0.0)
+        idade_entrada_meses, idade_entrada_anos, data_base_fipe = self._idade_entrada_meses_combustao(curva, veiculo)
+
+        if taxa_mensal_hibrida <= 0 and taxa_anual_referencia > 0:
+            taxa_mensal_hibrida = (1.0 - ((1.0 - taxa_anual_referencia / 100.0) ** (1.0 / 12.0))) * 100.0
+
+        if taxa_mensal_hibrida > 0 and valor_atual > 0:
+            fator_base = self._fator_cumulativo_por_idade(taxa_mensal_hibrida, idade_entrada_meses, horizonte_meses)
+            fator_ot = self._fator_cumulativo_por_idade(taxa_mensal_hibrida * 0.80, idade_entrada_meses, horizonte_meses)
+            fator_pe = self._fator_cumulativo_por_idade(taxa_mensal_hibrida * 1.20, idade_entrada_meses, horizonte_meses)
+            valor_futuro = valor_atual * fator_base
+            valor_futuro_otimista = valor_atual * fator_ot
+            valor_futuro_pessimista = valor_atual * fator_pe
+            taxa_anual_efetiva = self._taxa_anual_efetiva_do_fator(fator_base, horizonte_meses)
+            taxa_anual_ot = self._taxa_anual_efetiva_do_fator(fator_ot, horizonte_meses)
+            taxa_anual_pe = self._taxa_anual_efetiva_do_fator(fator_pe, horizonte_meses)
+            projecao_mensal = self._projecao_mensal_combustao(valor_atual, taxa_mensal_hibrida, idade_entrada_meses, horizonte_meses)
+        else:
+            valor_futuro = self._valor_cenario_curva(curva, horizonte, "base")
+            valor_taxa = valor_atual * ((1.0 - taxa_anual_referencia / 100.0) ** horizonte) if taxa_anual_referencia > 0 and valor_atual > 0 else 0.0
+            if valor_futuro <= 0:
                 valor_futuro = valor_taxa
-
-        valor_futuro_otimista = self._valor_cenario_curva(curva, horizonte, "otimista")
-        valor_futuro_pessimista = self._valor_cenario_curva(curva, horizonte, "pessimista")
-        if valor_futuro_otimista <= 0 and valor_atual > 0 and taxa_anual > 0:
-            valor_futuro_otimista = valor_atual * ((1.0 - (taxa_anual * 0.85) / 100.0) ** horizonte)
-        if valor_futuro_pessimista <= 0 and valor_atual > 0 and taxa_anual > 0:
-            valor_futuro_pessimista = valor_atual * ((1.0 - (taxa_anual * 1.15) / 100.0) ** horizonte)
+            elif valor_taxa > 0:
+                razao = valor_futuro / valor_taxa
+                if razao < 0.65 or razao > 1.35:
+                    valor_futuro = valor_taxa
+            valor_futuro_otimista = self._valor_cenario_curva(curva, horizonte, "otimista")
+            valor_futuro_pessimista = self._valor_cenario_curva(curva, horizonte, "pessimista")
+            if valor_futuro_otimista <= 0 and valor_atual > 0 and taxa_anual_referencia > 0:
+                valor_futuro_otimista = valor_atual * ((1.0 - (taxa_anual_referencia * 0.80) / 100.0) ** horizonte)
+            if valor_futuro_pessimista <= 0 and valor_atual > 0 and taxa_anual_referencia > 0:
+                valor_futuro_pessimista = valor_atual * ((1.0 - (taxa_anual_referencia * 1.20) / 100.0) ** horizonte)
+            fator_base = (valor_futuro / valor_atual) if valor_atual > 0 and valor_futuro > 0 else 0.0
+            fator_ot = (valor_futuro_otimista / valor_atual) if valor_atual > 0 and valor_futuro_otimista > 0 else 0.0
+            fator_pe = (valor_futuro_pessimista / valor_atual) if valor_atual > 0 and valor_futuro_pessimista > 0 else 0.0
+            taxa_anual_efetiva = self._taxa_anual_efetiva_do_fator(fator_base, horizonte_meses) or taxa_anual_referencia
+            taxa_anual_ot = self._taxa_anual_efetiva_do_fator(fator_ot, horizonte_meses)
+            taxa_anual_pe = self._taxa_anual_efetiva_do_fator(fator_pe, horizonte_meses)
+            projecao_mensal = []
 
         pontos = parse_int_seguro(curva.get("observacoes_total") or curva.get("pontos_historicos"), 0)
         janela = parse_int_seguro(curva.get("janela_historica_meses"), 0)
@@ -750,24 +993,122 @@ class CurvasRepository:
             or ""
         ).strip()
 
+        origem_curva = str(curva.get("fonte_ajuste", "curva salva combustão") or "curva salva combustão")
+        if idade_entrada_meses > 0:
+            origem_curva = f"{origem_curva} | reaplicada com offset de idade de {idade_entrada_anos:.2f} ano(s)"
+
+        confianca_resultado = str(curva.get("confianca") or classificar_confianca_combustao(pontos, janela))
+        relatorio_tecnico = self._montar_relatorio_combustao_reaplicado(
+            curva=curva,
+            veiculo=veiculo,
+            origem_curva=origem_curva,
+            valor_atual=valor_atual,
+            valor_futuro=valor_futuro,
+            valor_futuro_otimista=valor_futuro_otimista,
+            valor_futuro_pessimista=valor_futuro_pessimista,
+            taxa_mensal_hibrida=taxa_mensal_hibrida,
+            taxa_anual_referencia=taxa_anual_referencia,
+            taxa_anual_efetiva=taxa_anual_efetiva,
+            idade_entrada_meses=idade_entrada_meses,
+            idade_entrada_anos=idade_entrada_anos,
+            horizonte=horizonte,
+            horizonte_meses=horizonte_meses,
+            data_base_fipe=data_base_fipe,
+            pontos=pontos,
+            janela=janela,
+            confianca=confianca_resultado,
+            relatorio_original=relatorio_tecnico,
+        )
+
+        valor_base_salvo = self._valor_cenario_curva(curva, horizonte, "base")
+        valor_ot_salvo = self._valor_cenario_curva(curva, horizonte, "otimista")
+        valor_pe_salvo = self._valor_cenario_curva(curva, horizonte, "pessimista")
+
+        curva_aplicada = dict(curva)
+        curva_aplicada.update({
+            "valor_fipe_atual": round(valor_atual, 2),
+            "valor_futuro_base": round(valor_futuro, 2),
+            "valor_futuro_otimista": round(valor_futuro_otimista, 2) if valor_futuro_otimista > 0 else 0.0,
+            "valor_futuro_pessimista": round(valor_futuro_pessimista, 2) if valor_futuro_pessimista > 0 else 0.0,
+            "valor_futuro_base_curva_salva": round(valor_base_salvo, 2) if valor_base_salvo > 0 else 0.0,
+            "valor_futuro_otimista_curva_salva": round(valor_ot_salvo, 2) if valor_ot_salvo > 0 else 0.0,
+            "valor_futuro_pessimista_curva_salva": round(valor_pe_salvo, 2) if valor_pe_salvo > 0 else 0.0,
+            "horizonte_relatorio_anos": horizonte,
+            "horizonte_meses": horizonte_meses,
+            "inicio_curva_meses": idade_entrada_meses,
+            "fim_curva_meses": idade_entrada_meses + horizonte_meses,
+            "taxa_anual_efetiva_percentual": round(max(0.0, taxa_anual_efetiva), 6),
+            "taxa_anual_referencia_percentual": round(max(0.0, taxa_anual_referencia), 6),
+            "idade_entrada_meses": idade_entrada_meses,
+            "idade_entrada_anos": round(idade_entrada_anos, 4),
+            "data_base_fipe": data_base_fipe,
+        })
+
+        auditoria_historico = {
+            "modo_calculo": "curva_salva_usado_com_offset" if idade_entrada_meses > 0 else "curva_salva_zero_km",
+            "idade_entrada_meses": idade_entrada_meses,
+            "idade_entrada_anos": round(idade_entrada_anos, 4),
+            "data_base_fipe": data_base_fipe,
+            "horizonte_meses": horizonte_meses,
+            "inicio_curva_meses": idade_entrada_meses,
+            "fim_curva_meses": idade_entrada_meses + horizonte_meses,
+            "taxa_mensal_hibrida_percentual": round(max(0.0, taxa_mensal_hibrida), 8),
+            "taxa_anual_referencia_percentual": round(max(0.0, taxa_anual_referencia), 6),
+            "taxa_anual_efetiva_percentual": round(max(0.0, taxa_anual_efetiva), 6),
+            "taxa_anual_otimista_percentual": round(max(0.0, taxa_anual_ot), 6),
+            "taxa_anual_pessimista_percentual": round(max(0.0, taxa_anual_pe), 6),
+            "fator_base": round(max(0.0, fator_base), 10),
+            "fator_otimista": round(max(0.0, fator_ot), 10),
+            "fator_pessimista": round(max(0.0, fator_pe), 10),
+            "fator_transferencia_base": round(max(0.0, fator_base), 10),
+            "fator_transferencia_otimista": round(max(0.0, fator_ot), 10),
+            "fator_transferencia_pessimista": round(max(0.0, fator_pe), 10),
+            "observacao_metodologica": "Valor FIPE selecionado projetado pela taxa mensal híbrida da curva salva, com taper por idade igual ao painel local.",
+        }
+
         return {
             "tipo": "combustao",
             "tipo_match": tipo_match,
-            "curva": curva,
+            "curva": curva_aplicada,
             "valor_atual": round(valor_atual, 2),
             "valor_futuro": round(valor_futuro, 2),
-            "valor_futuro_base": parse_float_seguro(curva.get("valor_futuro_base"), 0.0),
+            "valor_futuro_base": round(valor_futuro, 2),
             "valor_futuro_otimista": round(valor_futuro_otimista, 2) if valor_futuro_otimista > 0 else 0.0,
             "valor_futuro_pessimista": round(valor_futuro_pessimista, 2) if valor_futuro_pessimista > 0 else 0.0,
-            "horizonte_relatorio_anos": curva.get("horizonte_relatorio_anos", ""),
+            "valor_futuro_base_curva_salva": round(valor_base_salvo, 2) if valor_base_salvo > 0 else 0.0,
+            "valor_futuro_otimista_curva_salva": round(valor_ot_salvo, 2) if valor_ot_salvo > 0 else 0.0,
+            "valor_futuro_pessimista_curva_salva": round(valor_pe_salvo, 2) if valor_pe_salvo > 0 else 0.0,
+            "horizonte_relatorio_anos": horizonte,
+            "horizonte_meses": horizonte_meses,
+            "inicio_curva_meses": idade_entrada_meses,
+            "fim_curva_meses": idade_entrada_meses + horizonte_meses,
             "data_relatorio_tecnico": curva.get("data_relatorio_tecnico", ""),
+            "data_base_fipe": data_base_fipe,
+            "idade_entrada_meses": idade_entrada_meses,
+            "idade_entrada_anos": round(idade_entrada_anos, 4),
             "depreciacao_percentual": round(max(0.0, depreciacao_pct), 2),
-            "taxa_anual_percentual": round(max(0.0, taxa_anual), 2),
-            "confianca": str(curva.get("confianca") or classificar_confianca_combustao(pontos, janela)),
+            "taxa_anual_percentual": round(max(0.0, taxa_anual_efetiva), 2),
+            "taxa_anual_efetiva_percentual": round(max(0.0, taxa_anual_efetiva), 6),
+            "taxa_anual_base_efetiva_percentual": round(max(0.0, taxa_anual_efetiva), 6),
+            "taxa_anual_otimista_efetiva_percentual": round(max(0.0, taxa_anual_ot), 6),
+            "taxa_anual_pessimista_efetiva_percentual": round(max(0.0, taxa_anual_pe), 6),
+            "taxa_anual_referencia_percentual": round(max(0.0, taxa_anual_referencia), 6),
+            "taxa_anual_otimista_percentual": round(max(0.0, taxa_anual_ot), 6),
+            "taxa_anual_pessimista_percentual": round(max(0.0, taxa_anual_pe), 6),
+            "taxa_mensal_hibrida_percentual": round(max(0.0, taxa_mensal_hibrida), 8),
+            "fator_transferencia_base": round(max(0.0, fator_base), 10),
+            "fator_transferencia_otimista": round(max(0.0, fator_ot), 10),
+            "fator_transferencia_pessimista": round(max(0.0, fator_pe), 10),
+            "fator_depreciacao_base": round(max(0.0, fator_base), 10),
+            "fator_depreciacao_otimista": round(max(0.0, fator_ot), 10),
+            "fator_depreciacao_pessimista": round(max(0.0, fator_pe), 10),
+            "projecao_mensal": projecao_mensal,
+            "confianca": confianca_resultado,
             "pontos_historicos": pontos,
             "janela_historica_meses": janela,
-            "origem_curva": str(curva.get("fonte_ajuste", "curva salva combustão") or "curva salva combustão"),
+            "origem_curva": origem_curva,
             "relatorio_tecnico": relatorio_tecnico,
+            "auditoria_historico": auditoria_historico,
         }
 
     def _montar_resultado_eletrico(self, curva: dict[str, Any], veiculo: VeiculoSelecionado, tipo_match: str) -> dict[str, Any]:

@@ -1,4 +1,5 @@
 let ultimoDetalheFipe = null;
+let sequenciaConsultaPrecoFipe = 0;
 
 function limparSelect(select, texto) {
   select.innerHTML = "";
@@ -553,9 +554,27 @@ async function bloquearModeloAntigoSemAnoValido(marca, modelo, anosOriginais) {
 }
 
 function limparValorMonetario(valorBruto) {
-  if (!valorBruto) return 0;
-  let s = String(valorBruto).replace("R$", "").trim();
-  s = s.replace(/\./g, "").replace(",", ".");
+  if (valorBruto === null || valorBruto === undefined) return 0;
+  let s = String(valorBruto)
+    .replace("R$", "")
+    .replace(/\s/g, "")
+    .replace(/[^0-9,.-]/g, "");
+  if (!s) return 0;
+
+  const temVirgula = s.includes(",");
+  const temPonto = s.includes(".");
+  if (temVirgula && temPonto) {
+    // Aceita tanto R$ 301.204,00 quanto R$ 301,204.00.
+    // O último separador é tratado como decimal.
+    if (s.lastIndexOf(",") > s.lastIndexOf(".")) {
+      s = s.replace(/\./g, "").replace(",", ".");
+    } else {
+      s = s.replace(/,/g, "");
+    }
+  } else if (temVirgula) {
+    s = s.replace(/\./g, "").replace(",", ".");
+  }
+
   const n = Number(s);
   return Number.isFinite(n) ? n : 0;
 }
@@ -685,24 +704,41 @@ async function consultarPrecoFipe() {
   const ano = document.getElementById("fipe_ano");
   if (!marca.value || !modelo.value || !ano.value) return;
 
+  const seq = ++sequenciaConsultaPrecoFipe;
+  const codigoMarca = marca.value;
+  const codigoModelo = modelo.value;
+  const codigoAno = ano.value;
+
   try {
-    const url = `/api/fipe/preco?codigo_marca=${encodeURIComponent(marca.value)}&codigo_modelo=${encodeURIComponent(modelo.value)}&codigo_ano=${encodeURIComponent(ano.value)}`;
+    const url = `/api/fipe/preco?codigo_marca=${encodeURIComponent(codigoMarca)}&codigo_modelo=${encodeURIComponent(codigoModelo)}&codigo_ano=${encodeURIComponent(codigoAno)}&_=${Date.now()}`;
     const { data } = await buscarJsonFipeSeguro(url);
+    if (seq !== sequenciaConsultaPrecoFipe || marca.value !== codigoMarca || modelo.value !== codigoModelo || ano.value !== codigoAno) return;
     limparErroFipe();
+
+    const textoAnoSelecionado = ano.options[ano.selectedIndex]?.dataset?.nome || ano.options[ano.selectedIndex]?.textContent || "";
+    const ehZeroKm = codigoAnoFipeZeroKm(ano.value);
+    const anoModeloRaw = ehZeroKm
+      ? "32000"
+      : String(data.AnoModelo || data.modelYear || anoNumeroFipe(ano.value, textoAnoSelecionado) || "").trim();
+    const referenciaFipe = String(data.MesReferencia || data.referenceMonth || data.mes_referencia || "").trim();
 
     ultimoDetalheFipe = {
       codigo_marca: marca.value,
       codigo_modelo: modelo.value,
       codigo_ano: ano.value,
+      codigo_ano_nome: textoAnoSelecionado,
       marca: data.Marca || marca.options[marca.selectedIndex].text,
       modelo: data.Modelo || modelo.options[modelo.selectedIndex].text,
-      ano_modelo: codigoAnoFipeZeroKm(ano.value) ? "Zero km" : (data.AnoModelo || ""),
-      combustivel: data.Combustivel || ano.options[ano.selectedIndex].text,
+      ano_modelo: ehZeroKm ? "Zero km" : (data.AnoModelo || anoModeloRaw || ""),
+      ano_modelo_raw: anoModeloRaw,
+      combustivel: data.Combustivel || textoAnoSelecionado,
       codigo_fipe: data.CodigoFipe || "",
       valor_atual: limparValorMonetario(data.Valor),
-      valor_texto: data.Valor || ""
+      valor_texto: data.Valor || "",
+      mes_referencia: referenciaFipe,
+      referencia_fipe: referenciaFipe,
+      data_referencia_fipe: referenciaFipe
     };
-
     atualizarCardVeiculo(ultimoDetalheFipe);
     await consultarResumoDepreciacao(ultimoDetalheFipe);
   } catch (e) {
@@ -763,6 +799,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   document.getElementById("fipe_marca")?.addEventListener("change", () => {
     setStatusVarredura("");
+    sequenciaConsultaPrecoFipe++;
     ultimoDetalheFipe = null;
     if (typeof window.resetarFluxoDepreciacao === "function") window.resetarFluxoDepreciacao();
     carregarModelosFipe();
@@ -773,11 +810,13 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("fipe_modelo")?.addEventListener("change", () => {
     const modelo = document.getElementById("fipe_modelo");
     ultimoIndiceModeloNavegacao = modelo ? modelo.selectedIndex : -1;
+    sequenciaConsultaPrecoFipe++;
     ultimoDetalheFipe = null;
     if (typeof window.resetarFluxoDepreciacao === "function") window.resetarFluxoDepreciacao();
     carregarAnosFipe();
   });
   document.getElementById("fipe_ano")?.addEventListener("change", () => {
+    sequenciaConsultaPrecoFipe++;
     ultimoDetalheFipe = null;
     if (typeof window.resetarFluxoDepreciacao === "function") window.resetarFluxoDepreciacao();
     consultarPrecoFipe();

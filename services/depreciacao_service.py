@@ -100,21 +100,63 @@ class DepreciacaoService:
                 "janela_historica_meses": resultado.get("janela_historica_meses"),
                 "curva": self._filtrar_curva_para_detalhes(resultado.get("curva") or {}),
                 "familia": resultado.get("familia"),
+                "auditoria_historico": resultado.get("auditoria_historico") or {},
+                "data_base_fipe": resultado.get("data_base_fipe"),
+                "idade_entrada_meses": resultado.get("idade_entrada_meses"),
+                "idade_entrada_anos": resultado.get("idade_entrada_anos"),
+                "taxa_mensal_hibrida_percentual": resultado.get("taxa_mensal_hibrida_percentual"),
+                "taxa_anual_referencia_percentual": resultado.get("taxa_anual_referencia_percentual"),
+                "taxa_anual_efetiva_percentual": resultado.get("taxa_anual_efetiva_percentual"),
+                "taxa_anual_otimista_percentual": resultado.get("taxa_anual_otimista_percentual"),
+                "taxa_anual_pessimista_percentual": resultado.get("taxa_anual_pessimista_percentual"),
+                "horizonte_meses": resultado.get("horizonte_meses"),
+                "inicio_curva_meses": resultado.get("inicio_curva_meses"),
+                "fim_curva_meses": resultado.get("fim_curva_meses"),
+                "fator_transferencia_base": resultado.get("fator_transferencia_base"),
+                "fator_transferencia_otimista": resultado.get("fator_transferencia_otimista"),
+                "fator_transferencia_pessimista": resultado.get("fator_transferencia_pessimista"),
                 "aviso_tipo": aviso_tipo,
             },
         )
         saida = resumo.to_dict()
-        for campo in (
+        campos_extras_resultado = (
             "valor_futuro_base",
             "valor_futuro_otimista",
             "valor_futuro_pessimista",
+            "valor_futuro_base_curva_salva",
+            "valor_futuro_otimista_curva_salva",
+            "valor_futuro_pessimista_curva_salva",
             "horizonte_relatorio_anos",
+            "horizonte_meses",
+            "inicio_curva_meses",
+            "fim_curva_meses",
             "data_relatorio_tecnico",
+            "data_base_fipe",
+            "idade_entrada_meses",
+            "idade_entrada_anos",
+            "taxa_mensal_hibrida_percentual",
+            "taxa_anual_efetiva_percentual",
+            "taxa_anual_base_efetiva_percentual",
+            "taxa_anual_otimista_efetiva_percentual",
+            "taxa_anual_pessimista_efetiva_percentual",
+            "taxa_anual_referencia_percentual",
+            "taxa_anual_otimista_percentual",
+            "taxa_anual_pessimista_percentual",
+            "fator_depreciacao_base",
+            "fator_depreciacao_otimista",
+            "fator_depreciacao_pessimista",
+            "fator_transferencia_base",
+            "fator_transferencia_otimista",
+            "fator_transferencia_pessimista",
+            "projecao_mensal",
+            "auditoria_historico",
             "relatorio_tecnico",
-        ):
+        )
+        for campo in campos_extras_resultado:
             valor = resultado.get(campo)
             if valor not in (None, ""):
                 saida[campo] = valor
+                saida.setdefault("detalhes", {})[campo] = valor
         if resultado.get("relatorio_tecnico"):
             saida["relatorio_textual"] = resultado.get("relatorio_tecnico")
 
@@ -1486,6 +1528,11 @@ class DepreciacaoService:
             "depreciacao_media_anual_percentual",
             "depreciacao_media_anual_principal_percentual",
             "taxa_mensal_hibrida_percentual",
+            "taxa_anual_efetiva_percentual",
+            "taxa_anual_referencia_percentual",
+            "idade_entrada_meses",
+            "idade_entrada_anos",
+            "data_base_fipe",
             "confianca_ev",
             "status_final",
             "data_salvamento",

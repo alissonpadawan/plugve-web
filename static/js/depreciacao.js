@@ -5,6 +5,8 @@ let modelosComCurva = new Set();
 let diagnosticoV1917AutoAtivo = false;
 let diagnosticoV1917Ciclos = 0;
 let terminalV1917Linhas = [];
+let timerHorizonteDepreciacao = null;
+let consultaDepreciacaoSeq = 0;
 const DIAGNOSTICO_V1917_MAX_CICLOS = 180;
 
 function textoSeguro(valor) {
@@ -124,6 +126,8 @@ function limparResumo() {
 }
 
 function resetarFluxoDepreciacao() {
+  consultaDepreciacaoSeq += 1;
+  if (timerHorizonteDepreciacao) clearTimeout(timerHorizonteDepreciacao);
   ultimoResumoDepreciacao = null;
   ultimoJobDiagnosticoV1917 = null;
   mostrarResultadoArea(false);
@@ -273,15 +277,18 @@ function montarRelatorioTextual(data, origem = "curva") {
       ? ((valorAtualImportado - valorFuturoImportado) / valorAtualImportado) * 100
       : Number(data?.depreciacao_percentual || 0);
     const taxaImportada = Number(cenariosImportado.taxaBase || 0) * 100;
+    const idadeMesesImportada = Number(data?.idade_entrada_meses || data?.detalhes?.idade_entrada_meses || 0);
+    const idadeAnosImportada = Number(data?.idade_entrada_anos || data?.detalhes?.idade_entrada_anos || (idadeMesesImportada / 12) || 0);
     const linhasResumoImportado = [
       "RESUMO APLICADO AO HORIZONTE SELECIONADO NO SITE",
       `Horizonte da análise: ${formatarHorizonteLabel(cenariosImportado.horizonte)}.`,
       valorAtualImportado > 0 ? `Valor FIPE inicial: ${formatarMoedaBR(valorAtualImportado)}.` : "",
       valorFuturoImportado > 0 ? `Valor estimado ao final do horizonte: ${formatarMoedaBR(valorFuturoImportado)}.` : "",
+      idadeMesesImportada > 0 ? `Idade de entrada aplicada na curva: ${idadeMesesImportada} meses (${idadeAnosImportada.toFixed(2).replace(".", ",")} anos).` : "",
       depImportada > 0 ? `Taxa de depreciação total no período: ${depImportada.toFixed(2).replace(".", ",")}%.` : "",
       taxaImportada > 0 ? `Taxa anual equivalente aplicada: ${taxaImportada.toFixed(2).replace(".", ",")}% a.a.` : "",
       "",
-      "RELATÓRIO TÉCNICO IMPORTADO DO PAINEL LOCAL",
+      "RELATÓRIO TÉCNICO DA CURVA APLICADA",
       String(relatorioImportado).trim()
     ];
     return linhasResumoImportado.filter(linha => linha !== "").join("\n");
@@ -372,6 +379,16 @@ function preencherRelatorio(data, origem = "curva") {
   adicionarDetalhe(corpo, "Taxa anual", taxaDetalhe > 0 ? `${taxaDetalhe.toFixed(2).replace(".", ",")}% a.a.` : "-");
   adicionarDetalhe(corpo, "Taxa de depreciação total", depDetalhe > 0 ? `${depDetalhe.toFixed(2).replace(".", ",")}%` : "-");
   adicionarDetalhe(corpo, "Horizonte da análise", formatarHorizonteLabel(horizonteDetalhe));
+  const idadeEntradaMeses = valorInformado(data?.idade_entrada_meses) ? data.idade_entrada_meses : detalhes.idade_entrada_meses;
+  const idadeEntradaAnos = valorInformado(data?.idade_entrada_anos) ? Number(data.idade_entrada_anos) : Number(detalhes.idade_entrada_anos || 0);
+  const horizonteMeses = valorInformado(data?.horizonte_meses) ? data.horizonte_meses : detalhes.horizonte_meses;
+  const inicioCurvaMeses = valorInformado(data?.inicio_curva_meses) ? data.inicio_curva_meses : detalhes.inicio_curva_meses;
+  const fimCurvaMeses = valorInformado(data?.fim_curva_meses) ? data.fim_curva_meses : detalhes.fim_curva_meses;
+  adicionarDetalhe(corpo, "Idade de entrada na curva", Number(idadeEntradaMeses || 0) > 0 ? `${idadeEntradaMeses} meses (${idadeEntradaAnos.toFixed(2).replace(".", ",")} anos)` : "0 meses (zero km)");
+  adicionarDetalhe(corpo, "Horizonte em meses", horizonteMeses ? `${horizonteMeses} meses` : "-");
+  adicionarDetalhe(corpo, "Janela aplicada da curva", valorInformado(inicioCurvaMeses) && valorInformado(fimCurvaMeses) ? `${inicioCurvaMeses} a ${fimCurvaMeses} meses de idade` : "-");
+  const taxaMensalHibrida = valorInformado(data?.taxa_mensal_hibrida_percentual) ? data.taxa_mensal_hibrida_percentual : detalhes.taxa_mensal_hibrida_percentual;
+  adicionarDetalhe(corpo, "Taxa mensal híbrida da curva", Number(taxaMensalHibrida || 0) > 0 ? `${Number(taxaMensalHibrida).toFixed(4).replace(".", ",")}% a.m.` : "-");
   adicionarDetalhe(corpo, "Pontos históricos", data?.pontos_historicos || detalhes.pontos_historicos);
   adicionarDetalhe(corpo, "Janela histórica", data?.janela_historica_meses ? `${data.janela_historica_meses} meses` : detalhes.janela_historica_meses ? `${detalhes.janela_historica_meses} meses` : "-");
   adicionarDetalhe(corpo, "Período inicial", detalhes.periodo_inicial || curva.periodo_inicial);
@@ -439,6 +456,7 @@ function mostrarDetalhes() {
 
 async function consultarResumoDepreciacao(detalheFipe) {
   if (!detalheFipe) return;
+  const seqConsulta = ++consultaDepreciacaoSeq;
 
   mostrarResultadoArea(true);
   mostrarAuditoriaArea(false);
@@ -459,6 +477,7 @@ async function consultarResumoDepreciacao(detalheFipe) {
       body: JSON.stringify(payload)
     });
     const data = await resp.json();
+    if (seqConsulta !== consultaDepreciacaoSeq) return;
     ultimoResumoDepreciacao = data;
 
     if (data.encontrado) {
@@ -480,6 +499,7 @@ async function consultarResumoDepreciacao(detalheFipe) {
       configurarBotoesResultado(false, true);
     }
   } catch (e) {
+    if (seqConsulta !== consultaDepreciacaoSeq) return;
     ultimoResumoDepreciacao = null;
     atualizarFeedbackCalculo("Erro ao consultar depreciação.", 100, false);
     atualizarStatusResultado("Erro ao consultar depreciação.", "erro");
@@ -1025,27 +1045,14 @@ function extrairCenariosDoRelatorioTecnico(data) {
 function horizonteRelatorioDoResultado(data) {
   const curva = data?.detalhes?.curva || {};
   const rel = extrairCenariosDoRelatorioTecnico(data);
-  const candidatosRelatorio = [data?.horizonte_relatorio_anos, curva.horizonte_relatorio_anos, rel.horizonte];
-  for (const valor of candidatosRelatorio) {
-    const n = parseMoedaTecnica(valor);
-    if (Number.isFinite(n) && n > 0) return n;
-  }
-
-  const temValorFinalDoPainel = primeiroValorPositivo(
-    rel.base,
-    rel.otimista,
-    rel.pessimista,
-    curva.valor_futuro_base,
-    curva.valor_futuro_otimista,
-    curva.valor_futuro_pessimista,
-    data?.valor_futuro_base,
-    data?.valor_futuro_otimista,
-    data?.valor_futuro_pessimista
-  ) > 0;
-  if (temValorFinalDoPainel) return 5;
-
-  const candidatosTela = [data?.horizonte_anos, document.getElementById("horizonte_anos")?.value];
-  for (const valor of candidatosTela) {
+  const candidatos = [
+    data?.horizonte_anos,
+    document.getElementById("horizonte_anos")?.value,
+    data?.horizonte_relatorio_anos,
+    curva.horizonte_relatorio_anos,
+    rel.horizonte
+  ];
+  for (const valor of candidatos) {
     const n = parseMoedaTecnica(valor);
     if (Number.isFinite(n) && n > 0) return n;
   }
@@ -1504,65 +1511,90 @@ function projetarValorPorTaxa(valorAtual, taxaDecimal, horizonte) {
   return atual * Math.pow(1 - taxa, anos);
 }
 
+function obterFinalProjecaoBackend(data) {
+  const serie = Array.isArray(data?.projecao_mensal)
+    ? data.projecao_mensal
+    : (Array.isArray(data?.detalhes?.projecao_mensal) ? data.detalhes.projecao_mensal : []);
+  if (!serie.length) return {};
+  const ultimo = serie[serie.length - 1] || {};
+  return {
+    base: primeiroValorPositivo(ultimo.valor_base, ultimo.base, ultimo.valor),
+    otimista: primeiroValorPositivo(ultimo.valor_otimista, ultimo.otimista),
+    pessimista: primeiroValorPositivo(ultimo.valor_pessimista, ultimo.pessimista)
+  };
+}
+
 function obterCenariosDoResultado(data) {
   const detalhes = data?.detalhes || {};
   const curva = detalhes.curva || {};
   const rel = extrairCenariosDoRelatorioTecnico(data);
-  const horizonteReferencia = Math.max(1, Number(horizonteRelatorioDoResultado(data) || 5));
   const horizonteSelecionado = horizonteSelecionadoDaTela(data);
-  const atual = primeiroValorPositivo(rel.valorAtual, data?.valor_atual, curva.valor_fipe_atual, curva.preco_atual_real);
+  const horizonteReferencia = Math.max(1, Number(horizonteRelatorioDoResultado(data) || data?.horizonte_anos || horizonteSelecionado || 5));
+  const projFinal = obterFinalProjecaoBackend(data);
+
+  // Prioridade máxima: resultado aplicado pelo backend para a seleção atual
+  // (valor FIPE escolhido + horizonte escolhido + offset de idade). O relatório
+  // técnico importado pode descrever a curva base, mas não pode sobrescrever a
+  // aplicação atual de um veículo usado.
+  const atual = primeiroValorPositivo(
+    data?.valor_atual,
+    detalhes?.veiculo?.valor_atual,
+    curva.valor_fipe_atual,
+    curva.preco_atual_real,
+    rel.valorAtual
+  );
+
+  const baseBackend = primeiroValorPositivo(data?.valor_futuro_base, data?.valor_futuro, projFinal.base);
+  const otimistaBackend = primeiroValorPositivo(data?.valor_futuro_otimista, projFinal.otimista);
+  const pessimistaBackend = primeiroValorPositivo(data?.valor_futuro_pessimista, projFinal.pessimista);
+
+  const taxaBaseBackend = primeiroValorPositivo(
+    data?.taxa_anual_base_efetiva_percentual,
+    data?.taxa_anual_efetiva_percentual,
+    data?.taxa_anual_percentual
+  ) / 100;
+  const taxaOtimistaBackend = primeiroValorPositivo(data?.taxa_anual_otimista_efetiva_percentual) / 100;
+  const taxaPessimistaBackend = primeiroValorPositivo(data?.taxa_anual_pessimista_efetiva_percentual) / 100;
 
   const taxaFallbackPercent = primeiroValorPositivo(
+    data?.taxa_anual_referencia_percentual,
     curva.taxa_para_plataforma_percentual,
     curva.depreciacao_media_anual_principal_percentual,
-    data?.taxa_anual_efetiva_percentual,
-    data?.taxa_anual_percentual,
     curva.depreciacao_media_anual_percentual
   );
   const calculadoFallback = calcularCenarios(atual, taxaFallbackPercent, horizonteSelecionado);
 
-  const baseReferencia = primeiroValorPositivo(
-    rel.base,
-    valorCurvaPorHorizonte(curva, horizonteReferencia, "base"),
-    data?.valor_futuro_base,
-    data?.valor_futuro
-  );
-  const otimistaReferencia = primeiroValorPositivo(
-    rel.otimista,
-    valorCurvaPorHorizonte(curva, horizonteReferencia, "otimista"),
-    data?.valor_futuro_otimista
-  );
-  const pessimistaReferencia = primeiroValorPositivo(
-    rel.pessimista,
-    valorCurvaPorHorizonte(curva, horizonteReferencia, "pessimista"),
-    data?.valor_futuro_pessimista
-  );
-
-  const taxaBaseReferencia = taxaAnualAPartirDoValorFinal(atual, baseReferencia, horizonteReferencia) || calculadoFallback.taxaBase;
-  const taxaOtimistaReferencia = taxaAnualAPartirDoValorFinal(atual, otimistaReferencia, horizonteReferencia) || calculadoFallback.taxaOtimista;
-  const taxaPessimistaReferencia = taxaAnualAPartirDoValorFinal(atual, pessimistaReferencia, horizonteReferencia) || calculadoFallback.taxaPessimista;
-  const mesmoHorizonte = Math.abs(horizonteSelecionado - horizonteReferencia) < 0.01;
+  const baseRelatorio = primeiroValorPositivo(rel.base, valorCurvaPorHorizonte(curva, horizonteReferencia, "base"));
+  const otimistaRelatorio = primeiroValorPositivo(rel.otimista, valorCurvaPorHorizonte(curva, horizonteReferencia, "otimista"));
+  const pessimistaRelatorio = primeiroValorPositivo(rel.pessimista, valorCurvaPorHorizonte(curva, horizonteReferencia, "pessimista"));
 
   const baseExata = valorCurvaHorizonteExato(curva, horizonteSelecionado, "base");
   const otimistaExata = valorCurvaHorizonteExato(curva, horizonteSelecionado, "otimista");
   const pessimistaExata = valorCurvaHorizonteExato(curva, horizonteSelecionado, "pessimista");
 
+  const horizonteDados = Number(data?.horizonte_anos || horizonteSelecionado);
+  const mesmoHorizonteBackend = Math.abs(horizonteDados - horizonteSelecionado) < 0.01;
+  const mesmoHorizonteRelatorio = Math.abs(horizonteSelecionado - horizonteReferencia) < 0.01;
+
   const base = primeiroValorPositivo(
+    mesmoHorizonteBackend ? baseBackend : 0,
     baseExata,
-    mesmoHorizonte ? baseReferencia : 0,
-    taxaBaseReferencia ? projetarValorPorTaxa(atual, taxaBaseReferencia, horizonteSelecionado) : 0,
+    mesmoHorizonteRelatorio ? baseRelatorio : 0,
+    taxaBaseBackend ? projetarValorPorTaxa(atual, taxaBaseBackend, horizonteSelecionado) : 0,
     calculadoFallback.base
   );
   const otimista = primeiroValorPositivo(
+    mesmoHorizonteBackend ? otimistaBackend : 0,
     otimistaExata,
-    mesmoHorizonte ? otimistaReferencia : 0,
-    taxaOtimistaReferencia ? projetarValorPorTaxa(atual, taxaOtimistaReferencia, horizonteSelecionado) : 0,
+    mesmoHorizonteRelatorio ? otimistaRelatorio : 0,
+    taxaOtimistaBackend ? projetarValorPorTaxa(atual, taxaOtimistaBackend, horizonteSelecionado) : 0,
     calculadoFallback.otimista
   );
   const pessimista = primeiroValorPositivo(
+    mesmoHorizonteBackend ? pessimistaBackend : 0,
     pessimistaExata,
-    mesmoHorizonte ? pessimistaReferencia : 0,
-    taxaPessimistaReferencia ? projetarValorPorTaxa(atual, taxaPessimistaReferencia, horizonteSelecionado) : 0,
+    mesmoHorizonteRelatorio ? pessimistaRelatorio : 0,
+    taxaPessimistaBackend ? projetarValorPorTaxa(atual, taxaPessimistaBackend, horizonteSelecionado) : 0,
     calculadoFallback.pessimista
   );
 
@@ -1571,9 +1603,9 @@ function obterCenariosDoResultado(data) {
     base,
     otimista,
     pessimista,
-    taxaBase: taxaAnualAPartirDoValorFinal(atual, base, horizonteSelecionado) || taxaBaseReferencia || calculadoFallback.taxaBase,
-    taxaOtimista: taxaAnualAPartirDoValorFinal(atual, otimista, horizonteSelecionado) || taxaOtimistaReferencia || calculadoFallback.taxaOtimista,
-    taxaPessimista: taxaAnualAPartirDoValorFinal(atual, pessimista, horizonteSelecionado) || taxaPessimistaReferencia || calculadoFallback.taxaPessimista,
+    taxaBase: taxaAnualAPartirDoValorFinal(atual, base, horizonteSelecionado) || taxaBaseBackend || calculadoFallback.taxaBase,
+    taxaOtimista: taxaAnualAPartirDoValorFinal(atual, otimista, horizonteSelecionado) || taxaOtimistaBackend || calculadoFallback.taxaOtimista,
+    taxaPessimista: taxaAnualAPartirDoValorFinal(atual, pessimista, horizonteSelecionado) || taxaPessimistaBackend || calculadoFallback.taxaPessimista,
     horizonte: horizonteSelecionado,
     horizonteReferencia
   };
@@ -1628,6 +1660,20 @@ function formatarHorizonteLabel(anos) {
   return `${texto} ${Math.abs(n - 1) < 0.01 ? "ano" : "anos"}`;
 }
 
+function serieProjecaoBackend(data) {
+  const serie = Array.isArray(data?.projecao_mensal)
+    ? data.projecao_mensal
+    : (Array.isArray(data?.detalhes?.projecao_mensal) ? data.detalhes.projecao_mensal : []);
+  return serie
+    .map(p => ({
+      mes: Number(p.mes || 0),
+      base: Number(p.valor_base || p.base || 0),
+      otimista: Number(p.valor_otimista || p.otimista || 0),
+      pessimista: Number(p.valor_pessimista || p.pessimista || 0)
+    }))
+    .filter(p => Number.isFinite(p.mes) && p.mes >= 0 && (p.base > 0 || p.otimista > 0 || p.pessimista > 0));
+}
+
 function renderizarGraficoProjecaoResultado(data) {
   const el = document.getElementById("grafico_projecao");
   if (!el) return;
@@ -1641,19 +1687,33 @@ function renderizarGraficoProjecaoResultado(data) {
     return;
   }
 
-  const meses = Math.max(1, Math.round(horizonte * 12));
-  const mesesSerie = Array.from({ length: meses + 1 }, (_, i) => i);
-  const series = [
-    { nome: "Base", taxa: cen.taxaBase, classe: "base", final: cen.base },
-    { nome: "Otimista", taxa: cen.taxaOtimista, classe: "otimista", final: cen.otimista },
-    { nome: "Pessimista", taxa: cen.taxaPessimista, classe: "pessimista", final: cen.pessimista }
-  ].map(serie => ({
-    ...serie,
-    pontos: mesesSerie.map(mes => {
-      const ano = (mes / meses) * horizonte;
-      return { mes, ano, valor: cen.atual * Math.pow(1 - serie.taxa, ano) };
-    })
-  }));
+  const serieBackend = serieProjecaoBackend(data);
+  let meses = Math.max(1, Math.round(horizonte * 12));
+  let series;
+  if (serieBackend.length >= 2) {
+    meses = Math.max(...serieBackend.map(p => p.mes), meses);
+    series = [
+      { nome: "Base", classe: "base", final: cen.base, chave: "base" },
+      { nome: "Otimista", classe: "otimista", final: cen.otimista, chave: "otimista" },
+      { nome: "Pessimista", classe: "pessimista", final: cen.pessimista, chave: "pessimista" }
+    ].map(serie => ({
+      ...serie,
+      pontos: serieBackend.map(p => ({ mes: p.mes, ano: (p.mes / Math.max(1, meses)) * horizonte, valor: p[serie.chave] || 0 })).filter(p => p.valor > 0)
+    }));
+  } else {
+    const mesesSerie = Array.from({ length: meses + 1 }, (_, i) => i);
+    series = [
+      { nome: "Base", taxa: cen.taxaBase, classe: "base", final: cen.base },
+      { nome: "Otimista", taxa: cen.taxaOtimista, classe: "otimista", final: cen.otimista },
+      { nome: "Pessimista", taxa: cen.taxaPessimista, classe: "pessimista", final: cen.pessimista }
+    ].map(serie => ({
+      ...serie,
+      pontos: mesesSerie.map(mes => {
+        const ano = (mes / meses) * horizonte;
+        return { mes, ano, valor: cen.atual * Math.pow(1 - serie.taxa, ano) };
+      })
+    }));
+  }
 
   // Garante que o último ponto visual bata exatamente com os valores finais exibidos no relatório do painel.
   series.forEach(serie => {
@@ -1725,7 +1785,9 @@ function renderizarGraficoProjecaoResultado(data) {
   });
 
   series.forEach(serie => {
-    const d = serie.pontos.map((p, idx) => `${idx === 0 ? "M" : "L"}${x(p.mes).toFixed(1)} ${y(p.valor).toFixed(1)}`).join(" ");
+    const pontosValidos = serie.pontos.filter(p => Number.isFinite(p.valor) && p.valor > 0);
+    if (!pontosValidos.length) return;
+    const d = pontosValidos.map((p, idx) => `${idx === 0 ? "M" : "L"}${x(p.mes).toFixed(1)} ${y(p.valor).toFixed(1)}`).join(" ");
     const path = document.createElementNS(svgNS, "path");
     path.setAttribute("d", d);
     path.setAttribute("class", `line-series ${serie.classe}`);
@@ -1913,6 +1975,17 @@ function renderizarGraficoProjecao(valorAtual, taxaAnual, horizonte) {
   el.appendChild(tabela);
 }
 
+function normalizarCampoHorizonte() {
+  const el = document.getElementById("horizonte_anos");
+  if (!el) return 5;
+  let n = Number(el.value || 5);
+  if (!Number.isFinite(n) || n < 1) n = 1;
+  if (n > 20) n = 20;
+  n = Math.round(n);
+  el.value = String(n);
+  return n;
+}
+
 function reaplicarHorizonteAtual() {
   const el = document.getElementById("horizonte_anos");
   if (el) {
@@ -1921,18 +1994,14 @@ function reaplicarHorizonteAtual() {
     if (n > 20) n = 20;
     el.value = String(Math.round(n));
   }
-  if (!ultimoResumoDepreciacao || !ultimoResumoDepreciacao.encontrado) return;
-  ultimoResumoDepreciacao = {
-    ...ultimoResumoDepreciacao,
-    horizonte_anos: horizonteSelecionadoDaTela(ultimoResumoDepreciacao)
-  };
-  const auditoriaVisivel = !document.getElementById("auditoria_area")?.classList.contains("hidden");
+  if (!ultimoResumoDepreciacao || !ultimoResumoDepreciacao.encontrado || !ultimoDetalheFipe) return;
+  if (timerHorizonteDepreciacao) clearTimeout(timerHorizonteDepreciacao);
   mostrarResultadoArea(true);
   mostrarGraficoBarrasArea(true);
-  preencherResumo(ultimoResumoDepreciacao);
-  preencherRelatorio(ultimoResumoDepreciacao, "curva salva");
-  renderizarGraficosDepreciacao(ultimoResumoDepreciacao);
-  mostrarAuditoriaArea(auditoriaVisivel);
+  atualizarFeedbackCalculo("Atualizando horizonte da análise...", 45, true);
+  timerHorizonteDepreciacao = setTimeout(() => {
+    consultarResumoDepreciacao(ultimoDetalheFipe);
+  }, 300);
 }
 
 function novaConsultaDepreciacao() {
