@@ -97,6 +97,7 @@
         <div class="actions">
           <button id="btn_ver_detalhes" class="button primary hidden" type="button" disabled>Ver detalhes</button>
           <button id="btn_exportar_pdf" class="button secondary hidden" type="button" disabled>Exportar PDF</button>
+          <button id="btn_nova_consulta" class="button secondary hidden" type="button">Nova consulta</button>
           <button id="btn_apagar_curva" class="button secondary hidden" type="button" disabled>Apagar curva</button>
           <button id="btn_usar_no_tco" class="button primary hidden" type="button" disabled>Usar no TCO e fechar</button>
         </div>
@@ -147,6 +148,6 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/fipe.js') }}"></script>
-<script src="{{ url_for('static', filename='js/depreciacao.js') }}?v=20260615_v9_horizonte_pdf_barras"></script>
+<script src="{{ url_for('static', filename='js/fipe.js') }}?v=20260615_v10_reset_resultados"></script>
+<script src="{{ url_for('static', filename='js/depreciacao.js') }}?v=20260615_v10_horizonte_dinamico_reset"></script>
 {% endblock %}

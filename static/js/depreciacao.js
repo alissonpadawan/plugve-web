@@ -148,6 +148,7 @@ function configurarBotoesResultado(curvaEncontrada, podeCalcularFuturo, permitir
   const btnUsarTCO = document.getElementById("btn_usar_no_tco");
   const btnApagar = document.getElementById("btn_apagar_curva");
   const btnPdf = document.getElementById("btn_exportar_pdf");
+  const btnNovaConsulta = document.getElementById("btn_nova_consulta");
   const btnDiag = document.getElementById("btn_diagnostico_coorte");
 
   if (btnDetalhes) {
@@ -177,6 +178,12 @@ function configurarBotoesResultado(curvaEncontrada, podeCalcularFuturo, permitir
     btnPdf.disabled = !curvaEncontrada;
   }
 
+  if (btnNovaConsulta) {
+    const mostrarNovaConsulta = Boolean(curvaEncontrada || podeCalcularFuturo || ultimoDetalheFipe || ultimoResumoDepreciacao);
+    btnNovaConsulta.classList.toggle("hidden", !mostrarNovaConsulta);
+    btnNovaConsulta.disabled = false;
+  }
+
   if (btnDiag) {
     const mostrarDiag = curvaEncontrada || podeCalcularFuturo;
     btnDiag.classList.toggle("hidden", !mostrarDiag);
@@ -194,7 +201,8 @@ function preencherResumo(data) {
   document.getElementById("res_valor_futuro").textContent = valorFuturo > 0 ? formatarMoedaBR(valorFuturo) : "-";
   document.getElementById("res_horizonte").textContent = horizonte > 0 ? formatarHorizonteLabel(horizonte) : "-";
   document.getElementById("res_depreciacao").textContent = depCalculada > 0 ? `${depCalculada.toFixed(2).replace(".", ",")}%` : "-";
-  document.getElementById("res_taxa").textContent = data.taxa_anual_percentual != null && Number(data.taxa_anual_percentual) > 0 ? `${Number(data.taxa_anual_percentual).toFixed(2).replace(".", ",")}% a.a.` : "-";
+  const taxaResumo = Number(cen.taxaBase || 0) * 100;
+  document.getElementById("res_taxa").textContent = taxaResumo > 0 ? `${taxaResumo.toFixed(2).replace(".", ",")}% a.a.` : "-";
   document.getElementById("res_taxa_total").textContent = depCalculada > 0 ? `${depCalculada.toFixed(2).replace(".", ",")}%` : "-";
   document.getElementById("res_confianca").textContent = data.confianca || "-";
   document.getElementById("res_origem").textContent = data.origem_curva || "-";
@@ -257,7 +265,27 @@ function adicionarDetalhe(corpo, rotulo, valor) {
 
 function montarRelatorioTextual(data, origem = "curva") {
   const relatorioImportado = data?.relatorio_textual || data?.relatorio_tecnico || data?.detalhes?.curva?.relatorio_tecnico || data?.detalhes?.curva?.relatorio_tecnico_texto;
-  if (relatorioImportado && String(relatorioImportado).trim()) return String(relatorioImportado).trim();
+  if (relatorioImportado && String(relatorioImportado).trim()) {
+    const cenariosImportado = obterCenariosDoResultado(data);
+    const valorAtualImportado = Number(cenariosImportado.atual || data?.valor_atual || 0);
+    const valorFuturoImportado = Number(cenariosImportado.base || data?.valor_futuro || 0);
+    const depImportada = valorAtualImportado > 0 && valorFuturoImportado > 0
+      ? ((valorAtualImportado - valorFuturoImportado) / valorAtualImportado) * 100
+      : Number(data?.depreciacao_percentual || 0);
+    const taxaImportada = Number(cenariosImportado.taxaBase || 0) * 100;
+    const linhasResumoImportado = [
+      "RESUMO APLICADO AO HORIZONTE SELECIONADO NO SITE",
+      `Horizonte da análise: ${formatarHorizonteLabel(cenariosImportado.horizonte)}.`,
+      valorAtualImportado > 0 ? `Valor FIPE inicial: ${formatarMoedaBR(valorAtualImportado)}.` : "",
+      valorFuturoImportado > 0 ? `Valor estimado ao final do horizonte: ${formatarMoedaBR(valorFuturoImportado)}.` : "",
+      depImportada > 0 ? `Taxa de depreciação total no período: ${depImportada.toFixed(2).replace(".", ",")}%.` : "",
+      taxaImportada > 0 ? `Taxa anual equivalente aplicada: ${taxaImportada.toFixed(2).replace(".", ",")}% a.a.` : "",
+      "",
+      "RELATÓRIO TÉCNICO IMPORTADO DO PAINEL LOCAL",
+      String(relatorioImportado).trim()
+    ];
+    return linhasResumoImportado.filter(linha => linha !== "").join("\n");
+  }
   const detalhes = data?.detalhes || {};
   const veiculo = detalhes.veiculo || ultimoDetalheFipe || {};
   const modelo = veiculo.modelo || detalhes.modelo || data?.modelo || "veículo selecionado";
@@ -266,7 +294,7 @@ function montarRelatorioTextual(data, origem = "curva") {
   const horizonte = Number(cenarios.horizonte || data?.horizonte_anos || document.getElementById("horizonte_anos")?.value || 5);
   const valorAtual = Number(cenarios.atual || data?.valor_atual || veiculo.valor_atual || 0);
   const valorFuturo = Number(cenarios.base || data?.valor_futuro || 0);
-  const taxa = Number(data?.taxa_anual_percentual || 0);
+  const taxa = Number(cenarios.taxaBase || 0) * 100 || Number(data?.taxa_anual_percentual || 0);
   const dep = valorAtual > 0 && valorFuturo > 0 ? ((valorAtual - valorFuturo) / valorAtual) * 100 : Number(data?.depreciacao_percentual || 0);
   const confianca = data?.confianca || detalhes.confianca;
   const pontos = data?.pontos_historicos || detalhes.pontos_historicos;
@@ -340,7 +368,8 @@ function preencherRelatorio(data, origem = "curva") {
   adicionarDetalhe(corpo, "Tipo utilizado", detalhes.tipo_label || data?.tipo_label || data?.tipo_curva);
   adicionarDetalhe(corpo, "Origem", data?.origem_curva || detalhes.origem_curva || origem);
   adicionarDetalhe(corpo, "Confiança", data?.confianca || detalhes.confianca);
-  adicionarDetalhe(corpo, "Taxa anual", data?.taxa_anual_percentual ? `${Number(data.taxa_anual_percentual).toFixed(2).replace(".", ",")}% a.a.` : "-");
+  const taxaDetalhe = Number(cenariosDetalhe.taxaBase || 0) * 100;
+  adicionarDetalhe(corpo, "Taxa anual", taxaDetalhe > 0 ? `${taxaDetalhe.toFixed(2).replace(".", ",")}% a.a.` : "-");
   adicionarDetalhe(corpo, "Taxa de depreciação total", depDetalhe > 0 ? `${depDetalhe.toFixed(2).replace(".", ",")}%` : "-");
   adicionarDetalhe(corpo, "Horizonte da análise", formatarHorizonteLabel(horizonteDetalhe));
   adicionarDetalhe(corpo, "Pontos históricos", data?.pontos_historicos || detalhes.pontos_historicos);
@@ -1440,33 +1469,101 @@ function primeiroValorPositivo(...valores) {
   return 0;
 }
 
+function horizonteSelecionadoDaTela(data = null) {
+  const el = document.getElementById("horizonte_anos");
+  const candidatos = [el?.value, data?.horizonte_anos, data?.horizonte_relatorio_anos, 5];
+  for (const valor of candidatos) {
+    const n = parseMoedaTecnica(valor);
+    if (Number.isFinite(n) && n > 0) {
+      const limitado = Math.max(1, Math.min(20, n));
+      return limitado;
+    }
+  }
+  return 5;
+}
+
+function valorCurvaHorizonteExato(curva, horizonte, tipo = "base") {
+  const h = Math.max(1, Math.round(Number(horizonte || 0)));
+  const chaves = tipo === "base"
+    ? [`valor_${h}ano`, `valor_${h}_anos`, `valor_${h}anos`, `valor_${h}ano_base`, `valor_${h}_anos_base`]
+    : tipo === "otimista"
+      ? [`valor_${h}ano_otimista`, `valor_${h}_anos_otimista`, `valor_${h}anos_otimista`]
+      : [`valor_${h}ano_pessimista`, `valor_${h}_anos_pessimista`, `valor_${h}anos_pessimista`];
+  for (const chave of chaves) {
+    const n = valorNumericoPositivo(curva?.[chave]);
+    if (n > 0) return n;
+  }
+  return 0;
+}
+
+function projetarValorPorTaxa(valorAtual, taxaDecimal, horizonte) {
+  const atual = Number(valorAtual || 0);
+  const taxa = Number(taxaDecimal || 0);
+  const anos = Math.max(1, Number(horizonte || 1));
+  if (!(atual > 0) || !(taxa >= 0)) return 0;
+  return atual * Math.pow(1 - taxa, anos);
+}
+
 function obterCenariosDoResultado(data) {
   const detalhes = data?.detalhes || {};
   const curva = detalhes.curva || {};
   const rel = extrairCenariosDoRelatorioTecnico(data);
-  const horizonte = horizonteRelatorioDoResultado(data);
+  const horizonteReferencia = Math.max(1, Number(horizonteRelatorioDoResultado(data) || 5));
+  const horizonteSelecionado = horizonteSelecionadoDaTela(data);
   const atual = primeiroValorPositivo(rel.valorAtual, data?.valor_atual, curva.valor_fipe_atual, curva.preco_atual_real);
-  const taxa = primeiroValorPositivo(data?.taxa_anual_percentual, curva.depreciacao_media_anual_principal_percentual, curva.depreciacao_media_anual_percentual);
-  const calculado = calcularCenarios(atual, taxa, horizonte);
+
+  const taxaFallbackPercent = primeiroValorPositivo(
+    curva.taxa_para_plataforma_percentual,
+    curva.depreciacao_media_anual_principal_percentual,
+    data?.taxa_anual_efetiva_percentual,
+    data?.taxa_anual_percentual,
+    curva.depreciacao_media_anual_percentual
+  );
+  const calculadoFallback = calcularCenarios(atual, taxaFallbackPercent, horizonteSelecionado);
+
+  const baseReferencia = primeiroValorPositivo(
+    rel.base,
+    valorCurvaPorHorizonte(curva, horizonteReferencia, "base"),
+    data?.valor_futuro_base,
+    data?.valor_futuro
+  );
+  const otimistaReferencia = primeiroValorPositivo(
+    rel.otimista,
+    valorCurvaPorHorizonte(curva, horizonteReferencia, "otimista"),
+    data?.valor_futuro_otimista
+  );
+  const pessimistaReferencia = primeiroValorPositivo(
+    rel.pessimista,
+    valorCurvaPorHorizonte(curva, horizonteReferencia, "pessimista"),
+    data?.valor_futuro_pessimista
+  );
+
+  const taxaBaseReferencia = taxaAnualAPartirDoValorFinal(atual, baseReferencia, horizonteReferencia) || calculadoFallback.taxaBase;
+  const taxaOtimistaReferencia = taxaAnualAPartirDoValorFinal(atual, otimistaReferencia, horizonteReferencia) || calculadoFallback.taxaOtimista;
+  const taxaPessimistaReferencia = taxaAnualAPartirDoValorFinal(atual, pessimistaReferencia, horizonteReferencia) || calculadoFallback.taxaPessimista;
+  const mesmoHorizonte = Math.abs(horizonteSelecionado - horizonteReferencia) < 0.01;
+
+  const baseExata = valorCurvaHorizonteExato(curva, horizonteSelecionado, "base");
+  const otimistaExata = valorCurvaHorizonteExato(curva, horizonteSelecionado, "otimista");
+  const pessimistaExata = valorCurvaHorizonteExato(curva, horizonteSelecionado, "pessimista");
 
   const base = primeiroValorPositivo(
-    rel.base,
-    valorCurvaPorHorizonte(curva, horizonte, "base"),
-    data?.valor_futuro_base,
-    data?.valor_futuro,
-    calculado.base
+    baseExata,
+    mesmoHorizonte ? baseReferencia : 0,
+    taxaBaseReferencia ? projetarValorPorTaxa(atual, taxaBaseReferencia, horizonteSelecionado) : 0,
+    calculadoFallback.base
   );
   const otimista = primeiroValorPositivo(
-    rel.otimista,
-    valorCurvaPorHorizonte(curva, horizonte, "otimista"),
-    data?.valor_futuro_otimista,
-    calculado.otimista
+    otimistaExata,
+    mesmoHorizonte ? otimistaReferencia : 0,
+    taxaOtimistaReferencia ? projetarValorPorTaxa(atual, taxaOtimistaReferencia, horizonteSelecionado) : 0,
+    calculadoFallback.otimista
   );
   const pessimista = primeiroValorPositivo(
-    rel.pessimista,
-    valorCurvaPorHorizonte(curva, horizonte, "pessimista"),
-    data?.valor_futuro_pessimista,
-    calculado.pessimista
+    pessimistaExata,
+    mesmoHorizonte ? pessimistaReferencia : 0,
+    taxaPessimistaReferencia ? projetarValorPorTaxa(atual, taxaPessimistaReferencia, horizonteSelecionado) : 0,
+    calculadoFallback.pessimista
   );
 
   return {
@@ -1474,13 +1571,13 @@ function obterCenariosDoResultado(data) {
     base,
     otimista,
     pessimista,
-    taxaBase: taxaAnualAPartirDoValorFinal(atual, base, horizonte) || calculado.taxaBase,
-    taxaOtimista: taxaAnualAPartirDoValorFinal(atual, otimista, horizonte) || calculado.taxaOtimista,
-    taxaPessimista: taxaAnualAPartirDoValorFinal(atual, pessimista, horizonte) || calculado.taxaPessimista,
-    horizonte
+    taxaBase: taxaAnualAPartirDoValorFinal(atual, base, horizonteSelecionado) || taxaBaseReferencia || calculadoFallback.taxaBase,
+    taxaOtimista: taxaAnualAPartirDoValorFinal(atual, otimista, horizonteSelecionado) || taxaOtimistaReferencia || calculadoFallback.taxaOtimista,
+    taxaPessimista: taxaAnualAPartirDoValorFinal(atual, pessimista, horizonteSelecionado) || taxaPessimistaReferencia || calculadoFallback.taxaPessimista,
+    horizonte: horizonteSelecionado,
+    horizonteReferencia
   };
 }
-
 
 function renderizarGraficoBarrasResultado(data) {
   const el = document.getElementById("grafico_barras");
@@ -1816,6 +1913,76 @@ function renderizarGraficoProjecao(valorAtual, taxaAnual, horizonte) {
   el.appendChild(tabela);
 }
 
+function reaplicarHorizonteAtual() {
+  const el = document.getElementById("horizonte_anos");
+  if (el) {
+    let n = Number(el.value || 5);
+    if (!Number.isFinite(n) || n < 1) n = 1;
+    if (n > 20) n = 20;
+    el.value = String(Math.round(n));
+  }
+  if (!ultimoResumoDepreciacao || !ultimoResumoDepreciacao.encontrado) return;
+  ultimoResumoDepreciacao = {
+    ...ultimoResumoDepreciacao,
+    horizonte_anos: horizonteSelecionadoDaTela(ultimoResumoDepreciacao)
+  };
+  const auditoriaVisivel = !document.getElementById("auditoria_area")?.classList.contains("hidden");
+  mostrarResultadoArea(true);
+  mostrarGraficoBarrasArea(true);
+  preencherResumo(ultimoResumoDepreciacao);
+  preencherRelatorio(ultimoResumoDepreciacao, "curva salva");
+  renderizarGraficosDepreciacao(ultimoResumoDepreciacao);
+  mostrarAuditoriaArea(auditoriaVisivel);
+}
+
+function novaConsultaDepreciacao() {
+  ultimoResumoDepreciacao = null;
+  ultimoJobDiagnosticoV1917 = null;
+  diagnosticoV1917AutoAtivo = false;
+  diagnosticoV1917Ciclos = 0;
+  terminalV1917Linhas = [];
+  try { ultimoDetalheFipe = null; } catch (e) {}
+
+  const horizonte = document.getElementById("horizonte_anos");
+  if (horizonte) horizonte.value = "5";
+
+  const marca = document.getElementById("fipe_marca");
+  const modelo = document.getElementById("fipe_modelo");
+  const ano = document.getElementById("fipe_ano");
+  if (marca) marca.value = "";
+  if (modelo && typeof limparSelect === "function") limparSelect(modelo, "Selecione a marca primeiro");
+  if (ano && typeof limparSelect === "function") limparSelect(ano, "Selecione o modelo primeiro");
+
+  const rel = document.getElementById("relatorio_textual");
+  if (rel) rel.textContent = "Aguardando seleção do veículo.";
+  const detalhes = document.getElementById("detalhes_corpo");
+  if (detalhes) detalhes.innerHTML = "";
+  const grafBarras = document.getElementById("grafico_barras");
+  if (grafBarras) {
+    grafBarras.classList.add("empty-chart");
+    grafBarras.textContent = "Selecione um veículo com curva pronta.";
+  }
+  const grafProj = document.getElementById("grafico_projecao");
+  if (grafProj) {
+    grafProj.classList.add("empty-chart");
+    grafProj.textContent = "Selecione um veículo com curva pronta.";
+  }
+  const grafHist = document.getElementById("grafico_historico_render");
+  if (grafHist) {
+    grafHist.classList.add("empty-chart");
+    grafHist.textContent = "Histórico nominal não disponível para esta curva.";
+  }
+  const grafIpca = document.getElementById("grafico_historico_ipca_render");
+  if (grafIpca) {
+    grafIpca.classList.add("empty-chart");
+    grafIpca.textContent = "Histórico corrigido pelo IPCA não disponível para esta curva.";
+  }
+
+  resetarFluxoDepreciacao();
+  atualizarStatusResultado("Aguardando seleção do veículo.", "muted");
+  document.getElementById("fipe_marca")?.focus();
+}
+
 function atualizarCabecalhoPDFDepreciacao() {
   const dataEl = document.getElementById("pdf_data_emissao");
   if (dataEl) {
@@ -1884,14 +2051,12 @@ document.addEventListener("DOMContentLoaded", () => {
     if (ultimoDetalheFipe) consultarResumoDepreciacao(ultimoDetalheFipe);
   });
 
-  document.getElementById("horizonte_anos")?.addEventListener("change", () => {
-    const el = document.getElementById("horizonte_anos");
-    if (el && Number(el.value || 0) < 1) el.value = 1;
-    if (ultimoDetalheFipe) consultarResumoDepreciacao(ultimoDetalheFipe);
-  });
+  document.getElementById("horizonte_anos")?.addEventListener("input", reaplicarHorizonteAtual);
+  document.getElementById("horizonte_anos")?.addEventListener("change", reaplicarHorizonteAtual);
 
   document.getElementById("btn_ver_detalhes")?.addEventListener("click", mostrarDetalhes);
   document.getElementById("btn_exportar_pdf")?.addEventListener("click", exportarPDFDepreciacao);
+  document.getElementById("btn_nova_consulta")?.addEventListener("click", novaConsultaDepreciacao);
   document.getElementById("btn_usar_no_tco")?.addEventListener("click", usarResultadoNoTCOEFechar);
   document.getElementById("btn_calcular_futuro")?.addEventListener("click", solicitarCalculoSobDemanda);
   document.getElementById("btn_diagnostico_coorte")?.addEventListener("click", solicitarDiagnosticoCoorte);

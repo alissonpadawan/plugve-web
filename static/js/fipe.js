@@ -777,5 +777,9 @@ document.addEventListener("DOMContentLoaded", () => {
     if (typeof window.resetarFluxoDepreciacao === "function") window.resetarFluxoDepreciacao();
     carregarAnosFipe();
   });
-  document.getElementById("fipe_ano")?.addEventListener("change", consultarPrecoFipe);
+  document.getElementById("fipe_ano")?.addEventListener("change", () => {
+    ultimoDetalheFipe = null;
+    if (typeof window.resetarFluxoDepreciacao === "function") window.resetarFluxoDepreciacao();
+    consultarPrecoFipe();
+  });
 });
