@@ -864,6 +864,35 @@ class CurvasRepository:
             })
         return pontos
 
+    def _projecao_mensal_anual_equivalente(self, valor_atual: float, taxa_anual_base: float, taxa_anual_otimista: float, taxa_anual_pessimista: float, horizonte_meses: int, idade_entrada_meses: int = 0) -> list[dict[str, Any]]:
+        """Monta a memória mensal de projeção a partir das taxas anuais já calculadas.
+
+        Não recalcula a curva. Apenas expõe, mês a mês, a mesma progressão
+        equivalente usada para chegar aos valores finais dos cenários.
+        """
+        pontos: list[dict[str, Any]] = []
+        if valor_atual <= 0 or horizonte_meses < 0:
+            return pontos
+        taxa_base = max(0.0, float(taxa_anual_base or 0.0) / 100.0)
+        taxa_ot = max(0.0, float(taxa_anual_otimista or 0.0) / 100.0)
+        taxa_pe = max(0.0, float(taxa_anual_pessimista or 0.0) / 100.0)
+        for mes in range(max(0, int(horizonte_meses or 0)) + 1):
+            anos = float(mes) / 12.0
+            fator_base = (1.0 - taxa_base) ** anos
+            fator_ot = (1.0 - taxa_ot) ** anos
+            fator_pe = (1.0 - taxa_pe) ** anos
+            pontos.append({
+                "mes": mes,
+                "idade_meses": max(0, int(idade_entrada_meses or 0)) + mes,
+                "valor_base": round(valor_atual * fator_base, 2),
+                "valor_otimista": round(valor_atual * fator_ot, 2),
+                "valor_pessimista": round(valor_atual * fator_pe, 2),
+                "fator_base": round(fator_base, 10),
+                "fator_otimista": round(fator_ot, 10),
+                "fator_pessimista": round(fator_pe, 10),
+            })
+        return pontos
+
     def _montar_relatorio_combustao_reaplicado(
         self,
         curva: dict[str, Any],
@@ -1129,6 +1158,20 @@ class CurvasRepository:
             valor_otimista = parse_float_seguro(curva.get("valor_futuro_otimista") or curva.get("valor_otimista_final"), 0.0)
             valor_pessimista = parse_float_seguro(curva.get("valor_futuro_pessimista") or curva.get("valor_pessimista_final"), 0.0)
 
+        horizonte_meses = int(horizonte * 12)
+        projecao_mensal = self._projecao_mensal_anual_equivalente(
+            valor_atual=float(valor_atual or 0.0),
+            taxa_anual_base=taxa_anual,
+            taxa_anual_otimista=taxa_anual_otimista,
+            taxa_anual_pessimista=taxa_anual_pessimista,
+            horizonte_meses=horizonte_meses,
+            idade_entrada_meses=0,
+        )
+        fator_base = (valor_futuro / valor_atual) if valor_atual > 0 and valor_futuro > 0 else 0.0
+        fator_ot = (valor_otimista / valor_atual) if valor_atual > 0 and valor_otimista > 0 else 0.0
+        fator_pe = (valor_pessimista / valor_atual) if valor_atual > 0 and valor_pessimista > 0 else 0.0
+        taxa_mensal_equivalente = (1.0 - ((1.0 - max(0.0, taxa_anual) / 100.0) ** (1.0 / 12.0))) * 100.0 if taxa_anual > 0 else 0.0
+
         pontos = parse_int_seguro(curva.get("pontos_historicos"), 0)
         janela = parse_int_seguro(curva.get("janela_historica_meses"), 0)
         depreciacao_pct = ((valor_atual - valor_futuro) / valor_atual * 100.0) if valor_atual > 0 else 0.0
@@ -1149,7 +1192,19 @@ class CurvasRepository:
             "valor_futuro_otimista": round(valor_otimista, 2) if valor_otimista > 0 else 0.0,
             "valor_futuro_pessimista": round(valor_pessimista, 2) if valor_pessimista > 0 else 0.0,
             "horizonte_relatorio_anos": horizonte,
-            "horizonte_meses": int(horizonte * 12),
+            "horizonte_meses": horizonte_meses,
+            "inicio_curva_meses": 0,
+            "fim_curva_meses": horizonte_meses,
+            "idade_entrada_meses": 0,
+            "idade_entrada_anos": 0.0,
+            "taxa_mensal_hibrida_percentual": round(max(0.0, taxa_mensal_equivalente), 8),
+            "fator_transferencia_base": round(max(0.0, fator_base), 10),
+            "fator_transferencia_otimista": round(max(0.0, fator_ot), 10),
+            "fator_transferencia_pessimista": round(max(0.0, fator_pe), 10),
+            "fator_depreciacao_base": round(max(0.0, fator_base), 10),
+            "fator_depreciacao_otimista": round(max(0.0, fator_ot), 10),
+            "fator_depreciacao_pessimista": round(max(0.0, fator_pe), 10),
+            "projecao_mensal": projecao_mensal,
             "taxa_anual_efetiva_percentual": round(max(0.0, taxa_anual), 6),
             "taxa_anual_base_efetiva_percentual": round(max(0.0, taxa_anual), 6),
             "taxa_anual_otimista_efetiva_percentual": round(max(0.0, taxa_anual_otimista), 6),
@@ -1161,5 +1216,17 @@ class CurvasRepository:
             "pontos_historicos": pontos,
             "janela_historica_meses": janela,
             "origem_curva": str(curva.get("origem_curva", "curva EV salva") or "curva EV salva"),
+            "auditoria_historico": {
+                "modo_calculo": "curva_ev_salva_taxa_anual_equivalente",
+                "horizonte_meses": horizonte_meses,
+                "inicio_curva_meses": 0,
+                "fim_curva_meses": horizonte_meses,
+                "taxa_anual_efetiva_percentual": round(max(0.0, taxa_anual), 6),
+                "taxa_mensal_hibrida_percentual": round(max(0.0, taxa_mensal_equivalente), 8),
+                "fator_base": round(max(0.0, fator_base), 10),
+                "fator_otimista": round(max(0.0, fator_ot), 10),
+                "fator_pessimista": round(max(0.0, fator_pe), 10),
+                "observacao_metodologica": "Memória mensal gerada pela taxa anual equivalente exportada com a curva EV salva.",
+            },
             "relatorio_tecnico": relatorio_tecnico,
         }

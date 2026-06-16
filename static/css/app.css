@@ -2394,3 +2394,673 @@ textarea { resize: vertical; }
     width: 185px !important;
   }
 }
+
+
+/* V33 - abas Resultado/Auditoria e memória de cálculo acadêmica */
+.depreciacao-tabs {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 16px 0 18px;
+  padding: 6px;
+  border: 1px solid #DDEDE5;
+  background: #F7FBF8;
+  border-radius: 999px;
+  box-shadow: 0 10px 28px rgba(15, 95, 54, 0.08);
+}
+
+.depreciacao-tab {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 850;
+  border-radius: 999px;
+  padding: 10px 18px;
+  cursor: pointer;
+  transition: background .15s ease, color .15s ease, box-shadow .15s ease;
+}
+
+.depreciacao-tab:hover {
+  color: var(--primary-dark);
+  background: #FFFFFF;
+}
+
+.depreciacao-tab.active {
+  background: var(--primary);
+  color: #FFFFFF;
+  box-shadow: 0 12px 22px rgba(22, 138, 74, 0.20);
+}
+
+.audit-view {
+  margin-top: 0;
+}
+
+.audit-card {
+  border: 1px solid #DDEDE5;
+  background: linear-gradient(180deg, #FFFFFF 0%, #F8FBF9 100%);
+}
+
+.audit-kicker {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  border: 1px solid #CFE8DA;
+  background: var(--soft);
+  color: var(--primary-dark);
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-size: 12px;
+  font-weight: 850;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  margin: 0 0 8px;
+}
+
+.audit-terminal,
+.audit-terminal-inner {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 13px;
+  line-height: 1.55;
+  color: #10212B;
+}
+
+.audit-terminal {
+  border: 1px solid #DDEDE5;
+  background: linear-gradient(180deg, #FAFCFA 0%, #FFFFFF 100%);
+  border-radius: 16px;
+  padding: 18px;
+  overflow: hidden;
+  white-space: normal;
+}
+
+.audit-terminal-inner {
+  display: grid;
+  gap: 16px;
+}
+
+.audit-block {
+  border: 1px solid #DDEDE5;
+  background: #FFFFFF;
+  border-radius: 16px;
+  padding: 16px;
+}
+
+.audit-block h3 {
+  margin: 0 0 12px;
+  color: var(--text);
+  font-family: var(--font-title, inherit);
+  font-size: 1.15rem;
+  letter-spacing: -0.02em;
+}
+
+.audit-kv-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.audit-kv {
+  border: 1px solid #E6EFEA;
+  border-radius: 12px;
+  background: #FAFCFB;
+  padding: 10px 12px;
+}
+
+.audit-kv span {
+  display: block;
+  color: var(--muted);
+  font-family: var(--font-body, inherit);
+  font-size: 12px;
+  font-weight: 800;
+  margin-bottom: 4px;
+}
+
+.audit-kv strong {
+  display: block;
+  color: var(--text);
+  font-weight: 850;
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
+
+.audit-code {
+  white-space: pre-wrap;
+  overflow-x: auto;
+  border: 1px solid #1F2933;
+  background: #071018;
+  color: #D8F3E3;
+  border-radius: 14px;
+  padding: 16px;
+  margin: 0 0 12px;
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+
+.audit-note {
+  margin: 0 0 10px;
+  color: #374151;
+  font-family: var(--font-body, inherit);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.audit-note:last-child {
+  margin-bottom: 0;
+}
+
+.audit-table-wrap {
+  width: 100%;
+  max-height: 620px;
+  overflow: auto;
+  border: 1px solid #DDEDE5;
+  border-radius: 14px;
+  background: #FFFFFF;
+}
+
+.audit-table {
+  width: 100%;
+  min-width: 980px;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.audit-table th,
+.audit-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #EAF1ED;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.audit-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #F4FAF6;
+  color: var(--primary-dark);
+  font-weight: 900;
+}
+
+.audit-table th:first-child,
+.audit-table td:first-child,
+.audit-table th:nth-child(2),
+.audit-table td:nth-child(2) {
+  text-align: left;
+}
+
+.audit-table tbody tr:hover td {
+  background: #F8FBF9;
+}
+
+.audit-table tbody tr:last-child td {
+  background: #F1F8F4;
+  font-weight: 850;
+}
+
+@media (max-width: 860px) {
+  .depreciacao-tabs {
+    display: flex;
+    width: 100%;
+  }
+  .depreciacao-tab {
+    flex: 1;
+  }
+  .audit-kv-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media print {
+  #depreciacao_abas,
+  #auditoria_calculo_area {
+    display: none !important;
+  }
+}
+
+.audit-lab-header {
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.audit-actions {
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+@media print {
+  body:not(.print-audit-mode) #auditoria_calculo_area {
+    display: none !important;
+  }
+
+  body.print-audit-mode .consulta-card,
+  body.print-audit-mode #resultado_area,
+  body.print-audit-mode #auditoria_area,
+  body.print-audit-mode #card_grafico_barras,
+  body.print-audit-mode .depreciacao-tabs,
+  body.print-audit-mode .audit-actions {
+    display: none !important;
+  }
+
+  body.print-audit-mode #auditoria_calculo_area {
+    display: block !important;
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  body.print-audit-mode .audit-card,
+  body.print-audit-mode .audit-block {
+    box-shadow: none !important;
+    border: 1px solid #D1D5DB !important;
+    background: #FFFFFF !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  body.print-audit-mode .audit-table-wrap {
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  body.print-audit-mode .audit-table {
+    min-width: 0 !important;
+    font-size: 8.5px !important;
+  }
+
+  body.print-audit-mode .audit-table th,
+  body.print-audit-mode .audit-table td {
+    padding: 4px 5px !important;
+  }
+
+  body.print-audit-mode .audit-code {
+    background: #F4F8F6 !important;
+    color: #111827 !important;
+    border: 1px solid #D1D5DB !important;
+    font-size: 9.5px !important;
+  }
+}
+
+/* Aliases usados no template V33 */
+.depreciacao-tabs {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 16px 0 18px;
+  padding: 6px;
+  border: 1px solid #DDEDE5;
+  background: #F7FBF8;
+  border-radius: 999px;
+  box-shadow: 0 10px 28px rgba(15, 95, 54, 0.08);
+}
+
+.depreciacao-tab {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 850;
+  border-radius: 999px;
+  padding: 10px 18px;
+  cursor: pointer;
+  transition: background .15s ease, color .15s ease, box-shadow .15s ease;
+}
+
+.depreciacao-tab:hover {
+  color: var(--primary-dark);
+  background: #FFFFFF;
+}
+
+.depreciacao-tab.active {
+  background: var(--primary);
+  color: #FFFFFF;
+  box-shadow: 0 12px 22px rgba(22, 138, 74, 0.20);
+}
+
+@media (max-width: 860px) {
+  .depreciacao-tabs {
+    display: flex;
+    width: 100%;
+  }
+  .depreciacao-tab {
+    flex: 1;
+  }
+}
+
+/* V33 - abas Resultado/Auditoria e memória de cálculo acadêmica */
+.depreciacao-tabs,
+.depr-view-tabs {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 16px 0 18px;
+  padding: 6px;
+  border: 1px solid #DDEDE5;
+  background: #F7FBF8;
+  border-radius: 999px;
+  box-shadow: 0 10px 28px rgba(15, 95, 54, 0.08);
+}
+
+.depreciacao-tabs.hidden,
+.depr-view-tabs.hidden {
+  display: none !important;
+}
+
+.depreciacao-tab,
+.depr-view-tab {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 850;
+  border-radius: 999px;
+  padding: 10px 18px;
+  cursor: pointer;
+  transition: background .15s ease, color .15s ease, box-shadow .15s ease;
+}
+
+.depreciacao-tab:hover,
+.depr-view-tab:hover {
+  color: var(--primary-dark);
+  background: #FFFFFF;
+}
+
+.depreciacao-tab.active,
+.depr-view-tab.active {
+  background: var(--primary);
+  color: #FFFFFF;
+  box-shadow: 0 12px 22px rgba(22, 138, 74, 0.20);
+}
+
+.audit-view {
+  margin-top: 0;
+}
+
+.audit-view.hidden {
+  display: none !important;
+}
+
+.audit-card {
+  border: 1px solid #DDEDE5;
+  background: linear-gradient(180deg, #FFFFFF 0%, #F8FBF9 100%);
+}
+
+.audit-lab-header {
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.audit-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.audit-kicker {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  border: 1px solid #CFE8DA;
+  background: var(--soft);
+  color: var(--primary-dark);
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-size: 12px;
+  font-weight: 850;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  margin: 0 0 8px;
+}
+
+.audit-terminal,
+.audit-terminal-inner {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 13px;
+  line-height: 1.55;
+  color: #10212B;
+}
+
+.audit-terminal {
+  border: 1px solid #DDEDE5;
+  background: linear-gradient(180deg, #FAFCFA 0%, #FFFFFF 100%);
+  border-radius: 16px;
+  padding: 18px;
+  overflow: hidden;
+  white-space: normal;
+}
+
+.audit-terminal-inner {
+  display: grid;
+  gap: 16px;
+}
+
+.audit-block {
+  border: 1px solid #DDEDE5;
+  background: #FFFFFF;
+  border-radius: 16px;
+  padding: 16px;
+}
+
+.audit-block h3 {
+  margin: 0 0 12px;
+  color: var(--text);
+  font-family: var(--font-title, inherit);
+  font-size: 1.15rem;
+  letter-spacing: -0.02em;
+}
+
+.audit-kv-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.audit-kv {
+  border: 1px solid #E6EFEA;
+  border-radius: 12px;
+  background: #FAFCFB;
+  padding: 10px 12px;
+}
+
+.audit-kv span {
+  display: block;
+  color: var(--muted);
+  font-family: var(--font-body, inherit);
+  font-size: 12px;
+  font-weight: 800;
+  margin-bottom: 4px;
+}
+
+.audit-kv strong {
+  display: block;
+  color: var(--text);
+  font-weight: 850;
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
+
+.audit-code {
+  white-space: pre-wrap;
+  overflow-x: auto;
+  border: 1px solid #1F2933;
+  background: #071018;
+  color: #D8F3E3;
+  border-radius: 14px;
+  padding: 16px;
+  margin: 0 0 12px;
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+
+.audit-note {
+  margin: 0 0 10px;
+  color: #374151;
+  font-family: var(--font-body, inherit);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.audit-note:last-child {
+  margin-bottom: 0;
+}
+
+.audit-table-wrap {
+  width: 100%;
+  max-height: 620px;
+  overflow: auto;
+  border: 1px solid #DDEDE5;
+  border-radius: 14px;
+  background: #FFFFFF;
+}
+
+.audit-table {
+  width: 100%;
+  min-width: 980px;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.audit-table th,
+.audit-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #EAF1ED;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.audit-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #F4FAF6;
+  color: var(--primary-dark);
+  font-weight: 900;
+}
+
+.audit-table th:first-child,
+.audit-table td:first-child,
+.audit-table th:nth-child(2),
+.audit-table td:nth-child(2) {
+  text-align: left;
+}
+
+.audit-table tbody tr:hover td {
+  background: #F8FBF9;
+}
+
+.audit-table tbody tr:last-child td {
+  background: #F1F8F4;
+  font-weight: 850;
+}
+
+@media (max-width: 860px) {
+  .depreciacao-tabs,
+  .depr-view-tabs {
+    display: flex;
+    width: 100%;
+  }
+
+  .depreciacao-tab,
+  .depr-view-tab {
+    flex: 1;
+  }
+
+  .audit-kv-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .audit-lab-header,
+  .audit-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}
+
+@media print {
+  #depreciacao_abas,
+  .depreciacao-tabs,
+  .depr-view-tabs {
+    display: none !important;
+  }
+
+  #auditoria_calculo_area {
+    display: none !important;
+  }
+
+  body.print-audit-only .topbar,
+  body.print-audit-only .footer,
+  body.print-audit-only .consulta-card,
+  body.print-audit-only #resultado_area,
+  body.print-audit-only #auditoria_area,
+  body.print-audit-only .actions,
+  body.print-audit-only #btn_toggle_base_provisoria,
+  body.print-audit-only .base-drawer,
+  body.print-audit-only .base-drawer-backdrop {
+    display: none !important;
+  }
+
+  body.print-audit-only .pdf-report-header,
+  body.print-audit-only #auditoria_calculo_area {
+    display: block !important;
+  }
+
+  body.print-audit-only .audit-card {
+    border: 0 !important;
+    box-shadow: none !important;
+  }
+
+  body.print-audit-only .audit-terminal {
+    border: 0 !important;
+    padding: 0 !important;
+    background: #FFFFFF !important;
+  }
+
+  body.print-audit-only .audit-block {
+    padding: 8px !important;
+    border: 1px solid #D1D5DB !important;
+    border-radius: 8px !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  body.print-audit-only .audit-code {
+    color: #111827 !important;
+    background: #F9FAFB !important;
+    border: 1px solid #D1D5DB !important;
+    border-left: 4px solid #168A4A !important;
+    font-size: 8.8px !important;
+  }
+
+  body.print-audit-only .audit-kv-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 5px !important;
+  }
+
+  body.print-audit-only .audit-kv {
+    padding: 5px !important;
+  }
+
+  body.print-audit-only .audit-kv span,
+  body.print-audit-only .audit-table th {
+    font-size: 7.4px !important;
+  }
+
+  body.print-audit-only .audit-kv strong,
+  body.print-audit-only .audit-note,
+  body.print-audit-only .audit-table td {
+    font-size: 8.2px !important;
+  }
+
+  body.print-audit-only .audit-table-wrap {
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  body.print-audit-only .audit-table {
+    min-width: 0 !important;
+  }
+
+  body.print-audit-only .audit-table th,
+  body.print-audit-only .audit-table td {
+    padding: 3px 4px !important;
+  }
+}

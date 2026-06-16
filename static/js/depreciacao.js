@@ -7,6 +7,7 @@ let diagnosticoV1917Ciclos = 0;
 let terminalV1917Linhas = [];
 let timerHorizonteDepreciacao = null;
 let consultaDepreciacaoSeq = 0;
+let abaPrincipalDepreciacao = "resultado";
 const DIAGNOSTICO_V1917_MAX_CICLOS = 180;
 
 function textoSeguro(valor) {
@@ -52,6 +53,55 @@ function mostrarGraficoBarrasArea(mostrar = true) {
 
 function mostrarAuditoriaArea(mostrar = true) {
   document.getElementById("auditoria_area")?.classList.toggle("hidden", !mostrar);
+}
+
+function mostrarAbasDepreciacao(mostrar = true) {
+  document.getElementById("depreciacao_abas")?.classList.toggle("hidden", !mostrar);
+}
+
+function mostrarAuditoriaCalculoArea(mostrar = true) {
+  document.getElementById("auditoria_calculo_area")?.classList.toggle("hidden", !mostrar);
+}
+
+function selecionarAbaPrincipalDepreciacao(aba = "resultado") {
+  const desejada = aba === "auditoria" ? "auditoria" : "resultado";
+  abaPrincipalDepreciacao = desejada;
+  const temResultado = Boolean(ultimoResumoDepreciacao && ultimoResumoDepreciacao.encontrado);
+  const tabs = document.getElementById("depreciacao_abas");
+  if (tabs) tabs.classList.toggle("hidden", !temResultado);
+
+  const btnResultado = document.getElementById("tab_resultado_depreciacao");
+  const btnAuditoria = document.getElementById("tab_auditoria_depreciacao");
+  if (btnResultado) {
+    btnResultado.classList.toggle("active", desejada === "resultado");
+    btnResultado.setAttribute("aria-selected", desejada === "resultado" ? "true" : "false");
+  }
+  if (btnAuditoria) {
+    btnAuditoria.classList.toggle("active", desejada === "auditoria");
+    btnAuditoria.setAttribute("aria-selected", desejada === "auditoria" ? "true" : "false");
+  }
+
+  if (!temResultado) {
+    mostrarResultadoArea(false);
+    mostrarGraficoBarrasArea(false);
+    mostrarAuditoriaArea(false);
+    mostrarAuditoriaCalculoArea(false);
+    return;
+  }
+
+  if (desejada === "auditoria") {
+    mostrarResultadoArea(false);
+    mostrarGraficoBarrasArea(false);
+    mostrarAuditoriaArea(false);
+    mostrarAuditoriaCalculoArea(true);
+    renderizarAuditoriaCalculo(ultimoResumoDepreciacao);
+    document.getElementById("auditoria_calculo_area")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  } else {
+    mostrarResultadoArea(true);
+    mostrarGraficoBarrasArea(true);
+    mostrarAuditoriaArea(true);
+    mostrarAuditoriaCalculoArea(false);
+  }
 }
 
 function atualizarFeedbackCalculo(texto, percentual, mostrar = true) {
@@ -123,16 +173,19 @@ function limparResumo() {
   }
   mostrarGraficoBarrasArea(false);
   mostrarAuditoriaArea(false);
+  limparAuditoriaCalculo();
 }
 
 function resetarFluxoDepreciacao() {
   consultaDepreciacaoSeq += 1;
+  abaPrincipalDepreciacao = "resultado";
   if (timerHorizonteDepreciacao) clearTimeout(timerHorizonteDepreciacao);
   ultimoResumoDepreciacao = null;
   ultimoJobDiagnosticoV1917 = null;
   mostrarResultadoArea(false);
   mostrarGraficoBarrasArea(false);
   mostrarAuditoriaArea(false);
+  limparAuditoriaCalculo();
   atualizarFeedbackCalculo("", 0, false);
   atualizarStatusResultado("Aguardando seleção do veículo.", "muted");
   terminalV1917Linhas = [];
@@ -633,6 +686,7 @@ function montarRelatorioTextual(data, origem = "curva") {
   ].join("\n");
 }
 
+
 function preencherRelatorioTextual(data, origem = "curva") {
   const el = document.getElementById("relatorio_textual");
   if (!el) return;
@@ -647,6 +701,8 @@ function preencherRelatorio(data, origem = "curva") {
   const tabela = document.querySelector("#aba_relatorio_tecnico .details-table");
   if (tabela) tabela.classList.add("hidden");
 }
+
+
 
 
 async function apagarCurvaAtual() {
@@ -690,6 +746,8 @@ async function consultarResumoDepreciacao(detalheFipe) {
 
   mostrarResultadoArea(true);
   mostrarAuditoriaArea(false);
+  mostrarAuditoriaCalculoArea(false);
+  mostrarAbasDepreciacao(false);
   atualizarFeedbackCalculo("Buscando curva histórica na base local...", 25, true);
   atualizarStatusResultado("Buscando curva histórica...", "muted");
   limparResumo();
@@ -719,6 +777,9 @@ async function consultarResumoDepreciacao(detalheFipe) {
       mostrarAuditoriaArea(true);
       preencherRelatorio(data, "curva salva");
       renderizarGraficosDepreciacao(data);
+      renderizarAuditoriaCalculo(data);
+      mostrarAbasDepreciacao(true);
+      selecionarAbaPrincipalDepreciacao(abaPrincipalDepreciacao === "auditoria" ? "auditoria" : "resultado");
       if (estaEmModoBridgeTCO()) mostrarDetalhes();
     } else {
       atualizarFeedbackCalculo("Curva não encontrada. Processamento deve ser feito no painel local.", 100, false);
@@ -726,6 +787,8 @@ async function consultarResumoDepreciacao(detalheFipe) {
       limparResumoParcialApenasValor(data.valor_atual || detalheFipe.valor_atual);
       mostrarGraficoBarrasArea(false);
       mostrarAuditoriaArea(false);
+      limparAuditoriaCalculo();
+      limparAuditoriaCalculo();
       configurarBotoesResultado(false, true);
     }
   } catch (e) {
@@ -1040,6 +1103,9 @@ async function solicitarCalculoSobDemanda() {
         mostrarAuditoriaArea(true);
         preencherRelatorio({ ...data.resultado, motor: data.motor }, "cálculo sob demanda");
         renderizarGraficosDepreciacao(data.resultado);
+        renderizarAuditoriaCalculo(data.resultado);
+        mostrarAbasDepreciacao(true);
+        selecionarAbaPrincipalDepreciacao("resultado");
       }
       carregarStatusBases();
       setTimeout(() => atualizarFeedbackCalculo("", 0, false), 1500);
@@ -1901,11 +1967,256 @@ function serieProjecaoBackend(data) {
   return serie
     .map(p => ({
       mes: Number(p.mes || 0),
+      idadeMeses: Number(p.idade_meses ?? p.idadeMeses ?? p.idade_curva_meses ?? p.mes ?? 0),
       base: Number(p.valor_base || p.base || 0),
       otimista: Number(p.valor_otimista || p.otimista || 0),
-      pessimista: Number(p.valor_pessimista || p.pessimista || 0)
+      pessimista: Number(p.valor_pessimista || p.pessimista || 0),
+      fatorBase: Number(p.fator_base || p.fatorBase || 0),
+      fatorOtimista: Number(p.fator_otimista || p.fatorOtimista || 0),
+      fatorPessimista: Number(p.fator_pessimista || p.fatorPessimista || 0)
     }))
     .filter(p => Number.isFinite(p.mes) && p.mes >= 0 && (p.base > 0 || p.otimista > 0 || p.pessimista > 0));
+}
+
+function calcularTaxaMensalEquivalente(valorInicial, valorFinal, meses) {
+  const vi = Number(valorInicial || 0);
+  const vf = Number(valorFinal || 0);
+  const m = Math.max(1, Number(meses || 1));
+  if (!(vi > 0) || !(vf > 0)) return 0;
+  const taxa = 1 - Math.pow(vf / vi, 1 / m);
+  return Number.isFinite(taxa) ? Math.max(0, taxa) : 0;
+}
+
+function construirSeriesProjecaoCalculo(data) {
+  const cen = obterCenariosDoResultado(data || {});
+  const info = montarDadosRelatorioProfissional(data || {});
+  const horizonte = Math.max(1, Number(cen.horizonte || info.horizonte || 5));
+  let meses = Math.max(1, Number(info.horizonteMeses || Math.round(horizonte * 12)));
+  const serieBackend = serieProjecaoBackend(data || {});
+  let fonte = "equivalencia_exponencial";
+  let linhas = [];
+
+  if (serieBackend.length >= 2) {
+    fonte = "serie_mensal_backend";
+    meses = Math.max(meses, ...serieBackend.map(ponto => Number(ponto.mes || 0)));
+    linhas = serieBackend
+      .filter(ponto => Number.isFinite(ponto.mes) && ponto.mes >= 0)
+      .sort((a, b) => a.mes - b.mes)
+      .map(ponto => {
+        const base = ponto.base || 0;
+        const otimista = ponto.otimista || 0;
+        const pessimista = ponto.pessimista || 0;
+        return {
+          mes: Math.round(ponto.mes),
+          idadeMeses: Number.isFinite(ponto.idadeMeses) ? Math.round(ponto.idadeMeses) : Math.round(info.idadeMeses + ponto.mes),
+          base,
+          otimista,
+          pessimista,
+          fatorBase: ponto.fatorBase || (info.valorAtual > 0 && base > 0 ? base / info.valorAtual : 0),
+          fatorOtimista: ponto.fatorOtimista || (info.valorAtual > 0 && otimista > 0 ? otimista / info.valorAtual : 0),
+          fatorPessimista: ponto.fatorPessimista || (info.valorAtual > 0 && pessimista > 0 ? pessimista / info.valorAtual : 0),
+          perdaBase: info.valorAtual > 0 && base > 0 ? Math.max(0, info.valorAtual - base) : 0,
+          depreciacaoBase: info.valorAtual > 0 && base > 0 ? Math.max(0, (1 - base / info.valorAtual) * 100) : 0
+        };
+      });
+  } else {
+    const taxaBaseMensal = calcularTaxaMensalEquivalente(info.valorAtual, cen.base, meses);
+    const taxaOtimistaMensal = calcularTaxaMensalEquivalente(info.valorAtual, cen.otimista, meses);
+    const taxaPessimistaMensal = calcularTaxaMensalEquivalente(info.valorAtual, cen.pessimista, meses);
+    linhas = Array.from({ length: meses + 1 }, (_, mes) => {
+      const base = info.valorAtual * Math.pow(1 - taxaBaseMensal, mes);
+      const otimista = info.valorAtual * Math.pow(1 - taxaOtimistaMensal, mes);
+      const pessimista = info.valorAtual * Math.pow(1 - taxaPessimistaMensal, mes);
+      return {
+        mes,
+        idadeMeses: Math.round(info.idadeMeses + mes),
+        base,
+        otimista,
+        pessimista,
+        fatorBase: info.valorAtual > 0 ? base / info.valorAtual : 0,
+        fatorOtimista: info.valorAtual > 0 ? otimista / info.valorAtual : 0,
+        fatorPessimista: info.valorAtual > 0 ? pessimista / info.valorAtual : 0,
+        perdaBase: info.valorAtual > 0 ? Math.max(0, info.valorAtual - base) : 0,
+        depreciacaoBase: info.valorAtual > 0 ? Math.max(0, (1 - base / info.valorAtual) * 100) : 0
+      };
+    });
+  }
+
+  if (linhas.length) {
+    const ultima = linhas[linhas.length - 1];
+    if (cen.base > 0) ultima.base = cen.base;
+    if (cen.otimista > 0) ultima.otimista = cen.otimista;
+    if (cen.pessimista > 0) ultima.pessimista = cen.pessimista;
+    ultima.fatorBase = info.valorAtual > 0 && ultima.base > 0 ? ultima.base / info.valorAtual : ultima.fatorBase;
+    ultima.fatorOtimista = info.valorAtual > 0 && ultima.otimista > 0 ? ultima.otimista / info.valorAtual : ultima.fatorOtimista;
+    ultima.fatorPessimista = info.valorAtual > 0 && ultima.pessimista > 0 ? ultima.pessimista / info.valorAtual : ultima.fatorPessimista;
+    ultima.perdaBase = info.valorAtual > 0 && ultima.base > 0 ? Math.max(0, info.valorAtual - ultima.base) : ultima.perdaBase;
+    ultima.depreciacaoBase = info.valorAtual > 0 && ultima.base > 0 ? Math.max(0, (1 - ultima.base / info.valorAtual) * 100) : ultima.depreciacaoBase;
+  }
+
+  let baseAnterior = null;
+  linhas.forEach((linha) => {
+    const baseAtual = Number(linha.base || 0);
+    linha.taxaMesBase = baseAnterior && baseAnterior > 0 && baseAtual > 0
+      ? Math.max(0, (1 - baseAtual / baseAnterior) * 100)
+      : 0;
+    if (baseAtual > 0) baseAnterior = baseAtual;
+  });
+
+  return { info, cen, horizonte, meses, fonte, linhas };
+}
+
+function formatarDecimalAuditoria(valor, casas = 6) {
+  const n = Number(valor || 0);
+  if (!Number.isFinite(n)) return "-";
+  return n.toFixed(casas).replace(".", ",");
+}
+
+function formatarPercentualAuditoria(valor, casas = 4) {
+  const n = Number(valor || 0);
+  if (!Number.isFinite(n)) return "-";
+  return `${n.toFixed(casas).replace(".", ",")}%`;
+}
+
+function linhaAuditoriaKV(rotulo, valor) {
+  if (!valorInformado(valor)) return "";
+  return `<div class="audit-kv"><span>${escaparHtml(rotulo)}</span><strong>${escaparHtml(valor)}</strong></div>`;
+}
+
+function montarTabelaMemoriaMensalHTML(memoria) {
+  const linhas = memoria.linhas || [];
+  if (!linhas.length) return `<p class="muted">Série mensal não disponível para esta consulta.</p>`;
+  const corpo = linhas.map(p => `
+    <tr>
+      <td>${p.mes}</td>
+      <td>${p.idadeMeses}</td>
+      <td>${formatarDecimalAuditoria(p.fatorBase, 6)}</td>
+      <td>${formatarPercentualAuditoria(p.taxaMesBase || 0, 4)}</td>
+      <td>${formatarMoedaBR(p.base)}</td>
+      <td>${formatarMoedaBR(p.otimista)}</td>
+      <td>${formatarMoedaBR(p.pessimista)}</td>
+      <td>${formatarMoedaBR(p.perdaBase)}</td>
+      <td>${formatarPercentualAuditoria(p.depreciacaoBase, 2)}</td>
+    </tr>`).join("");
+  return `<div class="audit-table-wrap">
+    <table class="audit-table">
+      <thead>
+        <tr>
+          <th>Mês</th>
+          <th>Idade na curva</th>
+          <th>Fator base</th>
+          <th>Taxa mês base</th>
+          <th>Valor base</th>
+          <th>Otimista</th>
+          <th>Pessimista</th>
+          <th>Perda base</th>
+          <th>Deprec. base</th>
+        </tr>
+      </thead>
+      <tbody>${corpo}</tbody>
+    </table>
+  </div>`;
+}
+
+function montarAuditoriaCalculoHTML(data) {
+  const memoria = construirSeriesProjecaoCalculo(data || {});
+  const info = memoria.info;
+  const cen = memoria.cen;
+  const taxaMensalBase = calcularTaxaMensalEquivalente(info.valorAtual, cen.base, memoria.meses);
+  const taxaMensalOtimista = calcularTaxaMensalEquivalente(info.valorAtual, cen.otimista, memoria.meses);
+  const taxaMensalPessimista = calcularTaxaMensalEquivalente(info.valorAtual, cen.pessimista, memoria.meses);
+  const fonteTexto = memoria.fonte === "serie_mensal_backend"
+    ? "Série mensal aplicada pelo backend a partir da curva salva; o gráfico é desenhado a partir destes pontos."
+    : "Série mensal reconstruída por interpolação geométrica/exponencial entre o valor inicial e os valores finais dos cenários; o gráfico é desenhado a partir destes pontos.";
+
+  return `<div class="audit-terminal-inner">
+    <section class="audit-block">
+      <h3>1. Dados de entrada</h3>
+      <div class="audit-kv-grid">
+        ${linhaAuditoriaKV("Veículo analisado", info.veiculoDescricao || "-")}
+        ${linhaAuditoriaKV("Código FIPE", info.codigoFipe || "-")}
+        ${linhaAuditoriaKV("Referência FIPE", info.dataBaseFipe || "-")}
+        ${linhaAuditoriaKV("Valor FIPE inicial (VI)", info.valorAtual > 0 ? formatarMoedaBR(info.valorAtual) : "-")}
+        ${linhaAuditoriaKV("Horizonte", `${memoria.horizonte} ano(s) / ${memoria.meses} mês(es)`)}
+        ${linhaAuditoriaKV("Idade de entrada", `${Math.round(info.idadeMeses || 0)} mês(es)`)}
+        ${linhaAuditoriaKV("Modelo/base da curva", info.modeloBase || "-")}
+        ${linhaAuditoriaKV("Coorte ou ano-base", info.anoBase || "-")}
+        ${linhaAuditoriaKV("Pontos históricos", info.pontosHistoricos > 0 ? String(info.pontosHistoricos) : "-")}
+        ${linhaAuditoriaKV("Janela histórica", info.janelaHistoricaMeses > 0 ? `${info.janelaHistoricaMeses} meses` : "-")}
+        ${linhaAuditoriaKV("Janela aplicada na curva", `${Math.round(info.inicioCurvaMeses || 0)} a ${Math.round(info.fimCurvaMeses || memoria.meses)} meses de idade`)}
+      </div>
+    </section>
+
+    <section class="audit-block">
+      <h3>2. Equações aplicadas</h3>
+      <pre class="audit-code">VI = valor FIPE inicial
+VF = valor futuro do cenário
+M  = horizonte em meses
+h  = horizonte em anos
+m  = mês da projeção
+
+Depreciação total:       D_total = 1 - (VF / VI)
+Perda econômica:         P       = VI - VF
+Taxa anual equivalente:  i_a     = 1 - (VF / VI)^(1 / h)
+Taxa mensal equivalente: i_m     = 1 - (VF / VI)^(1 / M)
+Coeficiente mensal:      q       = (VF / VI)^(1 / M)
+Interpolação geométrica: V_m     = VI × q^m = VI × (1 - i_m)^m
+Perda no mês m:          P_m     = VI - V_m
+Depreciação no mês m:    D_m     = 1 - (V_m / VI)
+
+Quando há curva mensal calibrada:
+V_m = VI × Π[k=0 até m-1] (1 - r_k)
+r_k = r_base × f_idade(I0 + k)
+
+Cenários:
+V_m(base)       = série central da curva
+V_m(otimista)   = série com menor depreciação relativa
+V_m(pessimista) = série com maior depreciação relativa</pre>
+      <p class="audit-note">Para curvas com série mensal enviada pelo backend, os fatores mensais preservam a aplicação técnica já feita sobre a curva salva. Para séries sem vetor mensal exportado, a memória usa interpolação geométrica/exponencial para reproduzir exatamente o mesmo ponto final exibido no resultado.</p>
+      <p class="audit-note"><strong>Interpolação visual:</strong> o gráfico é construído pelos pares ordenados (mês, valor estimado). A linha entre dois meses consecutivos é apenas interpolação linear visual; os valores auditáveis são os pontos mensais listados na memória de cálculo.</p>
+    </section>
+
+    <section class="audit-block">
+      <h3>3. Parâmetros calculados</h3>
+      <div class="audit-kv-grid">
+        ${linhaAuditoriaKV("Valor futuro base", info.valorFuturo > 0 ? formatarMoedaBR(info.valorFuturo) : "-")}
+        ${linhaAuditoriaKV("Valor futuro otimista", info.valorOtimista > 0 ? formatarMoedaBR(info.valorOtimista) : "-")}
+        ${linhaAuditoriaKV("Valor futuro pessimista", info.valorPessimista > 0 ? formatarMoedaBR(info.valorPessimista) : "-")}
+        ${linhaAuditoriaKV("Perda base no período", info.perda > 0 ? formatarMoedaBR(info.perda) : "-")}
+        ${linhaAuditoriaKV("Depreciação total base", valorPercentualTexto(info.depreciacaoTotal))}
+        ${linhaAuditoriaKV("Taxa anual base", valorPercentualTexto(info.taxaAnual, 4, "% a.a."))}
+        ${linhaAuditoriaKV("Taxa anual de referência", info.taxaReferencia > 0 ? valorPercentualTexto(info.taxaReferencia, 4, "% a.a.") : "-")}
+        ${linhaAuditoriaKV("Taxa mensal calibrada", info.taxaMensal > 0 ? `${formatarPercentualAuditoria(info.taxaMensal, 6)} a.m.` : "-")}
+        ${linhaAuditoriaKV("Taxa mensal equivalente base", `${formatarPercentualAuditoria(taxaMensalBase * 100, 6)} a.m.`)}
+        ${linhaAuditoriaKV("Taxa mensal otimista", `${formatarPercentualAuditoria(taxaMensalOtimista * 100, 6)} a.m.`)}
+        ${linhaAuditoriaKV("Taxa mensal pessimista", `${formatarPercentualAuditoria(taxaMensalPessimista * 100, 6)} a.m.`)}
+        ${linhaAuditoriaKV("Fonte da série mensal", fonteTexto)}
+      </div>
+    </section>
+
+    <section class="audit-block">
+      <h3>4. Construção do gráfico de projeção</h3>
+      <p class="audit-note">Cada linha da memória mensal abaixo corresponde a um ponto da curva. O ponto do mês 0 é o valor FIPE inicial; o último ponto do mês ${memoria.meses} é o valor futuro apresentado no resumo e nos cenários.</p>
+      ${montarTabelaMemoriaMensalHTML(memoria)}
+    </section>
+  </div>`;
+}
+
+function renderizarAuditoriaCalculo(data) {
+  const el = document.getElementById("auditoria_calculo_texto");
+  if (!el) return;
+  if (!data || !data.encontrado) {
+    el.textContent = "Aguardando seleção do veículo.";
+    return;
+  }
+  el.innerHTML = montarAuditoriaCalculoHTML(data);
+}
+
+function limparAuditoriaCalculo() {
+  const el = document.getElementById("auditoria_calculo_texto");
+  if (el) el.textContent = "Aguardando seleção do veículo.";
+  mostrarAbasDepreciacao(false);
+  mostrarAuditoriaCalculoArea(false);
 }
 
 function renderizarGraficoProjecaoResultado(data) {
@@ -2284,6 +2595,7 @@ function novaConsultaDepreciacao() {
     grafIpca.textContent = "Histórico corrigido pelo IPCA não disponível para esta curva.";
   }
 
+  limparAuditoriaCalculo();
   resetarFluxoDepreciacao();
   atualizarStatusResultado("Aguardando seleção do veículo.", "muted");
   document.getElementById("fipe_marca")?.focus();
@@ -2301,14 +2613,33 @@ function exportarPDFDepreciacao() {
     window.alert("Selecione primeiro um veículo com curva de depreciação pronta.");
     return;
   }
+  document.body.classList.remove("print-audit-mode");
+  selecionarAbaPrincipalDepreciacao("resultado");
   mostrarResultadoArea(true);
   mostrarGraficoBarrasArea(true);
   mostrarAuditoriaArea(true);
+  mostrarAuditoriaCalculoArea(false);
   preencherResumo(ultimoResumoDepreciacao);
   preencherRelatorio(ultimoResumoDepreciacao, "curva salva");
   renderizarGraficosDepreciacao(ultimoResumoDepreciacao);
   atualizarCabecalhoPDFDepreciacao();
   setTimeout(() => window.print(), 150);
+}
+
+function exportarAuditoriaMatematica() {
+  if (!ultimoResumoDepreciacao || !ultimoResumoDepreciacao.encontrado) {
+    window.alert("Selecione primeiro um veículo com curva de depreciação pronta.");
+    return;
+  }
+  renderizarAuditoriaCalculo(ultimoResumoDepreciacao);
+  mostrarAbasDepreciacao(true);
+  selecionarAbaPrincipalDepreciacao("auditoria");
+  atualizarCabecalhoPDFDepreciacao();
+  document.body.classList.add("print-audit-mode");
+  setTimeout(() => {
+    window.print();
+    setTimeout(() => document.body.classList.remove("print-audit-mode"), 500);
+  }, 150);
 }
 
 function aplicarChecksModelosFipe() {
@@ -2351,6 +2682,8 @@ document.addEventListener("DOMContentLoaded", () => {
   mostrarResultadoArea(false);
   mostrarGraficoBarrasArea(false);
   mostrarAuditoriaArea(false);
+  mostrarAuditoriaCalculoArea(false);
+  mostrarAbasDepreciacao(false);
   carregarStatusBases();
 
   document.getElementById("tipo_veiculo")?.addEventListener("change", () => {
@@ -2361,6 +2694,10 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("horizonte_anos")?.addEventListener("change", reaplicarHorizonteAtual);
 
   document.getElementById("btn_ver_detalhes")?.addEventListener("click", mostrarDetalhes);
+  document.getElementById("tab_resultado_depreciacao")?.addEventListener("click", () => selecionarAbaPrincipalDepreciacao("resultado"));
+  document.getElementById("tab_auditoria_depreciacao")?.addEventListener("click", () => selecionarAbaPrincipalDepreciacao("auditoria"));
+  document.getElementById("btn_voltar_resultado")?.addEventListener("click", () => selecionarAbaPrincipalDepreciacao("resultado"));
+  document.getElementById("btn_exportar_auditoria_pdf")?.addEventListener("click", exportarAuditoriaMatematica);
   document.getElementById("btn_exportar_pdf")?.addEventListener("click", exportarPDFDepreciacao);
   document.getElementById("btn_nova_consulta")?.addEventListener("click", novaConsultaDepreciacao);
   document.getElementById("btn_usar_no_tco")?.addEventListener("click", usarResultadoNoTCOEFechar);
