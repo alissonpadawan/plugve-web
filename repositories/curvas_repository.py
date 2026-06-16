@@ -1116,19 +1116,18 @@ class CurvasRepository:
         valor_atual = veiculo.valor_atual or parse_float_seguro(curva.get("valor_fipe_atual"), 0.0)
         valor_futuro = parse_float_seguro(curva.get("valor_futuro_base"), 0.0)
         taxa_anual = parse_float_seguro(curva.get("depreciacao_media_anual_percentual"), 0.0)
+        taxa_anual_otimista = max(0.0, taxa_anual * 0.85)
+        taxa_anual_pessimista = max(0.0, taxa_anual * 1.15)
 
         if taxa_anual > 0 and valor_atual > 0:
             # Recalcula sempre a partir do valor FIPE atual selecionado e do horizonte do usuário.
             # A curva salva fornece a taxa; o valor projetado precisa respeitar a seleção atual.
             valor_futuro = valor_atual * ((1.0 - taxa_anual / 100.0) ** horizonte)
-
-        valor_otimista = parse_float_seguro(curva.get("valor_futuro_otimista") or curva.get("valor_otimista_final"), 0.0)
-        valor_pessimista = parse_float_seguro(curva.get("valor_futuro_pessimista") or curva.get("valor_pessimista_final"), 0.0)
-        if taxa_anual > 0 and valor_atual > 0:
-            if valor_otimista <= 0:
-                valor_otimista = valor_atual * ((1.0 - (taxa_anual * 0.85) / 100.0) ** horizonte)
-            if valor_pessimista <= 0:
-                valor_pessimista = valor_atual * ((1.0 - (taxa_anual * 1.15) / 100.0) ** horizonte)
+            valor_otimista = valor_atual * ((1.0 - taxa_anual_otimista / 100.0) ** horizonte)
+            valor_pessimista = valor_atual * ((1.0 - taxa_anual_pessimista / 100.0) ** horizonte)
+        else:
+            valor_otimista = parse_float_seguro(curva.get("valor_futuro_otimista") or curva.get("valor_otimista_final"), 0.0)
+            valor_pessimista = parse_float_seguro(curva.get("valor_futuro_pessimista") or curva.get("valor_pessimista_final"), 0.0)
 
         pontos = parse_int_seguro(curva.get("pontos_historicos"), 0)
         janela = parse_int_seguro(curva.get("janela_historica_meses"), 0)
@@ -1146,10 +1145,15 @@ class CurvasRepository:
             "curva": curva,
             "valor_atual": round(valor_atual, 2),
             "valor_futuro": round(valor_futuro, 2),
-            "valor_futuro_base": parse_float_seguro(curva.get("valor_futuro_base"), 0.0),
+            "valor_futuro_base": round(valor_futuro, 2),
             "valor_futuro_otimista": round(valor_otimista, 2) if valor_otimista > 0 else 0.0,
             "valor_futuro_pessimista": round(valor_pessimista, 2) if valor_pessimista > 0 else 0.0,
-            "horizonte_relatorio_anos": curva.get("horizonte_relatorio_anos", ""),
+            "horizonte_relatorio_anos": horizonte,
+            "horizonte_meses": int(horizonte * 12),
+            "taxa_anual_efetiva_percentual": round(max(0.0, taxa_anual), 6),
+            "taxa_anual_base_efetiva_percentual": round(max(0.0, taxa_anual), 6),
+            "taxa_anual_otimista_efetiva_percentual": round(max(0.0, taxa_anual_otimista), 6),
+            "taxa_anual_pessimista_efetiva_percentual": round(max(0.0, taxa_anual_pessimista), 6),
             "data_relatorio_tecnico": curva.get("data_relatorio_tecnico", ""),
             "depreciacao_percentual": round(max(0.0, depreciacao_pct), 2),
             "taxa_anual_percentual": round(max(0.0, taxa_anual), 2),

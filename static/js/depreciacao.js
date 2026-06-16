@@ -98,7 +98,7 @@ function atualizarTerminalV1917(data) {
     terminalV1917Linhas = linhas;
     el.textContent = linhas.join("\n");
   } else if (!terminalV1917Linhas.length) {
-    el.textContent = "Terminal aguardando diagnóstico V24.7...";
+    el.textContent = "Terminal aguardando diagnóstico técnico...";
   }
   if (meta) {
     const total = data?.terminal_total_linhas || linhas.length || terminalV1917Linhas.length;
@@ -110,7 +110,7 @@ function atualizarTerminalV1917(data) {
 }
 
 function limparResumo() {
-  ["res_valor_atual", "res_valor_futuro", "res_horizonte", "res_depreciacao", "res_taxa", "res_taxa_total", "res_confianca", "res_origem", "res_tipo_usado", "res_modelo"].forEach(id => {
+  ["res_valor_atual", "res_valor_futuro", "res_perda", "res_horizonte", "res_taxa", "res_taxa_total", "res_confianca", "res_origem", "res_tipo_usado", "res_modelo"].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.textContent = "-";
   });
@@ -196,29 +196,24 @@ function configurarBotoesResultado(curvaEncontrada, podeCalcularFuturo, permitir
 }
 
 function preencherResumo(data) {
-  const cen = obterCenariosDoResultado(data);
-  const valorAtual = Number(cen.atual || data.valor_atual || 0);
-  const valorFuturo = Number(cen.base || data.valor_futuro || 0);
-  const horizonte = Math.max(1, Number(cen.horizonte || data.horizonte_anos || document.getElementById("horizonte_anos")?.value || 5));
-  const depCalculada = valorAtual > 0 && valorFuturo > 0 ? ((valorAtual - valorFuturo) / valorAtual) * 100 : Number(data.depreciacao_percentual || 0);
-  document.getElementById("res_valor_atual").textContent = valorAtual > 0 ? formatarMoedaBR(valorAtual) : "-";
-  document.getElementById("res_valor_futuro").textContent = valorFuturo > 0 ? formatarMoedaBR(valorFuturo) : "-";
-  document.getElementById("res_horizonte").textContent = horizonte > 0 ? formatarHorizonteLabel(horizonte) : "-";
-  document.getElementById("res_depreciacao").textContent = depCalculada > 0 ? `${depCalculada.toFixed(2).replace(".", ",")}%` : "-";
-  const taxaResumo = Number(cen.taxaBase || 0) * 100;
-  document.getElementById("res_taxa").textContent = taxaResumo > 0 ? `${taxaResumo.toFixed(2).replace(".", ",")}% a.a.` : "-";
-  document.getElementById("res_taxa_total").textContent = depCalculada > 0 ? `${depCalculada.toFixed(2).replace(".", ",")}%` : "-";
-  document.getElementById("res_confianca").textContent = data.confianca || "-";
-  document.getElementById("res_origem").textContent = data.origem_curva || "-";
-  document.getElementById("res_tipo_usado").textContent = data.detalhes?.tipo_label || data.tipo_curva || "-";
+  const info = montarDadosRelatorioProfissional(data || {});
+  setTextoElemento("res_valor_atual", info.valorAtual > 0 ? formatarMoedaBR(info.valorAtual) : "-");
+  setTextoElemento("res_valor_futuro", info.valorFuturo > 0 ? formatarMoedaBR(info.valorFuturo) : "-");
+  setTextoElemento("res_perda", info.perda > 0 ? formatarMoedaBR(info.perda) : "-");
+  setTextoElemento("res_horizonte", info.horizonteLabel);
+  setTextoElemento("res_taxa", info.taxaAnual > 0 ? `${info.taxaAnual.toFixed(2).replace(".", ",")}% a.a.` : "-");
+  setTextoElemento("res_taxa_total", info.depreciacaoTotal > 0 ? `${info.depreciacaoTotal.toFixed(2).replace(".", ",")}%` : "-");
+  setTextoElemento("res_confianca", info.confianca || "-");
+  setTextoElemento("res_origem", info.baseTecnicaResumo || "-");
+  setTextoElemento("res_tipo_usado", info.tipoLabel || "-");
+  atualizarStatusResultado(statusProfissional(data, info), data?.encontrado ? "encontrado" : "muted");
+
   const linhaModelo = document.getElementById("res_modelo_linha");
   const elModelo = document.getElementById("res_modelo");
-  const veiculo = data.detalhes?.veiculo || {};
-  const nomeModelo = [veiculo.marca, veiculo.modelo, veiculo.ano_modelo].filter(Boolean).join(" ").trim();
   if (linhaModelo && elModelo) {
-    elModelo.textContent = nomeModelo || "-";
-    linhaModelo.classList.toggle("hidden", !nomeModelo);
-    linhaModelo.classList.toggle("low-confidence", confiancaEhBaixaOuExploratoria(data.confianca));
+    elModelo.textContent = info.veiculoDescricao || "-";
+    linhaModelo.classList.toggle("hidden", !info.veiculoDescricao);
+    linhaModelo.classList.toggle("low-confidence", confiancaEhBaixaOuExploratoria(info.confianca));
   }
   atualizarVisibilidadeResumo();
 }
@@ -234,7 +229,7 @@ function atualizarVisibilidadeResumo() {
 }
 
 function limparResumoParcialApenasValor(valorAtual) {
-  ["res_valor_futuro", "res_horizonte", "res_depreciacao", "res_taxa", "res_taxa_total", "res_confianca", "res_origem", "res_tipo_usado"].forEach(id => {
+  ["res_valor_futuro", "res_perda", "res_horizonte", "res_taxa", "res_taxa_total", "res_confianca", "res_origem", "res_tipo_usado"].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.textContent = "-";
   });
@@ -267,155 +262,390 @@ function adicionarDetalhe(corpo, rotulo, valor) {
 }
 
 
-function montarRelatorioTextual(data, origem = "curva") {
-  const relatorioImportado = data?.relatorio_textual || data?.relatorio_tecnico || data?.detalhes?.curva?.relatorio_tecnico || data?.detalhes?.curva?.relatorio_tecnico_texto;
-  if (relatorioImportado && String(relatorioImportado).trim()) {
-    const cenariosImportado = obterCenariosDoResultado(data);
-    const valorAtualImportado = Number(cenariosImportado.atual || data?.valor_atual || 0);
-    const valorFuturoImportado = Number(cenariosImportado.base || data?.valor_futuro || 0);
-    const depImportada = valorAtualImportado > 0 && valorFuturoImportado > 0
-      ? ((valorAtualImportado - valorFuturoImportado) / valorAtualImportado) * 100
-      : Number(data?.depreciacao_percentual || 0);
-    const taxaImportada = Number(cenariosImportado.taxaBase || 0) * 100;
-    const idadeMesesImportada = Number(data?.idade_entrada_meses || data?.detalhes?.idade_entrada_meses || 0);
-    const idadeAnosImportada = Number(data?.idade_entrada_anos || data?.detalhes?.idade_entrada_anos || (idadeMesesImportada / 12) || 0);
-    const linhasResumoImportado = [
-      "RESUMO APLICADO AO HORIZONTE SELECIONADO NO SITE",
-      `Horizonte da análise: ${formatarHorizonteLabel(cenariosImportado.horizonte)}.`,
-      valorAtualImportado > 0 ? `Valor FIPE inicial: ${formatarMoedaBR(valorAtualImportado)}.` : "",
-      valorFuturoImportado > 0 ? `Valor estimado ao final do horizonte: ${formatarMoedaBR(valorFuturoImportado)}.` : "",
-      idadeMesesImportada > 0 ? `Idade de entrada aplicada na curva: ${idadeMesesImportada} meses (${idadeAnosImportada.toFixed(2).replace(".", ",")} anos).` : "",
-      depImportada > 0 ? `Taxa de depreciação total no período: ${depImportada.toFixed(2).replace(".", ",")}%.` : "",
-      taxaImportada > 0 ? `Taxa anual equivalente aplicada: ${taxaImportada.toFixed(2).replace(".", ",")}% a.a.` : "",
-      "",
-      "RELATÓRIO TÉCNICO DA CURVA APLICADA",
-      String(relatorioImportado).trim()
-    ];
-    return linhasResumoImportado.filter(linha => linha !== "").join("\n");
+function setTextoElemento(id, valor) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = valor === null || valor === undefined || valor === "" ? "-" : String(valor);
+}
+
+function escaparHtml(valor) {
+  return String(valor ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function primeiroTextoValido(...valores) {
+  for (const valor of valores) {
+    if (valorInformado(valor)) return String(valor).trim();
   }
+  return "";
+}
+
+function textoRelatorioBruto(data) {
+  return String(
+    data?.relatorio_textual ||
+    data?.relatorio_tecnico ||
+    data?.detalhes?.relatorio_tecnico ||
+    data?.detalhes?.curva?.relatorio_tecnico ||
+    data?.detalhes?.curva?.relatorio_tecnico_texto ||
+    ""
+  );
+}
+
+function extrairTextoPorPadroes(texto, padroes) {
+  const fonte = String(texto || "");
+  for (const padrao of padroes) {
+    const m = fonte.match(padrao);
+    if (m && valorInformado(m[1])) return String(m[1]).trim();
+  }
+  return "";
+}
+
+function limparTextoInternoRelatorio(texto) {
+  let saida = String(texto || "").trim();
+  if (!saida) return "";
+  saida = saida.replace(/\bV\d+(?:\.\d+)+\b/gi, "").replace(/\s{2,}/g, " ").trim();
+  saida = saida.replace(/cache local/gi, "base técnica local");
+  saida = saida.replace(/coleta FIPE sob demanda/gi, "histórico FIPE coletado");
+  saida = saida.replace(/taper mensal/gi, "ajuste progressivo por idade");
+  saida = saida.replace(/taxa para a plataforma principal/gi, "taxa anual equivalente aplicada");
+  saida = saida.replace(/plataforma principal/gi, "simulação");
+  saida = saida.replace(/site aplicou/gi, "a projeção aplica");
+  saida = saida.replace(/resultado salvo carregado/gi, "curva disponível");
+  return saida.trim();
+}
+
+function limparAnoBaseProfissional(valor) {
+  const txt = String(valor || "").trim();
+  if (!txt) return "";
+  const ano = txt.match(/(?:19|20)\d{2}/);
+  if (!ano) return "";
+  const n = Number(ano[0]);
+  if (!Number.isFinite(n) || n < 1990 || n > 2100) return "";
+  return String(n);
+}
+
+function formatarMesesProfissional(meses) {
+  const n = Number(meses || 0);
+  if (!Number.isFinite(n) || n <= 0) return "";
+  const anos = n / 12;
+  if (n < 12) return `${Math.round(n)} meses`;
+  if (Math.abs(anos - Math.round(anos)) < 0.05) return `${Math.round(anos)} ano${Math.round(anos) === 1 ? "" : "s"} (${Math.round(n)} meses)`;
+  return `${anos.toFixed(1).replace(".", ",")} anos (${Math.round(n)} meses)`;
+}
+
+function valorPercentualTexto(valor, casas = 2, sufixo = "%") {
+  const n = Number(valor || 0);
+  if (!Number.isFinite(n) || n <= 0) return "-";
+  return `${n.toFixed(casas).replace(".", ",")}${sufixo}`;
+}
+
+function obterVeiculoDescricaoProfissional(data) {
   const detalhes = data?.detalhes || {};
   const veiculo = detalhes.veiculo || ultimoDetalheFipe || {};
-  const modelo = veiculo.modelo || detalhes.modelo || data?.modelo || "veículo selecionado";
-  const marca = veiculo.marca || detalhes.marca || data?.marca || "";
-  const cenarios = obterCenariosDoResultado(data);
-  const horizonte = Number(cenarios.horizonte || data?.horizonte_anos || document.getElementById("horizonte_anos")?.value || 5);
-  const valorAtual = Number(cenarios.atual || data?.valor_atual || veiculo.valor_atual || 0);
-  const valorFuturo = Number(cenarios.base || data?.valor_futuro || 0);
-  const taxa = Number(cenarios.taxaBase || 0) * 100 || Number(data?.taxa_anual_percentual || 0);
-  const dep = valorAtual > 0 && valorFuturo > 0 ? ((valorAtual - valorFuturo) / valorAtual) * 100 : Number(data?.depreciacao_percentual || 0);
-  const confianca = data?.confianca || detalhes.confianca;
-  const pontos = data?.pontos_historicos || detalhes.pontos_historicos;
-  const janela = data?.janela_historica_meses || detalhes.janela_historica_meses;
-  const origemFinal = data?.origem_curva || detalhes.origem_curva || origem || "curva cadastrada";
-  const auditoriaInfo = detalhes.auditoria_historico || data?.motor?.auditoria_historico || {};
-  const perda = valorAtual && valorFuturo ? valorAtual - valorFuturo : 0;
+  const marca = primeiroTextoValido(veiculo.marca, detalhes.marca, data?.marca);
+  const modelo = primeiroTextoValido(veiculo.modelo, detalhes.modelo, data?.modelo);
+  const ano = primeiroTextoValido(veiculo.ano_modelo, veiculo.ano_combustivel, detalhes.ano_modelo, data?.ano_modelo);
+  return [marca, modelo, ano].filter(Boolean).join(" ").replace(/\s+/g, " ").trim();
+}
 
-  const linhas = [];
-  linhas.push("RELATÓRIO TÉCNICO DE AUDITORIA DA DEPRECIAÇÃO");
-  linhas.push("");
-  linhas.push(`Veículo analisado: ${[marca, modelo].filter(Boolean).join(" ") || "veículo selecionado"}.`);
-  linhas.push(`Horizonte da análise: ${horizonte} ano(s).`);
-  if (valorAtual) linhas.push(`Valor FIPE inicial: ${formatarMoedaBR(valorAtual)}.`);
-  if (valorFuturo) linhas.push(`Valor estimado ao final do horizonte: ${formatarMoedaBR(valorFuturo)}.`);
-  if (perda > 0) linhas.push(`Perda econômica estimada no período: ${formatarMoedaBR(perda)}.`);
-  if (dep) linhas.push(`Depreciação acumulada: ${dep.toFixed(2).replace(".", ",")}%.`);
-  if (taxa) linhas.push(`Taxa média anual utilizada: ${taxa.toFixed(2).replace(".", ",")}% a.a.`);
-  if (valorInformado(auditoriaInfo.modo_calculo)) {
-    if (String(auditoriaInfo.modo_calculo).includes("usado")) {
-      linhas.push("Critério de projeção: veículo usado; a projeção parte do valor FIPE atual e continua a curva no ponto de idade observado, em vez de reiniciar a depreciação como zero km.");
-    } else if (String(auditoriaInfo.modo_calculo).includes("zero")) {
-      linhas.push("Critério de projeção: veículo zero km; a projeção inicia na idade zero da curva de depreciação.");
-    }
+function obterCodigoFipeProfissional(data) {
+  const detalhes = data?.detalhes || {};
+  const veiculo = detalhes.veiculo || ultimoDetalheFipe || {};
+  const bruto = textoRelatorioBruto(data);
+  return primeiroTextoValido(
+    veiculo.codigo_fipe,
+    data?.codigo_fipe,
+    detalhes.codigo_fipe,
+    detalhes.curva?.codigo_fipe,
+    extrairTextoPorPadroes(bruto, [/Código FIPE:\s*([^\n\r]+)/i])
+  );
+}
+
+function obterDataBaseFipeProfissional(data) {
+  const detalhes = data?.detalhes || {};
+  const veiculo = detalhes.veiculo || ultimoDetalheFipe || {};
+  const bruto = textoRelatorioBruto(data);
+  return primeiroTextoValido(
+    data?.data_base_fipe,
+    detalhes.data_base_fipe,
+    veiculo.referencia_fipe,
+    veiculo.referencia,
+    extrairTextoPorPadroes(bruto, [/Referência\/Data-base FIPE:\s*([^\n\r]+)/i, /Data-base da análise:\s*([^\n\r]+)/i])
+  );
+}
+
+function obterModeloBaseProfissional(data) {
+  const detalhes = data?.detalhes || {};
+  const curva = detalhes.curva || {};
+  const familia = detalhes.familia || {};
+  const auditoria = detalhes.auditoria_historico || data?.motor?.auditoria_historico || {};
+  const bruto = textoRelatorioBruto(data);
+  return limparTextoInternoRelatorio(primeiroTextoValido(
+    extrairTextoPorPadroes(bruto, [/Modelo base usado como referência:\s*([^\n\r]+)/i, /Modelo-base\/curva de referência:\s*([^\n\r]+)/i, /Curva\/modelo referência:\s*([^\n\r]+)/i]),
+    curva.modelo_base_curva,
+    familia.modelo_base_curva,
+    familia.modelo_base_curva_eletrico,
+    familia.modelo_base_curva_combustao,
+    auditoria.curva_referencia,
+    auditoria.referencia?.titulo,
+    auditoria.referencia?.modelo,
+    obterVeiculoDescricaoProfissional(data)
+  ));
+}
+
+function obterAnoBaseProfissional(data) {
+  const detalhes = data?.detalhes || {};
+  const curva = detalhes.curva || {};
+  const familia = detalhes.familia || {};
+  const bruto = textoRelatorioBruto(data);
+  return primeiroTextoValido(
+    limparAnoBaseProfissional(extrairTextoPorPadroes(bruto, [/Ano âncora\/coorte usada:\s*([^\n\r]+)/i, /Ano-base preferencial:\s*([^\n\r]+)/i, /Ano base usado como referência:\s*([^\n\r]+)/i])),
+    limparAnoBaseProfissional(curva.ano_base_curva),
+    limparAnoBaseProfissional(familia.ano_base_curva),
+    limparAnoBaseProfissional(familia.ano_base_curva_eletrico),
+    limparAnoBaseProfissional(familia.ano_base_curva_combustao)
+  );
+}
+
+function obterDataZeroKmBaseProfissional(data) {
+  const detalhes = data?.detalhes || {};
+  const curva = detalhes.curva || {};
+  const bruto = textoRelatorioBruto(data);
+  return primeiroTextoValido(
+    data?.data_zero_km_base,
+    detalhes.data_zero_km_base,
+    curva.data_zero_km_base,
+    extrairTextoPorPadroes(bruto, [/Data do zero km base:\s*([^\n\r]+)/i, /Data-base zero km:\s*([^\n\r]+)/i])
+  );
+}
+
+function obterTipoCurvaProfissional(data) {
+  const detalhes = data?.detalhes || {};
+  const origem = String(data?.origem_curva || detalhes.origem_curva || "").toLowerCase();
+  if (origem.includes("proxy")) return "Curva por proxy técnico";
+  if (origem.includes("fam") || origem.includes("familiar")) return "Curva familiar";
+  if (origem.includes("explorat")) return "Curva exploratória";
+  if (origem.includes("coorte") || origem.includes("própria") || origem.includes("propria")) return "Curva própria do modelo";
+  return primeiroTextoValido(data?.origem_curva, detalhes.origem_curva, "Curva histórica disponível");
+}
+
+function tipoMotorizacaoProfissional(data) {
+  const detalhes = data?.detalhes || {};
+  const txt = String(detalhes.tipo_label || data?.tipo_label || data?.tipo_curva || detalhes.tipo_utilizado || "").toLowerCase();
+  if (txt.includes("eletr") || txt.includes("híbr") || txt.includes("hibr")) return "Elétrico ou híbrido";
+  if (txt.includes("comb")) return "Combustão";
+  return primeiroTextoValido(detalhes.tipo_label, data?.tipo_label, data?.tipo_curva, "Veículo");
+}
+
+function statusProfissional(data, info = null) {
+  if (!data?.encontrado) return "Selecione um veículo para gerar a estimativa.";
+  const dados = info || montarDadosRelatorioProfissional(data);
+  if (confiancaEhBaixaOuExploratoria(dados.confianca)) {
+    return "Estimativa disponível, com cautela metodológica por limitação da base histórica.";
   }
+  return "Estimativa gerada a partir da curva histórica disponível para o veículo selecionado.";
+}
 
-  const linhasAuditoria = [];
-  if (valorInformado(origemFinal)) linhasAuditoria.push(`Origem técnica da curva: ${origemFinal}.`);
-  if (valorInformado(confianca)) linhasAuditoria.push(`Nível de confiança: ${confianca}.`);
-  if (valorInformado(pontos)) linhasAuditoria.push(`Pontos históricos considerados: ${pontos}.`);
-  if (valorInformado(janela)) linhasAuditoria.push(`Janela histórica observada: ${janela} meses.`);
-  if (valorInformado(auditoriaInfo.fonte_historico)) linhasAuditoria.push(`Fonte do histórico: ${auditoriaInfo.fonte_historico}.`);
-  if (valorInformado(auditoriaInfo.curva_referencia)) linhasAuditoria.push(`Curva/modelo de referência: ${auditoriaInfo.curva_referencia}.`);
-  const proxyTxt = String(origemFinal || "").toLowerCase().includes("proxy") || auditoriaInfo.proxy_aplicado;
-  linhasAuditoria.push(`Proxy aplicado: ${proxyTxt ? "Sim" : "Não"}.`);
-  if (linhasAuditoria.length) {
-    linhas.push("");
-    linhas.push(...linhasAuditoria);
-  }
+function obterBaseTecnicaResumoProfissional(info) {
+  const partes = [];
+  if (info.modeloBase) partes.push(info.modeloBase);
+  if (info.anoBase) partes.push(`coorte ${info.anoBase}`);
+  if (info.dataZeroKmBase) partes.push(`base zero km ${info.dataZeroKmBase}`);
+  const detalhe = [];
+  if (info.pontosHistoricos > 0) detalhe.push(`${info.pontosHistoricos} pontos históricos FIPE`);
+  if (info.janelaHistoricaMeses > 0) detalhe.push(`janela de ${info.janelaHistoricaMeses} meses`);
+  let texto = partes.filter(Boolean).join(" - ");
+  if (!texto) texto = "Base histórica FIPE disponível";
+  if (detalhe.length) texto += `, com ${detalhe.join(" e ")}`;
+  return `${texto}.`;
+}
 
-  linhas.push("");
-  linhas.push("Interpretação: o gráfico de barras compara o valor inicial do veículo com os valores futuros estimados nos cenários base, otimista e pessimista. A curva de depreciação mostra a evolução do valor ao longo do tempo, permitindo validar visualmente a taxa aplicada antes de transportar a informação para o TCO.");
-  return linhas.join("\n");
+function montarDadosRelatorioProfissional(data) {
+  const detalhes = data?.detalhes || {};
+  const curva = detalhes.curva || {};
+  const auditoria = detalhes.auditoria_historico || data?.motor?.auditoria_historico || {};
+  const cen = obterCenariosDoResultado(data || {});
+  const valorAtual = Number(cen.atual || data?.valor_atual || detalhes?.veiculo?.valor_atual || 0);
+  const valorFuturo = Number(cen.base || data?.valor_futuro || data?.valor_futuro_base || 0);
+  const valorOtimista = Number(cen.otimista || data?.valor_futuro_otimista || 0);
+  const valorPessimista = Number(cen.pessimista || data?.valor_futuro_pessimista || 0);
+  const horizonte = Math.max(1, Number(cen.horizonte || data?.horizonte_anos || document.getElementById("horizonte_anos")?.value || 5));
+  const horizonteMeses = Number(data?.horizonte_meses || detalhes.horizonte_meses || Math.round(horizonte * 12));
+  const perda = valorAtual > 0 && valorFuturo > 0 ? Math.max(0, valorAtual - valorFuturo) : 0;
+  const depreciacaoTotal = valorAtual > 0 && valorFuturo > 0 ? ((valorAtual - valorFuturo) / valorAtual) * 100 : Number(data?.depreciacao_percentual || 0);
+  const taxaAnual = Number(cen.taxaBase || 0) * 100 || Number(data?.taxa_anual_efetiva_percentual || data?.taxa_anual_percentual || 0);
+  const taxaReferencia = primeiroValorPositivo(data?.taxa_anual_referencia_percentual, detalhes.taxa_anual_referencia_percentual, curva.taxa_anual_referencia_percentual, curva.depreciacao_media_anual_principal_percentual, curva.depreciacao_media_anual_percentual);
+  const taxaMensal = primeiroValorPositivo(data?.taxa_mensal_hibrida_percentual, detalhes.taxa_mensal_hibrida_percentual, curva.taxa_mensal_hibrida_percentual, curva.taxa_mensal_percentual);
+  const idadeMeses = Number(data?.idade_entrada_meses || detalhes.idade_entrada_meses || 0);
+  const idadeAnos = Number(data?.idade_entrada_anos || detalhes.idade_entrada_anos || (idadeMeses / 12) || 0);
+  const inicioCurvaMeses = Number(data?.inicio_curva_meses ?? detalhes.inicio_curva_meses ?? idadeMeses);
+  const fimCurvaMeses = Number(data?.fim_curva_meses ?? detalhes.fim_curva_meses ?? (idadeMeses + horizonteMeses));
+  const pontosHistoricos = Number(data?.pontos_historicos || detalhes.pontos_historicos || curva.pontos_historicos || auditoria.pontos || auditoria.pontos_historicos || 0);
+  const janelaHistoricaMeses = Number(data?.janela_historica_meses || detalhes.janela_historica_meses || curva.janela_historica_meses || auditoria.janela_meses || 0);
+  const info = {
+    veiculoDescricao: obterVeiculoDescricaoProfissional(data),
+    codigoFipe: obterCodigoFipeProfissional(data),
+    dataBaseFipe: obterDataBaseFipeProfissional(data),
+    valorAtual,
+    valorFuturo,
+    valorOtimista,
+    valorPessimista,
+    perda,
+    depreciacaoTotal,
+    taxaAnual,
+    taxaReferencia,
+    taxaMensal,
+    horizonte,
+    horizonteLabel: formatarHorizonteLabel(horizonte),
+    horizonteMeses,
+    idadeMeses,
+    idadeAnos,
+    inicioCurvaMeses,
+    fimCurvaMeses,
+    confianca: primeiroTextoValido(data?.confianca, detalhes.confianca, curva.confianca),
+    tipoLabel: tipoMotorizacaoProfissional(data),
+    tipoCurva: obterTipoCurvaProfissional(data),
+    modeloBase: obterModeloBaseProfissional(data),
+    anoBase: obterAnoBaseProfissional(data),
+    dataZeroKmBase: obterDataZeroKmBaseProfissional(data),
+    pontosHistoricos,
+    janelaHistoricaMeses,
+    modoPandemia: primeiroTextoValido(data?.modo_pandemia, detalhes.modo_pandemia, curva.modo_pandemia, extrairTextoPorPadroes(textoRelatorioBruto(data), [/Modo pandemia:\s*([^\n\r]+)/i])),
+    origemOriginal: limparTextoInternoRelatorio(primeiroTextoValido(data?.origem_curva, detalhes.origem_curva, curva.origem_curva))
+  };
+  info.baseTecnicaResumo = obterBaseTecnicaResumoProfissional(info);
+  return info;
+}
+
+function valorLinhaHTML(rotulo, valor, destaque = false) {
+  if (!valorInformado(valor)) return "";
+  return `<div class="report-metric ${destaque ? "report-metric-highlight" : ""}"><span>${escaparHtml(rotulo)}</span><strong>${escaparHtml(valor)}</strong></div>`;
+}
+
+function linhaTabelaProfissional(rotulo, valor) {
+  if (!valorInformado(valor)) return "";
+  return `<tr><th>${escaparHtml(rotulo)}</th><td>${escaparHtml(valor)}</td></tr>`;
+}
+
+function cardCenarioProfissional(nome, valor, texto, classe) {
+  if (!(Number(valor) > 0)) return "";
+  return `<div class="scenario-card ${classe || ""}"><span>${escaparHtml(nome)}</span><strong>${escaparHtml(formatarMoedaBR(valor))}</strong><small>${escaparHtml(texto || "")}</small></div>`;
+}
+
+function montarRelatorioHTMLProfissional(data) {
+  const info = montarDadosRelatorioProfissional(data || {});
+  const perdaTexto = info.perda > 0 ? formatarMoedaBR(info.perda) : "-";
+  const depTexto = valorPercentualTexto(info.depreciacaoTotal);
+  const taxaTexto = valorPercentualTexto(info.taxaAnual, 2, "% a.a.");
+  const valorAtualTexto = info.valorAtual > 0 ? formatarMoedaBR(info.valorAtual) : "-";
+  const valorFuturoTexto = info.valorFuturo > 0 ? formatarMoedaBR(info.valorFuturo) : "-";
+  const idadeTexto = info.idadeMeses > 0 ? `${info.idadeMeses} meses (${info.idadeAnos.toFixed(2).replace(".", ",")} anos)` : "0 meses; projeção iniciada como zero km";
+  const janelaAplicada = Number.isFinite(info.inicioCurvaMeses) && Number.isFinite(info.fimCurvaMeses) ? `${info.inicioCurvaMeses} a ${info.fimCurvaMeses} meses de idade` : "-";
+
+  const tabelaBase = [
+    linhaTabelaProfissional("Tipo de curva", info.tipoCurva),
+    linhaTabelaProfissional("Modelo de referência", info.modeloBase),
+    linhaTabelaProfissional("Coorte ou ano-base", info.anoBase),
+    linhaTabelaProfissional("Base zero km da coorte", info.dataZeroKmBase),
+    linhaTabelaProfissional("Pontos históricos FIPE", info.pontosHistoricos > 0 ? `${info.pontosHistoricos}` : ""),
+    linhaTabelaProfissional("Janela histórica observada", info.janelaHistoricaMeses > 0 ? `${info.janelaHistoricaMeses} meses` : ""),
+    linhaTabelaProfissional("Tratamento da pandemia", limparTextoInternoRelatorio(info.modoPandemia))
+  ].join("");
+
+  const tabelaAuditoria = [
+    linhaTabelaProfissional("Código FIPE", info.codigoFipe),
+    linhaTabelaProfissional("Referência FIPE", info.dataBaseFipe),
+    linhaTabelaProfissional("Horizonte projetado", `${info.horizonteLabel}${info.horizonteMeses ? ` (${info.horizonteMeses} meses)` : ""}`),
+    linhaTabelaProfissional("Idade considerada na curva", idadeTexto),
+    linhaTabelaProfissional("Janela aplicada da curva", janelaAplicada),
+    linhaTabelaProfissional("Taxa mensal calibrada da curva", info.taxaMensal > 0 ? `${info.taxaMensal.toFixed(4).replace(".", ",")}% a.m.` : ""),
+    linhaTabelaProfissional("Taxa anual de referência da curva", info.taxaReferencia > 0 ? `${info.taxaReferencia.toFixed(2).replace(".", ",")}% a.a.` : ""),
+    linhaTabelaProfissional("Taxa anual equivalente aplicada", taxaTexto),
+    linhaTabelaProfissional("Depreciação total no horizonte", depTexto)
+  ].join("");
+
+  return `<div class="professional-report">
+    <section class="report-section report-executive">
+      <p class="report-kicker">Resumo executivo</p>
+      <h3>Resultado aplicado ao veículo consultado</h3>
+      <p class="report-lead">A estimativa considera o valor FIPE do veículo selecionado, o horizonte informado e a curva histórica disponível para a base técnica correspondente.</p>
+      <div class="report-metric-grid">
+        ${valorLinhaHTML("Veículo analisado", info.veiculoDescricao || "Veículo selecionado", true)}
+        ${valorLinhaHTML("Valor FIPE atual", valorAtualTexto)}
+        ${valorLinhaHTML(`Valor estimado em ${info.horizonteLabel}`, valorFuturoTexto, true)}
+        ${valorLinhaHTML("Perda estimada no período", perdaTexto)}
+        ${valorLinhaHTML("Depreciação total", depTexto)}
+        ${valorLinhaHTML("Taxa anual equivalente", taxaTexto)}
+        ${valorLinhaHTML("Confiança", info.confianca || "-")}
+        ${valorLinhaHTML("Categoria", info.tipoLabel || "-")}
+      </div>
+    </section>
+
+    <section class="report-section">
+      <p class="report-kicker">Cenários de valor futuro</p>
+      <h3>Faixa estimada de depreciação</h3>
+      <p class="report-lead">O cenário base é a referência da simulação. Os cenários otimista e pessimista formam uma faixa de sensibilidade para apoiar a decisão econômica.</p>
+      <div class="scenario-grid">
+        ${cardCenarioProfissional("Base", info.valorFuturo, "Referência principal da análise", "scenario-base")}
+        ${cardCenarioProfissional("Otimista", info.valorOtimista, "Menor perda relativa no período", "scenario-optimistic")}
+        ${cardCenarioProfissional("Pessimista", info.valorPessimista, "Maior perda relativa no período", "scenario-pessimistic")}
+      </div>
+    </section>
+
+    <section class="report-section">
+      <p class="report-kicker">Base técnica</p>
+      <h3>Curva utilizada na estimativa</h3>
+      <div class="reference-card">${escaparHtml(info.baseTecnicaResumo)}</div>
+      <table class="professional-report-table"><tbody>${tabelaBase || linhaTabelaProfissional("Base técnica", info.baseTecnicaResumo)}</tbody></table>
+    </section>
+
+    <section class="report-section methodology-box">
+      <p class="report-kicker">Metodologia</p>
+      <h3>Como a estimativa é construída</h3>
+      <p>O valor de entrada vem da FIPE para o ano e combustível selecionados. A curva de depreciação é calibrada com histórico do próprio modelo ou de uma base técnica de referência, usando a série nominal e a série corrigida pelo IPCA para leitura econômica da trajetória.</p>
+      <p>Em veículos usados, a projeção considera a idade já percorrida dentro da curva e estima apenas a depreciação futura. Isso evita tratar um veículo usado como se fosse zero km.</p>
+      <p>O resultado deve ser interpretado como estimativa estatística de valor futuro, não como avaliação comercial individual. Estado de conservação, quilometragem, versão, região e negociação podem alterar o preço final de mercado.</p>
+    </section>
+
+    <section class="report-section">
+      <p class="report-kicker">Auditoria matemática</p>
+      <h3>Parâmetros técnicos usados</h3>
+      <p class="report-lead">A memória técnica abaixo resume os parâmetros necessários para auditar o cálculo sem expor mensagens internas do sistema.</p>
+      <table class="professional-report-table"><tbody>${tabelaAuditoria}</tbody></table>
+    </section>
+  </div>`;
+}
+
+function montarRelatorioTextual(data, origem = "curva") {
+  const info = montarDadosRelatorioProfissional(data || {});
+  return [
+    "Relatório profissional de depreciação veicular",
+    `Veículo analisado: ${info.veiculoDescricao || "veículo selecionado"}`,
+    `Valor FIPE atual: ${info.valorAtual > 0 ? formatarMoedaBR(info.valorAtual) : "não disponível"}`,
+    `Valor estimado no horizonte: ${info.valorFuturo > 0 ? formatarMoedaBR(info.valorFuturo) : "não disponível"}`,
+    `Horizonte de análise: ${info.horizonteLabel}`,
+    `Depreciação total: ${valorPercentualTexto(info.depreciacaoTotal)}`,
+    `Taxa anual equivalente: ${valorPercentualTexto(info.taxaAnual, 2, "% a.a.")}`,
+    `Base técnica utilizada: ${info.baseTecnicaResumo}`
+  ].join("\n");
 }
 
 function preencherRelatorioTextual(data, origem = "curva") {
   const el = document.getElementById("relatorio_textual");
   if (!el) return;
-  el.textContent = montarRelatorioTextual(data, origem);
+  el.classList.add("professional-report-shell");
+  el.innerHTML = montarRelatorioHTMLProfissional(data || {});
 }
 
 function preencherRelatorio(data, origem = "curva") {
   preencherRelatorioTextual(data, origem);
   const corpo = document.getElementById("detalhes_corpo");
-  if (!corpo) return;
-
-  const detalhes = data?.detalhes || {};
-  const curva = detalhes.curva || {};
-  const familia = detalhes.familia || {};
-  const auditoria = detalhes.auditoria_historico || data?.motor?.auditoria_historico || {};
-  const cenariosDetalhe = obterCenariosDoResultado(data);
-  const valorAtualDetalhe = Number(cenariosDetalhe.atual || data?.valor_atual || 0);
-  const valorFuturoDetalhe = Number(cenariosDetalhe.base || data?.valor_futuro || 0);
-  const horizonteDetalhe = Math.max(1, Number(cenariosDetalhe.horizonte || data?.horizonte_anos || document.getElementById("horizonte_anos")?.value || 5));
-  const depDetalhe = valorAtualDetalhe > 0 && valorFuturoDetalhe > 0
-    ? ((valorAtualDetalhe - valorFuturoDetalhe) / valorAtualDetalhe) * 100
-    : Number(data?.depreciacao_percentual || 0);
-
-  corpo.innerHTML = "";
-  adicionarDetalhe(corpo, "Resultado", data?.mensagem || "Curva carregada.");
-  adicionarDetalhe(corpo, "Tipo utilizado", detalhes.tipo_label || data?.tipo_label || data?.tipo_curva);
-  adicionarDetalhe(corpo, "Origem", data?.origem_curva || detalhes.origem_curva || origem);
-  adicionarDetalhe(corpo, "Confiança", data?.confianca || detalhes.confianca);
-  const taxaDetalhe = Number(cenariosDetalhe.taxaBase || 0) * 100;
-  adicionarDetalhe(corpo, "Taxa anual", taxaDetalhe > 0 ? `${taxaDetalhe.toFixed(2).replace(".", ",")}% a.a.` : "-");
-  adicionarDetalhe(corpo, "Taxa de depreciação total", depDetalhe > 0 ? `${depDetalhe.toFixed(2).replace(".", ",")}%` : "-");
-  adicionarDetalhe(corpo, "Horizonte da análise", formatarHorizonteLabel(horizonteDetalhe));
-  const idadeEntradaMeses = valorInformado(data?.idade_entrada_meses) ? data.idade_entrada_meses : detalhes.idade_entrada_meses;
-  const idadeEntradaAnos = valorInformado(data?.idade_entrada_anos) ? Number(data.idade_entrada_anos) : Number(detalhes.idade_entrada_anos || 0);
-  const horizonteMeses = valorInformado(data?.horizonte_meses) ? data.horizonte_meses : detalhes.horizonte_meses;
-  const inicioCurvaMeses = valorInformado(data?.inicio_curva_meses) ? data.inicio_curva_meses : detalhes.inicio_curva_meses;
-  const fimCurvaMeses = valorInformado(data?.fim_curva_meses) ? data.fim_curva_meses : detalhes.fim_curva_meses;
-  adicionarDetalhe(corpo, "Idade de entrada na curva", Number(idadeEntradaMeses || 0) > 0 ? `${idadeEntradaMeses} meses (${idadeEntradaAnos.toFixed(2).replace(".", ",")} anos)` : "0 meses (zero km)");
-  adicionarDetalhe(corpo, "Horizonte em meses", horizonteMeses ? `${horizonteMeses} meses` : "-");
-  adicionarDetalhe(corpo, "Janela aplicada da curva", valorInformado(inicioCurvaMeses) && valorInformado(fimCurvaMeses) ? `${inicioCurvaMeses} a ${fimCurvaMeses} meses de idade` : "-");
-  const taxaMensalHibrida = valorInformado(data?.taxa_mensal_hibrida_percentual) ? data.taxa_mensal_hibrida_percentual : detalhes.taxa_mensal_hibrida_percentual;
-  adicionarDetalhe(corpo, "Taxa mensal híbrida da curva", Number(taxaMensalHibrida || 0) > 0 ? `${Number(taxaMensalHibrida).toFixed(4).replace(".", ",")}% a.m.` : "-");
-  adicionarDetalhe(corpo, "Pontos históricos", data?.pontos_historicos || detalhes.pontos_historicos);
-  adicionarDetalhe(corpo, "Janela histórica", data?.janela_historica_meses ? `${data.janela_historica_meses} meses` : detalhes.janela_historica_meses ? `${detalhes.janela_historica_meses} meses` : "-");
-  adicionarDetalhe(corpo, "Período inicial", detalhes.periodo_inicial || curva.periodo_inicial);
-  adicionarDetalhe(corpo, "Período final", detalhes.periodo_final || curva.periodo_final);
-  adicionarDetalhe(corpo, "Família", familia.family_nome || curva.family_nome || familia.family_id || curva.family_id);
-  adicionarDetalhe(corpo, "Modelo base", curva.modelo_base_curva || familia.modelo_base_curva || familia.modelo_base_curva_eletrico || familia.modelo_base_curva_combustao);
-  adicionarDetalhe(corpo, "Ano base", curva.ano_base_curva || familia.ano_base_curva || familia.ano_base_curva_eletrico || familia.ano_base_curva_combustao);
-  adicionarDetalhe(corpo, "Ano usado como proxy", curva.ano_modelo_proxy || auditoria.ano_modelo_proxy);
-  adicionarDetalhe(corpo, "Código ano proxy", curva.codigo_ano_proxy || auditoria.codigo_ano_proxy);
-  adicionarDetalhe(corpo, "Nome proxy", curva.nome_proxy || auditoria.nome_proxy);
-
-  if (Object.keys(auditoria).length > 0) {
-    adicionarDetalhe(corpo, "Primeiro valor histórico", auditoria.primeiro_valor != null ? formatarMoedaBR(auditoria.primeiro_valor) : "-");
-    adicionarDetalhe(corpo, "Último valor histórico", auditoria.ultimo_valor != null ? formatarMoedaBR(auditoria.ultimo_valor) : "-");
-    adicionarDetalhe(corpo, "Menor valor histórico", auditoria.menor_valor != null ? formatarMoedaBR(auditoria.menor_valor) : "-");
-    adicionarDetalhe(corpo, "Maior valor histórico", auditoria.maior_valor != null ? formatarMoedaBR(auditoria.maior_valor) : "-");
-    adicionarDetalhe(corpo, "Variação total", auditoria.variacao_total_percentual != null ? `${Number(auditoria.variacao_total_percentual).toFixed(2).replace(".", ",")}%` : "-");
-    const origemTexto = String(data?.origem_curva || detalhes.origem_curva || origem || "").toLowerCase();
-    const proxyAplicado = Boolean(auditoria.proxy_aplicado) || origemTexto.includes("proxy");
-    adicionarDetalhe(corpo, "Zero km detectado", auditoria.zero_km_detectado || auditoria.zero_km_original ? "Sim" : "Não");
-    adicionarDetalhe(corpo, "Proxy aplicado", proxyAplicado ? "Sim" : "Não");
-    adicionarDetalhe(corpo, "Fonte do histórico", auditoria.fonte_historico || curva.fonte_historico);
-    adicionarDetalhe(corpo, "Curva/modelo referência", auditoria.curva_referencia || (auditoria.referencia && (auditoria.referencia.titulo || auditoria.referencia.modelo)));
-    adicionarDetalhe(corpo, "Ano usado como proxy", auditoria.ano_modelo_proxy);
-    adicionarDetalhe(corpo, "Método da taxa", auditoria.metodo_taxa);
-    adicionarDetalhe(corpo, "Status da série", auditoria.status_serie);
-  }
+  if (corpo) corpo.innerHTML = "";
+  const tabela = document.querySelector("#aba_relatorio_tecnico .details-table");
+  if (tabela) tabela.classList.add("hidden");
 }
 
 
@@ -460,8 +690,8 @@ async function consultarResumoDepreciacao(detalheFipe) {
 
   mostrarResultadoArea(true);
   mostrarAuditoriaArea(false);
-  atualizarFeedbackCalculo("Buscando curva salva na base local...", 25, true);
-  atualizarStatusResultado("Buscando curva salva...", "muted");
+  atualizarFeedbackCalculo("Buscando curva histórica na base local...", 25, true);
+  atualizarStatusResultado("Buscando curva histórica...", "muted");
   limparResumo();
 
   const payload = {
@@ -481,8 +711,8 @@ async function consultarResumoDepreciacao(detalheFipe) {
     ultimoResumoDepreciacao = data;
 
     if (data.encontrado) {
-      atualizarFeedbackCalculo("Curva salva encontrada. Gerando relatório técnico...", 100, false);
-      atualizarStatusResultado(`✓ ${data.mensagem || "Curva salva encontrada."}`, "encontrado");
+      atualizarFeedbackCalculo("Curva localizada. Gerando relatório profissional...", 100, false);
+      atualizarStatusResultado("Estimativa gerada com base FIPE, curva histórica e horizonte selecionado.", "encontrado");
       preencherResumo(data);
       configurarBotoesResultado(true, false, confiancaEhBaixaOuExploratoria(data.confianca));
       mostrarGraficoBarrasArea(true);
@@ -640,7 +870,7 @@ async function solicitarDiagnosticoCoorte(chamadaAutomatica = false) {
     diagnosticoV1917Ciclos = 0;
     terminalV1917Linhas = [];
     selecionarAbaAuditoriaV1917("terminal");
-    atualizarTerminalV1917({ terminal_linhas: ["[local] Iniciando diagnóstico V24.7 API PRO. O terminal será atualizado a cada lote seguro do Render..."] });
+    atualizarTerminalV1917({ terminal_linhas: ["[local] Iniciando diagnóstico técnico. O terminal será atualizado a cada lote seguro do Render..."] });
   }
   diagnosticoV1917Ciclos += 1;
 
@@ -657,7 +887,7 @@ async function solicitarDiagnosticoCoorte(chamadaAutomatica = false) {
   mostrarResultadoArea(true);
   mostrarAuditoriaArea(true);
   mostrarGraficoBarrasArea(false);
-  atualizarFeedbackCalculo("Rodando diagnóstico V19.17 em lote seguro...", 40, true);
+  atualizarFeedbackCalculo("Rodando diagnóstico técnico em lote seguro...", 40, true);
 
   let manterContinuar = false;
   let continuarAutomaticamente = false;
@@ -672,13 +902,13 @@ async function solicitarDiagnosticoCoorte(chamadaAutomatica = false) {
     try {
       data = JSON.parse(rawText);
     } catch (parseError) {
-      const msg = `Resposta não-JSON do servidor no diagnóstico V19.17. HTTP ${resp.status}. ${rawText.slice(0, 300)}`;
+      const msg = `Resposta inválida do servidor no diagnóstico técnico. HTTP ${resp.status}. ${rawText.slice(0, 300)}`;
       atualizarStatusResultado(msg, "erro");
       atualizarFeedbackCalculo(msg, 100, true);
       return;
     }
     if (!resp.ok) {
-      const msg = data.mensagem || data.erro || `Erro HTTP ${resp.status} no diagnóstico V19.17.`;
+      const msg = data.mensagem || data.erro || `Erro HTTP ${resp.status} no diagnóstico técnico.`;
       atualizarStatusResultado(msg, "erro");
       atualizarFeedbackCalculo(msg, 100, true);
       return;
@@ -695,13 +925,17 @@ async function solicitarDiagnosticoCoorte(chamadaAutomatica = false) {
 
     const rel = document.getElementById("relatorio_textual");
     const corpo = document.getElementById("detalhes_corpo");
-    if (rel) rel.textContent = data.relatorio_textual || data.mensagem || "Diagnóstico V19.17 concluído.";
+    if (rel) {
+      rel.classList.remove("professional-report-shell");
+      rel.textContent = data.relatorio_textual || data.mensagem || "Diagnóstico técnico concluído.";
+    }
     if (corpo) {
+      corpo.closest("table")?.classList.remove("hidden");
       const am = data.amostragem_referencias || {};
       const primeira = data.primeira_aparicao || {};
       const zero = data.zero_km_base || {};
       corpo.innerHTML = "";
-      adicionarDetalhe(corpo, "Motor", data.motor || "V19.17 adapter paralelo");
+      adicionarDetalhe(corpo, "Motor", data.motor || "Rotina técnica paralela");
       adicionarDetalhe(corpo, "Status", data.status || data.fase);
       adicionarDetalhe(corpo, "Job", data.job_id);
       adicionarDetalhe(corpo, "Fase", data.fase);
@@ -736,7 +970,7 @@ async function solicitarDiagnosticoCoorte(chamadaAutomatica = false) {
       adicionarDetalhe(corpo, "Ciclos automáticos", `${diagnosticoV1917Ciclos}/${DIAGNOSTICO_V1917_MAX_CICLOS}`);
       adicionarDetalhe(corpo, "Observação", data.criterio_salvamento || "Diagnóstico não salva curva.");
     }
-    atualizarStatusResultado(data.mensagem || "Diagnóstico V19.17 executado.", data.ok ? "encontrado" : "erro");
+    atualizarStatusResultado(data.mensagem || "Diagnóstico técnico executado.", data.ok ? "encontrado" : "erro");
     continuarAutomaticamente = manterContinuar && diagnosticoV1917AutoAtivo && diagnosticoV1917Ciclos < DIAGNOSTICO_V1917_MAX_CICLOS;
     if (continuarAutomaticamente) {
       atualizarFeedbackCalculo(`Lote ${diagnosticoV1917Ciclos} concluído. Continuando automaticamente para evitar timeout do Render...`, 55, true);
@@ -749,17 +983,17 @@ async function solicitarDiagnosticoCoorte(chamadaAutomatica = false) {
     }
   } catch (e) {
     diagnosticoV1917AutoAtivo = false;
-    const msg = `Erro ao montar diagnóstico V19.17: ${e && e.message ? e.message : e}`;
+    const msg = `Erro ao montar diagnóstico técnico: ${e && e.message ? e.message : e}`;
     atualizarStatusResultado(msg, "erro");
     atualizarFeedbackCalculo(msg, 100, true);
   } finally {
     if (btn) {
       if (continuarAutomaticamente) {
         btn.disabled = true;
-        btn.textContent = "Continuando diagnóstico V19.17...";
+        btn.textContent = "Continuando diagnóstico técnico...";
       } else {
         btn.disabled = false;
-        btn.textContent = manterContinuar ? "Continuar diagnóstico V19.17" : "Diagnóstico técnico";
+        btn.textContent = manterContinuar ? "Continuar diagnóstico técnico" : "Diagnóstico técnico";
       }
     }
   }
@@ -796,10 +1030,10 @@ async function solicitarCalculoSobDemanda() {
     const data = await resp.json();
 
     if (data.ok) {
-      atualizarFeedbackCalculo("Curva calculada e salva. Montando relatório final...", 100, true);
+      atualizarFeedbackCalculo("Curva calculada. Montando relatório profissional...", 100, true);
       if (data.resultado) {
         ultimoResumoDepreciacao = data.resultado;
-        atualizarStatusResultado(`✓ ${data.mensagem || "Curva calculada e salva."}`, "encontrado");
+        atualizarStatusResultado("Estimativa calculada e registrada com base técnica para o veículo selecionado.", "encontrado");
         preencherResumo(data.resultado);
         configurarBotoesResultado(true, false, confiancaEhBaixaOuExploratoria(data.resultado?.confianca));
         mostrarGraficoBarrasArea(true);
@@ -2023,7 +2257,10 @@ function novaConsultaDepreciacao() {
   if (ano && typeof limparSelect === "function") limparSelect(ano, "Selecione o modelo primeiro");
 
   const rel = document.getElementById("relatorio_textual");
-  if (rel) rel.textContent = "Aguardando seleção do veículo.";
+  if (rel) {
+    rel.classList.remove("professional-report-shell");
+    rel.textContent = "Aguardando seleção do veículo.";
+  }
   const detalhes = document.getElementById("detalhes_corpo");
   if (detalhes) detalhes.innerHTML = "";
   const grafBarras = document.getElementById("grafico_barras");

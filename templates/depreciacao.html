@@ -80,19 +80,19 @@
 
     <section id="resultado_area" class="hidden result-top-grid">
       <div class="card result-card" id="card_resultado">
-        <h2>Resumo da depreciação</h2>
-        <p id="resultado_status" class="muted">Aguardando seleção do veículo.</p>
-        <p id="res_modelo_linha" class="result-model-line hidden"><strong>Modelo:</strong> <span id="res_modelo">-</span></p>
+        <h2>Resultado da depreciação</h2>
+        <p id="resultado_status" class="muted">Selecione um veículo para gerar a estimativa.</p>
+        <p id="res_modelo_linha" class="result-model-line hidden"><strong>Veículo analisado:</strong> <span id="res_modelo">-</span></p>
         <dl class="data-list compact resumo-inline">
           <dt>Valor FIPE atual</dt><dd id="res_valor_atual">-</dd>
-          <dt>Valor ao fim do horizonte</dt><dd id="res_valor_futuro">-</dd>
+          <dt>Valor estimado no horizonte</dt><dd id="res_valor_futuro">-</dd>
+          <dt>Perda estimada no período</dt><dd id="res_perda">-</dd>
           <dt>Horizonte de análise</dt><dd id="res_horizonte">-</dd>
-          <dt>Depreciação acumulada</dt><dd id="res_depreciacao">-</dd>
-          <dt>Taxa anual média</dt><dd id="res_taxa">-</dd>
-          <dt>Taxa de depreciação total</dt><dd id="res_taxa_total">-</dd>
-          <dt>Confiança</dt><dd id="res_confianca">-</dd>
-          <dt>Origem técnica</dt><dd id="res_origem">-</dd>
-          <dt>Tipo usado</dt><dd id="res_tipo_usado">-</dd>
+          <dt>Taxa anual equivalente</dt><dd id="res_taxa">-</dd>
+          <dt>Depreciação total no período</dt><dd id="res_taxa_total">-</dd>
+          <dt>Confiança da estimativa</dt><dd id="res_confianca">-</dd>
+          <dt>Base técnica utilizada</dt><dd id="res_origem">-</dd>
+          <dt>Categoria</dt><dd id="res_tipo_usado">-</dd>
         </dl>
         <div class="actions">
           <button id="btn_ver_detalhes" class="button primary hidden" type="button" disabled>Ver detalhes</button>
@@ -103,8 +103,8 @@
         </div>
       </div>
       <div id="card_grafico_barras" class="card chart-card chart-card-bars hidden">
-        <h2>Gráfico de barras</h2>
-        <p class="muted">Comparação entre valor inicial, cenário base, cenário otimista e cenário pessimista.</p>
+        <h2>Cenários de valor futuro</h2>
+        <p class="muted">Comparação entre valor FIPE atual, cenário base, cenário otimista e cenário pessimista.</p>
         <div id="grafico_barras" class="simple-chart empty-chart">Selecione um veículo com curva pronta.</div>
       </div>
     </section>
@@ -131,8 +131,8 @@
       <section id="detalhes_resultado" class="card report-card">
         <div class="section-header">
           <div>
-            <h2>Relatório técnico final</h2>
-            <p class="muted">Síntese da curva usada, premissas, valor inicial, valor final e auditoria da base.</p>
+            <h2>Metodologia e auditoria técnica</h2>
+            <p class="muted">Base histórica, premissas, cenários e critérios usados na estimativa.</p>
           </div>
         </div>
         <div id="aba_relatorio_tecnico">
@@ -148,6 +148,6 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/fipe.js') }}?v=20260616_v31_offset_idade"></script>
-<script src="{{ url_for('static', filename='js/depreciacao.js') }}?v=20260616_v31_offset_idade"></script>
+<script src="{{ url_for('static', filename='js/fipe.js') }}?v=20260616_v32_relatorio_profissional"></script>
+<script src="{{ url_for('static', filename='js/depreciacao.js') }}?v=20260616_v32_relatorio_profissional"></script>
 {% endblock %}
