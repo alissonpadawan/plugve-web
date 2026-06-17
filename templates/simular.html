@@ -21,9 +21,27 @@
     .plugve-metric-card{border:1px solid #e5e7eb;border-radius:1rem;background:linear-gradient(180deg,#ffffff 0%,#f8fafc 100%);padding:1rem;box-shadow:0 8px 22px rgba(15,23,42,.04)}
     .plugve-result-actions{display:flex;gap:.75rem;flex-wrap:wrap;justify-content:flex-end;align-items:center}
     .plugve-page-break{break-inside:avoid;page-break-inside:avoid}
-    .plugve-finance-box{border:1px dashed #cbd5e1;border-radius:.75rem;background:#f8fafc;padding:.65rem;margin-top:.55rem}
+    .plugve-price-finance-field{margin-top:.25rem;border:1px solid #d1d5db;border-radius:.75rem;background:#fff;overflow:visible;transition:border-color .18s ease,box-shadow .18s ease}
+    .plugve-price-finance-field:focus-within{border-color:#059669;box-shadow:0 0 0 3px rgba(5,150,105,.10)}
+    .plugve-price-row{display:flex;align-items:center;gap:.5rem;padding:.18rem .25rem .18rem .7rem}
+    .plugve-price-row input{border:0 !important;border-radius:0 !important;box-shadow:none !important;background:transparent !important;margin:0 !important;padding:.45rem .25rem !important;min-width:0}
+    .plugve-price-row input:focus{outline:none !important;box-shadow:none !important}
+    .plugve-price-finance-button{border:0;border-radius:999px;background:#059669;color:#fff;padding:.45rem .85rem;font-weight:800;font-size:.72rem;line-height:1.1;white-space:nowrap;box-shadow:0 8px 18px rgba(5,150,105,.18)}
+    .plugve-price-finance-button:hover{background:#047857}
+    .plugve-finance-box{border-top:1px solid #e5e7eb;background:#fbfefc;padding:.42rem .75rem .58rem;margin:0}
+    .plugve-finance-box.plugve-finance-empty{display:none}
     .plugve-finance-box strong{color:#0f172a}
     .plugve-finance-summary{font-size:.76rem;color:#475569;line-height:1.35}
+    .plugve-finance-compact{display:flex;align-items:center;gap:.35rem;flex-wrap:wrap}
+    .plugve-finance-label{color:#64748b;font-weight:700}
+    .plugve-finance-tooltip{position:relative;display:inline-block}
+    .plugve-finance-tooltip-trigger{display:inline-flex;align-items:center;border:1px solid #bbf7d0;border-radius:999px;background:#ecfdf5;color:#065f46;font-weight:900;padding:.12rem .55rem;cursor:help}
+    .plugve-finance-tooltip-panel{display:none;position:absolute;left:0;top:1.65rem;z-index:95;width:340px;max-width:86vw;background:#fff;border:1px solid #e5e7eb;border-radius:.85rem;box-shadow:0 18px 45px rgba(15,23,42,.18);padding:.8rem;color:#334155}
+    .plugve-finance-tooltip:hover .plugve-finance-tooltip-panel{display:block}
+    .plugve-finance-tooltip-title{display:block;font-size:.74rem;font-weight:900;color:#0f172a;margin-bottom:.4rem}
+    .plugve-finance-tooltip-row{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.2rem 0;border-bottom:1px solid #f1f5f9}
+    .plugve-finance-tooltip-row:last-child{border-bottom:0}
+    .plugve-finance-tooltip-row span:first-child{color:#64748b}
     .plugve-finance-modal{position:fixed;inset:0;z-index:100;background:rgba(15,23,42,.55);display:flex;align-items:flex-start;justify-content:center;padding:4vh 1rem;overflow:auto}
     .plugve-finance-modal.hidden{display:none !important}
     .plugve-finance-panel{width:min(1080px,100%);background:#fff;border-radius:1.1rem;box-shadow:0 24px 80px rgba(15,23,42,.28);overflow:hidden}
@@ -60,7 +78,6 @@
           <a href="/" id="link_inicio_tco" data-plugve-reset="1" class="text-gray-700 hover:text-blue-600 font-medium">Início</a>
           <a href="/simular" data-plugve-reset="1" class="curve-nav-active text-blue-600 font-semibold">Simular</a>
           <a href="/depreciacao" class="text-gray-700 hover:text-blue-600 font-medium">Depreciação</a>
-          <a href="/financiamento" class="text-gray-700 hover:text-blue-600 font-medium">Financiamento</a>
           <a href="/sobre" class="text-gray-700 hover:text-blue-600 font-medium">Sobre</a>
           <a href="/contato" class="text-gray-700 hover:text-blue-600 font-medium">Contato</a>
         </div>
@@ -265,25 +282,23 @@
 
                 <div>
                   <label class="block text-sm font-medium">Preço atual do veículo (R$)</label>
-                  <input type="text" name="preco_atual" id="preco_atual" class="mt-1 p-2 border rounded w-full" placeholder="ex: 65000">
-                  <div id="fin_box_atual" class="plugve-finance-box">
-                    <input type="hidden" name="fin_atual_ativo" id="fin_atual_ativo" value="0">
-                    <input type="hidden" name="fin_atual_entrada_pct" id="fin_atual_entrada_pct" value="0">
-                    <input type="hidden" name="fin_atual_entrada" id="fin_atual_entrada" value="0">
-                    <input type="hidden" name="fin_atual_juros_mensal" id="fin_atual_juros_mensal" value="0">
-                    <input type="hidden" name="fin_atual_meses" id="fin_atual_meses" value="0">
-                    <input type="hidden" name="fin_atual_custos" id="fin_atual_custos" value="0">
-                    <input type="hidden" name="fin_atual_principal" id="fin_atual_principal" value="0">
-                    <input type="hidden" name="fin_atual_parcela" id="fin_atual_parcela" value="0">
-                    <input type="hidden" name="fin_atual_total_pago" id="fin_atual_total_pago" value="0">
-                    <input type="hidden" name="fin_atual_juros_total" id="fin_atual_juros_total" value="0">
-                    <div class="flex items-start justify-between gap-3">
-                      <div id="fin_resumo_atual" class="plugve-finance-summary">
-                        
-                      </div>
-                      <button type="button" data-fin-prefix="atual" class="btn_financiamento_tco px-3 py-1.5 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 whitespace-nowrap">
-                        Vou financiar
-                      </button>
+                  <div class="plugve-price-finance-field">
+                    <div class="plugve-price-row">
+                      <input type="text" name="preco_atual" id="preco_atual" class="w-full plugve-price-input" placeholder="ex: 65000">
+                      <button type="button" data-fin-prefix="atual" class="btn_financiamento_tco plugve-price-finance-button">Vou financiar</button>
+                    </div>
+                    <div id="fin_box_atual" class="plugve-finance-box plugve-finance-empty">
+                      <input type="hidden" name="fin_atual_ativo" id="fin_atual_ativo" value="0">
+                      <input type="hidden" name="fin_atual_entrada_pct" id="fin_atual_entrada_pct" value="0">
+                      <input type="hidden" name="fin_atual_entrada" id="fin_atual_entrada" value="0">
+                      <input type="hidden" name="fin_atual_juros_mensal" id="fin_atual_juros_mensal" value="0">
+                      <input type="hidden" name="fin_atual_meses" id="fin_atual_meses" value="0">
+                      <input type="hidden" name="fin_atual_custos" id="fin_atual_custos" value="0">
+                      <input type="hidden" name="fin_atual_principal" id="fin_atual_principal" value="0">
+                      <input type="hidden" name="fin_atual_parcela" id="fin_atual_parcela" value="0">
+                      <input type="hidden" name="fin_atual_total_pago" id="fin_atual_total_pago" value="0">
+                      <input type="hidden" name="fin_atual_juros_total" id="fin_atual_juros_total" value="0">
+                      <div id="fin_resumo_atual" class="plugve-finance-summary"></div>
                     </div>
                   </div>
                 </div>
@@ -363,8 +378,12 @@
 
               <div>
                 <label class="block text-sm font-medium">Preço do VE</label>
-                <input type="text" name="preco_ve" id="preco_ve" class="mt-1 p-2 border rounded w-full" placeholder="ex: 150000">
-                  <div id="fin_box_ve" class="plugve-finance-box">
+                <div class="plugve-price-finance-field">
+                  <div class="plugve-price-row">
+                    <input type="text" name="preco_ve" id="preco_ve" class="w-full plugve-price-input" placeholder="ex: 150000">
+                    <button type="button" data-fin-prefix="ve" class="btn_financiamento_tco plugve-price-finance-button">Vou financiar</button>
+                  </div>
+                  <div id="fin_box_ve" class="plugve-finance-box plugve-finance-empty">
                     <input type="hidden" name="fin_ve_ativo" id="fin_ve_ativo" value="0">
                     <input type="hidden" name="fin_ve_entrada_pct" id="fin_ve_entrada_pct" value="0">
                     <input type="hidden" name="fin_ve_entrada" id="fin_ve_entrada" value="0">
@@ -375,15 +394,9 @@
                     <input type="hidden" name="fin_ve_parcela" id="fin_ve_parcela" value="0">
                     <input type="hidden" name="fin_ve_total_pago" id="fin_ve_total_pago" value="0">
                     <input type="hidden" name="fin_ve_juros_total" id="fin_ve_juros_total" value="0">
-                    <div class="flex items-start justify-between gap-3">
-                      <div id="fin_resumo_ve" class="plugve-finance-summary">
-                        
-                      </div>
-                      <button type="button" data-fin-prefix="ve" class="btn_financiamento_tco px-3 py-1.5 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 whitespace-nowrap">
-                        Vou financiar
-                      </button>
-                    </div>
+                    <div id="fin_resumo_ve" class="plugve-finance-summary"></div>
                   </div>
+                </div>
               </div>
 
               <div>
@@ -460,8 +473,12 @@
 
               <div>
                 <label class="block text-sm font-medium">Preço do ICEV</label>
-                <input type="text" name="preco_icev" id="preco_icev" class="mt-1 p-2 border rounded w-full" placeholder="ex: 85000">
-                  <div id="fin_box_icev" class="plugve-finance-box">
+                <div class="plugve-price-finance-field">
+                  <div class="plugve-price-row">
+                    <input type="text" name="preco_icev" id="preco_icev" class="w-full plugve-price-input" placeholder="ex: 85000">
+                    <button type="button" data-fin-prefix="icev" class="btn_financiamento_tco plugve-price-finance-button">Vou financiar</button>
+                  </div>
+                  <div id="fin_box_icev" class="plugve-finance-box plugve-finance-empty">
                     <input type="hidden" name="fin_icev_ativo" id="fin_icev_ativo" value="0">
                     <input type="hidden" name="fin_icev_entrada_pct" id="fin_icev_entrada_pct" value="0">
                     <input type="hidden" name="fin_icev_entrada" id="fin_icev_entrada" value="0">
@@ -472,15 +489,9 @@
                     <input type="hidden" name="fin_icev_parcela" id="fin_icev_parcela" value="0">
                     <input type="hidden" name="fin_icev_total_pago" id="fin_icev_total_pago" value="0">
                     <input type="hidden" name="fin_icev_juros_total" id="fin_icev_juros_total" value="0">
-                    <div class="flex items-start justify-between gap-3">
-                      <div id="fin_resumo_icev" class="plugve-finance-summary">
-                        
-                      </div>
-                      <button type="button" data-fin-prefix="icev" class="btn_financiamento_tco px-3 py-1.5 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 whitespace-nowrap">
-                        Vou financiar
-                      </button>
-                    </div>
+                    <div id="fin_resumo_icev" class="plugve-finance-summary"></div>
                   </div>
+                </div>
               </div>
 
               <div>
@@ -947,18 +958,43 @@
 
     function atualizarResumoFinanciamento(prefixo) {
       const resumo = document.getElementById(`fin_resumo_${prefixo}`);
+      const box = document.getElementById(`fin_box_${prefixo}`);
+      const botao = document.querySelector(`.btn_financiamento_tco[data-fin-prefix='${prefixo}']`);
       if (!resumo) return;
       if (!financiamentoAtivo(prefixo)) {
         resumo.innerHTML = "";
+        if (box) box.classList.add("plugve-finance-empty");
+        if (botao) botao.textContent = "Vou financiar";
         return;
       }
+      const precoOriginal = formatarMoedaBR(numeroBRParaFloat(campoValor(prefixo)?.value || 0));
+      const entrada = valorHiddenFin(prefixo, "entrada", "0");
+      const entradaPct = valorHiddenFin(prefixo, "entrada_pct", "0");
       const principal = valorHiddenFin(prefixo, "principal", "0");
       const parcela = valorHiddenFin(prefixo, "parcela", "0");
       const juros = valorHiddenFin(prefixo, "juros_total", "0");
       const total = valorHiddenFin(prefixo, "total_pago", "0");
       const meses = valorHiddenFin(prefixo, "meses", "0");
-      resumo.innerHTML = `<strong>Valor financiado:</strong> ${principal}<br><span>Total estimado: ${total} | Parcela: ${parcela} em ${meses} meses | Juros: ${juros}</span>`;
-      const botao = document.querySelector(`.btn_financiamento_tco[data-fin-prefix='${prefixo}']`);
+      const jurosMensal = valorHiddenFin(prefixo, "juros_mensal", "0");
+      const custos = valorHiddenFin(prefixo, "custos", "0");
+      resumo.innerHTML = `
+        <div class="plugve-finance-compact">
+          <span class="plugve-finance-label">Com financiamento:</span>
+          <span class="plugve-finance-tooltip">
+            <span class="plugve-finance-tooltip-trigger">${total}</span>
+            <span class="plugve-finance-tooltip-panel">
+              <span class="plugve-finance-tooltip-title">Resumo do financiamento</span>
+              <span class="plugve-finance-tooltip-row"><span>Valor do carro</span><strong>${precoOriginal}</strong></span>
+              <span class="plugve-finance-tooltip-row"><span>Entrada</span><strong>${entrada} (${entradaPct}%)</strong></span>
+              <span class="plugve-finance-tooltip-row"><span>Custos financiados</span><strong>${custos}</strong></span>
+              <span class="plugve-finance-tooltip-row"><span>Valor financiado</span><strong>${principal}</strong></span>
+              <span class="plugve-finance-tooltip-row"><span>Prazo</span><strong>${meses} meses</strong></span>
+              <span class="plugve-finance-tooltip-row"><span>Parcela estimada</span><strong>${parcela}</strong></span>
+              <span class="plugve-finance-tooltip-row"><span>Juros</span><strong>${jurosMensal}% a.m. | ${juros}</strong></span>
+            </span>
+          </span>
+        </div>`;
+      if (box) box.classList.remove("plugve-finance-empty");
       if (botao) botao.textContent = "Editar financiamento";
     }
 
