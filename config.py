@@ -42,6 +42,9 @@ class Config:
     FIPE_ALT_BASE_URL = os.environ.get("FIPE_ALT_BASE_URL", "https://api.fipe.online/api/v2/cars")
     REQUEST_TIMEOUT = int(os.environ.get("FIPE_REQUEST_TIMEOUT", "15"))
     FIPE_HISTORICO_TIMEOUT = int(os.environ.get("FIPE_HISTORICO_TIMEOUT", "12"))
+    # Catálogo (marcas/modelos/anos) é estável e pode ser mantido no disco
+    # persistente do Render. Preços FIPE não entram neste cache.
+    FIPE_CATALOG_CACHE_TTL_SECONDS = int(os.environ.get("FIPE_CATALOG_CACHE_TTL_SECONDS", "604800"))
 
     # Token simples para sincronização de leitura painel local -> Render.
     # Configure PLUGVE_SYNC_TOKEN no Render com o mesmo valor do painel local.

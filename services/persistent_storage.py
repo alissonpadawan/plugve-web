@@ -30,6 +30,7 @@ def bootstrap_persistent_storage(app: Flask) -> None:
     # Subpastas persistentes usadas pelo sistema
     for relative in ["combustao", "eletrico", "fipe_cache"]:
         (persistent_dir / relative).mkdir(parents=True, exist_ok=True)
+    (persistent_dir / "fipe_cache" / "catalogo_http").mkdir(parents=True, exist_ok=True)
 
     # Copia as curvas iniciais do GitHub para o disco persistente somente na primeira vez.
     _copy_if_missing(

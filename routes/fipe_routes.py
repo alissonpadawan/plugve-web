@@ -10,6 +10,13 @@ fipe_bp = Blueprint("fipe", __name__)
 fipe_service = FipeService()
 
 
+def _resposta_catalogo(dados):
+    """Permite que navegador/CDN reutilizem listas FIPE estáveis."""
+    resp = jsonify(dados)
+    resp.headers["Cache-Control"] = "public, max-age=21600, stale-while-revalidate=86400"
+    return resp
+
+
 def _admin_token_recebido() -> str:
     token = request.headers.get("X-PlugVE-Admin-Token", "").strip()
     if token:
@@ -68,7 +75,7 @@ def catalogo_estado():
 def marcas():
     contexto = request.args.get("contexto", "").strip()
     try:
-        return jsonify(fipe_service.listar_marcas(contexto=contexto))
+        return _resposta_catalogo(fipe_service.listar_marcas(contexto=contexto))
     except Exception as exc:
         return _erro_fipe_response(exc)
 
@@ -79,9 +86,9 @@ def modelos():
     contexto = request.args.get("contexto", "").strip()
     nome_marca = request.args.get("nome_marca", "").strip()
     if not codigo_marca:
-        return jsonify({"modelos": []})
+        return _resposta_catalogo({"modelos": []})
     try:
-        return jsonify(fipe_service.listar_modelos(codigo_marca, contexto=contexto, nome_marca=nome_marca))
+        return _resposta_catalogo(fipe_service.listar_modelos(codigo_marca, contexto=contexto, nome_marca=nome_marca))
     except Exception as exc:
         resp, status = _erro_fipe_response(exc)
         data = resp.get_json() or {}
@@ -95,9 +102,9 @@ def anos():
     codigo_modelo = request.args.get("codigo_modelo", "").strip()
     contexto = request.args.get("contexto", "").strip()
     if not codigo_marca or not codigo_modelo:
-        return jsonify([])
+        return _resposta_catalogo([])
     try:
-        return jsonify(fipe_service.listar_anos(codigo_marca, codigo_modelo, contexto=contexto))
+        return _resposta_catalogo(fipe_service.listar_anos(codigo_marca, codigo_modelo, contexto=contexto))
     except Exception as exc:
         return _erro_fipe_response(exc)
 

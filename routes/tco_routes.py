@@ -462,6 +462,9 @@ def calcular_projecao_veiculo(veiculo, comum):
         "juros_financiamento_horizonte": juros_financiamento_horizonte,
         "anos_lista": anos_lista,
         "anos_eixo": anos_eixo,
+        "anos_horizonte": anos,
+        "km_ano": km_ano,
+        "total_km": total_km,
         "tco_final": tco_final,
         "tco_final_s": tco_final_s,
         "custo_km": tco_final / total_km,
@@ -515,20 +518,6 @@ def gerar_graficos_dupla(v1, v2):
     ))
     fig_gastos.update_layout(**obter_layout_web("Gastos acumulados de uso e financiamento"), yaxis_title="Gasto acumulado (R$)")
 
-    fig_custo_km = go.Figure()
-    fig_custo_km.add_trace(go.Bar(
-        y=[v1["nome_curto"], v2["nome_curto"]],
-        x=[v1["custo_km"], v2["custo_km"]],
-        orientation="h",
-        text=[real_format(v1["custo_km"]), real_format(v2["custo_km"])],
-        textposition="outside",
-        marker={"color": [cor1, cor2], "line": {"color": "#FFFFFF", "width": 1}},
-        customdata=[v1["nome"], v2["nome"]],
-        hovertemplate="%{customdata}<br>Custo por km: R$ %{x:,.2f}<extra></extra>",
-    ))
-    fig_custo_km.update_layout(**obter_layout_web("Custo por quilômetro rodado"), xaxis_title="R$/km", yaxis_title="")
-    fig_custo_km.update_yaxes(autorange="reversed")
-
     fig_revenda = go.Figure()
     fig_revenda.add_trace(go.Scatter(
         x=v1["anos_eixo"], y=v1["valor_mercado_lista"], mode="lines+markers", name=v1["nome_curto"],
@@ -560,7 +549,10 @@ def gerar_graficos_dupla(v1, v2):
     return {
         "grafico": html_grafico(fig_tco),
         "grafico_sem_depreciacao": html_grafico(fig_gastos),
-        "grafico_custo_km": html_grafico(fig_custo_km),
+        # A comparação de custo/km agora é apresentada como leitura direta,
+        # com diferença e impacto financeiro. O gráfico horizontal antigo
+        # truncava nomes e dificultava a interpretação.
+        "grafico_custo_km": "",
         "grafico_revenda_comparativo": html_grafico(fig_revenda),
         "grafico_depreciacao_v1": grafico_depreciacao_individual(v1, cor1),
         "grafico_depreciacao_v2": grafico_depreciacao_individual(v2, cor2),
@@ -573,8 +565,10 @@ def montar_bloco_resultado(titulo, v1, v2):
     vencedor = v1 if v1["tco_final"] <= v2["tco_final"] else v2
     outro = v2 if vencedor is v1 else v1
     economia = max(0.0, outro["tco_final"] - vencedor["tco_final"])
+    economia_percentual = economia / outro["tco_final"] if outro["tco_final"] > 0 else 0.0
 
     def resumo(v):
+        financiamento = v.get("financiamento") or {}
         return {
             "nome": v["nome"],
             "nome_curto": v["nome_curto"],
@@ -589,25 +583,110 @@ def montar_bloco_resultado(titulo, v1, v2):
             "taxa_depreciacao": percentual_format(v["taxa_depreciacao"]),
             "taxa_ipva": percentual_format(v["taxa_ipva"]),
             "taxa_seguro": percentual_format(v["taxa_seguro"]),
-            "financiamento_ativo": bool((v.get("financiamento") or {}).get("ativo")),
-            "valor_financiado": real_format((v.get("financiamento") or {}).get("principal", 0)),
-            "entrada_financiamento": real_format((v.get("financiamento") or {}).get("entrada", 0)),
-            "parcela_financiamento": real_format((v.get("financiamento") or {}).get("parcela", 0)),
-            "prazo_financiamento": int((v.get("financiamento") or {}).get("meses", 0) or 0),
-            "taxa_financiamento": percentual_format((v.get("financiamento") or {}).get("taxa_mensal", 0)),
-            "total_financiamento": real_format((v.get("financiamento") or {}).get("total_pago", 0)),
-            "juros_financiamento_total": real_format((v.get("financiamento") or {}).get("juros_total", 0)),
+            "financiamento_ativo": bool(financiamento.get("ativo")),
+            "valor_financiado": real_format(financiamento.get("principal", 0)),
+            "entrada_financiamento": real_format(financiamento.get("entrada", 0)),
+            "parcela_financiamento": real_format(financiamento.get("parcela", 0)),
+            "prazo_financiamento": int(financiamento.get("meses", 0) or 0),
+            "taxa_financiamento": percentual_format(financiamento.get("taxa_mensal", 0)),
+            "total_financiamento": real_format(financiamento.get("total_pago", 0)),
+            "juros_financiamento_total": real_format(financiamento.get("juros_total", 0)),
             "juros_financiamento_horizonte": real_format(v.get("juros_financiamento_horizonte", 0)),
+        }
+
+    def melhor_indice(valor1: float, valor2: float, maior_melhor: bool = False) -> int:
+        valor1 = float(valor1 or 0)
+        valor2 = float(valor2 or 0)
+        if abs(valor1 - valor2) < 1e-9:
+            return 0
+        if maior_melhor:
+            return 1 if valor1 > valor2 else 2
+        return 1 if valor1 < valor2 else 2
+
+    def linha_comparativa(rotulo: str, valor1: float, valor2: float, maior_melhor: bool = False, ajuda: str = "") -> dict:
+        return {
+            "rotulo": rotulo,
+            "valor_1": real_format(valor1),
+            "valor_2": real_format(valor2),
+            "melhor": melhor_indice(valor1, valor2, maior_melhor=maior_melhor),
+            "ajuda": ajuda,
         }
 
     resumo_v1 = resumo(v1)
     resumo_v2 = resumo(v2)
 
+    comparativo_indicadores = [
+        linha_comparativa(
+            "TCO no horizonte",
+            v1["tco_final"],
+            v2["tco_final"],
+            ajuda="Custo total de propriedade estimado no período.",
+        ),
+        linha_comparativa(
+            "Custo total por km",
+            v1["custo_km"],
+            v2["custo_km"],
+            ajuda="TCO dividido pela quilometragem total simulada.",
+        ),
+        linha_comparativa(
+            "Gasto operacional acumulado",
+            v1["gasto_operacional_final"],
+            v2["gasto_operacional_final"],
+            ajuda="Energia ou combustível, manutenção, IPVA, seguro e juros no horizonte.",
+        ),
+        linha_comparativa(
+            "Perda por depreciação",
+            v1["perda_depreciacao_final"],
+            v2["perda_depreciacao_final"],
+            ajuda="Diferença entre o valor inicial e o valor estimado de revenda.",
+        ),
+        linha_comparativa(
+            "Valor estimado de revenda",
+            v1["valor_revenda_final"],
+            v2["valor_revenda_final"],
+            maior_melhor=True,
+            ajuda="Maior valor é favorável.",
+        ),
+    ]
+
+    if resumo_v1["financiamento_ativo"] or resumo_v2["financiamento_ativo"]:
+        comparativo_indicadores.append(
+            linha_comparativa(
+                "Juros pagos no horizonte",
+                v1.get("juros_financiamento_horizonte", 0),
+                v2.get("juros_financiamento_horizonte", 0),
+                ajuda="Somente os juros que incidem dentro do período analisado.",
+            )
+        )
+
+    vencedor_custo_km = v1 if v1["custo_km"] <= v2["custo_km"] else v2
+    outro_custo_km = v2 if vencedor_custo_km is v1 else v1
+    diferenca_custo_km = max(0.0, outro_custo_km["custo_km"] - vencedor_custo_km["custo_km"])
+    total_km = max(float(v1.get("total_km", 0) or 0), float(v2.get("total_km", 0) or 0))
+    total_km_formatado = f"{int(round(total_km)):,}".replace(",", ".")
+
+    custo_km_comparacao = {
+        "vencedor_nome": vencedor_custo_km["nome"],
+        "veiculo_1_nome": v1["nome_curto"],
+        "veiculo_2_nome": v2["nome_curto"],
+        "veiculo_1_valor": real_format(v1["custo_km"]),
+        "veiculo_2_valor": real_format(v2["custo_km"]),
+        "melhor": 1 if vencedor_custo_km is v1 else 2,
+        "diferenca": real_format(diferenca_custo_km),
+        "impacto_10000": real_format(diferenca_custo_km * 10000),
+        "impacto_horizonte": real_format(diferenca_custo_km * total_km),
+        "quilometragem_horizonte": total_km_formatado,
+    }
+
     return {
         "titulo": titulo,
         "vencedor_nome": vencedor["nome"],
+        "vencedor_indice": 1 if vencedor is v1 else 2,
         "economia": real_format(economia),
+        "economia_percentual": percentual_format(economia_percentual),
         "detalhes": [resumo_v1, resumo_v2],
+        "comparativo_indicadores": comparativo_indicadores,
+        "custo_km_comparacao": custo_km_comparacao,
         "resumo_com": [
             {"nome": resumo_v1["nome"], "tco_final": resumo_v1["tco_final"], "custo_km": resumo_v1["custo_km"]},
             {"nome": resumo_v2["nome"], "tco_final": resumo_v2["tco_final"], "custo_km": resumo_v2["custo_km"]},
@@ -618,7 +697,7 @@ def montar_bloco_resultado(titulo, v1, v2):
         ],
         "grafico": graficos["grafico"],
         "grafico_sem_depreciacao": graficos["grafico_sem_depreciacao"],
-        "grafico_custo_km": graficos["grafico_custo_km"],
+        "grafico_custo_km": "",
         "grafico_revenda_comparativo": graficos["grafico_revenda_comparativo"],
         "grafico_depreciacao_v1": graficos["grafico_depreciacao_v1"],
         "grafico_depreciacao_v2": graficos["grafico_depreciacao_v2"],
