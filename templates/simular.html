@@ -28,6 +28,12 @@
     .plugve-price-row input:focus{outline:none !important;box-shadow:none !important}
     .plugve-price-finance-button{border:0;border-radius:999px;background:#059669;color:#fff;padding:.45rem .85rem;font-weight:800;font-size:.72rem;line-height:1.1;white-space:nowrap;box-shadow:0 8px 18px rgba(5,150,105,.18)}
     .plugve-price-finance-button:hover{background:#047857}
+    .plugve-inline-action-field{margin-top:.25rem;border:1px solid #d1d5db;border-radius:.75rem;background:#fff;display:flex;align-items:center;gap:.5rem;padding:.18rem .25rem .18rem .7rem;transition:border-color .18s ease,box-shadow .18s ease}
+    .plugve-inline-action-field:focus-within{border-color:#059669;box-shadow:0 0 0 3px rgba(5,150,105,.10)}
+    .plugve-inline-action-input{border:0 !important;border-radius:0 !important;box-shadow:none !important;background:transparent !important;margin:0 !important;padding:.45rem .25rem !important;min-width:0;width:100%}
+    .plugve-inline-action-input:focus{outline:none !important;box-shadow:none !important}
+    .plugve-inline-check{display:inline-flex;align-items:center;gap:.35rem;border:1px solid #bbf7d0;background:#ecfdf5;color:#065f46;border-radius:999px;padding:.38rem .65rem;font-size:.72rem;font-weight:800;white-space:nowrap;user-select:none}
+    .plugve-inline-check input{accent-color:#059669}
     .plugve-finance-box{border-top:1px solid #e5e7eb;background:#fbfefc;padding:.42rem .75rem .58rem;margin:0}
     .plugve-finance-box.plugve-finance-empty{display:none}
     .plugve-finance-box strong{color:#0f172a}
@@ -48,7 +54,17 @@
     .plugve-finance-header{padding:1.2rem 1.4rem;border-bottom:1px solid #e5e7eb;background:linear-gradient(180deg,#eff6ff 0%,#ffffff 100%)}
     .plugve-finance-body{padding:1.25rem}
     .plugve-finance-vehicle{border:1px solid #e5e7eb;border-radius:1rem;padding:1rem;background:#fff;box-shadow:0 10px 25px rgba(15,23,42,.04)}
+    .plugve-finance-form-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.75rem;align-items:end}
+    .plugve-finance-control{display:flex;flex-direction:column;min-width:0}
+    .plugve-finance-control label{min-height:2.15rem;display:flex;align-items:flex-end;line-height:1.15}
+    .plugve-finance-control input{height:2.9rem}
     .plugve-finance-total{background:#f8fafc;border:1px solid #e2e8f0;border-radius:.75rem;padding:.7rem;font-size:.8rem;color:#334155}
+    .plugve-finance-footer{display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap}
+    .plugve-finance-actions{display:flex;align-items:center;justify-content:flex-end;gap:.75rem;flex-wrap:wrap}
+    .plugve-finance-replicar{display:inline-flex;align-items:center;gap:.45rem;border:1px solid #bbf7d0;background:#ecfdf5;color:#065f46;border-radius:999px;padding:.55rem .85rem;font-size:.86rem;font-weight:800;user-select:none}
+    .plugve-finance-replicar input{accent-color:#059669}
+    @media(max-width:900px){.plugve-finance-form-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:560px){.plugve-finance-form-grid{grid-template-columns:1fr}.plugve-finance-footer{align-items:stretch}.plugve-finance-actions{justify-content:stretch}.plugve-finance-actions button{flex:1}}
     .plugve-energy-tooltip{position:relative;display:inline-block}
     .plugve-energy-tooltip-trigger{font-weight:700;color:#2563eb;text-decoration:underline;text-decoration-style:dotted;cursor:help}
     .plugve-energy-tooltip-panel{display:none;position:absolute;left:0;top:1.35rem;z-index:90;width:340px;max-width:85vw;background:#fff;border:1px solid #e5e7eb;border-radius:.85rem;box-shadow:0 18px 45px rgba(15,23,42,.18);padding:.85rem;color:#374151}
@@ -411,10 +427,10 @@
 
               <div>
                 <label class="block text-sm font-medium">IPVA anual VE</label>
-                <div class="mt-1 flex flex-col sm:flex-row gap-2 sm:items-center">
-                  <input type="text" name="ipva_ve" id="ipva_ve_input" class="p-2 border rounded w-full" placeholder="Calculado automaticamente">
-                  <label class="flex items-center px-3 py-2 border rounded bg-gray-50 text-xs text-gray-700 whitespace-nowrap select-none">
-                    <input type="checkbox" name="isencao_ipva_ve" id="isencao_ipva_checkbox" class="mr-2">
+                <div class="plugve-inline-action-field">
+                  <input type="text" name="ipva_ve" id="ipva_ve_input" class="plugve-inline-action-input" placeholder="Calculado automaticamente">
+                  <label class="plugve-inline-check">
+                    <input type="checkbox" name="isencao_ipva_ve" id="isencao_ipva_checkbox">
                     Isenção VE
                   </label>
                 </div>
@@ -607,12 +623,7 @@
       <div class="plugve-finance-panel">
         <div class="plugve-finance-header">
           <div class="flex items-start justify-between gap-4">
-            <div>
-              <h2 class="text-xl font-bold text-blue-700">Financiamento dos veículos selecionados</h2>
-              <p class="text-sm text-gray-600 mt-1">
-                Configure as condições de financiamento de cada carro. Cada veículo pode ter juros, entrada e prazo diferentes.
-              </p>
-            </div>
+            <h2 class="text-xl font-bold text-blue-700">Financiamento dos veículos selecionados</h2>
             <button type="button" id="btn_fechar_financiamento_tco" class="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">
               Fechar
             </button>
@@ -620,24 +631,21 @@
         </div>
 
         <div class="plugve-finance-body">
-          <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
-            <p class="text-sm text-gray-600">
-              O TCO considera como custo financeiro os juros pagos no horizonte da simulação, evitando contar o valor do carro duas vezes.
-            </p>
-            <button type="button" id="btn_replicar_financiamento_tco" class="px-3 py-2 bg-slate-100 border border-slate-300 text-slate-700 text-sm rounded hover:bg-slate-200">
-              Replicar condições do primeiro carro
-            </button>
-          </div>
-
           <div id="financeiro_veiculos_tco" class="grid grid-cols-1 lg:grid-cols-2 gap-4"></div>
 
-          <div class="mt-5 flex flex-col md:flex-row md:justify-end gap-3">
-            <button type="button" id="btn_limpar_financiamento_tco" class="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">
-              Limpar financiamentos
-            </button>
-            <button type="button" id="btn_salvar_financiamento_tco" class="px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700">
-              Salvar financiamento
-            </button>
+          <div class="mt-5 plugve-finance-footer">
+            <label class="plugve-finance-replicar">
+              <input type="checkbox" id="chk_replicar_financiamento_tco" checked>
+              Replicar
+            </label>
+            <div class="plugve-finance-actions">
+              <button type="button" id="btn_limpar_financiamento_tco" class="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">
+                Limpar financiamentos
+              </button>
+              <button type="button" id="btn_salvar_financiamento_tco" class="px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700">
+                Salvar financiamento
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -893,14 +901,14 @@
       });
     }
 
-    function calcularFinanciamentoTCO(preco, entradaPct, taxaMensalPct, meses, custos) {
+    function calcularFinanciamentoTCO(preco, entradaValor, taxaMensalPct, meses, custos) {
       preco = Math.max(0, Number(preco || 0));
-      entradaPct = Math.max(0, Math.min(100, Number(entradaPct || 0)));
+      custos = Math.max(0, Number(custos || 0));
+      entradaValor = Math.max(0, Number(entradaValor || 0));
       taxaMensalPct = Math.max(0, Number(taxaMensalPct || 0));
       meses = Math.max(0, Math.round(Number(meses || 0)));
-      custos = Math.max(0, Number(custos || 0));
 
-      const entrada = preco * (entradaPct / 100);
+      const entrada = Math.min(entradaValor, preco + custos);
       const principal = Math.max(0, preco + custos - entrada);
       if (meses <= 0 || principal <= 0) {
         return { entrada, principal: 0, parcela: 0, totalParcelas: 0, totalPago: 0, jurosTotal: 0 };
@@ -940,11 +948,11 @@
       return `${modelo}${ano ? ` ${ano}` : ""}`.trim() || rotuloPrefixoFinanciamento(prefixo);
     }
 
-    function preencherFinanciamentoHidden(prefixo, ativo, entradaPct, taxaMensalPct, meses, custos) {
+    function preencherFinanciamentoHidden(prefixo, ativo, entradaValor, taxaMensalPct, meses, custos) {
       const preco = numeroBRParaFloat(campoValor(prefixo)?.value || 0);
-      const calc = calcularFinanciamentoTCO(preco, entradaPct, taxaMensalPct, meses, custos);
+      const calc = calcularFinanciamentoTCO(preco, entradaValor, taxaMensalPct, meses, custos);
       setHiddenFin(prefixo, "ativo", ativo ? "1" : "0");
-      setHiddenFin(prefixo, "entrada_pct", ativo ? String(entradaPct || 0).replace(".", ",") : "0");
+      setHiddenFin(prefixo, "entrada_pct", "0");
       setHiddenFin(prefixo, "entrada", ativo ? formatarMoedaBR(calc.entrada) : "0");
       setHiddenFin(prefixo, "juros_mensal", ativo ? String(taxaMensalPct || 0).replace(".", ",") : "0");
       setHiddenFin(prefixo, "meses", ativo ? String(meses || 0) : "0");
@@ -969,7 +977,6 @@
       }
       const precoOriginal = formatarMoedaBR(numeroBRParaFloat(campoValor(prefixo)?.value || 0));
       const entrada = valorHiddenFin(prefixo, "entrada", "0");
-      const entradaPct = valorHiddenFin(prefixo, "entrada_pct", "0");
       const principal = valorHiddenFin(prefixo, "principal", "0");
       const parcela = valorHiddenFin(prefixo, "parcela", "0");
       const juros = valorHiddenFin(prefixo, "juros_total", "0");
@@ -985,7 +992,7 @@
             <span class="plugve-finance-tooltip-panel">
               <span class="plugve-finance-tooltip-title">Resumo do financiamento</span>
               <span class="plugve-finance-tooltip-row"><span>Valor do carro</span><strong>${precoOriginal}</strong></span>
-              <span class="plugve-finance-tooltip-row"><span>Entrada</span><strong>${entrada} (${entradaPct}%)</strong></span>
+              <span class="plugve-finance-tooltip-row"><span>Entrada</span><strong>${entrada}</strong></span>
               <span class="plugve-finance-tooltip-row"><span>Custos financiados</span><strong>${custos}</strong></span>
               <span class="plugve-finance-tooltip-row"><span>Valor financiado</span><strong>${principal}</strong></span>
               <span class="plugve-finance-tooltip-row"><span>Prazo</span><strong>${meses} meses</strong></span>
@@ -1010,7 +1017,7 @@
       preencherFinanciamentoHidden(
         prefixo,
         true,
-        numeroBRParaFloat(valorHiddenFin(prefixo, "entrada_pct", "0")),
+        numeroBRParaFloat(valorHiddenFin(prefixo, "entrada", "0")),
         numeroBRParaFloat(valorHiddenFin(prefixo, "juros_mensal", "0")),
         Number(valorHiddenFin(prefixo, "meses", "0")),
         numeroBRParaFloat(valorHiddenFin(prefixo, "custos", "0"))
@@ -1022,11 +1029,11 @@
       if (!prefixo) return;
       const ativo = card.querySelector("[data-fin-campo='ativo']")?.checked;
       const preco = numeroBRParaFloat(campoValor(prefixo)?.value || 0);
-      const entradaPct = numeroBRParaFloat(card.querySelector("[data-fin-campo='entrada_pct']")?.value || 0);
+      const entrada = numeroBRParaFloat(card.querySelector("[data-fin-campo='entrada']")?.value || 0);
       const taxa = numeroBRParaFloat(card.querySelector("[data-fin-campo='juros_mensal']")?.value || 0);
       const meses = Number(card.querySelector("[data-fin-campo='meses']")?.value || 0);
       const custos = numeroBRParaFloat(card.querySelector("[data-fin-campo='custos']")?.value || 0);
-      const calc = ativo ? calcularFinanciamentoTCO(preco, entradaPct, taxa, meses, custos) : null;
+      const calc = ativo ? calcularFinanciamentoTCO(preco, entrada, taxa, meses, custos) : null;
       const alvo = card.querySelector("[data-fin-preview]");
       if (!alvo) return;
       if (!ativo || !calc || calc.principal <= 0 || meses <= 0) {
@@ -1046,7 +1053,7 @@
 
     function montarCardFinanciamento(prefixo, indice) {
       const ativo = financiamentoAtivo(prefixo);
-      const entradaPct = valorHiddenFin(prefixo, "entrada_pct", "20");
+      const entrada = valorHiddenFin(prefixo, "entrada", "0");
       const juros = valorHiddenFin(prefixo, "juros_mensal", "1,49");
       const meses = valorHiddenFin(prefixo, "meses", "60");
       const custos = valorHiddenFin(prefixo, "custos", "0");
@@ -1067,20 +1074,20 @@
             Usar financiamento
           </label>
         </div>
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
-          <div>
-            <label class="block text-xs font-medium">Entrada (%)</label>
-            <input type="text" data-fin-campo="entrada_pct" value="${entradaPct || "20"}" class="mt-1 p-2 border rounded w-full" placeholder="ex: 20">
+        <div class="plugve-finance-form-grid">
+          <div class="plugve-finance-control">
+            <label class="block text-xs font-medium">Entrada (R$)</label>
+            <input type="text" data-fin-campo="entrada" value="${entrada && entrada !== "0" ? entrada : "0"}" class="mt-1 p-2 border rounded w-full" placeholder="ex: 30000">
           </div>
-          <div>
+          <div class="plugve-finance-control">
             <label class="block text-xs font-medium">Juros (% a.m.)</label>
             <input type="text" data-fin-campo="juros_mensal" value="${juros || "1,49"}" class="mt-1 p-2 border rounded w-full" placeholder="ex: 1,49">
           </div>
-          <div>
+          <div class="plugve-finance-control">
             <label class="block text-xs font-medium">Prazo (meses)</label>
             <input type="number" data-fin-campo="meses" value="${meses && meses !== "0" ? meses : "60"}" min="1" max="120" class="mt-1 p-2 border rounded w-full">
           </div>
-          <div>
+          <div class="plugve-finance-control">
             <label class="block text-xs font-medium">Custos financiados (R$)</label>
             <input type="text" data-fin-campo="custos" value="${custos && custos !== "0" ? custos : "0"}" class="mt-1 p-2 border rounded w-full" placeholder="ex: 0">
           </div>
@@ -1091,8 +1098,14 @@
         card.querySelector("[data-fin-campo='ativo']").checked = true;
       }
       card.querySelectorAll("input").forEach(input => {
-        input.addEventListener("input", () => previewFinanciamentoCard(card));
-        input.addEventListener("change", () => previewFinanciamentoCard(card));
+        input.addEventListener("input", () => {
+          previewFinanciamentoCard(card);
+          replicarFinanciamentoAutomaticoTCO(card);
+        });
+        input.addEventListener("change", () => {
+          previewFinanciamentoCard(card);
+          replicarFinanciamentoAutomaticoTCO(card);
+        });
       });
       previewFinanciamentoCard(card);
       return card;
@@ -1127,21 +1140,25 @@
       document.querySelectorAll("#financeiro_veiculos_tco .plugve-finance-vehicle").forEach(card => {
         const prefixo = card.dataset.prefixo;
         const ativo = !!card.querySelector("[data-fin-campo='ativo']")?.checked;
-        const entradaPct = numeroBRParaFloat(card.querySelector("[data-fin-campo='entrada_pct']")?.value || 0);
+        const entrada = numeroBRParaFloat(card.querySelector("[data-fin-campo='entrada']")?.value || 0);
         const taxa = numeroBRParaFloat(card.querySelector("[data-fin-campo='juros_mensal']")?.value || 0);
         const meses = Number(card.querySelector("[data-fin-campo='meses']")?.value || 0);
         const custos = numeroBRParaFloat(card.querySelector("[data-fin-campo='custos']")?.value || 0);
-        preencherFinanciamentoHidden(prefixo, ativo, entradaPct, taxa, meses, custos);
+        preencherFinanciamentoHidden(prefixo, ativo, entrada, taxa, meses, custos);
       });
       capturarEstadoFormularioTCO();
       fecharFinanciamentoTCO();
+    }
+
+    function replicarFinanciamentoLigadoTCO() {
+      return !!document.getElementById("chk_replicar_financiamento_tco")?.checked;
     }
 
     function replicarFinanciamentoPrimeiroTCO() {
       const cards = Array.from(document.querySelectorAll("#financeiro_veiculos_tco .plugve-finance-vehicle"));
       if (cards.length < 2) return;
       const primeiro = cards[0];
-      const campos = ["ativo", "entrada_pct", "juros_mensal", "meses", "custos"];
+      const campos = ["ativo", "entrada", "juros_mensal", "meses", "custos"];
       cards.slice(1).forEach(card => {
         campos.forEach(campo => {
           const origem = primeiro.querySelector(`[data-fin-campo='${campo}']`);
@@ -1154,11 +1171,17 @@
       });
     }
 
+    function replicarFinanciamentoAutomaticoTCO(cardOrigem) {
+      const cards = Array.from(document.querySelectorAll("#financeiro_veiculos_tco .plugve-finance-vehicle"));
+      if (!replicarFinanciamentoLigadoTCO() || cards.length < 2 || cardOrigem !== cards[0]) return;
+      replicarFinanciamentoPrimeiroTCO();
+    }
+
     function limparFinanciamentosTCO() {
       PLUGVE_TCO_FIN_PREFIXES.forEach(prefixo => preencherFinanciamentoHidden(prefixo, false, 0, 0, 0, 0));
       document.querySelectorAll("#financeiro_veiculos_tco .plugve-finance-vehicle").forEach(card => {
         const ativo = card.querySelector("[data-fin-campo='ativo']");
-        const entrada = card.querySelector("[data-fin-campo='entrada_pct']");
+        const entrada = card.querySelector("[data-fin-campo='entrada']");
         const juros = card.querySelector("[data-fin-campo='juros_mensal']");
         const meses = card.querySelector("[data-fin-campo='meses']");
         const custos = card.querySelector("[data-fin-campo='custos']");
@@ -2679,7 +2702,9 @@
         });
         document.getElementById("btn_fechar_financiamento_tco")?.addEventListener("click", fecharFinanciamentoTCO);
         document.getElementById("btn_salvar_financiamento_tco")?.addEventListener("click", salvarFinanciamentoTCO);
-        document.getElementById("btn_replicar_financiamento_tco")?.addEventListener("click", replicarFinanciamentoPrimeiroTCO);
+        document.getElementById("chk_replicar_financiamento_tco")?.addEventListener("change", function () {
+          if (this.checked) replicarFinanciamentoPrimeiroTCO();
+        });
         document.getElementById("btn_limpar_financiamento_tco")?.addEventListener("click", limparFinanciamentosTCO);
         document.getElementById("modal_financiamento_tco")?.addEventListener("click", function (ev) {
           if (ev.target === this) fecharFinanciamentoTCO();
