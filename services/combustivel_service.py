@@ -21,6 +21,35 @@ MAPA_UF_PARA_ESTADO = {
     "SE": "SERGIPE", "TO": "TOCANTINS",
 }
 
+# Produtos usados pela interface do TCO. A normalização remove acentos, então
+# "ÓLEO" e "OLEO" são tratados da mesma forma.
+PRODUTOS_ANP = {
+    "gasolina": {
+        "label": "Gasolina comum",
+        "termos": ("GASOLINA COMUM",),
+    },
+    "etanol": {
+        "label": "Etanol hidratado",
+        "termos": ("ETANOL HIDRATADO",),
+    },
+    "diesel_s10": {
+        "label": "Diesel S10",
+        "termos": ("OLEO DIESEL S10", "DIESEL S10"),
+    },
+}
+
+ALIASES_PRODUTO = {
+    "gasolina": "gasolina",
+    "gasolina_comum": "gasolina",
+    "etanol": "etanol",
+    "alcool": "etanol",
+    "álcool": "etanol",
+    "diesel": "diesel_s10",
+    "diesel_s10": "diesel_s10",
+    "oleo_diesel_s10": "diesel_s10",
+    "óleo_diesel_s10": "diesel_s10",
+}
+
 
 class PlanilhaANPInvalida(Exception):
     """Erro interno para formato de planilha ANP não reconhecido."""
@@ -28,6 +57,11 @@ class PlanilhaANPInvalida(Exception):
 
 def _normalizar(s: object) -> str:
     return normalizar_texto(s).upper()
+
+
+def _normalizar_chave_produto(produto: str | None) -> str:
+    chave = str(produto or "gasolina").strip().lower().replace(" ", "_").replace("-", "_")
+    return ALIASES_PRODUTO.get(chave, "gasolina")
 
 
 def _escolher_aba_municipios(caminho: Path) -> str | int:
@@ -38,11 +72,7 @@ def _escolher_aba_municipios(caminho: Path) -> str | int:
     vem com várias abas (CAPITAIS, MUNICIPIOS, ESTADOS, REGIOES, BRASIL), então o
     serviço precisa escolher MUNICIPIOS explicitamente.
     """
-    try:
-        xls = pd.ExcelFile(caminho)
-    except Exception:
-        raise
-
+    xls = pd.ExcelFile(caminho)
     for nome in xls.sheet_names:
         if "MUNICIP" in _normalizar(nome):
             return nome
@@ -127,7 +157,7 @@ def _identificar_colunas(df: pd.DataFrame) -> dict[str, object]:
 
 
 @lru_cache(maxsize=1)
-def carregar_df_gasolina() -> Optional[pd.DataFrame]:
+def carregar_df_combustiveis() -> Optional[pd.DataFrame]:
     if not CAMINHO_ANP.exists():
         print("[ANP] Arquivo não encontrado:", CAMINHO_ANP)
         return None
@@ -147,11 +177,10 @@ def carregar_df_gasolina() -> Optional[pd.DataFrame]:
     col_preco = colunas["preco"]
     col_periodo = colunas["periodo"]
 
-    produto_norm = df[col_produto].map(_normalizar)
-    df = df[produto_norm.str.contains("GASOLINA COMUM", na=False)].copy()
-
+    df = df.copy()
     df["ESTADO_NORM"] = df[col_estado].map(_normalizar)
     df["MUNIC_NORM"] = df[col_municipio].map(_normalizar)
+    df["PRODUTO_NORM"] = df[col_produto].map(_normalizar)
     df["PRECO_REVENDA_NUM"] = df[col_preco].map(_parse_preco_reais)
     df["MES_RAW"] = df[col_periodo]
     df["PERIODO_DATA"] = pd.to_datetime(df[col_periodo], errors="coerce", dayfirst=True)
@@ -161,11 +190,29 @@ def carregar_df_gasolina() -> Optional[pd.DataFrame]:
         "[ANP] Planilha carregada.",
         f"Aba: {aba}.",
         f"Cabeçalho: linha {linha_cabecalho + 1}.",
-        "Produto: GASOLINA COMUM.",
+        "Produtos: gasolina, etanol e diesel S10.",
         "Linhas:",
         len(df),
     )
     return df
+
+
+@lru_cache(maxsize=1)
+def carregar_df_gasolina() -> Optional[pd.DataFrame]:
+    """Compatibilidade com chamadas antigas: retorna apenas gasolina comum."""
+    df = carregar_df_combustiveis()
+    if df is None:
+        return None
+    termos = PRODUTOS_ANP["gasolina"]["termos"]
+    return df[_mascara_produto(df, termos)].copy().reset_index(drop=True)
+
+
+def _mascara_produto(df: pd.DataFrame, termos: tuple[str, ...]) -> pd.Series:
+    produto_norm = df["PRODUTO_NORM"].fillna("")
+    mascara = pd.Series(False, index=df.index)
+    for termo in termos:
+        mascara = mascara | produto_norm.str.contains(_normalizar(termo), na=False, regex=False)
+    return mascara
 
 
 def _recorte_periodo_mais_recente(df: pd.DataFrame) -> pd.DataFrame:
@@ -183,11 +230,7 @@ def _recorte_periodo_mais_recente(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def obter_preco_gasolina(uf: str, municipio: str) -> Optional[float]:
-    df = carregar_df_gasolina()
-    if df is None or df.empty:
-        return None
-
+def _buscar_preco_no_recorte(df: pd.DataFrame, uf: str, municipio: str) -> Optional[float]:
     uf = (uf or "").upper().strip()
     municipio_norm = _normalizar(municipio)
     nome_estado_norm = MAPA_UF_PARA_ESTADO.get(uf, "")
@@ -219,3 +262,44 @@ def obter_preco_gasolina(uf: str, municipio: str) -> Optional[float]:
             return round(float(preco), 3) if pd.notna(preco) else None
 
     return None
+
+
+def obter_preco_combustivel(uf: str, municipio: str, produto: str = "gasolina") -> Optional[float]:
+    df = carregar_df_combustiveis()
+    if df is None or df.empty:
+        return None
+
+    chave = _normalizar_chave_produto(produto)
+    termos = PRODUTOS_ANP[chave]["termos"]
+    df_produto = df[_mascara_produto(df, termos)].copy()
+    if df_produto.empty:
+        return None
+
+    return _buscar_preco_no_recorte(df_produto, uf, municipio)
+
+
+def obter_preco_gasolina(uf: str, municipio: str) -> Optional[float]:
+    return obter_preco_combustivel(uf, municipio, "gasolina")
+
+
+def obter_precos_combustiveis(uf: str, municipio: str) -> dict[str, Optional[float]]:
+    """
+    Retorna os preços relevantes para a tela Simular.
+
+    O campo "preco" mantém compatibilidade com a versão antiga, que esperava
+    apenas gasolina comum em /preco_combustivel.
+    """
+    precos = {
+        chave: obter_preco_combustivel(uf, municipio, chave)
+        for chave in ("gasolina", "etanol", "diesel_s10")
+    }
+    return {
+        "preco": precos["gasolina"],
+        "gasolina": precos["gasolina"],
+        "etanol": precos["etanol"],
+        "diesel_s10": precos["diesel_s10"],
+        "produtos": {
+            chave: {"label": info["label"], "preco": precos[chave]}
+            for chave, info in PRODUTOS_ANP.items()
+        },
+    }

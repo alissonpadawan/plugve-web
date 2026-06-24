@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from flask import Blueprint, jsonify, request
 
-from services.combustivel_service import obter_preco_gasolina
+from services.combustivel_service import obter_precos_combustiveis
 from services.energia_service import obter_tarifa_energia, TARIFA_FALLBACK_UF
 
 utility_bp = Blueprint("utility", __name__)
@@ -15,8 +15,9 @@ def preco_combustivel():
     if not uf or not municipio:
         return jsonify({"erro": "UF e município são obrigatórios"}), 400
     try:
-        preco = obter_preco_gasolina(uf, municipio)
-        return jsonify({"preco": preco, "uf": uf, "municipio": municipio})
+        dados = obter_precos_combustiveis(uf, municipio)
+        dados.update({"uf": uf, "municipio": municipio})
+        return jsonify(dados)
     except Exception as exc:
         print("[ANP] Erro no endpoint /preco_combustivel:", exc)
         return jsonify({"erro": "Falha ao calcular preço de combustível"}), 500

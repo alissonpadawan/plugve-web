@@ -1003,8 +1003,10 @@ def preco_combustivel():
         return jsonify({"erro": "UF e município são obrigatórios"}), 400
 
     try:
-        preco = obter_preco_gasolina(uf, municipio)
-        return jsonify({"preco": preco, "uf": uf, "municipio": municipio})
+        from services.combustivel_service import obter_precos_combustiveis
+        dados = obter_precos_combustiveis(uf, municipio)
+        dados.update({"uf": uf, "municipio": municipio})
+        return jsonify(dados)
     except Exception as e:
         print("Erro ao calcular preço de combustível:", e)
         return jsonify({"erro": "Falha ao calcular preço de combustível"}), 500
