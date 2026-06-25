@@ -1806,25 +1806,31 @@
         .trim();
     }
 
-    function classificarTipoVeiculoTCO(modelo, combustivel, codigoAno, marca) {
+    function classificarTipoVeiculoTCO(modelo, combustivel, codigoAno, marca, prefixoContexto = "") {
       const marcaNorm = normalizarTextoTipoTCO(marca);
+      const prefixoNorm = String(prefixoContexto || "").toLowerCase();
       const texto = normalizarTextoTipoTCO(`${marca || ""} ${modelo || ""} ${combustivel || ""} ${codigoAno || ""}`);
+      const ehHibridoGenerico = /(\bHIBRID[OA]\b|\bHYBRID\b|\bHEV\b|\bMHEV\b|\bMILD\s+HYBRID\b|\bE\s+HEV\b)/i.test(texto);
+      const ehPlugin = /(\bPHEV\b|\bPLUG\s*IN\b|\bPLUGIN\b|HIBRID[OA]\s+PLUGIN|HIBRID[OA]\s+PLUG\s*IN|HYBRID\s+PLUGIN|HYBRID\s+PLUG\s*IN|\bDM\s*I\b|\bDMI\b|\bE\s+HYBRID\b|\bEHIBRID\b|\bTFSI\s*E\b|\bTFSIE\b|\bRECHARGE\b|\b330E\b|\b530E\b|\b545E\b|\b740E\b|\b745E\b|\bC\s*300E\b|\bE\s*300E\b|\bS\s*580E\b|\bGLC\s*300E\b|\bGLE\s*350E\b|\b225XE\b|\bX1\s+XDRIVE\s*25E\b|\bX3\s+XDRIVE\s*30E\b|\bX5\s+XDRIVE\s*(40E|45E|50E)\b)/i.test(texto);
+
+      if (ehPlugin) return "phev";
+
+      // A FIPE geralmente mostra apenas "Híbrido", sem distinguir plug-in.
+      // Pela regra da CurVE, híbrido que passou pelo bloco VE deve ser tratado como PHEV.
+      // No bloco ICEV/combustão, o mesmo texto continua como HEV não plug-in.
+      if (prefixoNorm === "ve" && ehHibridoGenerico) return "phev";
 
       if (marcaNorm === "BYD") {
-        if (/\b(DM\s*I|DMI|PHEV|PLUG\s*IN|PLUGIN)\b/i.test(texto)) return "phev";
+        if (ehHibridoGenerico) return "hibrido";
         return "eletrico";
       }
       if (marcaNorm === "TESLA") return "eletrico";
       if (marcaNorm === "VOLVO" && /\bT8\b/i.test(texto)) return "phev";
 
-      const ehPlugin = /(\bPHEV\b|\bPLUG\s*IN\b|\bPLUGIN\b|HIBRID[OA]\s+PLUGIN|HIBRID[OA]\s+PLUG\s*IN|HYBRID\s+PLUGIN|HYBRID\s+PLUG\s*IN|\bDM\s*I\b|\bDMI\b|\bE\s+HYBRID\b|\bEHIBRID\b|\bTFSI\s*E\b|\bTFSIE\b|\bRECHARGE\b|\b330E\b|\b530E\b|\b545E\b|\b740E\b|\b745E\b|\bC\s*300E\b|\bE\s*300E\b|\bS\s*580E\b|\bGLC\s*300E\b|\bGLE\s*350E\b|\b225XE\b|\bX1\s+XDRIVE\s*25E\b|\bX3\s+XDRIVE\s*30E\b|\bX5\s+XDRIVE\s*(40E|45E|50E)\b)/i.test(texto);
-      if (ehPlugin) return "phev";
-
       const ehEletrico = /(\bELETRIC[OA]\b|\bELECTRIC\b|\bBEV\b|\bEV\b|\bE\s+TRON\b|\bETRON\b|\bE\s+TECH\b|\bBATERIA\b|\bZERO\s+EMISSAO\b|\bI\s*EV\b|\bIEV\b|\bID\s*4\b|\bID\s*3\b|\b500E\b|\bE\s*2008\b|\bE\s*208\b|\bE\s*C4\b|\bEQA\b|\bEQB\b|\bEQC\b|\bEQE\b|\bEQS\b|\bI3\b|\bI4\b|\bI7\b|\bIX\b|\bIX1\b|\bIX3\b|\bLEAF\b|\bZOE\b|\bBOLT\b|\bTAYCAN\b|\bDOLPHIN\b|\bSEAL\b|\bYUAN\b|\bTAN\b|\bHAN\b|\bORA\b)/i.test(texto);
       if (ehEletrico) return "eletrico";
 
-      const ehHibridoNaoPlugin = /(\bHIBRID[OA]\b|\bHYBRID\b|\bHEV\b|\bMHEV\b|\bMILD\s+HYBRID\b|\bE\s+HEV\b)/i.test(texto);
-      if (ehHibridoNaoPlugin) return "hibrido";
+      if (ehHibridoGenerico) return "hibrido";
 
       return "combustao";
     }
@@ -2206,7 +2212,7 @@
         const nomeModeloSelecionado = modeloEl.options[modeloEl.selectedIndex]?.text || "";
         const nomeMarcaSelecionada = marcaEl.options[marcaEl.selectedIndex]?.text || "";
         anos.forEach(a => {
-          const tipoAno = classificarTipoVeiculoTCO(nomeModeloSelecionado, a.nome, a.codigo, nomeMarcaSelecionada);
+          const tipoAno = classificarTipoVeiculoTCO(nomeModeloSelecionado, a.nome, a.codigo, nomeMarcaSelecionada, prefixoDestino);
           if (!tipoPermitidoNoBloco(prefixoDestino, tipoAno)) return;
           const opt = document.createElement("option");
           opt.value = a.codigo;
@@ -2296,7 +2302,7 @@
         const textoAnoTela = textoAnoFipeParaTela(ano, textoAnoOriginal);
         const nomeCompleto = `${nomeModelo} ${textoAnoTela}`.trim();
         const marcaStr = data.Marca || marcaSelect.options[marcaSelect.selectedIndex]?.text || "";
-        const tipoSelecionado = classificarTipoVeiculoTCO(nomeModelo, combustivelStr || textoAnoTela, ano, marcaStr);
+        const tipoSelecionado = classificarTipoVeiculoTCO(nomeModelo, combustivelStr || textoAnoTela, ano, marcaStr, prefixo);
         if (!tipoPermitidoNoBloco(prefixo, tipoSelecionado)) {
           limparCamposVeiculo(prefixo);
           alert(mensagemBloqueioTipo(prefixo, tipoSelecionado));
@@ -2356,7 +2362,7 @@
     }
 
     function tipoPreferencialDepreciacao(prefixo, combustivel, modelo) {
-      const tipo = classificarTipoVeiculoTCO(modelo, combustivel, "", "");
+      const tipo = classificarTipoVeiculoTCO(modelo, combustivel, "", "", prefixo);
       if (tipo === "eletrico" || tipo === "phev" || prefixo === "ve") return "eletrico";
       return "combustao";
     }
@@ -3101,7 +3107,7 @@
       if (tipoHidden) return tipoHidden;
       const modelo = document.getElementById("modelo_ve")?.value || "";
       const combustivel = document.getElementById("combustivel_ve")?.value || "";
-      return classificarTipoVeiculoTCO(modelo, combustivel, "", "");
+      return classificarTipoVeiculoTCO(modelo, combustivel, "", "", "ve");
     }
 
     function ehPhevSelecionadoTCO() {
@@ -3954,7 +3960,7 @@
           const nomeModeloSelecionado = modeloEl.options[modeloEl.selectedIndex]?.dataset?.nome || modeloEl.options[modeloEl.selectedIndex]?.text || "";
           const nomeMarcaSelecionada = marcaEl.options[marcaEl.selectedIndex]?.text || "";
           (Array.isArray(anos) ? anos : []).forEach(a => {
-            const tipoAno = classificarTipoVeiculoTCO(nomeModeloSelecionado, a.nome, a.codigo, nomeMarcaSelecionada);
+            const tipoAno = classificarTipoVeiculoTCO(nomeModeloSelecionado, a.nome, a.codigo, nomeMarcaSelecionada, prefixoDestino);
             if (!tipoPermitidoNoBloco(prefixoDestino, tipoAno)) return;
             const opt = document.createElement("option");
             opt.value = a.codigo;
