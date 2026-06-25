@@ -235,6 +235,34 @@ def inteiro_form(dados_form, campo: str, padrao: int = 0) -> int:
         return padrao
 
 
+def bool_form(dados_form, campo: str) -> bool:
+    valor = str(dados_form.get(campo, "") or "").strip().lower()
+    return valor in {"1", "true", "on", "sim", "yes"}
+
+
+def percentual_0_100_form(dados_form, campo: str, padrao: float = 0.0) -> float:
+    return max(0.0, min(100.0, conv(dados_form.get(campo, padrao))))
+
+
+def custo_uso_combustivel_flex(km_ano: float, etanol_pct: float, preco_gasolina: float, preco_etanol: float, consumo_gasolina: float, consumo_etanol: float) -> float:
+    """
+    Calcula o custo anual de uso para veículo flex com consumo separado.
+
+    A proporção representa o perfil de uso informado pelo usuário.
+    Cada parcela usa seu consumo próprio em km/L.
+    """
+    km_ano = max(0.0, float(km_ano or 0.0))
+    etanol_frac = max(0.0, min(1.0, float(etanol_pct or 0.0) / 100.0))
+    gasolina_frac = 1.0 - etanol_frac
+
+    custo = 0.0
+    if gasolina_frac > 0 and consumo_gasolina > 0 and preco_gasolina > 0:
+        custo += (km_ano * gasolina_frac / consumo_gasolina) * preco_gasolina
+    if etanol_frac > 0 and consumo_etanol > 0 and preco_etanol > 0:
+        custo += (km_ano * etanol_frac / consumo_etanol) * preco_etanol
+    return custo
+
+
 def financiamento_ativo_form(dados_form, prefixo: str) -> bool:
     valor = str(dados_form.get(f"fin_{prefixo}_ativo", "")).strip().lower()
     return valor in {"1", "true", "on", "sim", "yes"}
@@ -380,6 +408,18 @@ def calcular_projecao_veiculo(veiculo, comum):
     anos = max(1, int(comum.get("anos", 1) or 1))
     km_ano = max(0, int(comum.get("km_ano", 0) or 0))
 
+    fuel = comum.get("fuel") or {}
+    usar_perfil_flex = (
+        tipo != "ve"
+        and bool(fuel.get("flex_configurado"))
+        and str(fuel.get("prefixo") or "") == str(veiculo.get("prefixo") or "")
+    )
+    flex_etanol_pct = max(0.0, min(100.0, float(fuel.get("percent_etanol", 0) or 0)))
+    flex_preco_gasolina = max(0.0, float(fuel.get("preco_gasolina", 0) or 0))
+    flex_preco_etanol = max(0.0, float(fuel.get("preco_etanol", 0) or 0))
+    flex_consumo_gasolina = max(0.0, float(fuel.get("consumo_gasolina", 0) or 0))
+    flex_consumo_etanol = max(0.0, float(fuel.get("consumo_etanol", 0) or 0))
+
     taxa_ipva = taxa_relativa(ipva_inicial, preco)
     taxa_seguro = taxa_relativa(seguro_inicial, preco)
 
@@ -412,6 +452,16 @@ def calcular_projecao_veiculo(veiculo, comum):
 
         if tipo == "ve":
             custo_uso = km_ano * consumo * energia_ano
+        elif usar_perfil_flex:
+            fator_reajuste = (1 + aumento_combustivel) ** (ano - 1)
+            custo_uso = custo_uso_combustivel_flex(
+                km_ano=km_ano,
+                etanol_pct=flex_etanol_pct,
+                preco_gasolina=flex_preco_gasolina * fator_reajuste,
+                preco_etanol=flex_preco_etanol * fator_reajuste,
+                consumo_gasolina=flex_consumo_gasolina,
+                consumo_etanol=flex_consumo_etanol,
+            )
         else:
             custo_uso = (km_ano / consumo * combustivel_ano) if consumo > 0 else 0.0
 
@@ -737,6 +787,17 @@ def extrair_parametros_comuns(dados_form):
         "aumento_combustivel": conv(dados_form.get("aumento_combustivel", "0")) / 100.0,
         "anos": int(dados_form.get("anos", 1)),
         "km_ano": int(dados_form.get("km_ano", 0)),
+        "fuel": {
+            "tipo": str(dados_form.get("fuel_tipo_detectado", "") or "").strip().lower(),
+            "flex_configurado": bool_form(dados_form, "fuel_flex_configurado"),
+            "prefixo": str(dados_form.get("fuel_prefixo_configurado", "") or "").strip(),
+            "percent_etanol": percentual_0_100_form(dados_form, "fuel_percent_etanol", 0),
+            "preco_gasolina": conv(dados_form.get("fuel_preco_gasolina", 0)),
+            "preco_etanol": conv(dados_form.get("fuel_preco_etanol", 0)),
+            "preco_diesel_s10": conv(dados_form.get("fuel_preco_diesel_s10", 0)),
+            "consumo_gasolina": conv(dados_form.get("fuel_consumo_gasolina", 0)),
+            "consumo_etanol": conv(dados_form.get("fuel_consumo_etanol", 0)),
+        },
     }
 
 
@@ -764,6 +825,7 @@ def montar_veiculo_icev(dados_form):
     return {
         "nome": dados_form.get("modelo_icev", "Veículo a combustão"),
         "tipo": "icev",
+        "prefixo": "icev",
         "preco": preco,
         "consumo": conv(dados_form.get("consumo_icev", 1)),
         "manut": conv(dados_form.get("manut_icev", 0)),
@@ -780,6 +842,7 @@ def montar_veiculo_atual(dados_form):
     return {
         "nome": dados_form.get("modelo_atual", "Meu carro atual"),
         "tipo": "icev",
+        "prefixo": "atual",
         "preco": preco,
         "consumo": conv(dados_form.get("consumo_atual", 1)),
         "manut": conv(dados_form.get("manut_atual", 0)),

@@ -25,11 +25,11 @@ MAPA_UF_PARA_ESTADO = {
 # "ÓLEO" e "OLEO" são tratados da mesma forma.
 PRODUTOS_ANP = {
     "gasolina": {
-        "label": "Gasolina comum",
+        "label": "Gasolina",
         "termos": ("GASOLINA COMUM",),
     },
     "etanol": {
-        "label": "Etanol hidratado",
+        "label": "Etanol",
         "termos": ("ETANOL HIDRATADO",),
     },
     "diesel_s10": {

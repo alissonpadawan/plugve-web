@@ -130,7 +130,9 @@
     .plugve-fuel-icon{display:inline-flex;align-items:center;justify-content:center;width:2.25rem;height:2.25rem;border-radius:999px;background:#fff;border:1px solid #e5e7eb;box-shadow:0 8px 18px rgba(15,23,42,.08);font-size:1.1rem;flex:0 0 auto}
     .plugve-fuel-title strong{display:block;color:#0f172a;font-size:.88rem;line-height:1.15}
     .plugve-fuel-title small{display:block;color:#64748b;font-size:.68rem;line-height:1.25;margin-top:.12rem}
-    .plugve-fuel-compact-price{flex:0 0 auto;font-weight:900;color:#0f172a;font-size:1rem;font-variant-numeric:tabular-nums;white-space:nowrap}
+    .plugve-fuel-compact-price{display:none!important}
+    .plugve-fuel-single-input{width:7.5rem;max-width:42vw;border:1px solid #e5e7eb;border-radius:.65rem;background:#fff;padding:.45rem .55rem;text-align:right;font-weight:900;color:#0f172a;font-variant-numeric:tabular-nums;box-shadow:inset 0 1px 2px rgba(15,23,42,.06)}
+    .plugve-fuel-single-input.hidden{display:none!important}
     .plugve-fuel-mini-bar{display:flex;height:.85rem;border-radius:999px;overflow:hidden;background:#e5e7eb;margin-top:.72rem;border:1px solid rgba(15,23,42,.08);box-shadow:inset 0 1px 3px rgba(15,23,42,.13)}
     .plugve-fuel-mini-etanol{background:#16a34a;min-width:0;transition:width .18s ease}
     .plugve-fuel-mini-gasolina{background:#dc2626;min-width:0;transition:width .18s ease}
@@ -146,8 +148,12 @@
     .plugve-fuel-modal-card{box-shadow:none;margin-top:0;padding:1rem}
     .plugve-fuel-head{display:flex;align-items:center;justify-content:space-between;gap:.75rem}
     .plugve-fuel-prices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.6rem;margin-top:.95rem}
-    .plugve-fuel-pill{border:1px solid #e5e7eb;border-radius:.75rem;background:rgba(255,255,255,.82);padding:.6rem .7rem}
-    .plugve-fuel-pill span{display:block;font-size:.64rem;text-transform:uppercase;letter-spacing:.04em;font-weight:900;color:#64748b}
+    .plugve-fuel-pill{border:1px solid #e5e7eb;border-radius:.75rem;background:rgba(255,255,255,.82);padding:.6rem .7rem;transition:opacity .15s ease,filter .15s ease}
+    .plugve-fuel-pill.plugve-disabled{opacity:.48;filter:grayscale(1)}
+    .plugve-fuel-pill span{display:block;font-size:.72rem;font-weight:900;color:#334155}
+    .plugve-fuel-pill label{display:block;margin-top:.45rem;font-size:.68rem;font-weight:800;color:#64748b}
+    .plugve-fuel-pill input{width:100%;margin-top:.18rem;border:1px solid #d1d5db;border-radius:.65rem;background:#fff;padding:.48rem .55rem;font-weight:800;color:#0f172a}
+    .plugve-fuel-pill input:disabled{background:#f1f5f9;color:#94a3b8;cursor:not-allowed}
     .plugve-fuel-pill strong{display:block;margin-top:.12rem;font-size:.95rem;color:#0f172a;font-variant-numeric:tabular-nums}
     .plugve-fuel-slider-wrap{margin-top:1rem}
     .plugve-fuel-slider{width:100%;height:1.05rem;border-radius:999px;border:1px solid rgba(15,23,42,.08);outline:none;-webkit-appearance:none;appearance:none;background:linear-gradient(90deg,#16a34a var(--etanol-pct,0%),#dc2626 var(--etanol-pct,0%));box-shadow:inset 0 1px 3px rgba(15,23,42,.18);cursor:pointer}
@@ -157,6 +163,10 @@
     .plugve-fuel-percent-row span:first-child{color:#166534}
     .plugve-fuel-percent-row span:last-child{color:#991b1b}
     .plugve-fuel-modal-actions{display:flex;align-items:center;justify-content:flex-end;gap:.75rem;flex-wrap:wrap;margin-top:1rem}
+    .plugve-fuel-save-disabled{background:#d1d5db!important;color:#64748b!important;cursor:not-allowed!important;box-shadow:none!important}
+    .plugve-consumo-configurado{background:#f0fdf4!important;border-color:#86efac!important;color:#166534!important;font-weight:700}
+    .plugve-consumo-resumo{font-size:.72rem;color:#166534;font-weight:800;margin-top:.32rem}
+    .plugve-consumo-resumo.hidden{display:none!important}
     @media(max-width:760px){.plugve-fuel-compact-top{align-items:flex-start;flex-direction:column}.plugve-fuel-compact-price{align-self:flex-end}.plugve-fuel-prices{grid-template-columns:1fr}.plugve-fuel-modal-actions button{flex:1}}
     @media print{
       header, footer, #form_simulacao_tco, .no-print{display:none !important}
@@ -414,6 +424,7 @@
                 <div>
                   <label class="block text-sm font-medium">Consumo atual (km/l)</label>
                   <input type="text" name="consumo_atual" id="consumo_atual" class="mt-1 p-2 border rounded w-full" placeholder="ex: 12,5">
+                  <p id="consumo_atual_resumo_flex" class="plugve-consumo-resumo hidden"></p>
                 </div>
 
                 <div>
@@ -605,6 +616,7 @@
               <div>
                 <label class="block text-sm font-medium">Consumo ICEV (km/l)</label>
                 <input type="text" name="consumo_icev" id="consumo_icev" class="mt-1 p-2 border rounded w-full" placeholder="ex: 13,5">
+                <p id="consumo_icev_resumo_flex" class="plugve-consumo-resumo hidden"></p>
               </div>
 
               <div>
@@ -667,28 +679,37 @@
               <label class="block text-sm font-medium">Valor do combustível (R$/l)</label>
               <input type="hidden" name="fuel_tipo_detectado" id="fuel_tipo_detectado" value="gasolina">
               <input type="hidden" name="fuel_percent_etanol" id="fuel_percent_etanol" value="0">
+              <input type="hidden" name="fuel_flex_configurado" id="fuel_flex_configurado" value="0">
+              <input type="hidden" name="fuel_prefixo_configurado" id="fuel_prefixo_configurado" value="">
+              <input type="hidden" name="fuel_vehicle_key" id="fuel_vehicle_key" value="">
+              <input type="hidden" name="fuel_preco_gasolina" id="fuel_preco_gasolina" value="">
+              <input type="hidden" name="fuel_preco_etanol" id="fuel_preco_etanol" value="">
+              <input type="hidden" name="fuel_preco_diesel_s10" id="fuel_preco_diesel_s10" value="">
+              <input type="hidden" name="fuel_consumo_gasolina" id="fuel_consumo_gasolina" value="">
+              <input type="hidden" name="fuel_consumo_etanol" id="fuel_consumo_etanol" value="">
               <input type="hidden" name="combustivel" id="combustivel_input" value="5,80">
 
-              <button type="button" id="plugve_fuel_card" class="plugve-fuel-card plugve-fuel-compact-card" data-fuel-mode="gasolina" title="Clique para ajustar quando o veículo for flex.">
+              <div id="plugve_fuel_card" class="plugve-fuel-card plugve-fuel-compact-card" data-fuel-mode="gasolina" role="button" tabindex="0" title="Clique para ajustar quando o veículo for flex.">
                 <div class="plugve-fuel-compact-top">
                   <div class="plugve-fuel-title">
                     <span id="fuel_icon" class="plugve-fuel-icon" aria-hidden="true">⛽</span>
                     <div>
-                      <strong id="fuel_titulo">Gasolina comum</strong>
+                      <strong id="fuel_titulo">Gasolina</strong>
                       <small id="fuel_subtitulo">Valor médio ANP</small>
                     </div>
                   </div>
-                  <strong id="fuel_compact_preco" class="plugve-fuel-compact-price">R$ 5,800/l</strong>
+                  <strong id="fuel_compact_preco" class="plugve-fuel-compact-price"></strong>
+                  <input type="text" id="fuel_single_preco_input" class="plugve-fuel-single-input" value="5,800" inputmode="decimal" aria-label="Preço do combustível em reais por litro">
                 </div>
                 <div id="fuel_compact_bar" class="plugve-fuel-mini-bar" aria-hidden="true">
                   <div id="fuel_bar_etanol" class="plugve-fuel-mini-etanol" style="width:0%"></div>
                   <div id="fuel_bar_gasolina" class="plugve-fuel-mini-gasolina" style="width:100%"></div>
                 </div>
                 <div class="plugve-fuel-compact-row">
-                  <span id="fuel_compact_left">Gasolina comum</span>
+                  <span id="fuel_compact_left">Gasolina</span>
                   <span id="fuel_compact_right">R$ 5,800/l</span>
                 </div>
-              </button>
+              </div>
 
               <p id="status_combustivel" class="text-[11px] text-gray-500 mt-1 hidden"></p>
             </div>
@@ -795,13 +816,19 @@
             </div>
 
             <div class="plugve-fuel-prices">
-              <div class="plugve-fuel-pill">
-                <span>🍃 Etanol hidratado</span>
-                <strong id="fuel_modal_preco_etanol">—</strong>
+              <div id="fuel_box_etanol" class="plugve-fuel-pill">
+                <span>🍃 Etanol</span>
+                <label for="fuel_modal_preco_etanol">Preço (R$/l)</label>
+                <input type="text" id="fuel_modal_preco_etanol" inputmode="decimal" placeholder="ex: 4,48">
+                <label for="fuel_modal_consumo_etanol">Consumo (km/L)</label>
+                <input type="text" id="fuel_modal_consumo_etanol" inputmode="decimal" placeholder="ex: 7,5">
               </div>
-              <div class="plugve-fuel-pill">
-                <span>⛽ Gasolina comum</span>
-                <strong id="fuel_modal_preco_gasolina">—</strong>
+              <div id="fuel_box_gasolina" class="plugve-fuel-pill">
+                <span>⛽ Gasolina</span>
+                <label for="fuel_modal_preco_gasolina">Preço (R$/l)</label>
+                <input type="text" id="fuel_modal_preco_gasolina" inputmode="decimal" placeholder="ex: 6,87">
+                <label for="fuel_modal_consumo_gasolina">Consumo (km/L)</label>
+                <input type="text" id="fuel_modal_consumo_gasolina" inputmode="decimal" placeholder="ex: 11,0">
               </div>
             </div>
 
@@ -819,7 +846,7 @@
               Cancelar
             </button>
             <button type="button" id="btn_salvar_combustivel_tco" class="px-4 py-2 rounded-lg bg-green-600 text-white font-semibold hover:bg-green-700">
-              Salvar perfil de combustível
+              Salvar
             </button>
           </div>
         </div>
@@ -2356,7 +2383,7 @@
     });
 
     // =========================================================
-    // 6.5) ANP
+    // 6.5) Combustível ANP + perfil flex
     // =========================================================
     const precosCombustivelTCO = {
       gasolina: null,
@@ -2364,6 +2391,8 @@
       diesel_s10: null,
     };
     let modoCombustivelTCO = "gasolina";
+    let chaveCombustivelAtivaTCO = "";
+    let ultimoFlexAutoAbertoTCO = "";
 
     function numeroOuNullCombustivelTCO(valor) {
       const n = Number(valor);
@@ -2382,10 +2411,35 @@
       return n.toFixed(3).replace(".", ",");
     }
 
+    function formatarConsumoInputTCO(valor) {
+      const n = Number(valor);
+      if (!Number.isFinite(n) || n <= 0) return "";
+      return n.toFixed(2).replace(".", ",");
+    }
+
+    function setValorInputTCO(id, valor) {
+      const el = document.getElementById(id);
+      if (el) el.value = valor ?? "";
+    }
+
+    function valorNumeroInputTCO(id) {
+      return numeroBRParaFloat(document.getElementById(id)?.value || 0);
+    }
+
     function atualizarPrecosCombustivelTCO(dados) {
       precosCombustivelTCO.gasolina = numeroOuNullCombustivelTCO(dados?.gasolina ?? dados?.preco);
       precosCombustivelTCO.etanol = numeroOuNullCombustivelTCO(dados?.etanol);
       precosCombustivelTCO.diesel_s10 = numeroOuNullCombustivelTCO(dados?.diesel_s10);
+
+      if (!valorNumeroInputTCO("fuel_preco_gasolina") && precosCombustivelTCO.gasolina) {
+        setValorInputTCO("fuel_preco_gasolina", formatarValorLitroInputTCO(precosCombustivelTCO.gasolina));
+      }
+      if (!valorNumeroInputTCO("fuel_preco_etanol") && precosCombustivelTCO.etanol) {
+        setValorInputTCO("fuel_preco_etanol", formatarValorLitroInputTCO(precosCombustivelTCO.etanol));
+      }
+      if (!valorNumeroInputTCO("fuel_preco_diesel_s10") && precosCombustivelTCO.diesel_s10) {
+        setValorInputTCO("fuel_preco_diesel_s10", formatarValorLitroInputTCO(precosCombustivelTCO.diesel_s10));
+      }
     }
 
     function detectarModoCombustivelTCO(modelo, combustivel) {
@@ -2412,6 +2466,13 @@
       return "icev";
     }
 
+    function chaveFlexAtualTCO(prefixoPreferido) {
+      const prefixo = prefixoCombustaoPreferencialTCO(prefixoPreferido);
+      const modelo = document.getElementById(`modelo_${prefixo}`)?.value || "";
+      const combustivel = document.getElementById(`combustivel_${prefixo}`)?.value || "";
+      return `${prefixo}|${modelo}|${combustivel}`;
+    }
+
     function modoCombustivelSelecionadoTCO(prefixoPreferido) {
       const prefixo = prefixoCombustaoPreferencialTCO(prefixoPreferido);
       const modelo = document.getElementById(`modelo_${prefixo}`)?.value || "";
@@ -2419,10 +2480,14 @@
       return detectarModoCombustivelTCO(modelo, combustivel);
     }
 
+    function precoHiddenCombustivelTCO(chave) {
+      return valorNumeroInputTCO(`fuel_preco_${chave}`);
+    }
+
     function precoBasePorModoCombustivelTCO(modo) {
-      if (modo === "diesel") return precosCombustivelTCO.diesel_s10 || precosCombustivelTCO.gasolina;
-      if (modo === "etanol") return precosCombustivelTCO.etanol || precosCombustivelTCO.gasolina;
-      return precosCombustivelTCO.gasolina;
+      if (modo === "diesel") return precoHiddenCombustivelTCO("diesel_s10") || precosCombustivelTCO.diesel_s10 || precosCombustivelTCO.gasolina;
+      if (modo === "etanol") return precoHiddenCombustivelTCO("etanol") || precosCombustivelTCO.etanol || precosCombustivelTCO.gasolina;
+      return precoHiddenCombustivelTCO("gasolina") || precosCombustivelTCO.gasolina;
     }
 
     function setStatusCombustivelTCO(texto, visivel = false) {
@@ -2434,10 +2499,21 @@
 
     function precoPonderadoFlexTCO(etanolPct) {
       const gasolinaPct = 100 - etanolPct;
-      const gasolina = precosCombustivelTCO.gasolina || 0;
-      const etanol = precosCombustivelTCO.etanol || 0;
+      const gasolina = precoHiddenCombustivelTCO("gasolina") || precosCombustivelTCO.gasolina || 0;
+      const etanol = precoHiddenCombustivelTCO("etanol") || precosCombustivelTCO.etanol || 0;
       if (gasolina > 0 && etanol > 0) return (gasolina * gasolinaPct + etanol * etanolPct) / 100;
       return gasolina || etanol || numeroBRParaFloat(document.getElementById("combustivel_input")?.value || 0);
+    }
+
+    function consumoEquivalenteFlexTCO(etanolPct, consumoEtanol, consumoGasolina) {
+      const eta = Math.max(0, Math.min(1, Number(etanolPct || 0) / 100));
+      const gas = 1 - eta;
+      const cEta = Number(consumoEtanol || 0);
+      const cGas = Number(consumoGasolina || 0);
+      let denominador = 0;
+      if (eta > 0 && cEta > 0) denominador += eta / cEta;
+      if (gas > 0 && cGas > 0) denominador += gas / cGas;
+      return denominador > 0 ? 1 / denominador : 0;
     }
 
     function atualizarInputCombustivelTCO(valor) {
@@ -2445,6 +2521,137 @@
       if (!input) return;
       const n = Number(valor);
       if (Number.isFinite(n) && n > 0) input.value = formatarValorLitroInputTCO(n);
+    }
+
+    function campoConsumoCombustaoTCO(prefixo) {
+      return document.getElementById(prefixo === "atual" ? "consumo_atual" : "consumo_icev");
+    }
+
+    function resumoConsumoFlexTCO(prefixo) {
+      return document.getElementById(prefixo === "atual" ? "consumo_atual_resumo_flex" : "consumo_icev_resumo_flex");
+    }
+
+    function limparResumoConsumoFlexTCO(prefixo) {
+      const campo = campoConsumoCombustaoTCO(prefixo);
+      const resumo = resumoConsumoFlexTCO(prefixo);
+      if (campo) {
+        campo.readOnly = false;
+        campo.classList.remove("plugve-consumo-configurado");
+        delete campo.dataset.flexConfigurado;
+      }
+      if (resumo) {
+        resumo.textContent = "";
+        resumo.classList.add("hidden");
+      }
+    }
+
+    function limparTodosResumosConsumoFlexTCO() {
+      limparResumoConsumoFlexTCO("atual");
+      limparResumoConsumoFlexTCO("icev");
+    }
+
+    function aplicarResumoConsumoFlexTCO(prefixo) {
+      const campo = campoConsumoCombustaoTCO(prefixo);
+      const resumo = resumoConsumoFlexTCO(prefixo);
+      if (!campo || !resumo) return;
+
+      const etanolPct = Number(document.getElementById("fuel_percent_etanol")?.value || 0);
+      const gasolinaPct = 100 - etanolPct;
+      const consumoEta = valorNumeroInputTCO("fuel_consumo_etanol");
+      const consumoGas = valorNumeroInputTCO("fuel_consumo_gasolina");
+      const consumoEq = consumoEquivalenteFlexTCO(etanolPct, consumoEta, consumoGas);
+      if (consumoEq > 0) campo.value = formatarConsumoInputTCO(consumoEq);
+      campo.readOnly = true;
+      campo.dataset.flexConfigurado = "1";
+      campo.classList.add("plugve-consumo-configurado");
+
+      const partes = [];
+      if (etanolPct > 0 && consumoEta > 0) partes.push(`Etanol: ${formatarConsumoInputTCO(consumoEta)} km/L`);
+      if (gasolinaPct > 0 && consumoGas > 0) partes.push(`Gasolina: ${formatarConsumoInputTCO(consumoGas)} km/L`);
+      resumo.textContent = partes.join(" · ");
+      resumo.classList.toggle("hidden", !partes.length);
+    }
+
+    function definirHiddenPrecoCombustivelTCO(chave, valor) {
+      const el = document.getElementById(`fuel_preco_${chave}`);
+      const n = Number(valor || 0);
+      if (el && Number.isFinite(n) && n > 0) el.value = formatarValorLitroInputTCO(n);
+    }
+
+    function resetarPerfilCombustivelParaVeiculoTCO(prefixo, modo, chave) {
+      setValorInputTCO("fuel_tipo_detectado", modo || "gasolina");
+      setValorInputTCO("fuel_percent_etanol", "0");
+      setValorInputTCO("fuel_flex_configurado", "0");
+      setValorInputTCO("fuel_prefixo_configurado", prefixo || "");
+      setValorInputTCO("fuel_vehicle_key", chave || "");
+      setValorInputTCO("fuel_consumo_gasolina", "");
+      setValorInputTCO("fuel_consumo_etanol", "");
+
+      definirHiddenPrecoCombustivelTCO("gasolina", precosCombustivelTCO.gasolina);
+      definirHiddenPrecoCombustivelTCO("etanol", precosCombustivelTCO.etanol);
+      definirHiddenPrecoCombustivelTCO("diesel_s10", precosCombustivelTCO.diesel_s10);
+
+      const slider = document.getElementById("fuel_mix_slider");
+      if (slider) slider.value = "0";
+
+      limparTodosResumosConsumoFlexTCO();
+      atualizarInputCombustivelTCO(precoBasePorModoCombustivelTCO(modo || "gasolina") || 0);
+    }
+
+    function prepararModalCombustivelTCO() {
+      const pct = Number(document.getElementById("fuel_percent_etanol")?.value || 0);
+      const slider = document.getElementById("fuel_mix_slider");
+      if (slider) slider.value = String(Math.max(0, Math.min(100, pct)));
+      setValorInputTCO("fuel_modal_preco_etanol", document.getElementById("fuel_preco_etanol")?.value || formatarValorLitroInputTCO(precosCombustivelTCO.etanol || 0));
+      setValorInputTCO("fuel_modal_preco_gasolina", document.getElementById("fuel_preco_gasolina")?.value || formatarValorLitroInputTCO(precosCombustivelTCO.gasolina || 0));
+      setValorInputTCO("fuel_modal_consumo_etanol", document.getElementById("fuel_consumo_etanol")?.value || "");
+      setValorInputTCO("fuel_modal_consumo_gasolina", document.getElementById("fuel_consumo_gasolina")?.value || "");
+      atualizarEstadoModalCombustivelTCO();
+    }
+
+    function atualizarEstadoModalCombustivelTCO() {
+      const slider = document.getElementById("fuel_mix_slider");
+      const etanolPct = Math.max(0, Math.min(100, Number(slider?.value || 0)));
+      const gasolinaPct = 100 - etanolPct;
+      const pctEta = document.getElementById("fuel_pct_etanol");
+      const pctGas = document.getElementById("fuel_pct_gasolina");
+      const boxEta = document.getElementById("fuel_box_etanol");
+      const boxGas = document.getElementById("fuel_box_gasolina");
+      const precoEta = document.getElementById("fuel_modal_preco_etanol");
+      const precoGas = document.getElementById("fuel_modal_preco_gasolina");
+      const consEta = document.getElementById("fuel_modal_consumo_etanol");
+      const consGas = document.getElementById("fuel_modal_consumo_gasolina");
+      const btnSalvar = document.getElementById("btn_salvar_combustivel_tco");
+
+      if (slider) slider.style.setProperty("--etanol-pct", `${etanolPct}%`);
+      if (pctEta) pctEta.textContent = `${etanolPct}% etanol`;
+      if (pctGas) pctGas.textContent = `${gasolinaPct}% gasolina`;
+
+      const usaEta = etanolPct > 0;
+      const usaGas = gasolinaPct > 0;
+      [precoEta, consEta].forEach(el => { if (el) el.disabled = !usaEta; });
+      [precoGas, consGas].forEach(el => { if (el) el.disabled = !usaGas; });
+      boxEta?.classList.toggle("plugve-disabled", !usaEta);
+      boxGas?.classList.toggle("plugve-disabled", !usaGas);
+
+      const okEta = !usaEta || (numeroBRParaFloat(precoEta?.value || 0) > 0 && numeroBRParaFloat(consEta?.value || 0) > 0);
+      const okGas = !usaGas || (numeroBRParaFloat(precoGas?.value || 0) > 0 && numeroBRParaFloat(consGas?.value || 0) > 0);
+      const valido = okEta && okGas;
+      if (btnSalvar) {
+        btnSalvar.disabled = !valido;
+        btnSalvar.classList.toggle("plugve-fuel-save-disabled", !valido);
+      }
+    }
+
+    function copiarModalParaHiddenCombustivelTCO() {
+      setValorInputTCO("fuel_preco_etanol", document.getElementById("fuel_modal_preco_etanol")?.value || "");
+      setValorInputTCO("fuel_preco_gasolina", document.getElementById("fuel_modal_preco_gasolina")?.value || "");
+      setValorInputTCO("fuel_consumo_etanol", document.getElementById("fuel_modal_consumo_etanol")?.value || "");
+      setValorInputTCO("fuel_consumo_gasolina", document.getElementById("fuel_modal_consumo_gasolina")?.value || "");
+    }
+
+    function textoResumoPrecoFlexTCO(label, pct, preco) {
+      return `${pct}% ${label} • ${formatarPrecoLitroTCO(preco)}`;
     }
 
     function renderizarCardCombustivelTCO() {
@@ -2455,30 +2662,29 @@
       const compactPreco = document.getElementById("fuel_compact_preco");
       const compactLeft = document.getElementById("fuel_compact_left");
       const compactRight = document.getElementById("fuel_compact_right");
+      const inputSinglePreco = document.getElementById("fuel_single_preco_input");
       const barEtanol = document.getElementById("fuel_bar_etanol");
       const barGasolina = document.getElementById("fuel_bar_gasolina");
-      const precoGasModal = document.getElementById("fuel_modal_preco_gasolina");
-      const precoEtaModal = document.getElementById("fuel_modal_preco_etanol");
       const slider = document.getElementById("fuel_mix_slider");
-      const pctEta = document.getElementById("fuel_pct_etanol");
-      const pctGas = document.getElementById("fuel_pct_gasolina");
-      const input = document.getElementById("combustivel_input");
       const hiddenModo = document.getElementById("fuel_tipo_detectado");
       const hiddenPct = document.getElementById("fuel_percent_etanol");
+      const input = document.getElementById("combustivel_input");
       if (!card || !input) return;
 
       const modo = modoCombustivelTCO || "gasolina";
       card.dataset.fuelMode = modo;
       card.setAttribute("aria-label", modo === "flex" ? "Editar perfil flex de combustível" : "Preço de combustível aplicado");
+      card.setAttribute("title", modo === "flex" ? "Clique para ajustar o perfil flex." : "Edite o preço se quiser ajustar o valor ANP.");
       if (hiddenModo) hiddenModo.value = modo;
-      if (precoGasModal) precoGasModal.textContent = formatarPrecoLitroTCO(precosCombustivelTCO.gasolina);
-      if (precoEtaModal) precoEtaModal.textContent = formatarPrecoLitroTCO(precosCombustivelTCO.etanol);
+      if (compactPreco) compactPreco.textContent = "";
       if (barEtanol) barEtanol.style.background = "#16a34a";
       if (barGasolina) barGasolina.style.background = "#dc2626";
 
       if (modo === "flex") {
         const etanolPct = Math.max(0, Math.min(100, Number(slider?.value || hiddenPct?.value || 0)));
         const gasolinaPct = 100 - etanolPct;
+        const precoGas = precoHiddenCombustivelTCO("gasolina") || precosCombustivelTCO.gasolina || 0;
+        const precoEta = precoHiddenCombustivelTCO("etanol") || precosCombustivelTCO.etanol || 0;
         const precoFinal = precoPonderadoFlexTCO(etanolPct);
 
         if (slider) {
@@ -2486,24 +2692,26 @@
           slider.style.setProperty("--etanol-pct", `${etanolPct}%`);
         }
         if (hiddenPct) hiddenPct.value = String(etanolPct);
-        if (pctEta) pctEta.textContent = `${etanolPct}% etanol`;
-        if (pctGas) pctGas.textContent = `${gasolinaPct}% gasolina`;
         atualizarInputCombustivelTCO(precoFinal);
 
         if (titulo) titulo.textContent = "Flex: gasolina + etanol";
         if (subtitulo) subtitulo.textContent = "Clique para ajustar o perfil";
         if (icon) icon.textContent = "⛽";
-        if (compactPreco) compactPreco.textContent = formatarPrecoLitroTCO(precoFinal);
+        inputSinglePreco?.classList.add("hidden");
         if (barEtanol) barEtanol.style.width = `${etanolPct}%`;
         if (barGasolina) barGasolina.style.width = `${gasolinaPct}%`;
-        if (compactLeft) compactLeft.textContent = `${etanolPct}% etanol • ${formatarPrecoLitroTCO(precosCombustivelTCO.etanol)}`;
-        if (compactRight) compactRight.textContent = `${gasolinaPct}% gasolina • ${formatarPrecoLitroTCO(precosCombustivelTCO.gasolina)}`;
+        if (compactLeft) compactLeft.textContent = textoResumoPrecoFlexTCO("etanol", etanolPct, precoEta);
+        if (compactRight) compactRight.textContent = textoResumoPrecoFlexTCO("gasolina", gasolinaPct, precoGas);
         setStatusCombustivelTCO("", false);
         return;
       }
 
       const precoFinal = precoBasePorModoCombustivelTCO(modo) || numeroBRParaFloat(input.value);
       atualizarInputCombustivelTCO(precoFinal);
+      if (inputSinglePreco) {
+        inputSinglePreco.classList.remove("hidden");
+        if (document.activeElement !== inputSinglePreco) inputSinglePreco.value = formatarValorLitroInputTCO(precoFinal);
+      }
       if (barEtanol) barEtanol.style.width = "0%";
       if (barGasolina) barGasolina.style.width = "100%";
 
@@ -2512,43 +2720,30 @@
         if (subtitulo) subtitulo.textContent = "Valor médio ANP";
         if (icon) icon.textContent = "🛢️";
         if (barGasolina) barGasolina.style.background = "#92400e";
-        if (compactPreco) compactPreco.textContent = formatarPrecoLitroTCO(precosCombustivelTCO.diesel_s10 || precoFinal);
         if (compactLeft) compactLeft.textContent = "Diesel S10";
-        if (compactRight) compactRight.textContent = formatarPrecoLitroTCO(precosCombustivelTCO.diesel_s10 || precoFinal);
-        setStatusCombustivelTCO("", false);
+        if (compactRight) compactRight.textContent = formatarPrecoLitroTCO(precoFinal);
       } else if (modo === "etanol") {
-        if (titulo) titulo.textContent = "Etanol hidratado";
+        if (titulo) titulo.textContent = "Etanol";
         if (subtitulo) subtitulo.textContent = "Valor médio ANP";
         if (icon) icon.textContent = "🍃";
         if (barGasolina) barGasolina.style.background = "#16a34a";
-        if (compactPreco) compactPreco.textContent = formatarPrecoLitroTCO(precosCombustivelTCO.etanol || precoFinal);
-        if (compactLeft) compactLeft.textContent = "Etanol hidratado";
-        if (compactRight) compactRight.textContent = formatarPrecoLitroTCO(precosCombustivelTCO.etanol || precoFinal);
-        setStatusCombustivelTCO("", false);
+        if (compactLeft) compactLeft.textContent = "Etanol";
+        if (compactRight) compactRight.textContent = formatarPrecoLitroTCO(precoFinal);
       } else {
-        if (titulo) titulo.textContent = "Gasolina comum";
+        if (titulo) titulo.textContent = "Gasolina";
         if (subtitulo) subtitulo.textContent = "Valor médio ANP";
         if (icon) icon.textContent = "⛽";
-        if (compactPreco) compactPreco.textContent = formatarPrecoLitroTCO(precosCombustivelTCO.gasolina || precoFinal);
-        if (compactLeft) compactLeft.textContent = "Gasolina comum";
-        if (compactRight) compactRight.textContent = formatarPrecoLitroTCO(precosCombustivelTCO.gasolina || precoFinal);
-        setStatusCombustivelTCO("", false);
+        if (compactLeft) compactLeft.textContent = "Gasolina";
+        if (compactRight) compactRight.textContent = formatarPrecoLitroTCO(precoFinal);
       }
-    }
-
-    let ultimoFlexAutoAbertoTCO = "";
-
-    function chaveFlexAtualTCO(prefixoPreferido) {
-      const prefixo = prefixoCombustaoPreferencialTCO(prefixoPreferido);
-      const modelo = document.getElementById(`modelo_${prefixo}`)?.value || "";
-      const combustivel = document.getElementById(`combustivel_${prefixo}`)?.value || "";
-      return `${prefixo}|${modelo}|${combustivel}`;
+      setStatusCombustivelTCO("", false);
     }
 
     function abrirModalCombustivelTCO() {
       if (modoCombustivelTCO !== "flex") return;
       const modal = document.getElementById("modal_combustivel_tco");
       if (!modal) return;
+      prepararModalCombustivelTCO();
       renderizarCardCombustivelTCO();
       modal.classList.remove("hidden");
       modal.setAttribute("aria-hidden", "false");
@@ -2561,7 +2756,37 @@
       modal.setAttribute("aria-hidden", "true");
     }
 
+    function cancelarModalCombustivelTCO() {
+      const prefixo = prefixoCombustaoPreferencialTCO();
+      const chave = chaveFlexAtualTCO(prefixo);
+      setValorInputTCO("fuel_percent_etanol", "0");
+      setValorInputTCO("fuel_flex_configurado", "0");
+      setValorInputTCO("fuel_prefixo_configurado", prefixo);
+      setValorInputTCO("fuel_vehicle_key", chave);
+      copiarModalParaHiddenCombustivelTCO();
+      atualizarInputCombustivelTCO(precoBasePorModoCombustivelTCO("gasolina") || precoHiddenCombustivelTCO("gasolina") || 0);
+      limparResumoConsumoFlexTCO(prefixo);
+      renderizarCardCombustivelTCO();
+      capturarEstadoFormularioTCO();
+      fecharModalCombustivelTCO();
+    }
+
     function salvarModalCombustivelTCO() {
+      atualizarEstadoModalCombustivelTCO();
+      const btnSalvar = document.getElementById("btn_salvar_combustivel_tco");
+      if (btnSalvar?.disabled) return;
+
+      const prefixo = prefixoCombustaoPreferencialTCO();
+      const chave = chaveFlexAtualTCO(prefixo);
+      const slider = document.getElementById("fuel_mix_slider");
+      const etanolPct = Math.max(0, Math.min(100, Number(slider?.value || 0)));
+      copiarModalParaHiddenCombustivelTCO();
+      setValorInputTCO("fuel_percent_etanol", String(etanolPct));
+      setValorInputTCO("fuel_flex_configurado", "1");
+      setValorInputTCO("fuel_prefixo_configurado", prefixo);
+      setValorInputTCO("fuel_vehicle_key", chave);
+      atualizarInputCombustivelTCO(precoPonderadoFlexTCO(etanolPct));
+      aplicarResumoConsumoFlexTCO(prefixo);
       renderizarCardCombustivelTCO();
       capturarEstadoFormularioTCO();
       fecharModalCombustivelTCO();
@@ -2569,11 +2794,24 @@
 
     function atualizarInterfaceCombustivelPorVeiculo(prefixoPreferido, abrirSeFlex = false) {
       if (prefixoPreferido && prefixoPreferido === "ve") return;
-      modoCombustivelTCO = modoCombustivelSelecionadoTCO(prefixoPreferido);
+      const prefixo = prefixoCombustaoPreferencialTCO(prefixoPreferido);
+      const modo = modoCombustivelSelecionadoTCO(prefixoPreferido);
+      const chave = chaveFlexAtualTCO(prefixoPreferido);
+      const chaveSalva = document.getElementById("fuel_vehicle_key")?.value || "";
+      modoCombustivelTCO = modo;
+
+      if (!chaveCombustivelAtivaTCO || chaveCombustivelAtivaTCO !== chave) {
+        if (!chaveSalva || chaveSalva !== chave) {
+          resetarPerfilCombustivelParaVeiculoTCO(prefixo, modo, chave);
+        } else if (document.getElementById("fuel_flex_configurado")?.value === "1") {
+          aplicarResumoConsumoFlexTCO(prefixo);
+        }
+        chaveCombustivelAtivaTCO = chave;
+      }
+
       renderizarCardCombustivelTCO();
 
       if (abrirSeFlex && modoCombustivelTCO === "flex") {
-        const chave = chaveFlexAtualTCO(prefixoPreferido);
         if (chave && chave !== ultimoFlexAutoAbertoTCO) {
           ultimoFlexAutoAbertoTCO = chave;
           setTimeout(abrirModalCombustivelTCO, 120);
@@ -2597,6 +2835,13 @@
 
         if (data && (data.preco || data.gasolina || data.etanol || data.diesel_s10)) {
           atualizarPrecosCombustivelTCO(data);
+          const prefixo = prefixoCombustaoPreferencialTCO();
+          const chave = chaveFlexAtualTCO(prefixo);
+          const chaveSalva = document.getElementById("fuel_vehicle_key")?.value || "";
+          if (!chaveSalva || chaveSalva !== chave || document.getElementById("fuel_flex_configurado")?.value !== "1") {
+            resetarPerfilCombustivelParaVeiculoTCO(prefixo, modoCombustivelSelecionadoTCO(prefixo), chave);
+            chaveCombustivelAtivaTCO = chave;
+          }
           atualizarInterfaceCombustivelPorVeiculo();
         } else {
           setStatusCombustivelTCO("Valor médio ANP indisponível. Ajuste manualmente se necessário.", true);
@@ -2605,6 +2850,44 @@
         console.error("Erro ao buscar preços de combustível:", e);
         setStatusCombustivelTCO("Erro ao consultar ANP. Ajuste manualmente se necessário.", true);
       }
+    }
+
+    function inicializarEventosCombustivelTCO() {
+      const slider = document.getElementById("fuel_mix_slider");
+      slider?.addEventListener("input", function () {
+        setValorInputTCO("fuel_percent_etanol", this.value);
+        atualizarEstadoModalCombustivelTCO();
+        renderizarCardCombustivelTCO();
+      });
+
+      ["fuel_modal_preco_etanol", "fuel_modal_preco_gasolina", "fuel_modal_consumo_etanol", "fuel_modal_consumo_gasolina"].forEach(id => {
+        const el = document.getElementById(id);
+        el?.addEventListener("input", atualizarEstadoModalCombustivelTCO);
+        el?.addEventListener("blur", function () {
+          const n = numeroBRParaFloat(this.value);
+          if (n > 0) this.value = id.includes("preco") ? formatarValorLitroInputTCO(n) : formatarConsumoInputTCO(n);
+          atualizarEstadoModalCombustivelTCO();
+        });
+      });
+
+      const single = document.getElementById("fuel_single_preco_input");
+      single?.addEventListener("click", ev => ev.stopPropagation());
+      single?.addEventListener("input", function () {
+        const n = numeroBRParaFloat(this.value);
+        if (n > 0) {
+          if (modoCombustivelTCO === "diesel") setValorInputTCO("fuel_preco_diesel_s10", this.value);
+          else if (modoCombustivelTCO === "etanol") setValorInputTCO("fuel_preco_etanol", this.value);
+          else setValorInputTCO("fuel_preco_gasolina", this.value);
+          atualizarInputCombustivelTCO(n);
+          renderizarCardCombustivelTCO();
+          capturarEstadoFormularioTCO();
+        }
+      });
+      single?.addEventListener("blur", function () {
+        const n = numeroBRParaFloat(this.value);
+        if (n > 0) this.value = formatarValorLitroInputTCO(n);
+        capturarEstadoFormularioTCO();
+      });
     }
 
     // =========================================================
@@ -2830,23 +3113,7 @@
       });
       aplicarPremissasInflacaoAutomaticas();
 
-      const sliderCombustivel = document.getElementById("fuel_mix_slider");
-      const hiddenPctCombustivel = document.getElementById("fuel_percent_etanol");
-      if (sliderCombustivel && hiddenPctCombustivel?.value) sliderCombustivel.value = hiddenPctCombustivel.value;
-      sliderCombustivel?.addEventListener("input", function () {
-        if (hiddenPctCombustivel) hiddenPctCombustivel.value = this.value;
-        renderizarCardCombustivelTCO();
-        capturarEstadoFormularioTCO();
-      });
-      const campoCombustivelAplicado = document.getElementById("combustivel_input");
-      campoCombustivelAplicado?.addEventListener("input", function () {
-        capturarEstadoFormularioTCO();
-      });
-      campoCombustivelAplicado?.addEventListener("blur", function () {
-        const n = numeroBRParaFloat(this.value);
-        if (n > 0) this.value = formatarValorLitroInputTCO(n);
-        capturarEstadoFormularioTCO();
-      });
+      inicializarEventosCombustivelTCO();
       renderizarCardCombustivelTCO();
       if (localizacaoValida()) atualizarPrecoCombustivelAutomatico();
 
@@ -3357,11 +3624,18 @@
           if (ev.target === this) fecharFinanciamentoTCO();
         });
 
-        document.getElementById("plugve_fuel_card")?.addEventListener("click", function () {
+        document.getElementById("plugve_fuel_card")?.addEventListener("click", function (ev) {
+          if (ev.target && ev.target.id === "fuel_single_preco_input") return;
           if (modoCombustivelTCO === "flex") abrirModalCombustivelTCO();
         });
+        document.getElementById("plugve_fuel_card")?.addEventListener("keydown", function (ev) {
+          if ((ev.key === "Enter" || ev.key === " ") && modoCombustivelTCO === "flex") {
+            ev.preventDefault();
+            abrirModalCombustivelTCO();
+          }
+        });
         document.getElementById("btn_fechar_combustivel_tco")?.addEventListener("click", fecharModalCombustivelTCO);
-        document.getElementById("btn_cancelar_combustivel_tco")?.addEventListener("click", fecharModalCombustivelTCO);
+        document.getElementById("btn_cancelar_combustivel_tco")?.addEventListener("click", cancelarModalCombustivelTCO);
         document.getElementById("btn_salvar_combustivel_tco")?.addEventListener("click", salvarModalCombustivelTCO);
         document.getElementById("modal_combustivel_tco")?.addEventListener("click", function (ev) {
           if (ev.target === this) fecharModalCombustivelTCO();
@@ -3387,6 +3661,10 @@
           const slider = document.getElementById("fuel_mix_slider");
           const hiddenPct = document.getElementById("fuel_percent_etanol");
           if (slider && hiddenPct?.value) slider.value = hiddenPct.value;
+          if (document.getElementById("fuel_flex_configurado")?.value === "1") {
+            const pref = document.getElementById("fuel_prefixo_configurado")?.value || prefixoCombustaoPreferencialTCO();
+            aplicarResumoConsumoFlexTCO(pref);
+          }
           if (typeof atualizarInterfaceCombustivelPorVeiculo === "function") atualizarInterfaceCombustivelPorVeiculo();
         });
         if (window.PLUGVE_TCO_TEM_RESULTADO) {
