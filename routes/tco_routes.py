@@ -62,6 +62,21 @@ def normalizar(s: str) -> str:
     )
     return s
 
+
+def detectar_phev_texto(modelo: str = "", combustivel: str = "", tipo_form: str = "") -> bool:
+    """Detecta híbrido plug-in de forma leve, sem alterar o catálogo FIPE."""
+    tipo = normalizar(tipo_form)
+    if tipo == "PHEV":
+        return True
+    texto = normalizar(f"{modelo or ''} {combustivel or ''}")
+    padroes = [
+        "PHEV", "PLUG IN", "PLUGIN", "HIBRIDO PLUG IN", "HIBRIDA PLUG IN",
+        "HYBRID PLUG IN", "DM I", "DMI", "TFSI E", "E HYBRID", "EHIBRID",
+        "RECHARGE", "330E", "530E", "545E", "740E", "745E",
+        "C 300E", "E 300E", "GLC 300E", "GLE 350E", "225XE",
+    ]
+    return any(p in texto for p in padroes)
+
 # 2.3) Parse monetário vindo da ANEEL (string com vírgula)
 def _parse_valor_monetario(v):
     try:
@@ -420,6 +435,18 @@ def calcular_projecao_veiculo(veiculo, comum):
     flex_consumo_gasolina = max(0.0, float(fuel.get("consumo_gasolina", 0) or 0))
     flex_consumo_etanol = max(0.0, float(fuel.get("consumo_etanol", 0) or 0))
 
+    phev = comum.get("phev") or {}
+    usar_perfil_phev = (
+        tipo == "phev"
+        and bool(phev.get("configurado"))
+        and str(phev.get("prefixo") or "") == str(veiculo.get("prefixo") or "")
+    )
+    phev_eletrico_pct = max(0.0, min(100.0, float(phev.get("percent_eletrico", 100) or 0)))
+    phev_combustivel_pct = 100.0 - phev_eletrico_pct
+    phev_consumo_eletrico = max(0.0, float(phev.get("consumo_eletrico", 0) or 0))
+    phev_consumo_combustivel = max(0.0, float(phev.get("consumo_combustivel", 0) or 0))
+    phev_preco_combustivel = max(0.0, float(phev.get("preco_combustivel", 0) or 0))
+
     taxa_ipva = taxa_relativa(ipva_inicial, preco)
     taxa_seguro = taxa_relativa(seguro_inicial, preco)
 
@@ -452,6 +479,18 @@ def calcular_projecao_veiculo(veiculo, comum):
 
         if tipo == "ve":
             custo_uso = km_ano * consumo * energia_ano
+        elif tipo == "phev":
+            if usar_perfil_phev:
+                frac_eletrico = phev_eletrico_pct / 100.0
+                frac_combustivel = phev_combustivel_pct / 100.0
+                consumo_eletrico_uso = phev_consumo_eletrico or consumo
+                custo_eletrico = km_ano * frac_eletrico * consumo_eletrico_uso * energia_ano if frac_eletrico > 0 and consumo_eletrico_uso > 0 else 0.0
+                preco_combustivel_ano = (phev_preco_combustivel or combustivel_inicial) * ((1 + aumento_combustivel) ** (ano - 1))
+                custo_combustivel = (km_ano * frac_combustivel / phev_consumo_combustivel * preco_combustivel_ano) if frac_combustivel > 0 and phev_consumo_combustivel > 0 and preco_combustivel_ano > 0 else 0.0
+                custo_uso = custo_eletrico + custo_combustivel
+            else:
+                # Sem perfil PHEV salvo, preserva comportamento anterior: uso elétrico informado no campo VE.
+                custo_uso = km_ano * consumo * energia_ano
         elif usar_perfil_flex:
             fator_reajuste = (1 + aumento_combustivel) ** (ano - 1)
             custo_uso = custo_uso_combustivel_flex(
@@ -798,6 +837,14 @@ def extrair_parametros_comuns(dados_form):
             "consumo_gasolina": conv(dados_form.get("fuel_consumo_gasolina", 0)),
             "consumo_etanol": conv(dados_form.get("fuel_consumo_etanol", 0)),
         },
+        "phev": {
+            "configurado": bool_form(dados_form, "phev_configurado"),
+            "prefixo": str(dados_form.get("phev_prefixo_configurado", "") or "").strip(),
+            "percent_eletrico": percentual_0_100_form(dados_form, "phev_percent_eletrico", 100),
+            "preco_combustivel": conv(dados_form.get("phev_preco_combustivel", 0)),
+            "consumo_eletrico": conv(dados_form.get("phev_consumo_eletrico", 0)),
+            "consumo_combustivel": conv(dados_form.get("phev_consumo_combustivel", 0)),
+        },
     }
 
 
@@ -806,9 +853,14 @@ def montar_veiculo_ve(dados_form):
     ipva_ve = 0.0 if "isencao_ipva_ve" in dados_form else conv(dados_form.get("ipva_ve", 0))
 
     preco = conv(dados_form.get("preco_ve", 0))
+    modelo = dados_form.get("modelo_ve", "Veículo elétrico")
+    combustivel = dados_form.get("combustivel_ve", "")
+    tipo_form = dados_form.get("tipo_veiculo_ve", "")
+    tipo = "phev" if detectar_phev_texto(modelo, combustivel, tipo_form) else "ve"
     return {
-        "nome": dados_form.get("modelo_ve", "Veículo elétrico"),
-        "tipo": "ve",
+        "nome": modelo,
+        "tipo": tipo,
+        "prefixo": "ve",
         "preco": preco,
         "consumo": conv(dados_form.get("consumo_ve", 0)),
         "manut": conv(dados_form.get("manut_ve", 0)),

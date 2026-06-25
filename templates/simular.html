@@ -170,6 +170,28 @@
     .plugve-consumo-configurado{background:#f0fdf4!important;border-color:#86efac!important;color:#166534!important;font-weight:700}
     .plugve-consumo-resumo{font-size:.72rem;color:#166534;font-weight:800;margin-top:.32rem}
     .plugve-consumo-resumo.hidden{display:none!important}
+
+    .plugve-phev-card{margin-top:.25rem;border:1px solid #bfdbfe;border-radius:1rem;background:linear-gradient(135deg,#eff6ff 0%,#fff7ed 100%);box-shadow:0 10px 24px rgba(15,23,42,.05);padding:.85rem;cursor:pointer;transition:border-color .18s ease,box-shadow .18s ease,transform .18s ease}
+    .plugve-phev-card:hover{border-color:#60a5fa;box-shadow:0 16px 36px rgba(15,23,42,.10);transform:translateY(-1px)}
+    .plugve-phev-card.hidden{display:none!important}
+    .plugve-phev-mini-bar{display:flex;height:.85rem;border-radius:999px;overflow:hidden;background:#e5e7eb;margin-top:.72rem;border:1px solid rgba(15,23,42,.08);box-shadow:inset 0 1px 3px rgba(15,23,42,.13)}
+    .plugve-phev-mini-electric{background:rgba(37,99,235,.38);min-width:0;transition:width .18s ease}
+    .plugve-phev-mini-fuel{background:rgba(220,38,38,.32);min-width:0;transition:width .18s ease}
+    .plugve-phev-compact-row{display:flex;align-items:center;justify-content:space-between;gap:.75rem;margin-top:.45rem;font-size:.72rem;font-weight:900}
+    .plugve-phev-compact-row span{white-space:nowrap}
+    .plugve-phev-compact-row span:first-child{color:#1d4ed8}
+    .plugve-phev-compact-row span:last-child{color:#991b1b;text-align:right}
+    .plugve-phev-modal-panel{width:min(760px,100%);background:#fff;border-radius:1.1rem;box-shadow:0 24px 80px rgba(15,23,42,.28);overflow:hidden}
+    .plugve-phev-slider{width:100%;height:1.05rem;border-radius:999px;border:1px solid rgba(15,23,42,.08);outline:none;-webkit-appearance:none;appearance:none;background:linear-gradient(90deg,rgba(37,99,235,.30) var(--phev-electric-pct,100%),rgba(220,38,38,.22) var(--phev-electric-pct,100%));box-shadow:inset 0 1px 3px rgba(15,23,42,.14);cursor:pointer}
+    .plugve-phev-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:1.55rem;height:1.55rem;border-radius:999px;background:#fff;border:3px solid #0f172a;box-shadow:0 5px 14px rgba(15,23,42,.25)}
+    .plugve-phev-slider::-moz-range-thumb{width:1.25rem;height:1.25rem;border-radius:999px;background:#fff;border:3px solid #0f172a;box-shadow:0 5px 14px rgba(15,23,42,.25)}
+    .plugve-phev-percent-row{display:flex;align-items:center;justify-content:space-between;gap:.6rem;margin-top:.6rem;font-size:.88rem;font-weight:900}
+    .plugve-phev-percent-row span:first-child{color:#1d4ed8}
+    .plugve-phev-percent-row span:last-child{color:#991b1b}
+    .plugve-phev-save-disabled{background:#d1d5db!important;color:#64748b!important;cursor:not-allowed!important;box-shadow:none!important}
+    .plugve-phev-resumo{font-size:.72rem;color:#1d4ed8;font-weight:800;margin-top:.32rem}
+    .plugve-phev-resumo.hidden{display:none!important}
+
     @media(max-width:760px){.plugve-fuel-compact-top{align-items:flex-start;flex-direction:column}.plugve-fuel-compact-price{align-self:flex-end}.plugve-fuel-prices{grid-template-columns:1fr}.plugve-fuel-modal-actions button{flex:1}}
     @media print{
       header, footer, #form_simulacao_tco, .no-print{display:none !important}
@@ -497,6 +519,7 @@
               <input type="hidden" name="modelo_ve" id="modelo_ve">
               <input type="hidden" name="ano_modelo_ve" id="ano_modelo_ve">
               <input type="hidden" name="combustivel_ve" id="combustivel_ve">
+              <input type="hidden" name="tipo_veiculo_ve" id="tipo_veiculo_ve" value="">
 
               <div>
                 <label class="block text-sm font-medium">Preço do VE</label>
@@ -524,6 +547,7 @@
               <div>
                 <label class="block text-sm font-medium">Consumo VE (kWh/km)</label>
                 <input type="text" name="consumo_ve" id="consumo_ve" class="mt-1 p-2 border rounded w-full" placeholder="ex: 0,15">
+                <p id="consumo_ve_resumo_phev" class="plugve-phev-resumo hidden"></p>
               </div>
 
               <div>
@@ -714,6 +738,34 @@
                 </div>
               </div>
 
+              <input type="hidden" name="phev_configurado" id="phev_configurado" value="0">
+              <input type="hidden" name="phev_prefixo_configurado" id="phev_prefixo_configurado" value="">
+              <input type="hidden" name="phev_vehicle_key" id="phev_vehicle_key" value="">
+              <input type="hidden" name="phev_percent_eletrico" id="phev_percent_eletrico" value="100">
+              <input type="hidden" name="phev_consumo_eletrico" id="phev_consumo_eletrico" value="">
+              <input type="hidden" name="phev_consumo_combustivel" id="phev_consumo_combustivel" value="">
+              <input type="hidden" name="phev_preco_combustivel" id="phev_preco_combustivel" value="">
+
+              <div id="plugve_phev_card" class="plugve-phev-card hidden mt-3" role="button" tabindex="0" title="Clique para ajustar o perfil do híbrido plug-in.">
+                <div class="plugve-fuel-compact-top">
+                  <div class="plugve-fuel-title">
+                    <span class="plugve-fuel-icon" aria-hidden="true">🔌</span>
+                    <div>
+                      <strong>Híbrido plug-in</strong>
+                      <small>Clique para ajustar energia x combustível</small>
+                    </div>
+                  </div>
+                </div>
+                <div class="plugve-phev-mini-bar" aria-hidden="true">
+                  <div id="phev_bar_eletrico" class="plugve-phev-mini-electric" style="width:100%"></div>
+                  <div id="phev_bar_combustivel" class="plugve-phev-mini-fuel" style="width:0%"></div>
+                </div>
+                <div class="plugve-phev-compact-row">
+                  <span id="phev_compact_left">100% elétrico</span>
+                  <span id="phev_compact_right">0% combustível</span>
+                </div>
+              </div>
+
               <p id="status_combustivel" class="text-[11px] text-gray-500 mt-1 hidden"></p>
             </div>
 
@@ -855,6 +907,74 @@
               Cancelar
             </button>
             <button type="button" id="btn_salvar_combustivel_tco" class="px-4 py-2 rounded-lg bg-green-600 text-white font-semibold hover:bg-green-700">
+              Salvar
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================================================
+      3.6) MODAL DE PERFIL PHEV
+    ========================================================= -->
+    <section id="modal_phev_tco" class="plugve-finance-modal hidden no-print" aria-hidden="true">
+      <div class="plugve-phev-modal-panel">
+        <div class="plugve-finance-header">
+          <div class="flex items-start justify-between gap-4">
+            <div>
+              <h2 class="text-xl font-bold text-blue-700">Perfil do híbrido plug-in</h2>
+              <p class="text-sm text-gray-500 mt-1">Ajuste a proporção entre uso elétrico e uso com combustível.</p>
+            </div>
+            <button type="button" id="btn_fechar_phev_tco" class="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">
+              Fechar
+            </button>
+          </div>
+        </div>
+
+        <div class="plugve-finance-body">
+          <div class="plugve-fuel-card plugve-fuel-modal-card" data-fuel-mode="phev">
+            <div class="plugve-fuel-head">
+              <div class="plugve-fuel-title">
+                <span class="plugve-fuel-icon" aria-hidden="true">🔌</span>
+                <div>
+                  <strong>Elétrico + combustível</strong>
+                  <small>Arraste a barra conforme seu uso real.</small>
+                </div>
+              </div>
+            </div>
+
+            <div class="plugve-fuel-prices">
+              <div id="phev_box_eletrico" class="plugve-fuel-pill">
+                <span>⚡ Elétrico</span>
+                <label for="phev_modal_consumo_eletrico">Consumo (kWh/km)</label>
+                <input type="text" id="phev_modal_consumo_eletrico" inputmode="decimal" placeholder="ex: 0,18">
+              </div>
+              <div id="phev_box_combustivel" class="plugve-fuel-pill">
+                <span>⛽ Combustível</span>
+                <label for="phev_modal_preco_combustivel">Preço (R$/L)</label>
+                <div class="plugve-money-field">
+                  <span class="plugve-money-prefix">R$</span>
+                  <input type="text" id="phev_modal_preco_combustivel" inputmode="decimal" placeholder="ex: 6,87">
+                </div>
+                <label for="phev_modal_consumo_combustivel">Consumo (km/L)</label>
+                <input type="text" id="phev_modal_consumo_combustivel" inputmode="decimal" placeholder="ex: 13,0">
+              </div>
+            </div>
+
+            <div class="plugve-fuel-slider-wrap">
+              <input type="range" id="phev_mix_slider" class="plugve-phev-slider" min="0" max="100" step="1" value="100" aria-label="Percentual de uso elétrico no híbrido plug-in">
+              <div class="plugve-phev-percent-row">
+                <span id="phev_pct_eletrico">100% elétrico</span>
+                <span id="phev_pct_combustivel">0% combustível</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="plugve-fuel-modal-actions">
+            <button type="button" id="btn_cancelar_phev_tco" class="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">
+              Cancelar
+            </button>
+            <button type="button" id="btn_salvar_phev_tco" class="px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700">
               Salvar
             </button>
           </div>
@@ -1645,6 +1765,7 @@
       if (typeof window.atualizarInterfacePorCenario === "function") window.atualizarInterfacePorCenario();
       if (typeof window.atualizarLiberacaoAreaSimulacao === "function") window.atualizarLiberacaoAreaSimulacao();
       if (typeof atualizarInterfaceCombustivelPorVeiculo === "function") atualizarInterfaceCombustivelPorVeiculo();
+      if (typeof atualizarInterfacePhevPorVeiculo === "function") atualizarInterfacePhevPorVeiculo();
       setTimeout(() => {
         if (typeof window.atualizarLiberacaoAreaSimulacao === "function") window.atualizarLiberacaoAreaSimulacao();
         form?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -1780,6 +1901,7 @@
         const el = document.getElementById(id);
         if (el) el.value = "";
       });
+      if (prefixo === "ve") setValorInputTCO("tipo_veiculo_ve", "");
       const status = statusDepreciacaoPorPrefixo(prefixo);
       if (status) status.textContent = "Seleção incompatível com este bloco.";
     }
@@ -1871,6 +1993,7 @@
       atualizarCardsCenario();
       atualizarLiberacaoAreaSimulacao();
       if (typeof atualizarInterfaceCombustivelPorVeiculo === "function") atualizarInterfaceCombustivelPorVeiculo();
+      if (typeof atualizarInterfacePhevPorVeiculo === "function") atualizarInterfacePhevPorVeiculo();
     }
 
     function atualizarLiberacaoAreaSimulacao() {
@@ -2185,6 +2308,7 @@
           document.getElementById("preco_ve").value = valor;
           document.getElementById("ano_modelo_ve").value = anoModeloStr;
           document.getElementById("combustivel_ve").value = combustivelStr;
+          setValorInputTCO("tipo_veiculo_ve", tipoSelecionado);
         } else if (prefixo === "icev") {
           document.getElementById("modelo_icev").value = nomeCompleto;
           document.getElementById("preco_icev").value = valor;
@@ -2200,6 +2324,7 @@
         atualizarSeguroAutomatico(prefixo);
         atualizarIpva(prefixo);
         atualizarInterfaceCombustivelPorVeiculo(prefixo, true);
+        if (typeof atualizarInterfacePhevPorVeiculo === "function") atualizarInterfacePhevPorVeiculo(prefixo, true);
 
         const detalheDepreciacao = montarDetalheDepreciacaoTCO(prefixo, data, marcaSelect, modeloSelect, anoSelect, valor, nomeModelo, anoModeloStr, combustivelStr);
         await consultarDepreciacaoTCO(prefixo, detalheDepreciacao);
@@ -2905,6 +3030,7 @@
             chaveCombustivelAtivaTCO = chave;
           }
           atualizarInterfaceCombustivelPorVeiculo();
+          if (typeof atualizarInterfacePhevPorVeiculo === "function") atualizarInterfacePhevPorVeiculo();
         } else {
           setStatusCombustivelTCO("Valor médio ANP indisponível. Ajuste manualmente se necessário.", true);
         }
@@ -2959,6 +3085,266 @@
         const n = numeroBRParaFloat(this.value);
         if (n > 0) this.value = formatarValorLitroInputTCO(n);
         capturarEstadoFormularioTCO();
+      });
+    }
+
+
+
+    // =========================================================
+    // 6.5.1) Perfil PHEV: elétrico + combustível
+    // =========================================================
+    let chavePhevAtivaTCO = "";
+    let ultimoPhevAutoAbertoTCO = "";
+
+    function tipoVeSelecionadoTCO() {
+      const tipoHidden = document.getElementById("tipo_veiculo_ve")?.value || "";
+      if (tipoHidden) return tipoHidden;
+      const modelo = document.getElementById("modelo_ve")?.value || "";
+      const combustivel = document.getElementById("combustivel_ve")?.value || "";
+      return classificarTipoVeiculoTCO(modelo, combustivel, "", "");
+    }
+
+    function ehPhevSelecionadoTCO() {
+      return tipoVeSelecionadoTCO() === "phev";
+    }
+
+    function chavePhevAtualTCO() {
+      const modelo = document.getElementById("modelo_ve")?.value || "";
+      const combustivel = document.getElementById("combustivel_ve")?.value || "";
+      return `ve|${modelo}|${combustivel}`;
+    }
+
+    function precoCombustivelPhevPadraoTCO() {
+      return valorNumeroInputTCO("phev_preco_combustivel") || precoHiddenCombustivelTCO("gasolina") || precosCombustivelTCO.gasolina || numeroBRParaFloat(document.getElementById("combustivel_input")?.value || 0);
+    }
+
+    function setValorPhevTCO(id, valor) {
+      const el = document.getElementById(id);
+      if (el) el.value = valor ?? "";
+    }
+
+    function limparResumoPhevTCO() {
+      const resumo = document.getElementById("consumo_ve_resumo_phev");
+      const campo = document.getElementById("consumo_ve");
+      if (resumo) {
+        resumo.textContent = "";
+        resumo.classList.add("hidden");
+      }
+      if (campo) {
+        campo.readOnly = false;
+        campo.classList.remove("plugve-consumo-configurado");
+        delete campo.dataset.phevConfigurado;
+      }
+    }
+
+    function aplicarResumoPhevTCO() {
+      const campo = document.getElementById("consumo_ve");
+      const resumo = document.getElementById("consumo_ve_resumo_phev");
+      if (!campo || !resumo) return;
+      const eletricoPct = Math.max(0, Math.min(100, Number(document.getElementById("phev_percent_eletrico")?.value || 100)));
+      const combustPct = 100 - eletricoPct;
+      const consumoEletrico = valorNumeroInputTCO("phev_consumo_eletrico");
+      const consumoComb = valorNumeroInputTCO("phev_consumo_combustivel");
+      const partes = [];
+      if (eletricoPct > 0 && consumoEletrico > 0) partes.push(`Elétrico: ${formatarValorLitroInputTCO(consumoEletrico)} kWh/km`);
+      if (combustPct > 0 && consumoComb > 0) partes.push(`Combustível: ${formatarConsumoInputTCO(consumoComb)} km/L`);
+      resumo.textContent = partes.join(" · ");
+      resumo.classList.toggle("hidden", !resumo.textContent);
+      campo.readOnly = true;
+      campo.classList.add("plugve-consumo-configurado");
+      if (consumoEletrico > 0) campo.value = formatarValorLitroInputTCO(consumoEletrico);
+      else if (eletricoPct <= 0) campo.value = "0";
+      campo.dataset.phevConfigurado = "1";
+    }
+
+    function resetarPerfilPhevTCO(chave) {
+      setValorPhevTCO("phev_configurado", "0");
+      setValorPhevTCO("phev_prefixo_configurado", "ve");
+      setValorPhevTCO("phev_vehicle_key", chave || "");
+      setValorPhevTCO("phev_percent_eletrico", "100");
+      const consumoEletricoAtual = numeroBRParaFloat(document.getElementById("consumo_ve")?.value || 0);
+      setValorPhevTCO("phev_consumo_eletrico", consumoEletricoAtual > 0 ? formatarValorLitroInputTCO(consumoEletricoAtual) : "");
+      setValorPhevTCO("phev_consumo_combustivel", "");
+      setValorPhevTCO("phev_preco_combustivel", formatarValorLitroInputTCO(precoCombustivelPhevPadraoTCO() || 0));
+      const slider = document.getElementById("phev_mix_slider");
+      if (slider) slider.value = "100";
+      limparResumoPhevTCO();
+    }
+
+    function prepararModalPhevTCO() {
+      const pct = Number(document.getElementById("phev_percent_eletrico")?.value || 100);
+      const slider = document.getElementById("phev_mix_slider");
+      if (slider) slider.value = String(Math.max(0, Math.min(100, pct)));
+      const consumoEletrico = document.getElementById("phev_consumo_eletrico")?.value || document.getElementById("consumo_ve")?.value || "";
+      setValorPhevTCO("phev_modal_consumo_eletrico", consumoEletrico);
+      setValorPhevTCO("phev_modal_preco_combustivel", document.getElementById("phev_preco_combustivel")?.value || formatarValorLitroInputTCO(precoCombustivelPhevPadraoTCO() || 0));
+      setValorPhevTCO("phev_modal_consumo_combustivel", document.getElementById("phev_consumo_combustivel")?.value || "");
+      atualizarEstadoModalPhevTCO();
+    }
+
+    function atualizarEstadoModalPhevTCO() {
+      const slider = document.getElementById("phev_mix_slider");
+      const eletricoPct = Math.max(0, Math.min(100, Number(slider?.value || 100)));
+      const combustPct = 100 - eletricoPct;
+      const pctEle = document.getElementById("phev_pct_eletrico");
+      const pctComb = document.getElementById("phev_pct_combustivel");
+      const boxEle = document.getElementById("phev_box_eletrico");
+      const boxComb = document.getElementById("phev_box_combustivel");
+      const consEle = document.getElementById("phev_modal_consumo_eletrico");
+      const precoComb = document.getElementById("phev_modal_preco_combustivel");
+      const consComb = document.getElementById("phev_modal_consumo_combustivel");
+      const btnSalvar = document.getElementById("btn_salvar_phev_tco");
+
+      if (slider) slider.style.setProperty("--phev-electric-pct", `${eletricoPct}%`);
+      if (pctEle) pctEle.textContent = `${eletricoPct}% elétrico`;
+      if (pctComb) pctComb.textContent = `${combustPct}% combustível`;
+
+      const usaEle = eletricoPct > 0;
+      const usaComb = combustPct > 0;
+      if (consEle) consEle.disabled = !usaEle;
+      [precoComb, consComb].forEach(el => { if (el) el.disabled = !usaComb; });
+      boxEle?.classList.toggle("plugve-disabled", !usaEle);
+      boxComb?.classList.toggle("plugve-disabled", !usaComb);
+
+      const okEle = !usaEle || numeroBRParaFloat(consEle?.value || 0) > 0;
+      const okComb = !usaComb || (numeroBRParaFloat(precoComb?.value || 0) > 0 && numeroBRParaFloat(consComb?.value || 0) > 0);
+      const valido = okEle && okComb;
+      if (btnSalvar) {
+        btnSalvar.disabled = !valido;
+        btnSalvar.classList.toggle("plugve-phev-save-disabled", !valido);
+      }
+    }
+
+    function copiarModalParaHiddenPhevTCO() {
+      setValorPhevTCO("phev_consumo_eletrico", document.getElementById("phev_modal_consumo_eletrico")?.value || "");
+      setValorPhevTCO("phev_preco_combustivel", document.getElementById("phev_modal_preco_combustivel")?.value || "");
+      setValorPhevTCO("phev_consumo_combustivel", document.getElementById("phev_modal_consumo_combustivel")?.value || "");
+    }
+
+    function renderizarCardPhevTCO() {
+      const card = document.getElementById("plugve_phev_card");
+      if (!card) return;
+      const ativo = ehPhevSelecionadoTCO();
+      card.classList.toggle("hidden", !ativo);
+      if (!ativo) return;
+
+      const eletricoPct = Math.max(0, Math.min(100, Number(document.getElementById("phev_percent_eletrico")?.value || 100)));
+      const combustPct = 100 - eletricoPct;
+      const barEle = document.getElementById("phev_bar_eletrico");
+      const barComb = document.getElementById("phev_bar_combustivel");
+      const left = document.getElementById("phev_compact_left");
+      const right = document.getElementById("phev_compact_right");
+      if (barEle) barEle.style.width = `${eletricoPct}%`;
+      if (barComb) barComb.style.width = `${combustPct}%`;
+      if (left) left.textContent = `${eletricoPct}% elétrico`;
+      if (right) right.textContent = `${combustPct}% combustível`;
+    }
+
+    function abrirModalPhevTCO() {
+      if (!ehPhevSelecionadoTCO()) return;
+      const modal = document.getElementById("modal_phev_tco");
+      if (!modal) return;
+      prepararModalPhevTCO();
+      modal.classList.remove("hidden");
+      modal.setAttribute("aria-hidden", "false");
+    }
+
+    function fecharModalPhevTCO() {
+      const modal = document.getElementById("modal_phev_tco");
+      if (!modal) return;
+      modal.classList.add("hidden");
+      modal.setAttribute("aria-hidden", "true");
+    }
+
+    function cancelarModalPhevTCO() {
+      const chave = chavePhevAtualTCO();
+      setValorPhevTCO("phev_percent_eletrico", "100");
+      setValorPhevTCO("phev_configurado", "0");
+      setValorPhevTCO("phev_prefixo_configurado", "ve");
+      setValorPhevTCO("phev_vehicle_key", chave);
+      const consumoEletrico = document.getElementById("phev_modal_consumo_eletrico")?.value || document.getElementById("consumo_ve")?.value || "";
+      setValorPhevTCO("phev_consumo_eletrico", consumoEletrico);
+      setValorPhevTCO("phev_preco_combustivel", document.getElementById("phev_modal_preco_combustivel")?.value || formatarValorLitroInputTCO(precoCombustivelPhevPadraoTCO() || 0));
+      setValorPhevTCO("phev_consumo_combustivel", "");
+      limparResumoPhevTCO();
+      renderizarCardPhevTCO();
+      capturarEstadoFormularioTCO();
+      fecharModalPhevTCO();
+    }
+
+    function salvarModalPhevTCO() {
+      atualizarEstadoModalPhevTCO();
+      const btnSalvar = document.getElementById("btn_salvar_phev_tco");
+      if (btnSalvar?.disabled) return;
+      const slider = document.getElementById("phev_mix_slider");
+      const eletricoPct = Math.max(0, Math.min(100, Number(slider?.value || 100)));
+      copiarModalParaHiddenPhevTCO();
+      setValorPhevTCO("phev_percent_eletrico", String(eletricoPct));
+      setValorPhevTCO("phev_configurado", "1");
+      setValorPhevTCO("phev_prefixo_configurado", "ve");
+      setValorPhevTCO("phev_vehicle_key", chavePhevAtualTCO());
+      aplicarResumoPhevTCO();
+      renderizarCardPhevTCO();
+      capturarEstadoFormularioTCO();
+      fecharModalPhevTCO();
+    }
+
+    function atualizarInterfacePhevPorVeiculo(prefixoPreferido, abrirSePhev = false) {
+      if (prefixoPreferido && prefixoPreferido !== "ve") {
+        renderizarCardPhevTCO();
+        return;
+      }
+      const ativo = ehPhevSelecionadoTCO();
+      const chave = chavePhevAtualTCO();
+      const chaveSalva = document.getElementById("phev_vehicle_key")?.value || "";
+      if (!ativo) {
+        chavePhevAtivaTCO = "";
+        document.getElementById("plugve_phev_card")?.classList.add("hidden");
+        limparResumoPhevTCO();
+        return;
+      }
+      if (!chavePhevAtivaTCO || chavePhevAtivaTCO !== chave) {
+        if (!chaveSalva || chaveSalva !== chave) resetarPerfilPhevTCO(chave);
+        else if (document.getElementById("phev_configurado")?.value === "1") aplicarResumoPhevTCO();
+        chavePhevAtivaTCO = chave;
+      }
+      renderizarCardPhevTCO();
+      if (abrirSePhev && chave && chave !== ultimoPhevAutoAbertoTCO) {
+        ultimoPhevAutoAbertoTCO = chave;
+        setTimeout(abrirModalPhevTCO, 140);
+      }
+    }
+
+    function inicializarEventosPhevTCO() {
+      const slider = document.getElementById("phev_mix_slider");
+      slider?.addEventListener("input", function () {
+        setValorPhevTCO("phev_percent_eletrico", this.value);
+        atualizarEstadoModalPhevTCO();
+        renderizarCardPhevTCO();
+      });
+
+      ["phev_modal_consumo_eletrico", "phev_modal_preco_combustivel", "phev_modal_consumo_combustivel"].forEach(id => {
+        const el = document.getElementById(id);
+        el?.addEventListener("input", atualizarEstadoModalPhevTCO);
+        el?.addEventListener("blur", function () {
+          const n = numeroBRParaFloat(this.value);
+          if (n > 0) this.value = id.includes("preco") ? formatarValorLitroInputTCO(n) : (id.includes("eletrico") ? formatarValorLitroInputTCO(n) : formatarConsumoInputTCO(n));
+          atualizarEstadoModalPhevTCO();
+        });
+      });
+
+      document.getElementById("plugve_phev_card")?.addEventListener("click", abrirModalPhevTCO);
+      document.getElementById("plugve_phev_card")?.addEventListener("keydown", ev => {
+        if (ev.key === "Enter" || ev.key === " ") {
+          ev.preventDefault();
+          abrirModalPhevTCO();
+        }
+      });
+      document.getElementById("btn_fechar_phev_tco")?.addEventListener("click", fecharModalPhevTCO);
+      document.getElementById("btn_cancelar_phev_tco")?.addEventListener("click", cancelarModalPhevTCO);
+      document.getElementById("btn_salvar_phev_tco")?.addEventListener("click", salvarModalPhevTCO);
+      document.getElementById("modal_phev_tco")?.addEventListener("click", function (ev) {
+        if (ev.target === this) fecharModalPhevTCO();
       });
     }
 
@@ -3186,7 +3572,9 @@
       aplicarPremissasInflacaoAutomaticas();
 
       inicializarEventosCombustivelTCO();
+      inicializarEventosPhevTCO();
       renderizarCardCombustivelTCO();
+      renderizarCardPhevTCO();
       if (localizacaoValida()) atualizarPrecoCombustivelAutomatico();
 
       ["ve", "icev", "atual"].forEach(prefixo => {
@@ -3738,6 +4126,7 @@
             aplicarResumoConsumoFlexTCO(pref);
           }
           if (typeof atualizarInterfaceCombustivelPorVeiculo === "function") atualizarInterfaceCombustivelPorVeiculo();
+      if (typeof atualizarInterfacePhevPorVeiculo === "function") atualizarInterfacePhevPorVeiculo();
         });
         if (window.PLUGVE_TCO_TEM_RESULTADO) {
           setHiddenPlugVE("secao_tipo_comparacao", true);
