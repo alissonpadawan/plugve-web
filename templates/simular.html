@@ -1912,6 +1912,75 @@
       if (status) status.textContent = "Seleção incompatível com este bloco.";
     }
 
+    function limparEstadoPhevAoTrocarVeiculoTCO() {
+      setValorInputTCO("phev_configurado", "0");
+      setValorInputTCO("phev_prefixo_configurado", "");
+      setValorInputTCO("phev_vehicle_key", "");
+      setValorInputTCO("phev_percent_eletrico", "100");
+      setValorInputTCO("phev_consumo_eletrico", "");
+      setValorInputTCO("phev_consumo_combustivel", "");
+      setValorInputTCO("phev_preco_combustivel", "");
+      chavePhevAtivaTCO = "";
+      ultimoPhevAutoAbertoTCO = "";
+      const slider = document.getElementById("phev_mix_slider");
+      if (slider) slider.value = "100";
+      document.getElementById("plugve_phev_card")?.classList.add("hidden");
+      limparResumoPhevTCO();
+      fecharModalPhevTCO();
+    }
+
+    function limparEstadoCombustivelAoTrocarVeiculoTCO(prefixo) {
+      if (prefixo !== "icev" && prefixo !== "atual") return;
+      modoCombustivelTCO = "gasolina";
+      chaveCombustivelAtivaTCO = "";
+      ultimoFlexAutoAbertoTCO = "";
+      setValorInputTCO("fuel_tipo_detectado", "gasolina");
+      setValorInputTCO("fuel_percent_etanol", "0");
+      setValorInputTCO("fuel_flex_configurado", "0");
+      setValorInputTCO("fuel_prefixo_configurado", "");
+      setValorInputTCO("fuel_vehicle_key", "");
+      setValorInputTCO("fuel_consumo_gasolina", "");
+      setValorInputTCO("fuel_consumo_etanol", "");
+      definirHiddenPrecoCombustivelTCO("gasolina", precosCombustivelTCO.gasolina);
+      definirHiddenPrecoCombustivelTCO("etanol", precosCombustivelTCO.etanol);
+      definirHiddenPrecoCombustivelTCO("diesel_s10", precosCombustivelTCO.diesel_s10);
+      const slider = document.getElementById("fuel_mix_slider");
+      if (slider) slider.value = "0";
+      limparResumoConsumoFlexTCO(prefixo);
+      fecharModalCombustivelTCO();
+      atualizarInputCombustivelTCO(precoBasePorModoCombustivelTCO("gasolina") || 0);
+      renderizarCardCombustivelTCO();
+    }
+
+    function limparEstadoVeiculoSelecionadoTCO(prefixo) {
+      const ids = prefixo === "ve"
+        ? ["modelo_ve", "preco_ve", "ano_modelo_ve", "combustivel_ve", "tipo_veiculo_ve", "ipva_ve_input", "seguro_ve", "depreciacao_ve"]
+        : prefixo === "icev"
+          ? ["modelo_icev", "preco_icev", "ano_modelo_icev", "combustivel_icev", "ipva_icev_input", "seguro_icev", "depreciacao_icev"]
+          : ["modelo_atual", "preco_atual", "ano_modelo_atual", "combustivel_atual", "ipva_atual_input", "seguro_atual", "depreciacao_atual"];
+      ids.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = "";
+      });
+
+      const consumoId = prefixo === "ve" ? "consumo_ve" : prefixo === "icev" ? "consumo_icev" : "consumo_atual";
+      const consumo = document.getElementById(consumoId);
+      if (consumo) {
+        consumo.value = "";
+        consumo.readOnly = false;
+        consumo.classList.remove("plugve-consumo-configurado");
+        delete consumo.dataset.flexConfigurado;
+        delete consumo.dataset.phevConfigurado;
+      }
+
+      const status = statusDepreciacaoPorPrefixo(prefixo);
+      if (status) status.textContent = "Aguardando seleção FIPE para buscar depreciação.";
+      configurarBotaoDepreciacaoTCO(prefixo, false, null, "relatorio");
+
+      if (prefixo === "ve") limparEstadoPhevAoTrocarVeiculoTCO();
+      else limparEstadoCombustivelAoTrocarVeiculoTCO(prefixo);
+    }
+
     function aplicarPremissasInflacaoAutomaticas() {
       const campoEnergia = document.getElementById("aumento_energia_input");
       const campoCombustivel = document.getElementById("aumento_combustivel_input");
@@ -3051,8 +3120,6 @@
       slider?.addEventListener("input", function () {
         setValorInputTCO("fuel_percent_etanol", this.value);
         atualizarEstadoModalCombustivelTCO();
-        sugerirConsumoFlexSePossivelTCO();
-        atualizarEstadoModalCombustivelTCO();
         renderizarCardCombustivelTCO();
       });
 
@@ -3062,14 +3129,14 @@
           if (id.includes("consumo")) {
             this.dataset.manual = "1";
             delete this.dataset.sugerido;
-            if (id.includes("gasolina")) sugerirConsumoFlexTCO("gasolina");
-            if (id.includes("etanol")) sugerirConsumoFlexTCO("etanol");
           }
           atualizarEstadoModalCombustivelTCO();
         });
         el?.addEventListener("blur", function () {
           const n = numeroBRParaFloat(this.value);
           if (n > 0) this.value = id.includes("preco") ? formatarValorLitroInputTCO(n) : formatarConsumoInputTCO(n);
+          if (id.includes("gasolina")) sugerirConsumoFlexTCO("gasolina");
+          if (id.includes("etanol")) sugerirConsumoFlexTCO("etanol");
           atualizarEstadoModalCombustivelTCO();
         });
       });
@@ -3137,6 +3204,7 @@
         resumo.classList.add("hidden");
       }
       if (campo) {
+        if (campo.dataset.phevConfigurado === "1") campo.value = "";
         campo.readOnly = false;
         campo.classList.remove("plugve-consumo-configurado");
         delete campo.dataset.phevConfigurado;
@@ -3154,13 +3222,14 @@
       const partes = [];
       if (eletricoPct > 0 && consumoEletrico > 0) partes.push(`Elétrico: ${formatarValorLitroInputTCO(consumoEletrico)} kWh/km`);
       if (combustPct > 0 && consumoComb > 0) partes.push(`Combustível: ${formatarConsumoInputTCO(consumoComb)} km/L`);
-      resumo.textContent = partes.join(" · ");
-      resumo.classList.toggle("hidden", !resumo.textContent);
-      campo.readOnly = true;
-      campo.classList.add("plugve-consumo-configurado");
-      if (consumoEletrico > 0) campo.value = formatarValorLitroInputTCO(consumoEletrico);
+      const texto = partes.join(" · ");
+      if (texto) campo.value = texto;
       else if (eletricoPct <= 0) campo.value = "0";
+      campo.readOnly = true;
       campo.dataset.phevConfigurado = "1";
+      campo.classList.add("plugve-consumo-configurado");
+      resumo.textContent = "";
+      resumo.classList.add("hidden");
     }
 
     function resetarPerfilPhevTCO(chave) {
@@ -3493,32 +3562,41 @@
       carregarMarcas("atual_marca");
 
       document.getElementById("ve_marca")?.addEventListener("change", function () {
+        limparEstadoVeiculoSelecionadoTCO("ve");
         carregarModelos("ve_marca", "ve_modelo", "ve_ano");
       });
       document.getElementById("ve_modelo")?.addEventListener("change", function () {
+        limparEstadoVeiculoSelecionadoTCO("ve");
         carregarAnos("ve_marca", "ve_modelo", "ve_ano");
       });
       document.getElementById("ve_ano")?.addEventListener("change", function () {
+        limparEstadoVeiculoSelecionadoTCO("ve");
         preencherPorFipe("ve");
       });
 
       document.getElementById("icev_marca")?.addEventListener("change", function () {
+        limparEstadoVeiculoSelecionadoTCO("icev");
         carregarModelos("icev_marca", "icev_modelo", "icev_ano");
       });
       document.getElementById("icev_modelo")?.addEventListener("change", function () {
+        limparEstadoVeiculoSelecionadoTCO("icev");
         carregarAnos("icev_marca", "icev_modelo", "icev_ano");
       });
       document.getElementById("icev_ano")?.addEventListener("change", function () {
+        limparEstadoVeiculoSelecionadoTCO("icev");
         preencherPorFipe("icev");
       });
 
       document.getElementById("atual_marca")?.addEventListener("change", function () {
+        limparEstadoVeiculoSelecionadoTCO("atual");
         carregarModelos("atual_marca", "atual_modelo", "atual_ano");
       });
       document.getElementById("atual_modelo")?.addEventListener("change", function () {
+        limparEstadoVeiculoSelecionadoTCO("atual");
         carregarAnos("atual_marca", "atual_modelo", "atual_ano");
       });
       document.getElementById("atual_ano")?.addEventListener("change", function () {
+        limparEstadoVeiculoSelecionadoTCO("atual");
         preencherPorFipe("atual");
       });
 
@@ -4031,6 +4109,7 @@
           const el = document.getElementById(id);
           if (!el) return;
           el.addEventListener("blur", function () {
+            if (this.readOnly || this.dataset.flexConfigurado === "1" || this.dataset.phevConfigurado === "1") return;
             const n = numeroBRParaFloat(this.value);
             if (Number.isFinite(n) && String(this.value || "").trim()) this.value = n.toFixed(2).replace(".", ",");
           });
