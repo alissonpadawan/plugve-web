@@ -107,6 +107,24 @@ def limpar_nome_veiculo(nome: str) -> str:
     return re.sub(r"\s+", " ", texto).strip()
 
 
+def classe_visual_veiculo(veiculo: dict) -> str:
+    tipo = str((veiculo or {}).get("tipo", "") or "").strip().lower()
+    texto = normalizar(f"{(veiculo or {}).get('combustivel', '')} {(veiculo or {}).get('nome', '')}")
+    if tipo == "ve":
+        return "plugve-theme-eletrico"
+    if tipo == "phev":
+        return "plugve-theme-phev"
+    if "DIESEL" in texto:
+        return "plugve-theme-diesel"
+    if "FLEX" in texto or "ETANOL" in texto:
+        return "plugve-theme-flex"
+    if "GASOL" in texto:
+        return "plugve-theme-gasolina"
+    if "HIBRID" in texto or "HIBRIDO" in texto or "HIBRIDA" in texto:
+        return "plugve-theme-hibrido"
+    return "plugve-theme-neutro"
+
+
 def detectar_phev_texto(modelo: str = "", combustivel: str = "", tipo_form: str = "") -> bool:
     """Detecta híbrido plug-in de forma leve, sem alterar o catálogo FIPE."""
     tipo = normalizar(tipo_form)
@@ -1105,6 +1123,9 @@ def montar_bloco_resultado(titulo, v1, v2):
         return {
             "nome": v["nome"],
             "nome_curto": v["nome_curto"],
+            "tipo": v.get("tipo", ""),
+            "combustivel": v.get("combustivel", ""),
+            "tema_classe": classe_visual_veiculo(v),
             "tco_final": real_format(v["tco_final"]),
             "custo_km": real_format(v["custo_km"]),
             "tco_final_s": real_format(v["tco_final_s"]),

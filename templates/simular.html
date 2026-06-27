@@ -27,9 +27,11 @@
     .plugve-select-note{font-size:11px;color:#6b7280;margin-top:3px}
     .plugve-chart-card{border:1px solid #e5e7eb;border-radius:1rem;background:#fff;box-shadow:0 10px 28px rgba(15,23,42,.06);padding:1rem;overflow:hidden}
     .plugve-metric-card{border:1px solid #e5e7eb;border-radius:1rem;background:linear-gradient(180deg,#ffffff 0%,#f8fafc 100%);padding:1rem;box-shadow:0 8px 22px rgba(15,23,42,.04)}
+    .plugve-result-toolbar{display:flex;gap:.75rem;flex-wrap:wrap;justify-content:flex-end;align-items:center;margin:0 0 1rem}
     .plugve-result-actions{display:flex;gap:.75rem;flex-wrap:wrap;justify-content:flex-end;align-items:center}
     .plugve-comparison-hero{display:flex;align-items:center;justify-content:space-between;gap:1.5rem;border:1px solid #bbf7d0;border-radius:1rem;background:linear-gradient(135deg,#f0fdf4 0%,#ffffff 75%);padding:1.1rem 1.2rem}
     .plugve-executive-summary{border:1px solid #dbeafe;border-radius:1.1rem;background:linear-gradient(180deg,#ffffff 0%,#f8fbff 100%);padding:1rem;box-shadow:0 10px 28px rgba(15,23,42,.05)}
+    .plugve-summary-title{font-size:2rem;line-height:1.15;font-weight:900;color:#047857}
     .plugve-executive-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.9rem;margin-bottom:.9rem}
     .plugve-executive-card{border:1px solid #bbf7d0;border-radius:1rem;background:linear-gradient(135deg,#f0fdf4 0%,#ffffff 78%);padding:1rem 1.05rem;min-height:132px}
     .plugve-executive-card-env{border-color:#bfdbfe;background:linear-gradient(135deg,#eff6ff 0%,#ffffff 78%)}
@@ -51,8 +53,19 @@
     .plugve-vehicle-summary-winner{border-color:#86efac;box-shadow:inset 4px 0 0 #168a4a}
     .plugve-vehicle-summary span{display:block;font-size:.69rem;text-transform:uppercase;letter-spacing:.04em;color:#64748b;font-weight:800}
     .plugve-vehicle-summary h4{font-size:.92rem;line-height:1.35;font-weight:800;color:#0f172a;margin-top:.15rem}
-    .plugve-vehicle-price{flex:0 0 auto;text-align:right}
+    .plugve-vehicle-price{flex:0 0 auto;text-align:left}
     .plugve-vehicle-price strong{display:block;color:#0f172a;font-variant-numeric:tabular-nums}.plugve-vehicle-price strong+span{margin-top:.45rem}
+    .plugve-vehicle-name-block{flex:1 1 auto}
+    .plugve-vehicle-name-block .plugve-vehicle-fipe{display:block;font-size:.74rem;text-transform:none;letter-spacing:0;color:#64748b;font-weight:700;margin-top:.45rem}
+    .plugve-vehicle-name-block .plugve-vehicle-fipe b{color:#334155;font-weight:800}
+    .plugve-vehicle-price .plugve-vehicle-total-label{display:block;font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:#64748b;font-weight:900}
+    .plugve-vehicle-price .plugve-vehicle-total-value{display:block;font-size:1.3rem;line-height:1.15;font-weight:900;color:#0f172a;margin-top:.18rem}
+    .plugve-vehicle-summary.plugve-theme-eletrico{border-color:#86efac;background:linear-gradient(135deg,#ecfdf5 0%,#ffffff 88%)}
+    .plugve-vehicle-summary.plugve-theme-phev,.plugve-vehicle-summary.plugve-theme-hibrido{border-color:#bfdbfe;background:linear-gradient(135deg,#eff6ff 0%,#ffffff 88%)}
+    .plugve-vehicle-summary.plugve-theme-flex{border-color:#bbf7d0;background:linear-gradient(135deg,#f0fdf4 0%,#fff1f2 100%)}
+    .plugve-vehicle-summary.plugve-theme-gasolina{border-color:#fecaca;background:linear-gradient(135deg,#fff5f5 0%,#ffffff 88%)}
+    .plugve-vehicle-summary.plugve-theme-diesel{border-color:#d6d3d1;background:linear-gradient(135deg,#f5f5f4 0%,#ffffff 88%)}
+    .plugve-vehicle-summary.plugve-theme-neutro{border-color:#cbd5e1;background:#fff}
     .plugve-comparison-table-wrap{overflow-x:auto;border:1px solid #e2e8f0;border-radius:1rem;background:#fff}
     .plugve-comparison-table{width:100%;border-collapse:collapse;min-width:700px}
     .plugve-comparison-table th{background:#f8fafc;color:#334155;font-size:.75rem;text-align:left;padding:.75rem .9rem;border-bottom:1px solid #e2e8f0}
@@ -69,17 +82,25 @@
     .plugve-component-section p{font-size:.76rem;color:#64748b;margin-top:.2rem}
     .plugve-component-table{width:100%;border-collapse:separate;border-spacing:0;min-width:760px}
     .plugve-component-table th{background:#f8fafc;color:#334155;font-size:.74rem;text-align:left;padding:.72rem .82rem;border-bottom:1px solid #e2e8f0}
+    .plugve-component-table thead th:first-child{background:transparent;color:transparent;border-bottom:0;padding:.2rem .82rem .35rem 0;box-shadow:none}
     .plugve-component-table th:not(:first-child),.plugve-component-table td:not(:first-child){text-align:right;border-left:8px solid #fff;box-shadow:inset 1px 0 0 #e5e7eb}
+    .plugve-component-table thead th.plugve-theme-eletrico{background:#ecfdf5;color:#166534}
+    .plugve-component-table thead th.plugve-theme-phev,.plugve-component-table thead th.plugve-theme-hibrido{background:#eff6ff;color:#1d4ed8}
+    .plugve-component-table thead th.plugve-theme-flex{background:linear-gradient(90deg,#f0fdf4 0%,#fff1f2 100%);color:#166534}
+    .plugve-component-table thead th.plugve-theme-gasolina{background:#fff5f5;color:#b91c1c}
+    .plugve-component-table thead th.plugve-theme-diesel{background:#f5f5f4;color:#57534e}
+    .plugve-component-table thead th.plugve-theme-neutro{background:#f8fafc;color:#334155}
     .plugve-component-table td{padding:.76rem .82rem;border-bottom:1px solid #f1f5f9;font-size:.8rem;vertical-align:middle}
     .plugve-component-table td:first-child strong{display:block;color:#0f172a}
     .plugve-component-table td:first-child small{display:block;color:#64748b;font-size:.68rem;line-height:1.35;margin-top:.12rem}
     .plugve-component-table td:not(:first-child){font-weight:800;color:#0f172a;font-variant-numeric:tabular-nums;white-space:nowrap}
     .plugve-component-table .plugve-winner-cell{color:#166534;background:#f0fdf4;background-clip:padding-box}
-    .plugve-table-group-row td{background:#f8fafc!important;color:#0f172a!important;text-transform:uppercase;letter-spacing:.05em;font-size:.72rem;font-weight:900;text-align:left!important;border-top:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0;box-shadow:inset 4px 0 0 #168a4a}
+    .plugve-table-group-row td{background:#eff6ff!important;color:#1e3a8a!important;text-transform:uppercase;letter-spacing:.05em;font-size:.72rem;font-weight:900;text-align:left!important;border-top:1px solid #dbeafe;border-bottom:1px solid #dbeafe;box-shadow:inset 4px 0 0 #2563eb}
     .plugve-versus-final-row td:first-child{background:#fbfdff}
     .plugve-versus-final-row td[colspan]{text-align:right!important;font-weight:900;color:#0f172a;background:#fbfdff}
     .plugve-versus-section{padding:0;overflow:hidden}
-    .plugve-versus-section>div:first-child{padding:1rem 1.05rem .5rem}
+    .plugve-versus-section>div:first-child{padding:1rem 1.05rem .25rem}
+    .plugve-versus-title{font-size:2rem;line-height:1.15;font-weight:900;color:#047857;margin:0 0 .65rem}
     .plugve-versus-section .overflow-x-auto{padding:0 1.05rem 1rem}
     .plugve-audit-link{display:inline-flex;align-items:center;justify-content:center;padding:.5rem .9rem;border-radius:.65rem;background:#0f172a;color:#fff;font-weight:800;font-size:.88rem;text-decoration:none}
     .plugve-audit-link:hover{background:#111827;color:#fff}
@@ -104,6 +125,12 @@
     .plugve-km-impact{display:flex;gap:.7rem;flex-wrap:wrap;margin-top:.8rem}
     .plugve-km-impact span{display:inline-flex;align-items:center;gap:.25rem;border-radius:999px;background:#fff;border:1px solid #e2e8f0;padding:.35rem .65rem;font-size:.72rem;color:#475569}
     .plugve-km-impact b{color:#0f172a;font-variant-numeric:tabular-nums}
+    .plugve-summary-km-strip{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.85rem;margin:.9rem 0}
+    .plugve-summary-km-card{border:1px solid #e2e8f0;border-radius:1rem;background:#fff;padding:.85rem 1rem}
+    .plugve-summary-km-card span{display:block;font-size:.72rem;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .plugve-summary-km-card strong{display:block;font-size:1.85rem;line-height:1.08;font-weight:900;color:#0f172a;margin-top:.22rem;font-variant-numeric:tabular-nums}
+    .plugve-summary-km-card.plugve-km-best{border-color:#86efac;background:#f0fdf4}
+    .plugve-summary-km-card.plugve-km-best strong{color:#166534}
     .plugve-env-card{border:1px solid #bbf7d0;border-radius:1rem;background:linear-gradient(135deg,#f0fdf4 0%,#ffffff 74%);padding:1.05rem 1.15rem}
     .plugve-env-head{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin-bottom:.85rem}
     .plugve-env-head h4{font-size:1.05rem;font-weight:900;color:#064e3b}
@@ -134,7 +161,7 @@
     .plugve-premises-grid dl>div:last-child{border-bottom:0}
     .plugve-premises-grid dt{color:#64748b}
     .plugve-premises-grid dd{color:#0f172a;font-weight:700;text-align:right;font-variant-numeric:tabular-nums}
-    @media(max-width:760px){.plugve-executive-grid{grid-template-columns:1fr}.plugve-comparison-hero{align-items:flex-start;flex-direction:column}.plugve-comparison-gain{width:100%;border-left:0;border-top:1px solid #bbf7d0;padding-left:0;padding-top:.75rem;text-align:left}.plugve-vehicle-strip,.plugve-km-values,.plugve-premises-grid{grid-template-columns:1fr}.plugve-vehicle-summary{align-items:flex-start;flex-direction:column}.plugve-vehicle-price{text-align:left}}
+    @media(max-width:760px){.plugve-executive-grid{grid-template-columns:1fr}.plugve-comparison-hero{align-items:flex-start;flex-direction:column}.plugve-comparison-gain{width:100%;border-left:0;border-top:1px solid #bbf7d0;padding-left:0;padding-top:.75rem;text-align:left}.plugve-vehicle-strip,.plugve-km-values,.plugve-premises-grid,.plugve-summary-km-strip{grid-template-columns:1fr}.plugve-vehicle-summary{align-items:flex-start;flex-direction:column}.plugve-vehicle-price{text-align:left}.plugve-result-toolbar{justify-content:flex-start}}
     .plugve-page-break{break-inside:avoid;page-break-inside:avoid}
     .plugve-price-finance-field{margin-top:.25rem;border:1px solid #d1d5db;border-radius:.75rem;background:#fff;overflow:visible;transition:border-color .18s ease,box-shadow .18s ease}
     .plugve-price-finance-field:focus-within{border-color:#059669;box-shadow:0 0 0 3px rgba(5,150,105,.10)}
@@ -1149,40 +1176,31 @@
     ========================================================= -->
     {% if resultado and resultado.comparacoes %}
       <section id="secao_resultados_tco" class="mt-10 plugve-page-break">
+        <div class="plugve-result-toolbar no-print">
+          <button type="button" id="btn_nova_consulta_tco" class="px-4 py-2 rounded-lg border border-red-500 text-red-600 font-semibold hover:bg-red-50">
+            Nova consulta
+          </button>
+          <button type="button" id="btn_voltar_editar_tco" class="px-4 py-2 rounded-lg border border-blue-600 text-blue-700 font-semibold hover:bg-blue-50">
+            Editar
+          </button>
+          {% if resultado.auditoria_url %}
+            <a href="{{ resultado.auditoria_url }}" target="_blank" rel="noopener" class="plugve-audit-link">
+              Auditoria
+            </a>
+          {% endif %}
+          <button type="button" id="btn_exportar_pdf_tco" class="px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700">
+            Imprimir
+          </button>
+        </div>
         <div class="bg-white rounded-xl shadow-md p-6">
-          <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-6 no-print">
-            <div>
-              <h2 class="text-2xl font-bold text-blue-700">Resumo dos Resultados</h2>
-              <p class="text-sm text-gray-500 mt-1">
-                Resultado calculado. Use “Voltar e editar valores” para ajustar a simulação sem apagar os campos preenchidos.
-              </p>
-            </div>
-            <div class="plugve-result-actions">
-              <button type="button" id="btn_nova_consulta_tco" class="px-4 py-2 rounded-lg border border-red-500 text-red-600 font-semibold hover:bg-red-50">
-                Fazer nova consulta
-              </button>
-              <button type="button" id="btn_voltar_editar_tco" class="px-4 py-2 rounded-lg border border-blue-600 text-blue-700 font-semibold hover:bg-blue-50">
-                Voltar e editar valores
-              </button>
-              {% if resultado.auditoria_url %}
-                <a href="{{ resultado.auditoria_url }}" target="_blank" rel="noopener" class="plugve-audit-link">
-                  Abrir auditoria
-                </a>
-              {% endif %}
-              <button type="button" id="btn_exportar_pdf_tco" class="px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700">
-                Exportar PDF
-              </button>
-            </div>
+          <div class="mb-6">
+            <h2 class="plugve-summary-title">Resumo dos Resultados</h2>
           </div>
 
-          <h2 class="text-2xl font-bold text-blue-700 mb-6 hidden print:block">Resumo dos Resultados</h2>
+          <h2 class="plugve-summary-title mb-6 hidden print:block">Resumo dos Resultados</h2>
 
           {% for comp in resultado.comparacoes %}
             <div class="mb-14 plugve-page-break">
-              <div class="mb-5">
-                <h3 class="font-semibold text-xl text-gray-900">{{ comp.titulo }}</h3>
-              </div>
-
               {% if comp.detalhes %}
                 <section class="plugve-executive-summary mb-6">
                   <div class="plugve-executive-grid">
@@ -1210,20 +1228,31 @@
 
                   <div class="plugve-vehicle-strip mb-5">
                     {% for item in comp.detalhes %}
-                      <article class="plugve-vehicle-summary {% if comp.vencedor_indice == loop.index %}plugve-vehicle-summary-winner{% endif %}">
-                        <div>
-                          <span>Carro {{ loop.index }}</span>
+                      <article class="plugve-vehicle-summary {{ item.tema_classe }} {% if comp.vencedor_indice == loop.index %}plugve-vehicle-summary-winner{% endif %}">
+                        <div class="plugve-vehicle-name-block">
                           <h4>{{ item.nome }}</h4>
+                          <span class="plugve-vehicle-fipe">Valor FIPE inicial: <b>{{ item.preco_inicial }}</b></span>
                         </div>
                         <div class="plugve-vehicle-price">
-                          <span>Valor FIPE inicial</span>
-                          <strong>{{ item.preco_inicial }}</strong>
-                          <span>Custo total no horizonte</span>
-                          <strong>{{ item.tco_final }}</strong>
+                          <span class="plugve-vehicle-total-label">Custo total</span>
+                          <strong class="plugve-vehicle-total-value">{{ item.tco_final }}</strong>
                         </div>
                       </article>
                     {% endfor %}
                   </div>
+
+                  {% if comp.custo_km_comparacao %}
+                    <div class="plugve-summary-km-strip">
+                      <div class="plugve-summary-km-card {{ 'plugve-km-best' if comp.custo_km_comparacao.melhor == 1 else '' }}">
+                        <span>{{ comp.custo_km_comparacao.veiculo_1_nome }}</span>
+                        <strong>{{ comp.custo_km_comparacao.veiculo_1_valor }}/km</strong>
+                      </div>
+                      <div class="plugve-summary-km-card {{ 'plugve-km-best' if comp.custo_km_comparacao.melhor == 2 else '' }}">
+                        <span>{{ comp.custo_km_comparacao.veiculo_2_nome }}</span>
+                        <strong>{{ comp.custo_km_comparacao.veiculo_2_valor }}/km</strong>
+                      </div>
+                    </div>
+                  {% endif %}
 
                   {% if comp.grafico %}
                     <div class="plugve-chart-card plugve-main-trend-chart">
@@ -1235,17 +1264,15 @@
                 {% if comp.comparativo_indicadores or comp.comparativo_componentes %}
                   <section class="plugve-component-section plugve-versus-section">
                     <div class="mb-3">
-                      <span class="plugve-comparison-kicker">Versus detalhado</span>
-                      <h4>Comparação item por item</h4>
-                      <p>Os itens abaixo comparam os dois veículos no mesmo horizonte. O valor mais favorável fica destacado em verde.</p>
+                      <h4 class="plugve-versus-title">Comparação dos veículos</h4>
                     </div>
                     <div class="overflow-x-auto">
                       <table class="plugve-component-table plugve-versus-table">
                         <thead>
                           <tr>
-                            <th>Item</th>
-                            <th>{{ comp.detalhes[0].nome_curto }}</th>
-                            <th>{{ comp.detalhes[1].nome_curto }}</th>
+                            <th></th>
+                            <th class="{{ comp.detalhes[0].tema_classe }}">{{ comp.detalhes[0].nome_curto }}</th>
+                            <th class="{{ comp.detalhes[1].tema_classe }}">{{ comp.detalhes[1].nome_curto }}</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -1298,31 +1325,6 @@
                           {% endif %}
                         </tbody>
                       </table>
-                    </div>
-                  </section>
-                {% endif %}
-
-                {% if comp.custo_km_comparacao %}
-                  <section class="plugve-km-insight mb-5">
-                    <div class="plugve-km-copy">
-                      <span class="plugve-comparison-kicker">Custo total por quilômetro</span>
-                      <h4>{{ comp.custo_km_comparacao.vencedor_nome }} apresenta o menor custo por km.</h4>
-                      <p>O indicador considera o custo total completo dividido pela quilometragem total simulada; não representa apenas energia ou combustível.</p>
-                    </div>
-                    <div class="plugve-km-values">
-                      <div class="{% if comp.custo_km_comparacao.melhor == 1 %}plugve-km-best{% endif %}">
-                        <span>{{ comp.custo_km_comparacao.veiculo_1_nome }}</span>
-                        <strong>{{ comp.custo_km_comparacao.veiculo_1_valor }}/km</strong>
-                      </div>
-                      <div class="{% if comp.custo_km_comparacao.melhor == 2 %}plugve-km-best{% endif %}">
-                        <span>{{ comp.custo_km_comparacao.veiculo_2_nome }}</span>
-                        <strong>{{ comp.custo_km_comparacao.veiculo_2_valor }}/km</strong>
-                      </div>
-                    </div>
-                    <div class="plugve-km-impact">
-                      <span>Diferença: <b>{{ comp.custo_km_comparacao.diferenca }}/km</b></span>
-                      <span>A cada 10.000 km: <b>{{ comp.custo_km_comparacao.impacto_10000 }}</b></span>
-                      <span>No horizonte de {{ comp.custo_km_comparacao.quilometragem_horizonte }} km: <b>{{ comp.custo_km_comparacao.impacto_horizonte }}</b></span>
                     </div>
                   </section>
                 {% endif %}
