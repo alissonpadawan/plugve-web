@@ -216,6 +216,13 @@
     .plugve-inline-profile .plugve-fuel-modal-actions{margin-top:.8rem}
     .plugve-inline-profile .plugve-fuel-modal-actions button{padding:.55rem .9rem;font-size:.86rem}
     .plugve-phev-save-disabled,.plugve-fuel-save-disabled{background:#d1d5db!important;color:#64748b!important;cursor:not-allowed!important;box-shadow:none!important;opacity:1!important}
+    .plugve-inline-profile.plugve-edit-modal{position:fixed!important;inset:0!important;z-index:100!important;background:rgba(15,23,42,.55)!important;display:flex!important;align-items:flex-start!important;justify-content:center!important;padding:4vh 1rem!important;overflow:auto!important;border:0!important;border-radius:0!important;box-shadow:none!important}
+    .plugve-inline-profile.plugve-edit-modal.hidden{display:none!important}
+    .plugve-inline-profile.plugve-edit-modal .plugve-fuel-modal-panel,
+    .plugve-inline-profile.plugve-edit-modal .plugve-phev-modal-panel{width:min(760px,100%)!important;background:#fff!important;border-radius:1.1rem!important;box-shadow:0 24px 80px rgba(15,23,42,.28)!important;overflow:hidden!important;border:0!important}
+    .plugve-inline-profile.plugve-edit-modal .plugve-finance-header{background:#fff!important}
+    button:disabled.plugve-phev-save-disabled,
+    button:disabled.plugve-fuel-save-disabled{background:#d1d5db!important;color:#64748b!important;border-color:#d1d5db!important;opacity:1!important;filter:none!important}
 
     @media print{
       header, footer, #form_simulacao_tco, .no-print{display:none !important}
@@ -1954,7 +1961,12 @@
       if (slider) slider.value = "100";
       document.getElementById("plugve_phev_card")?.classList.add("hidden");
       limparResumoPhevTCO();
-      fecharModalPhevTCO();
+      const modalPhev = document.getElementById("modal_phev_tco");
+      if (modalPhev) {
+        modalPhev.classList.remove("plugve-edit-modal");
+        modalPhev.classList.add("hidden");
+        modalPhev.setAttribute("aria-hidden", "true");
+      }
     }
 
     function limparEstadoCombustivelAoTrocarVeiculoTCO(prefixo) {
@@ -1975,7 +1987,12 @@
       const slider = document.getElementById("fuel_mix_slider");
       if (slider) slider.value = "0";
       limparResumoConsumoFlexTCO(prefixo);
-      fecharModalCombustivelTCO();
+      const modalFuel = document.getElementById("modal_combustivel_tco");
+      if (modalFuel) {
+        modalFuel.classList.remove("plugve-edit-modal");
+        modalFuel.classList.add("hidden");
+        modalFuel.setAttribute("aria-hidden", "true");
+      }
       atualizarInputCombustivelTCO(precoBasePorModoCombustivelTCO("gasolina") || 0);
       renderizarCardCombustivelTCO();
     }
@@ -2929,6 +2946,7 @@
       const okGas = !usaGas || (numeroBRParaFloat(precoGas?.value || 0) > 0 && numeroBRParaFloat(consGas?.value || 0) > 0);
       const valido = okEta && okGas;
       if (btnSalvar) {
+        btnSalvar.textContent = document.getElementById("fuel_flex_configurado")?.value === "1" ? "Salvar" : "Próximo";
         btnSalvar.disabled = !valido;
         btnSalvar.classList.toggle("plugve-fuel-save-disabled", !valido);
       }
@@ -3034,17 +3052,32 @@
       if (modoCombustivelTCO !== "flex") return;
       const modal = document.getElementById("modal_combustivel_tco");
       if (!modal) return;
+      const configurado = document.getElementById("fuel_flex_configurado")?.value === "1";
+      // Antes do primeiro Próximo, a configuração fica inline. Depois disso, o card compacto abre como modal.
+      if (modal.classList.contains("plugve-inline-profile") && !configurado) {
+        modal.classList.remove("plugve-edit-modal");
+        modal.classList.remove("hidden");
+        modal.setAttribute("aria-hidden", "false");
+        return;
+      }
       prepararModalCombustivelTCO();
       renderizarCardCombustivelTCO();
+      if (modal.classList.contains("plugve-inline-profile")) modal.classList.add("plugve-edit-modal");
       modal.classList.remove("hidden");
       modal.setAttribute("aria-hidden", "false");
-      if (typeof atualizarFluxoSequencialVeiculosPlugVE === "function") atualizarFluxoSequencialVeiculosPlugVE();
     }
 
     function fecharModalCombustivelTCO() {
       const modal = document.getElementById("modal_combustivel_tco");
       if (!modal) return;
-      if (modal.classList.contains("plugve-inline-profile")) return;
+      if (modal.classList.contains("plugve-inline-profile")) {
+        if (modal.classList.contains("plugve-edit-modal")) {
+          modal.classList.remove("plugve-edit-modal");
+          modal.classList.add("hidden");
+          modal.setAttribute("aria-hidden", "true");
+        }
+        return;
+      }
       modal.classList.add("hidden");
       modal.setAttribute("aria-hidden", "true");
     }
@@ -3053,7 +3086,7 @@
       const prefixo = prefixoCombustaoPreferencialTCO();
       const chave = chaveFlexAtualTCO(prefixo);
       setValorInputTCO("fuel_percent_etanol", "0");
-      setValorInputTCO("fuel_flex_configurado", "0");
+      setValorInputTCO("fuel_flex_configurado", "1");
       setValorInputTCO("fuel_prefixo_configurado", prefixo);
       setValorInputTCO("fuel_vehicle_key", chave);
       copiarModalParaHiddenCombustivelTCO();
@@ -3063,6 +3096,7 @@
       capturarEstadoFormularioTCO();
       fecharModalCombustivelTCO();
       if (typeof atualizarPerfisInlinePlugVE === "function") atualizarPerfisInlinePlugVE();
+      if (typeof atualizarDetalhesProgressivosPlugVE === "function") atualizarDetalhesProgressivosPlugVE();
     }
 
     function salvarModalCombustivelTCO() {
@@ -3085,6 +3119,7 @@
       capturarEstadoFormularioTCO();
       fecharModalCombustivelTCO();
       if (typeof atualizarPerfisInlinePlugVE === "function") atualizarPerfisInlinePlugVE();
+      if (typeof atualizarDetalhesProgressivosPlugVE === "function") atualizarDetalhesProgressivosPlugVE();
     }
 
     function atualizarInterfaceCombustivelPorVeiculo(prefixoPreferido, abrirSeFlex = false) {
@@ -3107,11 +3142,10 @@
       renderizarCardCombustivelTCO();
       if (typeof atualizarPerfisInlinePlugVE === "function") atualizarPerfisInlinePlugVE();
 
-      if (abrirSeFlex && modoCombustivelTCO === "flex") {
-        if (chave && chave !== ultimoFlexAutoAbertoTCO) {
-          ultimoFlexAutoAbertoTCO = chave;
-          setTimeout(abrirModalCombustivelTCO, 120);
-        }
+      // No fluxo progressivo, o perfil flex aparece inline na etapa do veículo.
+      // Depois de configurado, o card compacto abre a edição como modal.
+      if (abrirSeFlex && modoCombustivelTCO === "flex" && chave) {
+        ultimoFlexAutoAbertoTCO = chave;
       }
     }
 
@@ -3319,6 +3353,7 @@
       const okComb = !usaComb || (numeroBRParaFloat(precoComb?.value || 0) > 0 && numeroBRParaFloat(consComb?.value || 0) > 0);
       const valido = okEle && okComb;
       if (btnSalvar) {
+        btnSalvar.textContent = document.getElementById("phev_configurado")?.value === "1" ? "Salvar" : "Próximo";
         btnSalvar.disabled = !valido;
         btnSalvar.classList.toggle("plugve-phev-save-disabled", !valido);
       }
@@ -3353,16 +3388,31 @@
       if (!ehPhevSelecionadoTCO()) return;
       const modal = document.getElementById("modal_phev_tco");
       if (!modal) return;
+      const configurado = document.getElementById("phev_configurado")?.value === "1";
+      // Antes do primeiro Próximo, a configuração fica inline. Depois disso, o card compacto abre como modal.
+      if (modal.classList.contains("plugve-inline-profile") && !configurado) {
+        modal.classList.remove("plugve-edit-modal");
+        modal.classList.remove("hidden");
+        modal.setAttribute("aria-hidden", "false");
+        return;
+      }
       prepararModalPhevTCO();
+      if (modal.classList.contains("plugve-inline-profile")) modal.classList.add("plugve-edit-modal");
       modal.classList.remove("hidden");
       modal.setAttribute("aria-hidden", "false");
-      if (typeof atualizarFluxoSequencialVeiculosPlugVE === "function") atualizarFluxoSequencialVeiculosPlugVE();
     }
 
     function fecharModalPhevTCO() {
       const modal = document.getElementById("modal_phev_tco");
       if (!modal) return;
-      if (modal.classList.contains("plugve-inline-profile")) return;
+      if (modal.classList.contains("plugve-inline-profile")) {
+        if (modal.classList.contains("plugve-edit-modal")) {
+          modal.classList.remove("plugve-edit-modal");
+          modal.classList.add("hidden");
+          modal.setAttribute("aria-hidden", "true");
+        }
+        return;
+      }
       modal.classList.add("hidden");
       modal.setAttribute("aria-hidden", "true");
     }
@@ -3370,18 +3420,20 @@
     function cancelarModalPhevTCO() {
       const chave = chavePhevAtualTCO();
       setValorPhevTCO("phev_percent_eletrico", "100");
-      setValorPhevTCO("phev_configurado", "0");
+      setValorPhevTCO("phev_configurado", "1");
       setValorPhevTCO("phev_prefixo_configurado", "ve");
       setValorPhevTCO("phev_vehicle_key", chave);
       const consumoEletrico = document.getElementById("phev_modal_consumo_eletrico")?.value || document.getElementById("consumo_ve")?.value || "";
       setValorPhevTCO("phev_consumo_eletrico", consumoEletrico);
       setValorPhevTCO("phev_preco_combustivel", document.getElementById("phev_modal_preco_combustivel")?.value || formatarValorLitroInputTCO(precoCombustivelPhevPadraoTCO() || 0));
       setValorPhevTCO("phev_consumo_combustivel", "");
-      limparResumoPhevTCO();
+      if (numeroBRParaFloat(consumoEletrico || 0) > 0) aplicarResumoPhevTCO();
+      else limparResumoPhevTCO();
       renderizarCardPhevTCO();
       capturarEstadoFormularioTCO();
       fecharModalPhevTCO();
       if (typeof atualizarPerfisInlinePlugVE === "function") atualizarPerfisInlinePlugVE();
+      if (typeof atualizarDetalhesProgressivosPlugVE === "function") atualizarDetalhesProgressivosPlugVE();
     }
 
     function salvarModalPhevTCO() {
@@ -3400,6 +3452,7 @@
       capturarEstadoFormularioTCO();
       fecharModalPhevTCO();
       if (typeof atualizarPerfisInlinePlugVE === "function") atualizarPerfisInlinePlugVE();
+      if (typeof atualizarDetalhesProgressivosPlugVE === "function") atualizarDetalhesProgressivosPlugVE();
     }
 
     function atualizarInterfacePhevPorVeiculo(prefixoPreferido, abrirSePhev = false) {
@@ -3423,9 +3476,10 @@
       }
       renderizarCardPhevTCO();
       if (typeof atualizarPerfisInlinePlugVE === "function") atualizarPerfisInlinePlugVE();
-      if (abrirSePhev && chave && chave !== ultimoPhevAutoAbertoTCO) {
+      // No fluxo progressivo, o perfil PHEV aparece inline na etapa do veículo.
+      // Depois de configurado, o card compacto abre a edição como modal.
+      if (abrirSePhev && chave) {
         ultimoPhevAutoAbertoTCO = chave;
-        setTimeout(abrirModalPhevTCO, 140);
       }
     }
 
@@ -3482,7 +3536,7 @@
       const anoSelecionado = !!document.getElementById(`${prefixo}_ano`)?.value;
       const nomePreenchido = !!document.getElementById(`modelo_${prefixo}`)?.value;
       const precoPreenchido = !!document.getElementById(`preco_${prefixo}`)?.value;
-      return anoSelecionado || (nomePreenchido && precoPreenchido);
+      return !!(anoSelecionado && nomePreenchido && precoPreenchido);
     }
 
     function reorganizarCamposUsoPorVeiculoPlugVE() {
@@ -3574,25 +3628,39 @@
       const flexInline = document.getElementById("modal_combustivel_tco");
       const phevInline = document.getElementById("modal_phev_tco");
       const fuelCard = document.getElementById("plugve_fuel_card");
+      const phevCard = document.getElementById("plugve_phev_card");
 
       const veSelecionado = prefixoSelecionadoFluxoTCO("ve");
       const phev = typeof ehPhevSelecionadoTCO === "function" && ehPhevSelecionadoTCO();
+      const phevConfigurado = document.getElementById("phev_configurado")?.value === "1";
+      const phevEditando = !!phevInline?.classList.contains("plugve-edit-modal");
+
       if (energia) energia.classList.toggle("hidden", !veSelecionado || phev);
-      if (phevInline) phevInline.classList.toggle("hidden", !veSelecionado || !phev);
-      if (phev && typeof prepararModalPhevTCO === "function") prepararModalPhevTCO();
+      if (phevCard) phevCard.classList.toggle("hidden", !veSelecionado || !phev);
+      if (phevInline && !phevEditando) {
+        phevInline.classList.toggle("hidden", !veSelecionado || !phev || phevConfigurado);
+      }
+      if (phev && !phevConfigurado && !phevEditando && typeof prepararModalPhevTCO === "function") prepararModalPhevTCO();
+      if (phev && typeof renderizarCardPhevTCO === "function") renderizarCardPhevTCO();
 
       const prefixoComb = prefixoCombustaoPreferencialTCO();
       const combustaoSelecionada = prefixoSelecionadoFluxoTCO(prefixoComb);
       const modo = modoCombustivelSelecionadoTCO(prefixoComb);
       const flex = combustaoSelecionada && modo === "flex";
+      const flexConfigurado = document.getElementById("fuel_flex_configurado")?.value === "1";
+      const flexEditando = !!flexInline?.classList.contains("plugve-edit-modal");
 
-      if (combustivel) combustivel.classList.toggle("hidden", !combustaoSelecionada || flex);
-      if (fuelCard) fuelCard.classList.toggle("hidden", !combustaoSelecionada || flex);
-      if (flexInline) flexInline.classList.toggle("hidden", !flex);
-      if (flex && typeof prepararModalCombustivelTCO === "function") prepararModalCombustivelTCO();
+      if (combustivel) combustivel.classList.toggle("hidden", !combustaoSelecionada);
+      if (fuelCard) fuelCard.classList.toggle("hidden", !combustaoSelecionada);
+      if (flexInline && !flexEditando) {
+        flexInline.classList.toggle("hidden", !flex || flexConfigurado);
+      }
+      if (flex && !flexConfigurado && !flexEditando && typeof prepararModalCombustivelTCO === "function") prepararModalCombustivelTCO();
+      if (combustaoSelecionada && typeof renderizarCardCombustivelTCO === "function") renderizarCardCombustivelTCO();
 
       atualizarFluxoSequencialVeiculosPlugVE();
     }
+
 
 
     // =========================================================
@@ -3992,7 +4060,7 @@
         const anoSelecionado = !!document.getElementById(`${prefixo}_ano`)?.value;
         const nomePreenchido = !!document.getElementById(`modelo_${prefixo}`)?.value;
         const precoPreenchido = !!document.getElementById(`preco_${prefixo}`)?.value;
-        return anoSelecionado || (nomePreenchido && precoPreenchido);
+        return !!(anoSelecionado && nomePreenchido && precoPreenchido);
       }
 
       function todosVeiculosSelecionadosPlugVE() {
