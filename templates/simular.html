@@ -4285,8 +4285,10 @@
 
       document.addEventListener("DOMContentLoaded", function () {
         aplicarFormatacaoBlurPlugVE();
-        setHiddenPlugVE("secao_localizacao", true);
+        // Mantém a etapa de localização visível na primeira abertura da página.
+        // A função de liberação decide se deve esconder localização apenas depois de UF/município preenchidos.
         setHiddenPlugVE("area_simulacao", true);
+        window.atualizarLiberacaoAreaSimulacao();
         atualizarDetalhesProgressivosPlugVE();
         document.querySelector("form")?.addEventListener("submit", function (ev) {
           if (!detalhesLiberadosPlugVE) {
