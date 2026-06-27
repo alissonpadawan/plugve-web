@@ -935,7 +935,7 @@
               Cancelar
             </button>
             <button type="button" id="btn_salvar_combustivel_tco" class="px-4 py-2 rounded-lg bg-green-600 text-white font-semibold hover:bg-green-700 plugve-fuel-save-disabled" disabled>
-              Salvar
+              Próximo
             </button>
           </div>
         </div>
@@ -1003,7 +1003,7 @@
               Cancelar
             </button>
             <button type="button" id="btn_salvar_phev_tco" class="px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 plugve-phev-save-disabled" disabled>
-              Salvar
+              Próximo
             </button>
           </div>
         </div>
@@ -3535,14 +3535,36 @@
       const tipo = tipoAtualFluxoTCO();
       const usaIcev = tipo !== "trocar_por_eletrico";
       const veOk = etapaVeConfiguradaPlugVE();
+      const icevOk = usaIcev ? etapaCombustaoConfiguradaPlugVE("icev") : true;
 
-      if (localOk && usaIcev && !veOk) {
+      grid.classList.remove("plugve-etapa-ve-only", "plugve-etapa-icev-only");
+
+      if (!localOk) {
+        setHiddenInlineTCO("coluna_ve", false);
+        if (usaIcev) setHiddenInlineTCO("coluna_icev", true);
+        return;
+      }
+
+      // Etapa 1: o usuário configura o VE/PHEV primeiro.
+      if (usaIcev && !veOk) {
+        setHiddenInlineTCO("coluna_ve", false);
         setHiddenInlineTCO("coluna_icev", true);
         grid.classList.add("plugve-etapa-ve-only");
-      } else {
-        if (usaIcev) setHiddenInlineTCO("coluna_icev", false);
-        grid.classList.remove("plugve-etapa-ve-only");
+        return;
       }
+
+      // Etapa 2: depois do VE configurado, libera o veículo a combustão.
+      if (usaIcev && veOk && !icevOk) {
+        setHiddenInlineTCO("coluna_ve", true);
+        setHiddenInlineTCO("coluna_icev", false);
+        grid.classList.add("plugve-etapa-icev-only");
+        return;
+      }
+
+      // Etapa final: com os dois perfis concluídos, mostra a tela completa.
+      setHiddenInlineTCO("coluna_ve", false);
+      if (usaIcev) setHiddenInlineTCO("coluna_icev", false);
+      else setHiddenInlineTCO("coluna_icev", true);
     }
 
     function atualizarPerfisInlinePlugVE() {
@@ -4024,9 +4046,9 @@
         const atualOk = usar.includes("atual") ? atualSelecionado : true;
         detalhesLiberadosPlugVE = localOk && veOk && combustaoOk && atualOk;
 
-        setHiddenPlugVE("dados_carro_atual_box", !(localOk && usar.includes("atual") && atualSelecionado));
-        setHiddenPlugVE("dados_ve_box", !(localOk && usar.includes("ve") && veSelecionado));
-        setHiddenPlugVE("dados_icev_box", !(localOk && usar.includes("icev") && icevSelecionado));
+        setHiddenPlugVE("dados_carro_atual_box", !(detalhesLiberadosPlugVE && usar.includes("atual") && atualSelecionado));
+        setHiddenPlugVE("dados_ve_box", !(detalhesLiberadosPlugVE && usar.includes("ve") && veSelecionado));
+        setHiddenPlugVE("dados_icev_box", !(detalhesLiberadosPlugVE && usar.includes("icev") && icevSelecionado));
         setHiddenPlugVE("bloco_parametros_uso", !detalhesLiberadosPlugVE);
         setHiddenPlugVE("btn_simular", !detalhesLiberadosPlugVE);
         atualizarRequiredPlugVE();
@@ -4351,6 +4373,12 @@
         document.getElementById("btn_fechar_combustivel_tco")?.addEventListener("click", fecharModalCombustivelTCO);
         document.getElementById("btn_cancelar_combustivel_tco")?.addEventListener("click", cancelarModalCombustivelTCO);
         document.getElementById("btn_salvar_combustivel_tco")?.addEventListener("click", salvarModalCombustivelTCO);
+        document.getElementById("btn_salvar_combustivel_tco")?.addEventListener("click", function () {
+          setTimeout(atualizarDetalhesProgressivosPlugVE, 80);
+        });
+        document.getElementById("btn_salvar_phev_tco")?.addEventListener("click", function () {
+          setTimeout(atualizarDetalhesProgressivosPlugVE, 80);
+        });
         document.getElementById("modal_combustivel_tco")?.addEventListener("click", function (ev) {
           if (ev.target === this) fecharModalCombustivelTCO();
         });
