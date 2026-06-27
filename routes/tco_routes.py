@@ -3,10 +3,11 @@
 # ============================================================
 # 0) IMPORTS E APP
 # ============================================================
-from flask import Blueprint, render_template, request, flash, jsonify, redirect, url_for
+from flask import Blueprint, render_template, request, flash, jsonify, redirect, url_for, abort
 import plotly.graph_objs as go
 import plotly.io as pio
 import os
+import uuid
 from pathlib import Path
 from datetime import datetime, date
 import requests
@@ -17,6 +18,11 @@ from functools import lru_cache
 from services.fipe_service import FipeService, FipeApiError
 
 tco_bp = Blueprint("tco", __name__)
+
+# Cache leve em memória para abrir a auditoria técnica em nova guia logo após a simulação.
+# Não é persistência metodológica; serve apenas para transportar a memória recém-calculada.
+AUDITORIA_TCO_CACHE = {}
+AUDITORIA_TCO_CACHE_MAX = 20
 
 # ============================================================
 # 1) CAMINHOS DE ARQUIVOS (PASTA /data)
@@ -38,7 +44,8 @@ SEGURO_PADRAO_PERCENTUAL = 0.047
 # para facilitar revisão metodológica posterior na dissertação.
 FATOR_CO2_ENERGIA_KG_KWH = 0.0289   # MCTI/SIN: 0,0289 tCO2/MWh = 0,0289 kgCO2/kWh
 FATOR_CO2_GASOLINA_KG_L = 2.212     # gasolina comercial: premissa inicial kgCO2/L
-FATOR_CO2_ETANOL_KG_L = 1.526       # etanol hidratado: premissa inicial kgCO2/L
+FATOR_CO2_ETANOL_KG_L = 0.0         # etanol: CO2 fóssil da queima tratado como biogênico separado
+FATOR_CO2_ETANOL_BIOGENICO_KG_L = 1.526  # etanol hidratado: CO2 biogênico reportado à parte
 FATOR_CO2_DIESEL_S10_KG_L = 2.603   # diesel S10/comercial: premissa inicial kgCO2/L
 FATOR_ARVORE_TCO2_ANO = 0.060       # EPA: árvore urbana média, tCO2/ano
 
@@ -273,7 +280,9 @@ def fator_combustivel_co2_kg_l(texto_combustivel: str = "", padrao: str = "gasol
     texto = normalizar(texto_combustivel)
     if "DIESEL" in texto or padrao == "diesel":
         return FATOR_CO2_DIESEL_S10_KG_L
-    if "ETANOL" in texto or "ALCOOL" in texto or "ALCOOL" in texto or padrao == "etanol":
+    if "ETANOL" in texto or "ALCOOL" in texto or padrao == "etanol":
+        # Para a comparação principal, o CO2 da queima do etanol é reportado
+        # como biogênico separado. Não é ACV e não significa zero absoluto.
         return FATOR_CO2_ETANOL_KG_L
     return FATOR_CO2_GASOLINA_KG_L
 
@@ -287,12 +296,136 @@ def calcular_arvores_equivalentes(co2_t: float, anos: int) -> float:
 def fatores_ambientais_resumo() -> dict:
     return {
         "energia": f"{FATOR_CO2_ENERGIA_KG_KWH:.4f}".replace(".", ",") + " kgCO₂/kWh",
-        "gasolina": f"{FATOR_CO2_GASOLINA_KG_L:.3f}".replace(".", ",") + " kgCO₂/L",
-        "etanol": f"{FATOR_CO2_ETANOL_KG_L:.3f}".replace(".", ",") + " kgCO₂/L",
-        "diesel": f"{FATOR_CO2_DIESEL_S10_KG_L:.3f}".replace(".", ",") + " kgCO₂/L",
+        "gasolina": f"{FATOR_CO2_GASOLINA_KG_L:.3f}".replace(".", ",") + " kgCO₂ fóssil/L",
+        "etanol": "CO₂ da queima reportado como biogênico separado",
+        "etanol_biogenico": f"{FATOR_CO2_ETANOL_BIOGENICO_KG_L:.3f}".replace(".", ",") + " kgCO₂ biogênico/L",
+        "diesel": f"{FATOR_CO2_DIESEL_S10_KG_L:.3f}".replace(".", ",") + " kgCO₂ fóssil/L",
         "arvore": f"{FATOR_ARVORE_TCO2_ANO:.3f}".replace(".", ",") + " tCO₂/árvore.ano",
     }
 
+
+
+
+def soma_lista(valores) -> float:
+    return sum(float(v or 0.0) for v in (valores or []))
+
+
+def extrair_componentes_horizonte(v: dict) -> dict:
+    """Resume os principais componentes do horizonte para comparação e auditoria."""
+    return {
+        "uso": soma_lista(v.get("custo_uso_lista")),
+        "ipva": soma_lista(v.get("ipva_lista")),
+        "seguro": soma_lista(v.get("seguro_lista")),
+        "manutencao": soma_lista(v.get("manut_lista")),
+        "depreciacao": float(v.get("perda_depreciacao_final", 0) or 0),
+        "financiamento_juros": float(v.get("juros_financiamento_horizonte", 0) or 0),
+        "operacional": float(v.get("gasto_operacional_final", 0) or 0),
+        "revenda": float(v.get("valor_revenda_final", 0) or 0),
+        "tco": float(v.get("tco_final", 0) or 0),
+        "custo_km": float(v.get("custo_km", 0) or 0),
+        "co2_fossil": float(v.get("co2_total_t", 0) or 0),
+        "co2_biogenico": float(v.get("co2_biogenico_total_t", 0) or 0),
+    }
+
+
+def formatar_linha_anual(memoria: dict) -> dict:
+    return {
+        "ano": memoria.get("rotulo") or f"Ano {memoria.get('ano', '')}",
+        "uso": real_format(memoria.get("uso", memoria.get("energia_combustivel", 0))),
+        "ipva": real_format(memoria.get("ipva", 0)),
+        "seguro": real_format(memoria.get("seguro", 0)),
+        "manutencao": real_format(memoria.get("manutencao", 0)),
+        "financiamento": real_format(memoria.get("financiamento_juros", 0)),
+        "operacional_acumulado": real_format(memoria.get("gasto_operacional_acumulado", 0)),
+        "depreciacao_acumulada": real_format(memoria.get("depreciacao_acumulada", 0)),
+        "revenda": real_format(memoria.get("valor_revenda", 0)),
+        "tco": real_format(memoria.get("tco_acumulado", 0)),
+        "co2_fossil_acumulado": toneladas_format(memoria.get("co2_fossil_acumulado_t", 0)),
+        "co2_biogenico_acumulado": toneladas_format(memoria.get("co2_biogenico_acumulado_t", 0)),
+    }
+
+
+def montar_comparacao_componentes(v1: dict, v2: dict) -> list:
+    """Tabela detalhada por componente: Carro 1, Carro 2, diferença e melhor alternativa."""
+    c1 = extrair_componentes_horizonte(v1)
+    c2 = extrair_componentes_horizonte(v2)
+
+    def melhor_indice(a, b, maior_melhor=False, informativo=False):
+        if informativo or abs(float(a or 0) - float(b or 0)) < 1e-9:
+            return 0
+        if maior_melhor:
+            return 1 if a > b else 2
+        return 1 if a < b else 2
+
+    def melhor_texto(idx):
+        if idx == 1:
+            return v1.get("nome_curto", "Carro 1")
+        if idx == 2:
+            return v2.get("nome_curto", "Carro 2")
+        return "Empate" 
+
+    def fmt(valor, tipo):
+        if tipo == "moeda":
+            return real_format(valor)
+        if tipo == "km":
+            return f"{real_format(valor)}/km"
+        if tipo == "ton":
+            return toneladas_format(valor)
+        return numero_format(valor, 2)
+
+    def row(rotulo, chave, tipo="moeda", maior_melhor=False, ajuda="", informativo=False):
+        a = float(c1.get(chave, 0) or 0)
+        b = float(c2.get(chave, 0) or 0)
+        idx = melhor_indice(a, b, maior_melhor=maior_melhor, informativo=informativo)
+        return {
+            "rotulo": rotulo,
+            "valor_1": fmt(a, tipo),
+            "valor_2": fmt(b, tipo),
+            "diferenca": fmt(abs(a - b), tipo),
+            "melhor": idx,
+            "melhor_texto": "Informativo" if informativo else melhor_texto(idx),
+            "ajuda": ajuda,
+        }
+
+    linhas = [
+        row("Energia/combustível", "uso", ajuda="Custo de recarga, combustível ou combinação configurada no perfil de uso."),
+        row("IPVA", "ipva", ajuda="Soma do IPVA projetado no horizonte."),
+        row("Seguro", "seguro", ajuda="Seguro projetado a partir da premissa informada/editável."),
+        row("Manutenção", "manutencao", ajuda="Manutenção anual informada multiplicada pelo horizonte."),
+        row("Depreciação", "depreciacao", ajuda="Perda estimada entre valor inicial e valor futuro de revenda."),
+        row("Financiamento/juros", "financiamento_juros", ajuda="Somente juros do financiamento no horizonte, para não somar o principal duas vezes."),
+        row("Gasto operacional acumulado", "operacional", ajuda="Uso, manutenção, IPVA, seguro e juros no período."),
+        row("TCO total", "tco", ajuda="Gasto operacional acumulado somado à perda por depreciação."),
+        row("Valor de revenda", "revenda", maior_melhor=True, ajuda="Maior valor residual é favorável."),
+        row("Custo por km", "custo_km", tipo="km", ajuda="TCO dividido pela quilometragem total."),
+        row("Diferença a cada 10.000 km", "custo_km_10000", tipo="moeda", ajuda="Leitura financeira do custo por km multiplicado por 10.000 km."),
+        row("CO₂ fóssil operacional", "co2_fossil", tipo="ton", ajuda="Emissões operacionais estimadas; não é ACV completo."),
+        row("CO₂ biogênico do etanol", "co2_biogenico", tipo="ton", ajuda="Informado à parte para não chamar etanol de zero absoluto.", informativo=True),
+    ]
+
+    # A chave custo_km_10000 é derivada para simplificar a tabela.
+    for linha in linhas:
+        if linha["rotulo"] == "Diferença a cada 10.000 km":
+            a = float(c1.get("custo_km", 0) or 0) * 10000
+            b = float(c2.get("custo_km", 0) or 0) * 10000
+            idx = melhor_indice(a, b)
+            linha.update({
+                "valor_1": real_format(a),
+                "valor_2": real_format(b),
+                "diferenca": real_format(abs(a - b)),
+                "melhor": idx,
+                "melhor_texto": melhor_texto(idx),
+            })
+            break
+    return linhas
+
+
+def montar_memoria_anual_formatada(v: dict) -> dict:
+    return {
+        "nome": v.get("nome", "Veículo"),
+        "nome_curto": v.get("nome_curto", "Veículo"),
+        "linhas": [formatar_linha_anual(m) for m in (v.get("memoria_anual") or [])],
+    }
 
 def taxa_relativa(valor: float, base: float) -> float:
     try:
@@ -463,10 +596,12 @@ def html_grafico(fig):
 
 
 # 4.4) Projeção genérica de um veículo
+# Regra: energia e combustível sobem a.a.; IPVA e seguro acompanham o valor de mercado do veículo.
+# 4.4) Projeção genérica de um veículo
 # Regra V26: energia e combustível sobem a.a.; IPVA e seguro acompanham o valor de mercado do veículo.
 def calcular_projecao_veiculo(veiculo, comum):
     nome = veiculo.get("nome", "Veículo")
-    tipo = veiculo.get("tipo", "icev")  # ve ou icev
+    tipo = veiculo.get("tipo", "icev")  # ve, phev ou icev
 
     preco = max(0.0, float(veiculo.get("preco", 0) or 0))
     consumo = max(0.0, float(veiculo.get("consumo", 0) or 0))
@@ -513,6 +648,8 @@ def calcular_projecao_veiculo(veiculo, comum):
 
     valor_mercado = preco
     gasto_operacional_acumulado = 0.0
+    co2_acumulado_kg = 0.0
+    co2_biogenico_acumulado_kg = 0.0
 
     anos_lista = []
     anos_eixo = ["Hoje"]
@@ -520,6 +657,7 @@ def calcular_projecao_veiculo(veiculo, comum):
     tco_lista_s = []
     valor_mercado_lista = [valor_mercado]
     depreciacao_acumulada_lista = [0.0]
+    depreciacao_ano_lista = []
     gasto_operacional_lista = []
     custo_uso_lista = []
     ipva_lista = []
@@ -530,21 +668,23 @@ def calcular_projecao_veiculo(veiculo, comum):
     financiamento_juros_lista = []
     co2_anual_kg_lista = []
     co2_acumulado_t_lista = []
-    co2_componentes_kg = {"energia": 0.0, "gasolina": 0.0, "etanol": 0.0, "diesel": 0.0}
-    co2_acumulado_kg = 0.0
+    co2_biogenico_t_lista = []
+    memoria_anual = []
+    co2_componentes_kg = {"energia": 0.0, "gasolina": 0.0, "etanol": 0.0, "etanol_biogenico": 0.0, "diesel": 0.0}
     financiamento_juros_anuais = juros_financiamento_por_ano(financiamento, anos)
 
     for ano in range(1, anos + 1):
+        valor_mercado_inicio_ano = valor_mercado
         energia_ano = energia_inicial * ((1 + aumento_energia) ** (ano - 1))
         combustivel_ano = combustivel_inicial * ((1 + aumento_combustivel) ** (ano - 1))
 
-        # IPVA e seguro do ano usam o valor de mercado vigente no início do ano.
         ipva_ano = valor_mercado * taxa_ipva
         seguro_ano = valor_mercado * taxa_seguro
 
         co2_energia_kg = 0.0
         co2_gasolina_kg = 0.0
         co2_etanol_kg = 0.0
+        co2_etanol_biogenico_kg = 0.0
         co2_diesel_kg = 0.0
 
         if tipo == "ve":
@@ -561,11 +701,10 @@ def calcular_projecao_veiculo(veiculo, comum):
                 preco_combustivel_ano = (phev_preco_combustivel or combustivel_inicial) * ((1 + aumento_combustivel) ** (ano - 1))
                 litros_combustivel = (km_ano * frac_combustivel / phev_consumo_combustivel) if frac_combustivel > 0 and phev_consumo_combustivel > 0 else 0.0
                 custo_combustivel = litros_combustivel * preco_combustivel_ano if litros_combustivel > 0 and preco_combustivel_ano > 0 else 0.0
-                # Nesta primeira versão, a parcela a combustível do PHEV usa gasolina como premissa padrão.
+                # Primeira versão: parcela a combustível do PHEV usa gasolina como premissa padrão.
                 co2_gasolina_kg = litros_combustivel * FATOR_CO2_GASOLINA_KG_L
                 custo_uso = custo_eletrico + custo_combustivel
             else:
-                # Sem perfil PHEV salvo, preserva comportamento anterior: uso elétrico informado no campo VE.
                 custo_uso = km_ano * consumo * energia_ano
                 co2_energia_kg = km_ano * consumo * FATOR_CO2_ENERGIA_KG_KWH if consumo > 0 else 0.0
         elif usar_perfil_flex:
@@ -584,6 +723,7 @@ def calcular_projecao_veiculo(veiculo, comum):
             litros_etanol = (km_ano * etanol_frac / flex_consumo_etanol) if etanol_frac > 0 and flex_consumo_etanol > 0 else 0.0
             co2_gasolina_kg = litros_gasolina * FATOR_CO2_GASOLINA_KG_L
             co2_etanol_kg = litros_etanol * FATOR_CO2_ETANOL_KG_L
+            co2_etanol_biogenico_kg = litros_etanol * FATOR_CO2_ETANOL_BIOGENICO_KG_L
         else:
             litros_combustivel = (km_ano / consumo) if consumo > 0 else 0.0
             custo_uso = litros_combustivel * combustivel_ano if litros_combustivel > 0 else 0.0
@@ -592,22 +732,27 @@ def calcular_projecao_veiculo(veiculo, comum):
                 co2_diesel_kg = litros_combustivel * fator_co2
             elif fator_co2 == FATOR_CO2_ETANOL_KG_L:
                 co2_etanol_kg = litros_combustivel * fator_co2
+                co2_etanol_biogenico_kg = litros_combustivel * FATOR_CO2_ETANOL_BIOGENICO_KG_L
             else:
                 co2_gasolina_kg = litros_combustivel * fator_co2
 
+        # Indicador principal: CO2 fóssil operacional. O CO2 da queima do etanol
+        # é mostrado separadamente como biogênico, sem afirmar zero absoluto.
         co2_anual_kg = co2_energia_kg + co2_gasolina_kg + co2_etanol_kg + co2_diesel_kg
         co2_acumulado_kg += co2_anual_kg
+        co2_biogenico_acumulado_kg += co2_etanol_biogenico_kg
         co2_componentes_kg["energia"] += co2_energia_kg
         co2_componentes_kg["gasolina"] += co2_gasolina_kg
         co2_componentes_kg["etanol"] += co2_etanol_kg
+        co2_componentes_kg["etanol_biogenico"] += co2_etanol_biogenico_kg
         co2_componentes_kg["diesel"] += co2_diesel_kg
 
         juros_financiamento_ano = financiamento_juros_anuais[ano - 1] if ano - 1 < len(financiamento_juros_anuais) else 0.0
         custo_anual = custo_uso + manut + ipva_ano + seguro_ano + juros_financiamento_ano
         gasto_operacional_acumulado += custo_anual
 
-        # Valor estimado de revenda ao fim do ano.
         valor_mercado = valor_mercado * (1 - depreciacao)
+        depreciacao_ano = max(0.0, valor_mercado_inicio_ano - valor_mercado)
         perda_depreciacao = max(0.0, preco - valor_mercado)
         tco_com_depreciacao = gasto_operacional_acumulado + perda_depreciacao
 
@@ -617,6 +762,7 @@ def calcular_projecao_veiculo(veiculo, comum):
         tco_lista_s.append(gasto_operacional_acumulado)
         valor_mercado_lista.append(valor_mercado)
         depreciacao_acumulada_lista.append(perda_depreciacao)
+        depreciacao_ano_lista.append(depreciacao_ano)
         gasto_operacional_lista.append(gasto_operacional_acumulado)
         custo_uso_lista.append(custo_uso)
         ipva_lista.append(ipva_ano)
@@ -627,6 +773,35 @@ def calcular_projecao_veiculo(veiculo, comum):
         financiamento_juros_lista.append(juros_financiamento_ano)
         co2_anual_kg_lista.append(co2_anual_kg)
         co2_acumulado_t_lista.append(co2_acumulado_kg / 1000.0)
+        co2_biogenico_t_lista.append(co2_biogenico_acumulado_kg / 1000.0)
+        memoria_anual.append({
+            "ano": ano,
+            "rotulo": f"Ano {ano}",
+            "km_ano": km_ano,
+            "uso": custo_uso,
+            "energia_combustivel": custo_uso,
+            "ipva": ipva_ano,
+            "seguro": seguro_ano,
+            "manutencao": manut,
+            "financiamento_juros": juros_financiamento_ano,
+            "gasto_operacional_ano": custo_anual,
+            "gasto_operacional_acumulado": gasto_operacional_acumulado,
+            "depreciacao_ano": depreciacao_ano,
+            "depreciacao_acumulada": perda_depreciacao,
+            "valor_revenda": valor_mercado,
+            "tco_acumulado": tco_com_depreciacao,
+            "preco_energia": energia_ano,
+            "preco_combustivel": combustivel_ano,
+            "co2_fossil_t": co2_anual_kg / 1000.0,
+            "co2_fossil_acumulado_t": co2_acumulado_kg / 1000.0,
+            "co2_biogenico_t": co2_etanol_biogenico_kg / 1000.0,
+            "co2_biogenico_acumulado_t": co2_biogenico_acumulado_kg / 1000.0,
+            "co2_energia_kg": co2_energia_kg,
+            "co2_gasolina_kg": co2_gasolina_kg,
+            "co2_etanol_fossil_kg": co2_etanol_kg,
+            "co2_etanol_biogenico_kg": co2_etanol_biogenico_kg,
+            "co2_diesel_kg": co2_diesel_kg,
+        })
 
     total_km = anos * km_ano if anos > 0 and km_ano > 0 else 1
     valor_revenda_final = valor_mercado_lista[-1]
@@ -636,8 +811,30 @@ def calcular_projecao_veiculo(veiculo, comum):
     tco_final_s = tco_lista_s[-1] if tco_lista_s else 0.0
     juros_financiamento_horizonte = sum(financiamento_juros_lista)
     co2_total_t = co2_acumulado_kg / 1000.0
+    co2_biogenico_total_t = co2_biogenico_acumulado_kg / 1000.0
     co2_anual_medio_t = co2_total_t / anos if anos > 0 else 0.0
+    co2_biogenico_anual_medio_t = co2_biogenico_total_t / anos if anos > 0 else 0.0
     co2_por_km_kg = co2_acumulado_kg / total_km if total_km > 0 else 0.0
+    componentes_tco = {
+        "uso": sum(custo_uso_lista),
+        "energia_combustivel": sum(custo_uso_lista),
+        "ipva": sum(ipva_lista),
+        "seguro": sum(seguro_lista),
+        "manutencao": sum(manut_lista),
+        "financiamento_juros": juros_financiamento_horizonte,
+        "depreciacao": perda_depreciacao_final,
+        "operacional": gasto_operacional_final,
+        "gasto_operacional": gasto_operacional_final,
+        "revenda": valor_revenda_final,
+        "valor_revenda": valor_revenda_final,
+        "tco": tco_final,
+        "tco_total": tco_final,
+        "custo_km": tco_final / total_km,
+        "co2_fossil": co2_total_t,
+        "co2_total_t": co2_total_t,
+        "co2_biogenico": co2_biogenico_total_t,
+        "co2_etanol_biogenico_t": co2_biogenico_total_t,
+    }
 
     return {
         "nome": nome,
@@ -665,6 +862,7 @@ def calcular_projecao_veiculo(veiculo, comum):
         "tco_lista_s": tco_lista_s,
         "valor_mercado_lista": valor_mercado_lista,
         "depreciacao_acumulada_lista": depreciacao_acumulada_lista,
+        "depreciacao_ano_lista": depreciacao_ano_lista,
         "gasto_operacional_lista": gasto_operacional_lista,
         "custo_uso_lista": custo_uso_lista,
         "ipva_lista": ipva_lista,
@@ -673,14 +871,21 @@ def calcular_projecao_veiculo(veiculo, comum):
         "preco_energia_lista": preco_energia_lista,
         "preco_combustivel_lista": preco_combustivel_lista,
         "financiamento_juros_lista": financiamento_juros_lista,
+        "memoria_anual": memoria_anual,
+        "memoria_anual_formatada": [formatar_linha_anual(m) for m in memoria_anual],
+        "componentes_tco": componentes_tco,
+        "componentes_totais": componentes_tco,
         "co2_anual_kg_lista": co2_anual_kg_lista,
         "co2_acumulado_t_lista": co2_acumulado_t_lista,
+        "co2_biogenico_t_lista": co2_biogenico_t_lista,
         "co2_total_t": co2_total_t,
+        "co2_biogenico_total_t": co2_biogenico_total_t,
         "co2_anual_medio_t": co2_anual_medio_t,
+        "co2_biogenico_anual_medio_t": co2_biogenico_anual_medio_t,
         "co2_por_km_kg": co2_por_km_kg,
-        "co2_componentes_t": {k: v / 1000.0 for k, v in co2_componentes_kg.items()},
+        "co2_componentes_t": {k: v / 1000.0 for k, v in co2_componentes_kg.items() if k != "etanol_biogenico"},
+        "co2_biogenico_componentes_t": {"etanol": co2_componentes_kg.get("etanol_biogenico", 0.0) / 1000.0},
     }
-
 
 # 4.5) Gera gráficos de comparação entre 2 veículos
 def gerar_graficos_dupla(v1, v2):
@@ -699,7 +904,7 @@ def gerar_graficos_dupla(v1, v2):
         customdata=[v2["nome"]] * len(v2["anos_lista"]),
         hovertemplate="%{customdata}<br>%{x}<br>TCO: R$ %{y:,.2f}<extra></extra>",
     ))
-    fig_tco.update_layout(**obter_layout_web("TCO acumulado com depreciação"), yaxis_title="Custo acumulado (R$)")
+    fig_tco.update_layout(**obter_layout_web("TCO acumulado ano a ano"), yaxis_title="Custo acumulado (R$)")
 
     fig_gastos = go.Figure()
     fig_gastos.add_trace(go.Scatter(
@@ -714,7 +919,59 @@ def gerar_graficos_dupla(v1, v2):
         customdata=[v2["nome"]] * len(v2["anos_lista"]),
         hovertemplate="%{customdata}<br>%{x}<br>Gasto operacional: R$ %{y:,.2f}<extra></extra>",
     ))
-    fig_gastos.update_layout(**obter_layout_web("Gastos acumulados de uso e financiamento"), yaxis_title="Gasto acumulado (R$)")
+    fig_gastos.update_layout(**obter_layout_web("Gastos operacionais acumulados"), yaxis_title="Gasto acumulado (R$)")
+
+    labels_componentes = ["Energia/comb.", "IPVA", "Seguro", "Manutenção", "Depreciação", "Juros"]
+    chaves_componentes = ["energia_combustivel", "ipva", "seguro", "manutencao", "depreciacao", "financiamento_juros"]
+    comp1 = v1.get("componentes_totais") or v1.get("componentes_tco") or {}
+    comp2 = v2.get("componentes_totais") or v2.get("componentes_tco") or {}
+
+    fig_componentes = go.Figure()
+    fig_componentes.add_trace(go.Bar(
+        x=labels_componentes,
+        y=[comp1.get(k, 0.0) for k in chaves_componentes],
+        name=v1["nome_curto"],
+        marker_color=cor1,
+        hovertemplate="%{x}<br>" + v1["nome_curto"] + ": R$ %{y:,.2f}<extra></extra>",
+    ))
+    fig_componentes.add_trace(go.Bar(
+        x=labels_componentes,
+        y=[comp2.get(k, 0.0) for k in chaves_componentes],
+        name=v2["nome_curto"],
+        marker_color=cor2,
+        hovertemplate="%{x}<br>" + v2["nome_curto"] + ": R$ %{y:,.2f}<extra></extra>",
+    ))
+    fig_componentes.update_layout(
+        **obter_layout_web("Componentes do TCO no horizonte"),
+        yaxis_title="Valor acumulado (R$)",
+        barmode="group",
+    )
+
+    def grafico_componentes_anuais(v, titulo):
+        fig = go.Figure()
+        componentes = [
+            ("Energia/comb.", v.get("custo_uso_lista", [])),
+            ("IPVA", v.get("ipva_lista", [])),
+            ("Seguro", v.get("seguro_lista", [])),
+            ("Manutenção", v.get("manut_lista", [])),
+            ("Juros", v.get("financiamento_juros_lista", [])),
+            ("Depreciação", v.get("depreciacao_ano_lista", [])),
+        ]
+        for nome_comp, valores in componentes:
+            fig.add_trace(go.Bar(
+                x=v.get("anos_lista", []),
+                y=valores,
+                name=nome_comp,
+                hovertemplate=nome_comp + "<br>%{x}: R$ %{y:,.2f}<extra></extra>",
+            ))
+        layout_componentes_anuais = obter_layout_web(titulo)
+        layout_componentes_anuais.update({
+            "yaxis_title": "Custo anual (R$)",
+            "barmode": "stack",
+            "legend": {"orientation": "h", "yanchor": "bottom", "y": 1.04, "xanchor": "left", "x": 0},
+        })
+        fig.update_layout(**layout_componentes_anuais)
+        return html_grafico(fig)
 
     fig_revenda = go.Figure()
     fig_revenda.add_trace(go.Scatter(
@@ -731,7 +988,7 @@ def gerar_graficos_dupla(v1, v2):
         customdata=[v2["nome"]] * len(v2["anos_eixo"]),
         hovertemplate="%{customdata}<br>%{x}<br>Valor estimado: R$ %{y:,.2f}<extra></extra>",
     ))
-    fig_revenda.update_layout(**obter_layout_web("Valor estimado de revenda"), yaxis_title="Valor de mercado (R$)")
+    fig_revenda.update_layout(**obter_layout_web("Valor estimado de revenda ano a ano"), yaxis_title="Valor de mercado (R$)")
 
     def grafico_depreciacao_individual(v, cor):
         fig = go.Figure()
@@ -749,27 +1006,39 @@ def gerar_graficos_dupla(v1, v2):
         x=v1["anos_lista"], y=v1.get("co2_acumulado_t_lista", []), mode="lines+markers", name=v1["nome_curto"],
         line={"color": cor1, "width": 3, "shape": "spline"}, marker={"size": 8},
         customdata=[v1["nome"]] * len(v1["anos_lista"]),
-        hovertemplate="%{customdata}<br>%{x}<br>CO₂ acumulado: %{y:,.2f} t<extra></extra>",
+        hovertemplate="%{customdata}<br>%{x}<br>CO₂ fóssil operacional: %{y:,.2f} t<extra></extra>",
     ))
     fig_co2.add_trace(go.Scatter(
         x=v2["anos_lista"], y=v2.get("co2_acumulado_t_lista", []), mode="lines+markers", name=v2["nome_curto"],
         line={"color": cor2, "width": 3, "shape": "spline"}, marker={"size": 8},
         customdata=[v2["nome"]] * len(v2["anos_lista"]),
-        hovertemplate="%{customdata}<br>%{x}<br>CO₂ acumulado: %{y:,.2f} t<extra></extra>",
+        hovertemplate="%{customdata}<br>%{x}<br>CO₂ fóssil operacional: %{y:,.2f} t<extra></extra>",
     ))
-    fig_co2.update_layout(**obter_layout_web("Emissões operacionais acumuladas"), yaxis_title="Emissões acumuladas (tCO₂)")
+    fig_co2.update_layout(**obter_layout_web("CO₂ fóssil operacional acumulado"), yaxis_title="Emissões acumuladas (tCO₂)")
+
+    diferenca_tco = [float(a or 0) - float(b or 0) for a, b in zip(v1.get("tco_lista", []), v2.get("tco_lista", []))]
+    fig_diferenca = go.Figure()
+    fig_diferenca.add_trace(go.Scatter(
+        x=v1.get("anos_lista", []), y=diferenca_tco, mode="lines+markers",
+        name=f"{v1['nome_curto']} - {v2['nome_curto']}",
+        line={"color": CORES_GRAFICOS[2], "width": 3, "shape": "spline"}, marker={"size": 8},
+        hovertemplate="%{x}<br>Diferença de TCO: R$ %{y:,.2f}<extra></extra>",
+    ))
+    fig_diferenca.add_hline(y=0, line_width=1, line_dash="dash", line_color="#94a3b8")
+    fig_diferenca.update_layout(**obter_layout_web("Diferença acumulada ano a ano"), yaxis_title="Diferença de TCO (R$)")
 
     return {
         "grafico": html_grafico(fig_tco),
         "grafico_sem_depreciacao": html_grafico(fig_gastos),
-        # A comparação de custo/km agora é apresentada como leitura direta,
-        # com diferença e impacto financeiro. O gráfico horizontal antigo
-        # truncava nomes e dificultava a interpretação.
+        "grafico_componentes": html_grafico(fig_componentes),
+        "grafico_componentes_anuais_v1": grafico_componentes_anuais(v1, f"Componentes anuais — {nome_curto(v1['nome'], 38)}"),
+        "grafico_componentes_anuais_v2": grafico_componentes_anuais(v2, f"Componentes anuais — {nome_curto(v2['nome'], 38)}"),
         "grafico_custo_km": "",
         "grafico_revenda_comparativo": html_grafico(fig_revenda),
         "grafico_depreciacao_v1": grafico_depreciacao_individual(v1, cor1),
         "grafico_depreciacao_v2": grafico_depreciacao_individual(v2, cor2),
         "grafico_ambiental": html_grafico(fig_co2),
+        "grafico_diferenca_anual": html_grafico(fig_diferenca),
     }
 
 
@@ -780,6 +1049,7 @@ def montar_bloco_resultado(titulo, v1, v2):
     outro = v2 if vencedor is v1 else v1
     economia = max(0.0, outro["tco_final"] - vencedor["tco_final"])
     economia_percentual = economia / outro["tco_final"] if outro["tco_final"] > 0 else 0.0
+    anos_horizonte = max(1, int(v1.get("anos_horizonte", v2.get("anos_horizonte", 1)) or 1))
 
     def resumo(v):
         financiamento = v.get("financiamento") or {}
@@ -807,6 +1077,7 @@ def montar_bloco_resultado(titulo, v1, v2):
             "juros_financiamento_total": real_format(financiamento.get("juros_total", 0)),
             "juros_financiamento_horizonte": real_format(v.get("juros_financiamento_horizonte", 0)),
             "co2_total": toneladas_format(v.get("co2_total_t", 0)),
+            "co2_biogenico": toneladas_format(v.get("co2_biogenico_total_t", 0)),
             "co2_anual": toneladas_format(v.get("co2_anual_medio_t", 0)),
             "co2_por_km": f"{numero_format(v.get('co2_por_km_kg', 0), 3)} kgCO₂/km",
             "arvores_compensacao": arvores_format(calcular_arvores_equivalentes(v.get("co2_total_t", 0), v.get("anos_horizonte", 1))),
@@ -821,6 +1092,9 @@ def montar_bloco_resultado(titulo, v1, v2):
             return 1 if valor1 > valor2 else 2
         return 1 if valor1 < valor2 else 2
 
+    def melhor_texto(indice: int) -> str:
+        return "Empate" if indice == 0 else f"Carro {indice}"
+
     def linha_comparativa(rotulo: str, valor1: float, valor2: float, maior_melhor: bool = False, ajuda: str = "") -> dict:
         return {
             "rotulo": rotulo,
@@ -830,59 +1104,59 @@ def montar_bloco_resultado(titulo, v1, v2):
             "ajuda": ajuda,
         }
 
+    def linha_componente(rotulo: str, valor1: float, valor2: float, tipo: str = "moeda", maior_melhor: bool = False, ajuda: str = "") -> dict:
+        melhor = melhor_indice(valor1, valor2, maior_melhor=maior_melhor)
+        diferenca = abs(float(valor1 or 0) - float(valor2 or 0))
+        if tipo == "co2":
+            fmt = toneladas_format
+            diff_fmt = toneladas_format(diferenca)
+        elif tipo == "km":
+            fmt = lambda x: f"{real_format(x)}/km"
+            diff_fmt = f"{real_format(diferenca)}/km"
+        else:
+            fmt = real_format
+            diff_fmt = real_format(diferenca)
+        return {
+            "rotulo": rotulo,
+            "valor_1": fmt(valor1),
+            "valor_2": fmt(valor2),
+            "diferenca": diff_fmt,
+            "melhor": melhor,
+            "melhor_texto": melhor_texto(melhor),
+            "ajuda": ajuda,
+        }
+
     resumo_v1 = resumo(v1)
     resumo_v2 = resumo(v2)
+    comp1 = v1.get("componentes_totais") or v1.get("componentes_tco") or extrair_componentes_horizonte(v1)
+    comp2 = v2.get("componentes_totais") or v2.get("componentes_tco") or extrair_componentes_horizonte(v2)
 
     comparativo_indicadores = [
-        linha_comparativa(
-            "TCO no horizonte",
-            v1["tco_final"],
-            v2["tco_final"],
-            ajuda="Custo total de propriedade estimado no período.",
-        ),
-        linha_comparativa(
-            "Custo total por km",
-            v1["custo_km"],
-            v2["custo_km"],
-            ajuda="TCO dividido pela quilometragem total simulada.",
-        ),
-        linha_comparativa(
-            "Gasto operacional acumulado",
-            v1["gasto_operacional_final"],
-            v2["gasto_operacional_final"],
-            ajuda="Energia ou combustível, manutenção, IPVA, seguro e juros no horizonte.",
-        ),
-        {
-            "rotulo": "CO₂ operacional acumulado",
-            "valor_1": toneladas_format(v1.get("co2_total_t", 0)),
-            "valor_2": toneladas_format(v2.get("co2_total_t", 0)),
-            "melhor": melhor_indice(v1.get("co2_total_t", 0), v2.get("co2_total_t", 0)),
-            "ajuda": "Estimativa operacional; não inclui fabricação, bateria ou descarte.",
-        },
-        linha_comparativa(
-            "Perda por depreciação",
-            v1["perda_depreciacao_final"],
-            v2["perda_depreciacao_final"],
-            ajuda="Diferença entre o valor inicial e o valor estimado de revenda.",
-        ),
-        linha_comparativa(
-            "Valor estimado de revenda",
-            v1["valor_revenda_final"],
-            v2["valor_revenda_final"],
-            maior_melhor=True,
-            ajuda="Maior valor é favorável.",
-        ),
+        linha_comparativa("TCO no horizonte", v1["tco_final"], v2["tco_final"], ajuda="Custo total de propriedade estimado no período."),
+        linha_comparativa("Custo total por km", v1["custo_km"], v2["custo_km"], ajuda="TCO dividido pela quilometragem total simulada."),
+        linha_comparativa("Gasto operacional acumulado", v1["gasto_operacional_final"], v2["gasto_operacional_final"], ajuda="Energia ou combustível, manutenção, IPVA, seguro e juros no horizonte."),
+        {"rotulo": "CO₂ fóssil operacional acumulado", "valor_1": toneladas_format(v1.get("co2_total_t", 0)), "valor_2": toneladas_format(v2.get("co2_total_t", 0)), "melhor": melhor_indice(v1.get("co2_total_t", 0), v2.get("co2_total_t", 0)), "ajuda": "Estimativa operacional; etanol biogênico é reportado à parte."},
+        linha_comparativa("Perda por depreciação", v1["perda_depreciacao_final"], v2["perda_depreciacao_final"], ajuda="Diferença entre o valor inicial e o valor estimado de revenda."),
+        linha_comparativa("Valor estimado de revenda", v1["valor_revenda_final"], v2["valor_revenda_final"], maior_melhor=True, ajuda="Maior valor é favorável."),
     ]
 
     if resumo_v1["financiamento_ativo"] or resumo_v2["financiamento_ativo"]:
-        comparativo_indicadores.append(
-            linha_comparativa(
-                "Juros pagos no horizonte",
-                v1.get("juros_financiamento_horizonte", 0),
-                v2.get("juros_financiamento_horizonte", 0),
-                ajuda="Somente os juros que incidem dentro do período analisado.",
-            )
-        )
+        comparativo_indicadores.append(linha_comparativa("Juros pagos no horizonte", v1.get("juros_financiamento_horizonte", 0), v2.get("juros_financiamento_horizonte", 0), ajuda="Somente os juros que incidem dentro do período analisado."))
+
+    comparativo_componentes = [
+        linha_componente("Energia/combustível", comp1.get("energia_combustivel", comp1.get("uso", 0)), comp2.get("energia_combustivel", comp2.get("uso", 0)), ajuda="Energia elétrica ou combustível consumido no horizonte."),
+        linha_componente("IPVA", comp1.get("ipva", 0), comp2.get("ipva", 0)),
+        linha_componente("Seguro", comp1.get("seguro", 0), comp2.get("seguro", 0)),
+        linha_componente("Manutenção", comp1.get("manutencao", 0), comp2.get("manutencao", 0)),
+        linha_componente("Depreciação", comp1.get("depreciacao", 0), comp2.get("depreciacao", 0)),
+        linha_componente("Financiamento/juros", comp1.get("financiamento_juros", 0), comp2.get("financiamento_juros", 0), ajuda="Principal não é somado novamente; entra o custo financeiro."),
+        linha_componente("Gasto operacional acumulado", comp1.get("gasto_operacional", comp1.get("operacional", 0)), comp2.get("gasto_operacional", comp2.get("operacional", 0))),
+        linha_componente("Valor de revenda", comp1.get("valor_revenda", comp1.get("revenda", 0)), comp2.get("valor_revenda", comp2.get("revenda", 0)), maior_melhor=True),
+        linha_componente("TCO total", comp1.get("tco", comp1.get("tco_total", 0)), comp2.get("tco", comp2.get("tco_total", 0))),
+        linha_componente("Custo por km", v1.get("custo_km", 0), v2.get("custo_km", 0), tipo="km"),
+        linha_componente("CO₂ fóssil operacional", v1.get("co2_total_t", 0), v2.get("co2_total_t", 0), tipo="co2", ajuda="Não inclui fabricação, bateria, descarte nem CO₂ biogênico do etanol."),
+        linha_componente("CO₂ biogênico do etanol", v1.get("co2_biogenico_total_t", 0), v2.get("co2_biogenico_total_t", 0), tipo="co2", ajuda="Reportado separadamente; não entra no indicador fóssil principal."),
+    ]
 
     vencedor_custo_km = v1 if v1["custo_km"] <= v2["custo_km"] else v2
     outro_custo_km = v2 if vencedor_custo_km is v1 else v1
@@ -903,12 +1177,20 @@ def montar_bloco_resultado(titulo, v1, v2):
         "quilometragem_horizonte": total_km_formatado,
     }
 
+    diferenca_tco_abs = abs(float(v1.get("tco_final", 0) or 0) - float(v2.get("tco_final", 0) or 0))
+    base_maior_tco = max(float(v1.get("tco_final", 0) or 0), float(v2.get("tco_final", 0) or 0))
+    comparativo_componentes_resumo = {
+        "diferenca_horizonte": real_format(diferenca_tco_abs),
+        "diferenca_percentual": percentual_format(diferenca_tco_abs / base_maior_tco if base_maior_tco > 0 else 0),
+        "diferenca_por_ano": real_format(diferenca_tco_abs / anos_horizonte),
+        "diferenca_10000km": real_format(diferenca_custo_km * 10000),
+    }
+
     co2_1 = float(v1.get("co2_total_t", 0) or 0)
     co2_2 = float(v2.get("co2_total_t", 0) or 0)
     menor_co2 = v1 if co2_1 <= co2_2 else v2
     maior_co2 = v2 if menor_co2 is v1 else v1
     co2_evitado_t = max(0.0, float(maior_co2.get("co2_total_t", 0) or 0) - float(menor_co2.get("co2_total_t", 0) or 0))
-    anos_ambiental = max(1, int(v1.get("anos_horizonte", v2.get("anos_horizonte", 1)) or 1))
     impacto_ambiental = {
         "menor_nome": menor_co2["nome"],
         "maior_nome": maior_co2["nome"],
@@ -916,17 +1198,48 @@ def montar_bloco_resultado(titulo, v1, v2):
         "veiculo_2_nome": v2["nome_curto"],
         "veiculo_1_total": toneladas_format(co2_1),
         "veiculo_2_total": toneladas_format(co2_2),
+        "veiculo_1_biogenico": toneladas_format(v1.get("co2_biogenico_total_t", 0)),
+        "veiculo_2_biogenico": toneladas_format(v2.get("co2_biogenico_total_t", 0)),
         "veiculo_1_anual": toneladas_format(v1.get("co2_anual_medio_t", 0)),
         "veiculo_2_anual": toneladas_format(v2.get("co2_anual_medio_t", 0)),
         "veiculo_1_por_km": f"{numero_format(v1.get('co2_por_km_kg', 0), 3)} kgCO₂/km",
         "veiculo_2_por_km": f"{numero_format(v2.get('co2_por_km_kg', 0), 3)} kgCO₂/km",
         "co2_evitado": toneladas_format(co2_evitado_t),
-        "arvores_equivalentes": arvores_format(calcular_arvores_equivalentes(co2_evitado_t, anos_ambiental)),
-        "anos": anos_ambiental,
+        "arvores_equivalentes": arvores_format(calcular_arvores_equivalentes(co2_evitado_t, anos_horizonte)),
+        "anos": anos_horizonte,
         "fatores": fatores_ambientais_resumo(),
         "componentes_1": {k: toneladas_format(v) for k, v in (v1.get("co2_componentes_t") or {}).items()},
         "componentes_2": {k: toneladas_format(v) for k, v in (v2.get("co2_componentes_t") or {}).items()},
+        "componentes_biogenicos_1": {"etanol": toneladas_format((v1.get("co2_biogenico_componentes_t") or {}).get("etanol", 0))},
+        "componentes_biogenicos_2": {"etanol": toneladas_format((v2.get("co2_biogenico_componentes_t") or {}).get("etanol", 0))},
     }
+
+    memoria_anual_comparativa = []
+    mem1 = v1.get("memoria_anual") or []
+    mem2 = v2.get("memoria_anual") or []
+    for idx in range(min(len(mem1), len(mem2))):
+        m1, m2 = mem1[idx], mem2[idx]
+        memoria_anual_comparativa.append({
+            "ano": m1.get("rotulo", f"Ano {idx + 1}"),
+            "v1_uso": real_format(m1.get("energia_combustivel", 0)),
+            "v2_uso": real_format(m2.get("energia_combustivel", 0)),
+            "v1_operacional": real_format(m1.get("gasto_operacional_acumulado", 0)),
+            "v2_operacional": real_format(m2.get("gasto_operacional_acumulado", 0)),
+            "v1_depreciacao": real_format(m1.get("depreciacao_acumulada", 0)),
+            "v2_depreciacao": real_format(m2.get("depreciacao_acumulada", 0)),
+            "v1_tco": real_format(m1.get("tco_acumulado", 0)),
+            "v2_tco": real_format(m2.get("tco_acumulado", 0)),
+            "diferenca_tco": real_format(abs(float(m1.get("tco_acumulado", 0) or 0) - float(m2.get("tco_acumulado", 0) or 0))),
+            "v1_revenda": real_format(m1.get("valor_revenda", 0)),
+            "v2_revenda": real_format(m2.get("valor_revenda", 0)),
+            "v1_co2": toneladas_format(m1.get("co2_fossil_acumulado_t", 0)),
+            "v2_co2": toneladas_format(m2.get("co2_fossil_acumulado_t", 0)),
+        })
+
+    auditoria_veiculos = [
+        {"nome": v1["nome"], "tipo": v1.get("tipo", ""), "componentes": comp1, "memoria": [formatar_linha_anual(m) for m in mem1]},
+        {"nome": v2["nome"], "tipo": v2.get("tipo", ""), "componentes": comp2, "memoria": [formatar_linha_anual(m) for m in mem2]},
+    ]
 
     return {
         "titulo": titulo,
@@ -936,6 +1249,12 @@ def montar_bloco_resultado(titulo, v1, v2):
         "economia_percentual": percentual_format(economia_percentual),
         "detalhes": [resumo_v1, resumo_v2],
         "comparativo_indicadores": comparativo_indicadores,
+        "comparativo_componentes": comparativo_componentes,
+        "comparacao_componentes": comparativo_componentes,
+        "comparativo_componentes_resumo": comparativo_componentes_resumo,
+        "memoria_anual_comparativa": memoria_anual_comparativa,
+        "memoria_anual": [montar_memoria_anual_formatada(v1), montar_memoria_anual_formatada(v2)],
+        "auditoria_veiculos": auditoria_veiculos,
         "custo_km_comparacao": custo_km_comparacao,
         "impacto_ambiental": impacto_ambiental,
         "resumo_com": [
@@ -948,11 +1267,15 @@ def montar_bloco_resultado(titulo, v1, v2):
         ],
         "grafico": graficos["grafico"],
         "grafico_sem_depreciacao": graficos["grafico_sem_depreciacao"],
+        "grafico_componentes": graficos.get("grafico_componentes", ""),
+        "grafico_componentes_anuais_v1": graficos.get("grafico_componentes_anuais_v1", ""),
+        "grafico_componentes_anuais_v2": graficos.get("grafico_componentes_anuais_v2", ""),
         "grafico_custo_km": "",
         "grafico_revenda_comparativo": graficos["grafico_revenda_comparativo"],
         "grafico_depreciacao_v1": graficos["grafico_depreciacao_v1"],
         "grafico_depreciacao_v2": graficos["grafico_depreciacao_v2"],
         "grafico_ambiental": graficos.get("grafico_ambiental", ""),
+        "grafico_diferenca_anual": graficos.get("grafico_diferenca_anual", ""),
     }
 
 
@@ -1072,6 +1395,94 @@ def montar_veiculo_atual(dados_form):
 
 
 # ============================================================
+# 4.12) Auditoria técnica da simulação/TCO
+# ============================================================
+def montar_payload_auditoria_tco(resultado_final: dict) -> dict:
+    form = resultado_final.get("form_values") or {}
+    payload = {
+        "gerado_em": datetime.now().strftime("%d/%m/%Y %H:%M"),
+        "tipo_comparacao": resultado_final.get("tipo_comparacao", ""),
+        "parametros": {
+            "uf": form.get("estado_uf") or form.get("uf") or "",
+            "municipio": form.get("municipio") or form.get("municipio_select") or "",
+            "anos": form.get("anos") or "",
+            "km_ano": form.get("km_ano") or "",
+            "energia": form.get("energia") or "",
+            "combustivel": form.get("combustivel") or "",
+            "aumento_energia": form.get("aumento_energia") or "0",
+            "aumento_combustivel": form.get("aumento_combustivel") or "0",
+        },
+        "perfis": {
+            "flex_configurado": form.get("fuel_flex_configurado") or "0",
+            "flex_percent_etanol": form.get("fuel_percent_etanol") or "",
+            "flex_preco_gasolina": form.get("fuel_preco_gasolina") or "",
+            "flex_preco_etanol": form.get("fuel_preco_etanol") or "",
+            "flex_consumo_gasolina": form.get("fuel_consumo_gasolina") or "",
+            "flex_consumo_etanol": form.get("fuel_consumo_etanol") or "",
+            "phev_configurado": form.get("phev_configurado") or "0",
+            "phev_percent_eletrico": form.get("phev_percent_eletrico") or "",
+            "phev_consumo_eletrico": form.get("phev_consumo_eletrico") or "",
+            "phev_preco_combustivel": form.get("phev_preco_combustivel") or "",
+            "phev_consumo_combustivel": form.get("phev_consumo_combustivel") or "",
+        },
+        "formulas": [
+            {"nome": "TCO", "formula": "TCO = gasto operacional acumulado + depreciação acumulada"},
+            {"nome": "Gasto operacional", "formula": "energia/combustível + manutenção + IPVA + seguro + juros do financiamento"},
+            {"nome": "Depreciação", "formula": "valor inicial - valor estimado de revenda"},
+            {"nome": "Flex", "formula": "km×%gasolina/consumo_gasolina×preço_gasolina + km×%etanol/consumo_etanol×preço_etanol"},
+            {"nome": "PHEV", "formula": "km×%elétrico×kWh/km×tarifa + km×%combustível/kmL×preço combustível"},
+            {"nome": "CO₂ fóssil operacional", "formula": "energia elétrica, gasolina e diesel por fatores de emissão; etanol biogênico é informado à parte"},
+            {"nome": "Árvores", "formula": "CO₂ evitado ÷ (0,060 tCO₂ por árvore.ano × anos de análise)"},
+        ],
+        "comparacoes": [],
+        "notas": [
+            "A auditoria mostra a memória de cálculo da simulação TCO. Não substitui a auditoria específica das curvas de depreciação.",
+            "O CO₂ é estimativa operacional. Não inclui fabricação do veículo, bateria, manutenção, transporte, descarte ou análise de ciclo de vida completa.",
+            "O CO₂ da queima do etanol é tratado como biogênico e apresentado separadamente; não é chamado de zero absoluto.",
+            "No financiamento, o TCO considera juros/custos financeiros no horizonte para evitar somar o principal duas vezes.",
+        ],
+    }
+
+    for comp in resultado_final.get("comparacoes") or []:
+        componentes = comp.get("comparacao_componentes") or comp.get("comparativo_componentes") or []
+        memoria_anual = comp.get("memoria_anual") or []
+        memoria_comparativa = comp.get("memoria_anual_comparativa") or []
+        payload["comparacoes"].append({
+            "titulo": comp.get("titulo", "Comparação"),
+            "vencedor_nome": comp.get("vencedor_nome", ""),
+            "economia": comp.get("economia", ""),
+            "economia_percentual": comp.get("economia_percentual", ""),
+            "detalhes": comp.get("detalhes") or [],
+            "comparativo_indicadores": comp.get("comparativo_indicadores") or [],
+            "comparacao_componentes": componentes,
+            "comparativo_componentes": componentes,
+            "impacto_ambiental": comp.get("impacto_ambiental") or {},
+            "memoria_anual": memoria_anual,
+            "memoria_anual_comparativa": memoria_comparativa,
+            "auditoria_veiculos": comp.get("auditoria_veiculos") or [],
+        })
+    return payload
+
+
+def registrar_auditoria_tco(resultado_final: dict) -> str:
+    token = uuid.uuid4().hex
+    AUDITORIA_TCO_CACHE[token] = montar_payload_auditoria_tco(resultado_final)
+    while len(AUDITORIA_TCO_CACHE) > AUDITORIA_TCO_CACHE_MAX:
+        primeiro = next(iter(AUDITORIA_TCO_CACHE.keys()))
+        AUDITORIA_TCO_CACHE.pop(primeiro, None)
+    return token
+
+
+@tco_bp.route("/simular/auditoria")
+def auditoria_tco():
+    token = (request.args.get("token") or "").strip()
+    auditoria = AUDITORIA_TCO_CACHE.get(token)
+    if not auditoria:
+        abort(404)
+    return render_template("auditoria_tco.html", auditoria=auditoria)
+
+
+# ============================================================
 # 5) ROTA PRINCIPAL /SIMULAR (AGORA COM TIPOS DE COMPARAÇÃO)
 # ============================================================
 @tco_bp.route("/simular", methods=["GET", "POST"])
@@ -1162,6 +1573,8 @@ def simular():
                 "comparacoes": comparacoes,
                 "form_values": request.form.to_dict(flat=True),
             }
+            token_auditoria = registrar_auditoria_tco(resultado_final)
+            resultado_final["auditoria_url"] = url_for("tco.auditoria_tco", token=token_auditoria)
 
         except Exception as e:
             print("Erro ao processar simulação:", e)
