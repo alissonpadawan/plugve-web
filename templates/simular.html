@@ -65,7 +65,7 @@
     .plugve-component-table td:first-child small{display:block;color:#64748b;font-size:.68rem;line-height:1.35;margin-top:.12rem}
     .plugve-component-table td:not(:first-child){font-weight:800;color:#0f172a;font-variant-numeric:tabular-nums;white-space:nowrap}
     .plugve-component-table .plugve-winner-cell{color:#166534;background:#f0fdf4}
-    .plugve-table-group-row td{background:#eef6f1!important;color:#047857!important;text-transform:uppercase;letter-spacing:.05em;font-size:.72rem;font-weight:900;text-align:left!important;border-top:1px solid #bbf7d0;border-bottom:1px solid #bbf7d0}
+    .plugve-table-group-row td{background:#f8fafc!important;color:#0f172a!important;text-transform:uppercase;letter-spacing:.05em;font-size:.72rem;font-weight:900;text-align:left!important;border-top:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0;box-shadow:inset 4px 0 0 #168a4a}
     .plugve-versus-final-row td:first-child{background:#fbfdff}
     .plugve-versus-final-row td[colspan]{text-align:right!important;font-weight:900;color:#0f172a;background:#fbfdff}
     .plugve-versus-section{padding:0;overflow:hidden}
@@ -4366,6 +4366,20 @@
       const cacheFipeMemoriaPlugVE = new Map();
       const requisicoesFipeEmCursoPlugVE = new Map();
       const FIPE_CACHE_TTL_PLUGVE = 12 * 60 * 60 * 1000;
+      const sequenciaFipePlugVE = { modelos: {}, anos: {} };
+
+      function novaSequenciaFipePlugVE(tipo, selectId) {
+        sequenciaFipePlugVE[tipo][selectId] = (sequenciaFipePlugVE[tipo][selectId] || 0) + 1;
+        return sequenciaFipePlugVE[tipo][selectId];
+      }
+
+      function sequenciaFipeAtualPlugVE(tipo, selectId, token) {
+        return sequenciaFipePlugVE[tipo][selectId] === token;
+      }
+
+      function invalidarSequenciaFipePlugVE(tipo, selectId) {
+        sequenciaFipePlugVE[tipo][selectId] = (sequenciaFipePlugVE[tipo][selectId] || 0) + 1;
+      }
 
       function normPlugVE(valor) {
         return String(valor || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
@@ -4695,13 +4709,22 @@
         const selectModelo = document.getElementById(selectModeloId);
         const selectAno = document.getElementById(selectAnoId);
         if (!marcaEl || !selectModelo || !selectAno) return;
+
         const marca = marcaEl.value;
+        const marcaInicial = marca;
+        const token = novaSequenciaFipePlugVE("modelos", selectModeloId);
+        invalidarSequenciaFipePlugVE("anos", selectAnoId);
+
         selectModelo.innerHTML = "<option value=''>Carregando modelos...</option>";
         selectModelo.disabled = true;
-        selectAno.innerHTML = "<option value=''>Selecione</option>";
+        selectModelo.dataset.codigoMarcaAtual = marcaInicial || "";
+        selectAno.innerHTML = "<option value=''>Selecione o modelo</option>";
+        selectAno.disabled = true;
+
         if (!marca) {
           selectModelo.innerHTML = "<option value=''>Selecione</option>";
           selectModelo.disabled = false;
+          selectAno.disabled = false;
           atualizarEstiloSelectModeloPlugVE(selectModelo);
           return;
         }
@@ -4712,6 +4735,11 @@
           if (contexto) params.set("contexto", contexto);
           if (nomeMarca) params.set("nome_marca", nomeMarca);
           const data = await fetchJsonFipePlugVE(`/api/fipe/modelos?${params.toString()}`);
+
+          if (!sequenciaFipeAtualPlugVE("modelos", selectModeloId, token) || marcaEl.value !== marcaInicial) {
+            return;
+          }
+
           selectModelo.innerHTML = "<option value=''>Selecione</option>";
           (data.modelos || []).forEach(mod => {
             const opt = document.createElement("option");
@@ -4719,6 +4747,7 @@
             opt.value = mod.codigo;
             opt.textContent = `${modeloTemCurvaPlugVE(nome) ? "✓ " : ""}${nome}`;
             opt.dataset.nome = nome;
+            opt.dataset.codigoMarca = marcaInicial;
             if (mod.tem_zero_km) destacarOpcaoZeroKmPlugVE(opt);
             if (mod.modelo_novo) {
               opt.dataset.modeloNovo = "1";
@@ -4731,10 +4760,15 @@
           }
           setTimeout(iniciarCatalogoCurvasPlugVE, 0);
         } catch (e) {
-          selectModelo.innerHTML = "<option value=''>Erro ao carregar modelos</option>";
+          if (sequenciaFipeAtualPlugVE("modelos", selectModeloId, token)) {
+            selectModelo.innerHTML = "<option value=''>Erro ao carregar modelos</option>";
+          }
         } finally {
-          selectModelo.disabled = false;
-          atualizarEstiloSelectModeloPlugVE(selectModelo);
+          if (sequenciaFipeAtualPlugVE("modelos", selectModeloId, token)) {
+            selectModelo.disabled = false;
+            selectAno.disabled = false;
+            atualizarEstiloSelectModeloPlugVE(selectModelo);
+          }
         }
       };
 
@@ -4745,9 +4779,15 @@
         if (!marcaEl || !modeloEl || !selectAno) return;
         const marca = marcaEl.value;
         const modelo = modeloEl.value;
+        const marcaInicial = marca;
+        const modeloInicial = modelo;
+        const token = novaSequenciaFipePlugVE("anos", selectAnoId);
+
         selectAno.innerHTML = "<option value=''>Carregando...</option>";
+        selectAno.disabled = true;
         if (!marca || !modelo) {
           selectAno.innerHTML = "<option value=''>Selecione o modelo</option>";
+          selectAno.disabled = false;
           return;
         }
         try {
@@ -4755,6 +4795,11 @@
           const params = new URLSearchParams({ codigo_marca: marca, codigo_modelo: modelo });
           if (contexto) params.set("contexto", contexto);
           const anos = await fetchJsonFipePlugVE(`/api/fipe/anos?${params.toString()}`);
+
+          if (!sequenciaFipeAtualPlugVE("anos", selectAnoId, token) || marcaEl.value !== marcaInicial || modeloEl.value !== modeloInicial) {
+            return;
+          }
+
           selectAno.innerHTML = "<option value=''>Selecione</option>";
           let adicionados = 0;
           const prefixoDestino = String(selectAnoId || "").split("_")[0];
@@ -4768,6 +4813,8 @@
             opt.textContent = textoAnoFipeParaTela(a.codigo, a.nome);
             opt.dataset.nomeOriginal = a.nome;
             opt.dataset.tipoVeiculo = tipoAno;
+            opt.dataset.codigoMarca = marcaInicial;
+            opt.dataset.codigoModelo = modeloInicial;
             selectAno.appendChild(opt);
             adicionados += 1;
           });
@@ -4782,7 +4829,13 @@
             selectAno.appendChild(opt);
           }
         } catch (e) {
-          selectAno.innerHTML = "<option value=''>Erro ao carregar</option>";
+          if (sequenciaFipeAtualPlugVE("anos", selectAnoId, token)) {
+            selectAno.innerHTML = "<option value=''>Erro ao carregar</option>";
+          }
+        } finally {
+          if (sequenciaFipeAtualPlugVE("anos", selectAnoId, token)) {
+            selectAno.disabled = false;
+          }
         }
       };
 

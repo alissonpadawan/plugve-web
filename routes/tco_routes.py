@@ -921,31 +921,44 @@ def gerar_graficos_dupla(v1, v2):
     ))
     fig_gastos.update_layout(**obter_layout_web("Gastos operacionais acumulados"), yaxis_title="Gasto acumulado (R$)")
 
-    labels_componentes = ["Energia/comb.", "IPVA", "Seguro", "Manutenção", "Depreciação", "Juros"]
-    chaves_componentes = ["energia_combustivel", "ipva", "seguro", "manutencao", "depreciacao", "financiamento_juros"]
+    pares_componentes = [
+        ("Energia/comb.", "energia_combustivel"),
+        ("IPVA", "ipva"),
+        ("Seguro", "seguro"),
+        ("Manutenção", "manutencao"),
+        ("Depreciação", "depreciacao"),
+        ("Juros", "financiamento_juros"),
+    ]
     comp1 = v1.get("componentes_totais") or v1.get("componentes_tco") or {}
     comp2 = v2.get("componentes_totais") or v2.get("componentes_tco") or {}
+    pares_componentes = [
+        (label, chave) for label, chave in pares_componentes
+        if abs(float(comp1.get(chave, 0.0) or 0.0)) > 1e-9 or abs(float(comp2.get(chave, 0.0) or 0.0)) > 1e-9
+    ]
+    labels_componentes = [label for label, _ in pares_componentes]
+    chaves_componentes = [chave for _, chave in pares_componentes]
 
     fig_componentes = go.Figure()
-    fig_componentes.add_trace(go.Bar(
-        x=labels_componentes,
-        y=[comp1.get(k, 0.0) for k in chaves_componentes],
-        name=v1["nome_curto"],
-        marker_color=cor1,
-        hovertemplate="%{x}<br>" + v1["nome_curto"] + ": R$ %{y:,.2f}<extra></extra>",
-    ))
-    fig_componentes.add_trace(go.Bar(
-        x=labels_componentes,
-        y=[comp2.get(k, 0.0) for k in chaves_componentes],
-        name=v2["nome_curto"],
-        marker_color=cor2,
-        hovertemplate="%{x}<br>" + v2["nome_curto"] + ": R$ %{y:,.2f}<extra></extra>",
-    ))
-    fig_componentes.update_layout(
-        **obter_layout_web("Componentes do custo total no horizonte"),
-        yaxis_title="Valor acumulado (R$)",
-        barmode="group",
-    )
+    if labels_componentes:
+        fig_componentes.add_trace(go.Bar(
+            x=labels_componentes,
+            y=[comp1.get(k, 0.0) for k in chaves_componentes],
+            name=v1["nome_curto"],
+            marker_color=cor1,
+            hovertemplate="%{x}<br>" + v1["nome_curto"] + ": R$ %{y:,.2f}<extra></extra>",
+        ))
+        fig_componentes.add_trace(go.Bar(
+            x=labels_componentes,
+            y=[comp2.get(k, 0.0) for k in chaves_componentes],
+            name=v2["nome_curto"],
+            marker_color=cor2,
+            hovertemplate="%{x}<br>" + v2["nome_curto"] + ": R$ %{y:,.2f}<extra></extra>",
+        ))
+        fig_componentes.update_layout(
+            **obter_layout_web("Componentes do custo total no horizonte"),
+            yaxis_title="Valor acumulado (R$)",
+            barmode="group",
+        )
 
     def grafico_componentes_anuais(v, titulo):
         fig = go.Figure()
@@ -957,6 +970,12 @@ def gerar_graficos_dupla(v1, v2):
             ("Juros", v.get("financiamento_juros_lista", [])),
             ("Depreciação", v.get("depreciacao_ano_lista", [])),
         ]
+        componentes = [
+            (nome_comp, valores or []) for nome_comp, valores in componentes
+            if any(abs(float(valor or 0)) > 1e-9 for valor in (valores or []))
+        ]
+        if not componentes:
+            return ""
         for nome_comp, valores in componentes:
             fig.add_trace(go.Bar(
                 x=v.get("anos_lista", []),
@@ -969,7 +988,7 @@ def gerar_graficos_dupla(v1, v2):
             "height": 500,
             "yaxis_title": "Custo anual (R$)",
             "barmode": "stack",
-            "margin": {"l": 70, "r": 30, "t": 88, "b": 118},
+            "margin": {"l": 70, "r": 30, "t": 78, "b": 118},
             "legend": {"orientation": "h", "yanchor": "top", "y": -0.22, "xanchor": "left", "x": 0},
         })
         fig.update_xaxes(tickangle=0)
@@ -1033,9 +1052,9 @@ def gerar_graficos_dupla(v1, v2):
     return {
         "grafico": html_grafico(fig_tco),
         "grafico_sem_depreciacao": html_grafico(fig_gastos),
-        "grafico_componentes": html_grafico(fig_componentes),
-        "grafico_componentes_anuais_v1": grafico_componentes_anuais(v1, "Componentes anuais — Carro 1"),
-        "grafico_componentes_anuais_v2": grafico_componentes_anuais(v2, "Componentes anuais — Carro 2"),
+        "grafico_componentes": html_grafico(fig_componentes) if labels_componentes else "",
+        "grafico_componentes_anuais_v1": grafico_componentes_anuais(v1, f"Componentes anuais — {nome_curto(v1.get('nome', 'Veículo 1'), 44)}"),
+        "grafico_componentes_anuais_v2": grafico_componentes_anuais(v2, f"Componentes anuais — {nome_curto(v2.get('nome', 'Veículo 2'), 44)}"),
         "grafico_custo_km": "",
         "grafico_revenda_comparativo": html_grafico(fig_revenda),
         "grafico_depreciacao_v1": grafico_depreciacao_individual(v1, cor1),
@@ -1108,8 +1127,10 @@ def montar_bloco_resultado(titulo, v1, v2):
         }
 
     def linha_componente(rotulo: str, valor1: float, valor2: float, tipo: str = "moeda", maior_melhor: bool = False, ajuda: str = "") -> dict:
-        melhor = melhor_indice(valor1, valor2, maior_melhor=maior_melhor)
-        diferenca = abs(float(valor1 or 0) - float(valor2 or 0))
+        valor1_num = float(valor1 or 0)
+        valor2_num = float(valor2 or 0)
+        melhor = melhor_indice(valor1_num, valor2_num, maior_melhor=maior_melhor)
+        diferenca = abs(valor1_num - valor2_num)
         if tipo == "co2":
             fmt = toneladas_format
             diff_fmt = toneladas_format(diferenca)
@@ -1121,12 +1142,14 @@ def montar_bloco_resultado(titulo, v1, v2):
             diff_fmt = real_format(diferenca)
         return {
             "rotulo": rotulo,
-            "valor_1": fmt(valor1),
-            "valor_2": fmt(valor2),
+            "valor_1": fmt(valor1_num),
+            "valor_2": fmt(valor2_num),
             "diferenca": diff_fmt,
             "melhor": melhor,
             "melhor_texto": melhor_texto(melhor),
             "ajuda": ajuda,
+            "raw_1": valor1_num,
+            "raw_2": valor2_num,
         }
 
     resumo_v1 = resumo(v1)
@@ -1159,6 +1182,12 @@ def montar_bloco_resultado(titulo, v1, v2):
         linha_componente("Custo por km", v1.get("custo_km", 0), v2.get("custo_km", 0), tipo="km"),
         linha_componente("CO₂ fóssil operacional", v1.get("co2_total_t", 0), v2.get("co2_total_t", 0), tipo="co2", ajuda="Não inclui fabricação, bateria, descarte nem CO₂ biogênico do etanol."),
         linha_componente("CO₂ biogênico do etanol", v1.get("co2_biogenico_total_t", 0), v2.get("co2_biogenico_total_t", 0), tipo="co2", ajuda="Reportado separadamente; não entra no indicador fóssil principal."),
+    ]
+    # Evita poluir o relatório com componentes inexistentes ou não aplicáveis
+    # (ex.: financiamento/juros igual a zero para os dois veículos).
+    comparativo_componentes = [
+        linha for linha in comparativo_componentes
+        if abs(float(linha.get("raw_1", 0) or 0)) > 1e-9 or abs(float(linha.get("raw_2", 0) or 0)) > 1e-9
     ]
 
     vencedor_custo_km = v1 if v1["custo_km"] <= v2["custo_km"] else v2
