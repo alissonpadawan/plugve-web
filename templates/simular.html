@@ -191,6 +191,13 @@
     .plugve-phev-save-disabled{background:#d1d5db!important;color:#64748b!important;cursor:not-allowed!important;box-shadow:none!important}
     .plugve-phev-resumo{font-size:.72rem;color:#1d4ed8;font-weight:800;margin-top:.32rem}
     .plugve-phev-resumo.hidden{display:none!important}
+    .plugve-energy-card{cursor:default;background:linear-gradient(135deg,#eff6ff 0%,#ffffff 74%);border-color:#bfdbfe}
+    .plugve-energy-card:hover{border-color:#60a5fa;box-shadow:0 16px 36px rgba(15,23,42,.10);transform:none}
+    .plugve-energy-row span:first-child{color:#1d4ed8}
+    .plugve-energy-row span:last-child{color:#1d4ed8;text-align:right}
+    .plugve-energy-input-wrap{display:flex;align-items:center;gap:.45rem;min-width:9.8rem}
+    .plugve-energy-input-wrap .plugve-money-field{flex:1}
+    .plugve-energy-input-wrap input{width:100%;border:1px solid #e5e7eb;border-radius:.65rem;background:#fff;padding:.45rem .55rem .45rem 2.05rem;text-align:right;font-weight:900;color:#0f172a;font-variant-numeric:tabular-nums;box-shadow:inset 0 1px 2px rgba(15,23,42,.06)}
 
     @media(max-width:760px){.plugve-fuel-compact-top{align-items:flex-start;flex-direction:column}.plugve-fuel-compact-price{align-self:flex-end}.plugve-fuel-prices{grid-template-columns:1fr}.plugve-fuel-modal-actions button{flex:1}}
 
@@ -720,21 +727,44 @@
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
 
             <div id="campo_energia_global" class="plugve-uso-card">
-              <label class="block text-sm font-medium">Custo energia kW/h</label>
               <input type="checkbox" id="energia_manual_checkbox" class="hidden" aria-hidden="true" tabindex="-1">
+              <label class="block text-sm font-medium mb-1">Custo energia elétrica (R$/kWh)</label>
 
-              <input
-                type="text"
-                name="energia"
-                id="energia_input"
-                value="0,80"
-                class="mt-1 p-2 border rounded w-full"
-                required
-              >
-
-              <p id="status_energia" class="text-[11px] text-gray-500 mt-1">
-                Selecione UF e município para buscar a tarifa da ANEEL.
-              </p>
+              <div id="plugve_energy_card" class="plugve-phev-card plugve-energy-card">
+                <div class="plugve-fuel-compact-top">
+                  <div class="plugve-fuel-title">
+                    <span class="plugve-fuel-icon" aria-hidden="true">🔌</span>
+                    <div>
+                      <strong>Elétrico</strong>
+                      <small>100% energia elétrica</small>
+                    </div>
+                  </div>
+                  <div class="plugve-energy-input-wrap" aria-label="Tarifa de energia em reais por kWh">
+                    <div class="plugve-money-field">
+                      <span class="plugve-money-prefix">R$</span>
+                      <input
+                        type="text"
+                        name="energia"
+                        id="energia_input"
+                        value="0,80"
+                        inputmode="decimal"
+                        required
+                      >
+                    </div>
+                  </div>
+                </div>
+                <div class="plugve-phev-mini-bar" aria-hidden="true">
+                  <div class="plugve-phev-mini-electric" style="width:100%"></div>
+                  <div class="plugve-phev-mini-fuel" style="width:0%"></div>
+                </div>
+                <div class="plugve-phev-compact-row plugve-energy-row">
+                  <span>100% elétrico</span>
+                  <span id="energia_compact_right">Tarifa ANEEL</span>
+                </div>
+                <p id="status_energia" class="text-[11px] text-gray-500 mt-1">
+                  Selecione UF e município para buscar a tarifa da ANEEL.
+                </p>
+              </div>
             </div>
 
             <div id="campo_combustivel_global" class="md:col-span-2">
@@ -939,7 +969,7 @@
 
           <div class="plugve-fuel-modal-actions">
             <button type="button" id="btn_cancelar_combustivel_tco" class="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">
-              Cancelar
+              Pular
             </button>
             <button type="button" id="btn_salvar_combustivel_tco" class="px-4 py-2 rounded-lg bg-green-600 text-white font-semibold hover:bg-green-700 plugve-fuel-save-disabled" disabled>
               Próximo
@@ -1007,7 +1037,7 @@
 
           <div class="plugve-fuel-modal-actions">
             <button type="button" id="btn_cancelar_phev_tco" class="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">
-              Cancelar
+              Pular
             </button>
             <button type="button" id="btn_salvar_phev_tco" class="px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 plugve-phev-save-disabled" disabled>
               Próximo
@@ -1268,6 +1298,14 @@
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#39;");
+    }
+
+    function atualizarCardEnergiaEletricaPlugVE() {
+      const input = document.getElementById("energia_input");
+      const destino = document.getElementById("energia_compact_right");
+      if (!destino) return;
+      const valor = numeroBRParaFloat(input?.value || 0);
+      destino.textContent = valor > 0 ? `R$ ${formatarNumero5(valor)}/kWh` : "Tarifa ANEEL";
     }
 
     function montarStatusEnergiaPlugVE(texto, distribuidora, vigenciaTexto) {
@@ -2445,7 +2483,7 @@
         atualizarIpva(prefixo);
         atualizarInterfaceCombustivelPorVeiculo(prefixo, true);
         if (typeof atualizarInterfacePhevPorVeiculo === "function") atualizarInterfacePhevPorVeiculo(prefixo, true);
-        if (typeof atualizarDetalhesProgressivosPlugVE === "function") atualizarDetalhesProgressivosPlugVE();
+        if (typeof window.atualizarDetalhesProgressivosPlugVE === "function") window.atualizarDetalhesProgressivosPlugVE();
 
         const detalheDepreciacao = montarDetalheDepreciacaoTCO(prefixo, data, marcaSelect, modeloSelect, anoSelect, valor, nomeModelo, anoModeloStr, combustivelStr);
         await consultarDepreciacaoTCO(prefixo, detalheDepreciacao);
@@ -3096,7 +3134,7 @@
       capturarEstadoFormularioTCO();
       fecharModalCombustivelTCO();
       if (typeof atualizarPerfisInlinePlugVE === "function") atualizarPerfisInlinePlugVE();
-      if (typeof atualizarDetalhesProgressivosPlugVE === "function") atualizarDetalhesProgressivosPlugVE();
+      if (typeof window.atualizarDetalhesProgressivosPlugVE === "function") window.atualizarDetalhesProgressivosPlugVE();
     }
 
     function salvarModalCombustivelTCO() {
@@ -3119,7 +3157,7 @@
       capturarEstadoFormularioTCO();
       fecharModalCombustivelTCO();
       if (typeof atualizarPerfisInlinePlugVE === "function") atualizarPerfisInlinePlugVE();
-      if (typeof atualizarDetalhesProgressivosPlugVE === "function") atualizarDetalhesProgressivosPlugVE();
+      if (typeof window.atualizarDetalhesProgressivosPlugVE === "function") window.atualizarDetalhesProgressivosPlugVE();
     }
 
     function atualizarInterfaceCombustivelPorVeiculo(prefixoPreferido, abrirSeFlex = false) {
@@ -3433,7 +3471,7 @@
       capturarEstadoFormularioTCO();
       fecharModalPhevTCO();
       if (typeof atualizarPerfisInlinePlugVE === "function") atualizarPerfisInlinePlugVE();
-      if (typeof atualizarDetalhesProgressivosPlugVE === "function") atualizarDetalhesProgressivosPlugVE();
+      if (typeof window.atualizarDetalhesProgressivosPlugVE === "function") window.atualizarDetalhesProgressivosPlugVE();
     }
 
     function salvarModalPhevTCO() {
@@ -3452,7 +3490,7 @@
       capturarEstadoFormularioTCO();
       fecharModalPhevTCO();
       if (typeof atualizarPerfisInlinePlugVE === "function") atualizarPerfisInlinePlugVE();
-      if (typeof atualizarDetalhesProgressivosPlugVE === "function") atualizarDetalhesProgressivosPlugVE();
+      if (typeof window.atualizarDetalhesProgressivosPlugVE === "function") window.atualizarDetalhesProgressivosPlugVE();
     }
 
     function atualizarInterfacePhevPorVeiculo(prefixoPreferido, abrirSePhev = false) {
@@ -3732,6 +3770,7 @@
       const energiaInput = document.getElementById("energia_input");
       const valor = TARIFA_FALLBACK_JS_UF[String(uf || "").toUpperCase()] || 0.80;
       if (energiaInput) energiaInput.value = formatarNumero5(valor);
+      atualizarCardEnergiaEletricaPlugVE();
       montarStatusEnergiaPlugVE(`${motivo || "Consulta ANEEL indisponível"}. Estimativa local`, `Fallback ${String(uf || "").toUpperCase()}`, "Estimativa local usada como fallback técnico.");
       renderEnergiaBreakdown(0, null);
       setBreakdownDisabled(true);
@@ -3763,6 +3802,7 @@
 
         if (data && data.tarifa_kwh !== null && data.tarifa_kwh !== undefined && !isNaN(Number(data.tarifa_kwh))) {
           energiaInput.value = formatarNumero5(Number(data.tarifa_kwh));
+          atualizarCardEnergiaEletricaPlugVE();
 
           const vigenciaEnergia = (data.vigencia_inicio || data.vigencia_fim)
             ? `Vigência: ${data.vigencia_inicio || "?"} até ${data.vigencia_fim || "?"}`
@@ -3806,12 +3846,12 @@
       document.getElementById("ve_marca")?.addEventListener("change", function () {
         limparEstadoVeiculoSelecionadoTCO("ve");
         carregarModelos("ve_marca", "ve_modelo", "ve_ano");
-        if (typeof atualizarDetalhesProgressivosPlugVE === "function") atualizarDetalhesProgressivosPlugVE();
+        if (typeof window.atualizarDetalhesProgressivosPlugVE === "function") window.atualizarDetalhesProgressivosPlugVE();
       });
       document.getElementById("ve_modelo")?.addEventListener("change", function () {
         limparEstadoVeiculoSelecionadoTCO("ve");
         carregarAnos("ve_marca", "ve_modelo", "ve_ano");
-        if (typeof atualizarDetalhesProgressivosPlugVE === "function") atualizarDetalhesProgressivosPlugVE();
+        if (typeof window.atualizarDetalhesProgressivosPlugVE === "function") window.atualizarDetalhesProgressivosPlugVE();
       });
       document.getElementById("ve_ano")?.addEventListener("change", function () {
         limparEstadoVeiculoSelecionadoTCO("ve");
@@ -3821,12 +3861,12 @@
       document.getElementById("icev_marca")?.addEventListener("change", function () {
         limparEstadoVeiculoSelecionadoTCO("icev");
         carregarModelos("icev_marca", "icev_modelo", "icev_ano");
-        if (typeof atualizarDetalhesProgressivosPlugVE === "function") atualizarDetalhesProgressivosPlugVE();
+        if (typeof window.atualizarDetalhesProgressivosPlugVE === "function") window.atualizarDetalhesProgressivosPlugVE();
       });
       document.getElementById("icev_modelo")?.addEventListener("change", function () {
         limparEstadoVeiculoSelecionadoTCO("icev");
         carregarAnos("icev_marca", "icev_modelo", "icev_ano");
-        if (typeof atualizarDetalhesProgressivosPlugVE === "function") atualizarDetalhesProgressivosPlugVE();
+        if (typeof window.atualizarDetalhesProgressivosPlugVE === "function") window.atualizarDetalhesProgressivosPlugVE();
       });
       document.getElementById("icev_ano")?.addEventListener("change", function () {
         limparEstadoVeiculoSelecionadoTCO("icev");
@@ -3892,6 +3932,10 @@
       document.getElementById("energia_manual_checkbox")?.addEventListener("change", function () {
         atualizarPrecoEnergiaAutomatico();
       });
+
+      document.getElementById("energia_input")?.addEventListener("input", atualizarCardEnergiaEletricaPlugVE);
+      document.getElementById("energia_input")?.addEventListener("blur", atualizarCardEnergiaEletricaPlugVE);
+      atualizarCardEnergiaEletricaPlugVE();
 
       document.getElementById("aumento_energia_input")?.addEventListener("input", function () {
         this.dataset.editado = "1";
@@ -4123,6 +4167,8 @@
         atualizarResumoTopoPlugVE();
         if (typeof atualizarPerfisInlinePlugVE === "function") atualizarPerfisInlinePlugVE();
       }
+
+      window.atualizarDetalhesProgressivosPlugVE = atualizarDetalhesProgressivosPlugVE;
 
       window.atualizarCardsCenario = function () {
         const tipo = tipoAtualPlugVE();
@@ -4440,8 +4486,14 @@
         });
         document.getElementById("btn_fechar_combustivel_tco")?.addEventListener("click", fecharModalCombustivelTCO);
         document.getElementById("btn_cancelar_combustivel_tco")?.addEventListener("click", cancelarModalCombustivelTCO);
+        document.getElementById("btn_cancelar_combustivel_tco")?.addEventListener("click", function () {
+          setTimeout(atualizarDetalhesProgressivosPlugVE, 80);
+        });
         document.getElementById("btn_salvar_combustivel_tco")?.addEventListener("click", salvarModalCombustivelTCO);
         document.getElementById("btn_salvar_combustivel_tco")?.addEventListener("click", function () {
+          setTimeout(atualizarDetalhesProgressivosPlugVE, 80);
+        });
+        document.getElementById("btn_cancelar_phev_tco")?.addEventListener("click", function () {
           setTimeout(atualizarDetalhesProgressivosPlugVE, 80);
         });
         document.getElementById("btn_salvar_phev_tco")?.addEventListener("click", function () {
