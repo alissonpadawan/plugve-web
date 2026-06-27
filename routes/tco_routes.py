@@ -32,6 +32,16 @@ CAMINHO_MUNICIPIOS = os.path.join(BASE_DIR, "data", "municipios.xlsx")
 # 2.1) Converter número com vírgula/ponto
 SEGURO_PADRAO_PERCENTUAL = 0.047
 
+# Fatores ambientais iniciais usados na seção de impacto ambiental.
+# A estimativa é operacional: não inclui fabricação do veículo, bateria,
+# transporte, manutenção ou descarte. Os valores ficam centralizados aqui
+# para facilitar revisão metodológica posterior na dissertação.
+FATOR_CO2_ENERGIA_KG_KWH = 0.0289   # MCTI/SIN: 0,0289 tCO2/MWh = 0,0289 kgCO2/kWh
+FATOR_CO2_GASOLINA_KG_L = 2.212     # gasolina comercial: premissa inicial kgCO2/L
+FATOR_CO2_ETANOL_KG_L = 1.526       # etanol hidratado: premissa inicial kgCO2/L
+FATOR_CO2_DIESEL_S10_KG_L = 2.603   # diesel S10/comercial: premissa inicial kgCO2/L
+FATOR_ARVORE_TCO2_ANO = 0.060       # EPA: árvore urbana média, tCO2/ano
+
 def conv(num):
     try:
         txt = str(num if num is not None else "").strip().replace("R$", "").replace("%", "")
@@ -234,6 +244,56 @@ def percentual_format(valor):
     return f"{float(valor or 0) * 100:.2f}%".replace(".", ",")
 
 
+def toneladas_format(valor):
+    valor = float(valor or 0)
+    if abs(valor) < 0.005:
+        return "0,00 tCO₂"
+    return f"{valor:,.2f} tCO₂".replace(",", "X").replace(".", ",").replace("X", ".")
+
+
+def kg_format(valor):
+    return f"{float(valor or 0):,.0f} kgCO₂".replace(",", "X").replace(".", ",").replace("X", ".")
+
+
+def numero_format(valor, casas=1):
+    try:
+        return f"{float(valor or 0):,.{casas}f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    except Exception:
+        return "0"
+
+
+def arvores_format(valor):
+    valor = max(0.0, float(valor or 0))
+    if valor < 1:
+        return "menos de 1 árvore"
+    return f"{valor:,.0f} árvores".replace(",", ".")
+
+
+def fator_combustivel_co2_kg_l(texto_combustivel: str = "", padrao: str = "gasolina") -> float:
+    texto = normalizar(texto_combustivel)
+    if "DIESEL" in texto or padrao == "diesel":
+        return FATOR_CO2_DIESEL_S10_KG_L
+    if "ETANOL" in texto or "ALCOOL" in texto or "ALCOOL" in texto or padrao == "etanol":
+        return FATOR_CO2_ETANOL_KG_L
+    return FATOR_CO2_GASOLINA_KG_L
+
+
+def calcular_arvores_equivalentes(co2_t: float, anos: int) -> float:
+    anos = max(1, int(anos or 1))
+    denom = FATOR_ARVORE_TCO2_ANO * anos
+    return max(0.0, float(co2_t or 0.0) / denom) if denom > 0 else 0.0
+
+
+def fatores_ambientais_resumo() -> dict:
+    return {
+        "energia": f"{FATOR_CO2_ENERGIA_KG_KWH:.4f}".replace(".", ",") + " kgCO₂/kWh",
+        "gasolina": f"{FATOR_CO2_GASOLINA_KG_L:.3f}".replace(".", ",") + " kgCO₂/L",
+        "etanol": f"{FATOR_CO2_ETANOL_KG_L:.3f}".replace(".", ",") + " kgCO₂/L",
+        "diesel": f"{FATOR_CO2_DIESEL_S10_KG_L:.3f}".replace(".", ",") + " kgCO₂/L",
+        "arvore": f"{FATOR_ARVORE_TCO2_ANO:.3f}".replace(".", ",") + " tCO₂/árvore.ano",
+    }
+
+
 def taxa_relativa(valor: float, base: float) -> float:
     try:
         valor = float(valor or 0)
@@ -415,6 +475,7 @@ def calcular_projecao_veiculo(veiculo, comum):
     seguro_inicial = max(0.0, float(veiculo.get("seguro", 0) or 0))
     depreciacao = max(0.0, min(float(veiculo.get("depreciacao", 0) or 0), 0.95))
     financiamento = veiculo.get("financiamento") or {}
+    combustivel_descricao = veiculo.get("combustivel", "")
 
     energia_inicial = max(0.0, float(comum.get("energia", 0) or 0))
     combustivel_inicial = max(0.0, float(comum.get("combustivel", 0) or 0))
@@ -467,6 +528,10 @@ def calcular_projecao_veiculo(veiculo, comum):
     preco_energia_lista = []
     preco_combustivel_lista = []
     financiamento_juros_lista = []
+    co2_anual_kg_lista = []
+    co2_acumulado_t_lista = []
+    co2_componentes_kg = {"energia": 0.0, "gasolina": 0.0, "etanol": 0.0, "diesel": 0.0}
+    co2_acumulado_kg = 0.0
     financiamento_juros_anuais = juros_financiamento_por_ano(financiamento, anos)
 
     for ano in range(1, anos + 1):
@@ -477,20 +542,32 @@ def calcular_projecao_veiculo(veiculo, comum):
         ipva_ano = valor_mercado * taxa_ipva
         seguro_ano = valor_mercado * taxa_seguro
 
+        co2_energia_kg = 0.0
+        co2_gasolina_kg = 0.0
+        co2_etanol_kg = 0.0
+        co2_diesel_kg = 0.0
+
         if tipo == "ve":
             custo_uso = km_ano * consumo * energia_ano
+            co2_energia_kg = km_ano * consumo * FATOR_CO2_ENERGIA_KG_KWH if consumo > 0 else 0.0
         elif tipo == "phev":
             if usar_perfil_phev:
                 frac_eletrico = phev_eletrico_pct / 100.0
                 frac_combustivel = phev_combustivel_pct / 100.0
                 consumo_eletrico_uso = phev_consumo_eletrico or consumo
                 custo_eletrico = km_ano * frac_eletrico * consumo_eletrico_uso * energia_ano if frac_eletrico > 0 and consumo_eletrico_uso > 0 else 0.0
+                co2_energia_kg = km_ano * frac_eletrico * consumo_eletrico_uso * FATOR_CO2_ENERGIA_KG_KWH if frac_eletrico > 0 and consumo_eletrico_uso > 0 else 0.0
+
                 preco_combustivel_ano = (phev_preco_combustivel or combustivel_inicial) * ((1 + aumento_combustivel) ** (ano - 1))
-                custo_combustivel = (km_ano * frac_combustivel / phev_consumo_combustivel * preco_combustivel_ano) if frac_combustivel > 0 and phev_consumo_combustivel > 0 and preco_combustivel_ano > 0 else 0.0
+                litros_combustivel = (km_ano * frac_combustivel / phev_consumo_combustivel) if frac_combustivel > 0 and phev_consumo_combustivel > 0 else 0.0
+                custo_combustivel = litros_combustivel * preco_combustivel_ano if litros_combustivel > 0 and preco_combustivel_ano > 0 else 0.0
+                # Nesta primeira versão, a parcela a combustível do PHEV usa gasolina como premissa padrão.
+                co2_gasolina_kg = litros_combustivel * FATOR_CO2_GASOLINA_KG_L
                 custo_uso = custo_eletrico + custo_combustivel
             else:
                 # Sem perfil PHEV salvo, preserva comportamento anterior: uso elétrico informado no campo VE.
                 custo_uso = km_ano * consumo * energia_ano
+                co2_energia_kg = km_ano * consumo * FATOR_CO2_ENERGIA_KG_KWH if consumo > 0 else 0.0
         elif usar_perfil_flex:
             fator_reajuste = (1 + aumento_combustivel) ** (ano - 1)
             custo_uso = custo_uso_combustivel_flex(
@@ -501,8 +578,29 @@ def calcular_projecao_veiculo(veiculo, comum):
                 consumo_gasolina=flex_consumo_gasolina,
                 consumo_etanol=flex_consumo_etanol,
             )
+            etanol_frac = max(0.0, min(1.0, flex_etanol_pct / 100.0))
+            gasolina_frac = 1.0 - etanol_frac
+            litros_gasolina = (km_ano * gasolina_frac / flex_consumo_gasolina) if gasolina_frac > 0 and flex_consumo_gasolina > 0 else 0.0
+            litros_etanol = (km_ano * etanol_frac / flex_consumo_etanol) if etanol_frac > 0 and flex_consumo_etanol > 0 else 0.0
+            co2_gasolina_kg = litros_gasolina * FATOR_CO2_GASOLINA_KG_L
+            co2_etanol_kg = litros_etanol * FATOR_CO2_ETANOL_KG_L
         else:
-            custo_uso = (km_ano / consumo * combustivel_ano) if consumo > 0 else 0.0
+            litros_combustivel = (km_ano / consumo) if consumo > 0 else 0.0
+            custo_uso = litros_combustivel * combustivel_ano if litros_combustivel > 0 else 0.0
+            fator_co2 = fator_combustivel_co2_kg_l(combustivel_descricao)
+            if fator_co2 == FATOR_CO2_DIESEL_S10_KG_L:
+                co2_diesel_kg = litros_combustivel * fator_co2
+            elif fator_co2 == FATOR_CO2_ETANOL_KG_L:
+                co2_etanol_kg = litros_combustivel * fator_co2
+            else:
+                co2_gasolina_kg = litros_combustivel * fator_co2
+
+        co2_anual_kg = co2_energia_kg + co2_gasolina_kg + co2_etanol_kg + co2_diesel_kg
+        co2_acumulado_kg += co2_anual_kg
+        co2_componentes_kg["energia"] += co2_energia_kg
+        co2_componentes_kg["gasolina"] += co2_gasolina_kg
+        co2_componentes_kg["etanol"] += co2_etanol_kg
+        co2_componentes_kg["diesel"] += co2_diesel_kg
 
         juros_financiamento_ano = financiamento_juros_anuais[ano - 1] if ano - 1 < len(financiamento_juros_anuais) else 0.0
         custo_anual = custo_uso + manut + ipva_ano + seguro_ano + juros_financiamento_ano
@@ -527,6 +625,8 @@ def calcular_projecao_veiculo(veiculo, comum):
         preco_energia_lista.append(energia_ano)
         preco_combustivel_lista.append(combustivel_ano)
         financiamento_juros_lista.append(juros_financiamento_ano)
+        co2_anual_kg_lista.append(co2_anual_kg)
+        co2_acumulado_t_lista.append(co2_acumulado_kg / 1000.0)
 
     total_km = anos * km_ano if anos > 0 and km_ano > 0 else 1
     valor_revenda_final = valor_mercado_lista[-1]
@@ -535,6 +635,9 @@ def calcular_projecao_veiculo(veiculo, comum):
     tco_final = tco_lista[-1] if tco_lista else 0.0
     tco_final_s = tco_lista_s[-1] if tco_lista_s else 0.0
     juros_financiamento_horizonte = sum(financiamento_juros_lista)
+    co2_total_t = co2_acumulado_kg / 1000.0
+    co2_anual_medio_t = co2_total_t / anos if anos > 0 else 0.0
+    co2_por_km_kg = co2_acumulado_kg / total_km if total_km > 0 else 0.0
 
     return {
         "nome": nome,
@@ -570,6 +673,12 @@ def calcular_projecao_veiculo(veiculo, comum):
         "preco_energia_lista": preco_energia_lista,
         "preco_combustivel_lista": preco_combustivel_lista,
         "financiamento_juros_lista": financiamento_juros_lista,
+        "co2_anual_kg_lista": co2_anual_kg_lista,
+        "co2_acumulado_t_lista": co2_acumulado_t_lista,
+        "co2_total_t": co2_total_t,
+        "co2_anual_medio_t": co2_anual_medio_t,
+        "co2_por_km_kg": co2_por_km_kg,
+        "co2_componentes_t": {k: v / 1000.0 for k, v in co2_componentes_kg.items()},
     }
 
 
@@ -635,6 +744,21 @@ def gerar_graficos_dupla(v1, v2):
         fig.update_layout(**obter_layout_web(f"Depreciação — {nome_curto(v['nome'], 42)}"), yaxis_title="Valor de mercado (R$)")
         return html_grafico(fig)
 
+    fig_co2 = go.Figure()
+    fig_co2.add_trace(go.Scatter(
+        x=v1["anos_lista"], y=v1.get("co2_acumulado_t_lista", []), mode="lines+markers", name=v1["nome_curto"],
+        line={"color": cor1, "width": 3, "shape": "spline"}, marker={"size": 8},
+        customdata=[v1["nome"]] * len(v1["anos_lista"]),
+        hovertemplate="%{customdata}<br>%{x}<br>CO₂ acumulado: %{y:,.2f} t<extra></extra>",
+    ))
+    fig_co2.add_trace(go.Scatter(
+        x=v2["anos_lista"], y=v2.get("co2_acumulado_t_lista", []), mode="lines+markers", name=v2["nome_curto"],
+        line={"color": cor2, "width": 3, "shape": "spline"}, marker={"size": 8},
+        customdata=[v2["nome"]] * len(v2["anos_lista"]),
+        hovertemplate="%{customdata}<br>%{x}<br>CO₂ acumulado: %{y:,.2f} t<extra></extra>",
+    ))
+    fig_co2.update_layout(**obter_layout_web("Emissões operacionais acumuladas"), yaxis_title="Emissões acumuladas (tCO₂)")
+
     return {
         "grafico": html_grafico(fig_tco),
         "grafico_sem_depreciacao": html_grafico(fig_gastos),
@@ -645,6 +769,7 @@ def gerar_graficos_dupla(v1, v2):
         "grafico_revenda_comparativo": html_grafico(fig_revenda),
         "grafico_depreciacao_v1": grafico_depreciacao_individual(v1, cor1),
         "grafico_depreciacao_v2": grafico_depreciacao_individual(v2, cor2),
+        "grafico_ambiental": html_grafico(fig_co2),
     }
 
 
@@ -681,6 +806,10 @@ def montar_bloco_resultado(titulo, v1, v2):
             "total_financiamento": real_format(financiamento.get("total_pago", 0)),
             "juros_financiamento_total": real_format(financiamento.get("juros_total", 0)),
             "juros_financiamento_horizonte": real_format(v.get("juros_financiamento_horizonte", 0)),
+            "co2_total": toneladas_format(v.get("co2_total_t", 0)),
+            "co2_anual": toneladas_format(v.get("co2_anual_medio_t", 0)),
+            "co2_por_km": f"{numero_format(v.get('co2_por_km_kg', 0), 3)} kgCO₂/km",
+            "arvores_compensacao": arvores_format(calcular_arvores_equivalentes(v.get("co2_total_t", 0), v.get("anos_horizonte", 1))),
         }
 
     def melhor_indice(valor1: float, valor2: float, maior_melhor: bool = False) -> int:
@@ -723,6 +852,13 @@ def montar_bloco_resultado(titulo, v1, v2):
             v2["gasto_operacional_final"],
             ajuda="Energia ou combustível, manutenção, IPVA, seguro e juros no horizonte.",
         ),
+        {
+            "rotulo": "CO₂ operacional acumulado",
+            "valor_1": toneladas_format(v1.get("co2_total_t", 0)),
+            "valor_2": toneladas_format(v2.get("co2_total_t", 0)),
+            "melhor": melhor_indice(v1.get("co2_total_t", 0), v2.get("co2_total_t", 0)),
+            "ajuda": "Estimativa operacional; não inclui fabricação, bateria ou descarte.",
+        },
         linha_comparativa(
             "Perda por depreciação",
             v1["perda_depreciacao_final"],
@@ -767,6 +903,31 @@ def montar_bloco_resultado(titulo, v1, v2):
         "quilometragem_horizonte": total_km_formatado,
     }
 
+    co2_1 = float(v1.get("co2_total_t", 0) or 0)
+    co2_2 = float(v2.get("co2_total_t", 0) or 0)
+    menor_co2 = v1 if co2_1 <= co2_2 else v2
+    maior_co2 = v2 if menor_co2 is v1 else v1
+    co2_evitado_t = max(0.0, float(maior_co2.get("co2_total_t", 0) or 0) - float(menor_co2.get("co2_total_t", 0) or 0))
+    anos_ambiental = max(1, int(v1.get("anos_horizonte", v2.get("anos_horizonte", 1)) or 1))
+    impacto_ambiental = {
+        "menor_nome": menor_co2["nome"],
+        "maior_nome": maior_co2["nome"],
+        "veiculo_1_nome": v1["nome_curto"],
+        "veiculo_2_nome": v2["nome_curto"],
+        "veiculo_1_total": toneladas_format(co2_1),
+        "veiculo_2_total": toneladas_format(co2_2),
+        "veiculo_1_anual": toneladas_format(v1.get("co2_anual_medio_t", 0)),
+        "veiculo_2_anual": toneladas_format(v2.get("co2_anual_medio_t", 0)),
+        "veiculo_1_por_km": f"{numero_format(v1.get('co2_por_km_kg', 0), 3)} kgCO₂/km",
+        "veiculo_2_por_km": f"{numero_format(v2.get('co2_por_km_kg', 0), 3)} kgCO₂/km",
+        "co2_evitado": toneladas_format(co2_evitado_t),
+        "arvores_equivalentes": arvores_format(calcular_arvores_equivalentes(co2_evitado_t, anos_ambiental)),
+        "anos": anos_ambiental,
+        "fatores": fatores_ambientais_resumo(),
+        "componentes_1": {k: toneladas_format(v) for k, v in (v1.get("co2_componentes_t") or {}).items()},
+        "componentes_2": {k: toneladas_format(v) for k, v in (v2.get("co2_componentes_t") or {}).items()},
+    }
+
     return {
         "titulo": titulo,
         "vencedor_nome": vencedor["nome"],
@@ -776,6 +937,7 @@ def montar_bloco_resultado(titulo, v1, v2):
         "detalhes": [resumo_v1, resumo_v2],
         "comparativo_indicadores": comparativo_indicadores,
         "custo_km_comparacao": custo_km_comparacao,
+        "impacto_ambiental": impacto_ambiental,
         "resumo_com": [
             {"nome": resumo_v1["nome"], "tco_final": resumo_v1["tco_final"], "custo_km": resumo_v1["custo_km"]},
             {"nome": resumo_v2["nome"], "tco_final": resumo_v2["tco_final"], "custo_km": resumo_v2["custo_km"]},
@@ -790,6 +952,7 @@ def montar_bloco_resultado(titulo, v1, v2):
         "grafico_revenda_comparativo": graficos["grafico_revenda_comparativo"],
         "grafico_depreciacao_v1": graficos["grafico_depreciacao_v1"],
         "grafico_depreciacao_v2": graficos["grafico_depreciacao_v2"],
+        "grafico_ambiental": graficos.get("grafico_ambiental", ""),
     }
 
 
@@ -861,6 +1024,7 @@ def montar_veiculo_ve(dados_form):
         "nome": modelo,
         "tipo": tipo,
         "prefixo": "ve",
+        "combustivel": combustivel,
         "preco": preco,
         "consumo": conv(dados_form.get("consumo_ve", 0)),
         "manut": conv(dados_form.get("manut_ve", 0)),
@@ -878,6 +1042,7 @@ def montar_veiculo_icev(dados_form):
         "nome": dados_form.get("modelo_icev", "Veículo a combustão"),
         "tipo": "icev",
         "prefixo": "icev",
+        "combustivel": dados_form.get("combustivel_icev", ""),
         "preco": preco,
         "consumo": conv(dados_form.get("consumo_icev", 1)),
         "manut": conv(dados_form.get("manut_icev", 0)),
@@ -895,6 +1060,7 @@ def montar_veiculo_atual(dados_form):
         "nome": dados_form.get("modelo_atual", "Meu carro atual"),
         "tipo": "icev",
         "prefixo": "atual",
+        "combustivel": dados_form.get("combustivel_atual", ""),
         "preco": preco,
         "consumo": conv(dados_form.get("consumo_atual", 1)),
         "manut": conv(dados_form.get("manut_atual", 0)),

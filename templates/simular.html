@@ -66,6 +66,28 @@
     .plugve-km-impact{display:flex;gap:.7rem;flex-wrap:wrap;margin-top:.8rem}
     .plugve-km-impact span{display:inline-flex;align-items:center;gap:.25rem;border-radius:999px;background:#fff;border:1px solid #e2e8f0;padding:.35rem .65rem;font-size:.72rem;color:#475569}
     .plugve-km-impact b{color:#0f172a;font-variant-numeric:tabular-nums}
+    .plugve-env-card{border:1px solid #bbf7d0;border-radius:1rem;background:linear-gradient(135deg,#f0fdf4 0%,#ffffff 74%);padding:1.05rem 1.15rem}
+    .plugve-env-head{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin-bottom:.85rem}
+    .plugve-env-head h4{font-size:1.05rem;font-weight:900;color:#064e3b}
+    .plugve-env-head p{font-size:.76rem;color:#64748b;line-height:1.4;margin-top:.18rem}
+    .plugve-env-badge{flex:0 0 auto;border-radius:999px;background:#dcfce7;color:#166534;padding:.32rem .7rem;font-size:.72rem;font-weight:900;white-space:nowrap}
+    .plugve-env-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.75rem}
+    .plugve-env-metric{border:1px solid #e2e8f0;border-radius:.85rem;background:#fff;padding:.75rem .85rem}
+    .plugve-env-metric span{display:block;font-size:.68rem;color:#64748b;text-transform:uppercase;letter-spacing:.04em;font-weight:900}
+    .plugve-env-metric strong{display:block;margin-top:.2rem;font-size:1.05rem;color:#0f172a;font-variant-numeric:tabular-nums}
+    .plugve-env-metric small{display:block;margin-top:.16rem;font-size:.68rem;color:#64748b;line-height:1.3}
+    .plugve-env-detail{margin-top:.9rem;border-top:1px solid #bbf7d0;padding-top:.75rem}
+    .plugve-env-detail summary{cursor:pointer;font-size:.78rem;font-weight:900;color:#166534}
+    .plugve-env-detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem;margin-top:.75rem}
+    .plugve-env-breakdown{border:1px solid #e2e8f0;border-radius:.85rem;background:#fff;padding:.75rem .85rem}
+    .plugve-env-breakdown h5{font-size:.78rem;font-weight:900;color:#0f172a;margin-bottom:.35rem}
+    .plugve-env-breakdown dl>div{display:flex;justify-content:space-between;gap:.75rem;border-bottom:1px solid #f1f5f9;padding:.22rem 0;font-size:.7rem}
+    .plugve-env-breakdown dl>div:last-child{border-bottom:0}
+    .plugve-env-breakdown dt{color:#64748b}
+    .plugve-env-breakdown dd{font-weight:800;color:#0f172a;font-variant-numeric:tabular-nums;text-align:right}
+    .plugve-env-note{margin-top:.75rem;font-size:.7rem;color:#64748b;line-height:1.4}
+    @media(max-width:900px){.plugve-env-grid,.plugve-env-detail-grid{grid-template-columns:1fr 1fr}}
+    @media(max-width:620px){.plugve-env-head{flex-direction:column}.plugve-env-grid,.plugve-env-detail-grid{grid-template-columns:1fr}.plugve-env-badge{white-space:normal}}
     .plugve-premises-details{border:1px solid #e2e8f0;border-radius:.9rem;background:#fff;overflow:hidden}
     .plugve-premises-details summary{cursor:pointer;padding:.8rem 1rem;font-size:.82rem;font-weight:800;color:#334155;background:#f8fafc;user-select:none}
     .plugve-premises-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem;padding:1rem;border-top:1px solid #e2e8f0}
@@ -1204,6 +1226,71 @@
                   </section>
                 {% endif %}
 
+                {% if comp.impacto_ambiental %}
+                  <section class="plugve-env-card mb-7">
+                    <div class="plugve-env-head">
+                      <div>
+                        <span class="plugve-comparison-kicker">Impacto ambiental estimado</span>
+                        <h4>{{ comp.impacto_ambiental.menor_nome }} emite menos CO₂ operacional no horizonte.</h4>
+                        <p>Estimativa operacional de uso. Não inclui fabricação do veículo, bateria, manutenção ou descarte.</p>
+                      </div>
+                      <span class="plugve-env-badge">{{ comp.impacto_ambiental.co2_evitado }} evitadas</span>
+                    </div>
+
+                    <div class="plugve-env-grid">
+                      <div class="plugve-env-metric">
+                        <span>{{ comp.impacto_ambiental.veiculo_1_nome }}</span>
+                        <strong>{{ comp.impacto_ambiental.veiculo_1_total }}</strong>
+                        <small>{{ comp.impacto_ambiental.veiculo_1_anual }}/ano</small>
+                      </div>
+                      <div class="plugve-env-metric">
+                        <span>{{ comp.impacto_ambiental.veiculo_2_nome }}</span>
+                        <strong>{{ comp.impacto_ambiental.veiculo_2_total }}</strong>
+                        <small>{{ comp.impacto_ambiental.veiculo_2_anual }}/ano</small>
+                      </div>
+                      <div class="plugve-env-metric">
+                        <span>Diferença no horizonte</span>
+                        <strong>{{ comp.impacto_ambiental.co2_evitado }}</strong>
+                        <small>menor emissão operacional</small>
+                      </div>
+                      <div class="plugve-env-metric">
+                        <span>Equivalente didático</span>
+                        <strong>{{ comp.impacto_ambiental.arvores_equivalentes }}</strong>
+                        <small>crescendo por {{ comp.impacto_ambiental.anos }} anos</small>
+                      </div>
+                    </div>
+
+                    <details class="plugve-env-detail">
+                      <summary>Ver detalhes ambientais</summary>
+                      <div class="plugve-env-detail-grid">
+                        <div class="plugve-env-breakdown">
+                          <h5>{{ comp.impacto_ambiental.veiculo_1_nome }}</h5>
+                          <dl>
+                            <div><dt>Por km</dt><dd>{{ comp.impacto_ambiental.veiculo_1_por_km }}</dd></div>
+                            <div><dt>Energia elétrica</dt><dd>{{ comp.impacto_ambiental.componentes_1.energia }}</dd></div>
+                            <div><dt>Gasolina</dt><dd>{{ comp.impacto_ambiental.componentes_1.gasolina }}</dd></div>
+                            <div><dt>Etanol</dt><dd>{{ comp.impacto_ambiental.componentes_1.etanol }}</dd></div>
+                            <div><dt>Diesel S10</dt><dd>{{ comp.impacto_ambiental.componentes_1.diesel }}</dd></div>
+                          </dl>
+                        </div>
+                        <div class="plugve-env-breakdown">
+                          <h5>{{ comp.impacto_ambiental.veiculo_2_nome }}</h5>
+                          <dl>
+                            <div><dt>Por km</dt><dd>{{ comp.impacto_ambiental.veiculo_2_por_km }}</dd></div>
+                            <div><dt>Energia elétrica</dt><dd>{{ comp.impacto_ambiental.componentes_2.energia }}</dd></div>
+                            <div><dt>Gasolina</dt><dd>{{ comp.impacto_ambiental.componentes_2.gasolina }}</dd></div>
+                            <div><dt>Etanol</dt><dd>{{ comp.impacto_ambiental.componentes_2.etanol }}</dd></div>
+                            <div><dt>Diesel S10</dt><dd>{{ comp.impacto_ambiental.componentes_2.diesel }}</dd></div>
+                          </dl>
+                        </div>
+                      </div>
+                      <p class="plugve-env-note">
+                        Fatores usados nesta versão: energia elétrica {{ comp.impacto_ambiental.fatores.energia }}; gasolina {{ comp.impacto_ambiental.fatores.gasolina }}; etanol {{ comp.impacto_ambiental.fatores.etanol }}; diesel S10 {{ comp.impacto_ambiental.fatores.diesel }}; equivalência de árvores {{ comp.impacto_ambiental.fatores.arvore }}.
+                      </p>
+                    </details>
+                  </section>
+                {% endif %}
+
                 <details class="plugve-premises-details mb-7">
                   <summary>Premissas consideradas na comparação</summary>
                   <div class="plugve-premises-grid">
@@ -1239,6 +1326,12 @@
               {% if comp.grafico_sem_depreciacao %}
                 <div class="plugve-chart-card mb-6">
                   {{ comp.grafico_sem_depreciacao | safe }}
+                </div>
+              {% endif %}
+
+              {% if comp.grafico_ambiental %}
+                <div class="plugve-chart-card mb-6">
+                  {{ comp.grafico_ambiental | safe }}
                 </div>
               {% endif %}
 
