@@ -5,95 +5,212 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Auditoria da Simulação | CurVE</title>
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/favicon.png') }}">
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
   <style>
-    :root{--paper:#f6f5f0;--ink:#111827;--muted:#4b5563;--grid:#d1d5db;--accent:#14232c;--green:#168a4a;--blue:#2563eb}
-    *{box-sizing:border-box} body{margin:0;background:var(--paper);color:var(--ink);font-family:"Courier New",Consolas,monospace;font-size:13px;line-height:1.45}.audit-page{max-width:1320px;margin:0 auto;padding:24px 28px 54px}.audit-top{display:flex;justify-content:space-between;gap:24px;border-bottom:2px solid #111827;padding-bottom:14px;margin-bottom:18px}.audit-top h1{margin:0 0 4px;font-size:24px}.audit-top p{margin:0;color:var(--muted)}.audit-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}.audit-actions button,.audit-actions a{border:1px solid #111827;background:transparent;color:#111827;font:inherit;padding:7px 10px;text-decoration:none;cursor:pointer}.audit-actions button:hover,.audit-actions a:hover{background:#111827;color:#fff}.audit-note{white-space:pre-wrap;border-left:4px solid #111827;padding-left:10px;margin:14px 0 20px}.audit-section{margin:22px 0 30px;break-inside:avoid}.audit-section h2{margin:0 0 10px;font-size:17px;text-transform:uppercase;letter-spacing:.02em;border-bottom:1px solid #9ca3af;padding-bottom:5px}.audit-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}.audit-card{background:#fff;border:1px solid #9ca3af;padding:12px;break-inside:avoid}.audit-card h3{margin:0 0 8px;font-size:14px}.audit-table-wrap{overflow-x:auto;border:1px solid #9ca3af;background:#fff}.audit-table{width:100%;border-collapse:collapse;min-width:760px}.audit-table th,.audit-table td{border-bottom:1px solid #e5e7eb;padding:7px 8px;text-align:right;vertical-align:top}.audit-table th:first-child,.audit-table td:first-child{text-align:left}.audit-table th{background:#e5e7eb;font-weight:700}.audit-table tr:last-child td{border-bottom:0}.audit-dl{display:grid;grid-template-columns:180px 1fr;gap:6px 12px;margin:0}.audit-dl dt{color:#4b5563}.audit-dl dd{margin:0;font-weight:700}.audit-code{white-space:pre-wrap;margin:0;padding:10px;background:#fff;border:1px solid #9ca3af}.badge{display:inline-block;border:1px solid #111827;padding:2px 6px;margin-left:4px}.muted{color:#6b7280}@media(max-width:900px){.audit-top,.audit-grid{grid-template-columns:1fr;display:block}.audit-actions{justify-content:flex-start;margin-top:12px}.audit-dl{grid-template-columns:1fr}.audit-page{padding:18px 14px}}@media print{body{background:#fff}.audit-actions{display:none}.audit-page{max-width:none;padding:0}.audit-card,.audit-table-wrap{break-inside:avoid}}
+    :root{
+      --paper:#f6f5f0;
+      --ink:#111827;
+      --muted:#4b5563;
+      --rule:#9ca3af;
+      --soft:#e5e7eb;
+      --light:#f8fafc;
+      --green:#168a4a;
+      --blue:#2563eb;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--paper);color:var(--ink);font-family:"Courier New",Consolas,monospace;font-size:12.5px;line-height:1.42}
+    .audit-page{max-width:1180px;margin:0 auto;padding:22px 28px 54px;background:#fff}
+    .audit-header{display:flex;justify-content:space-between;gap:24px;border-bottom:2px solid #111827;padding-bottom:12px;margin-bottom:18px}
+    .audit-header h1{margin:0 0 4px;font-size:23px;letter-spacing:.01em}
+    .audit-header p{margin:0;color:var(--muted)}
+    .audit-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;align-items:flex-start}
+    .audit-actions button,.audit-actions a{border:1px solid #111827;background:#fff;color:#111827;font:inherit;font-weight:700;padding:7px 10px;text-decoration:none;cursor:pointer;border-radius:0}
+    .audit-actions button:hover,.audit-actions a:hover{background:#111827;color:#fff}
+    .audit-note{white-space:pre-wrap;border-left:4px solid #111827;padding-left:10px;margin:12px 0 18px;color:#1f2937}
+    .audit-section{margin:22px 0 30px;break-inside:avoid;page-break-inside:avoid}
+    .audit-section h2{margin:0 0 11px;font-size:17px;text-transform:uppercase;letter-spacing:.03em;border-bottom:1px solid var(--rule);padding-bottom:5px}
+    .audit-section h3{margin:0 0 8px;font-size:14px;text-transform:uppercase;letter-spacing:.02em;color:#111827}
+    .audit-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+    .audit-card{border:1px solid var(--rule);background:#fff;padding:11px;break-inside:avoid;page-break-inside:avoid}
+    .audit-subcard{border:1px solid var(--soft);background:#fbfdff;padding:9px;margin:8px 0}
+    .audit-dl{display:grid;grid-template-columns:190px 1fr;gap:5px 12px;margin:0}
+    .audit-dl dt{color:var(--muted)}
+    .audit-dl dd{margin:0;font-weight:700;word-break:break-word}
+    .audit-meta{font-size:12px;color:#1f2937;white-space:pre-wrap;margin:0}
+    .audit-code{white-space:pre-wrap;margin:0;padding:10px;border:1px solid var(--rule);background:#fff;line-height:1.45}
+    .audit-table-wrap{border:1px solid var(--rule);background:#fff;overflow-x:auto;margin-top:8px}
+    .audit-table{width:100%;border-collapse:collapse;table-layout:auto}
+    .audit-table th,.audit-table td{border-bottom:1px solid #e5e7eb;padding:6px 7px;text-align:right;vertical-align:top;font-size:11.4px}
+    .audit-table th:first-child,.audit-table td:first-child{text-align:left}
+    .audit-table th{background:#eef2f7;font-weight:800;color:#111827}
+    .audit-table tr:last-child td{border-bottom:0}
+    .audit-table td small{display:block;color:var(--muted);font-size:10.5px;line-height:1.25;margin-top:2px}
+    .audit-kv-table td:first-child{width:34%}
+    .audit-badge{display:inline-block;border:1px solid #111827;padding:2px 6px;margin:2px 3px 2px 0;font-weight:700;background:#fff}
+    .muted{color:#6b7280}
+    .audit-plot-grid{display:grid;grid-template-columns:1fr;gap:14px}
+    .audit-plot{border:1px solid var(--rule);background:#fff;padding:9px;break-inside:avoid;page-break-inside:avoid}
+    .audit-plot h3{margin:0 0 8px;font-size:13px;text-transform:none;text-align:center}
+    .audit-reading p{margin:0 0 8px;white-space:pre-wrap}
+    .audit-list{margin:0;padding-left:18px}
+    .audit-list li{margin:5px 0}
+    @media(max-width:900px){.audit-header,.audit-grid{display:block}.audit-actions{justify-content:flex-start;margin-top:12px}.audit-dl{grid-template-columns:1fr}.audit-card{margin-bottom:12px}.audit-page{padding:18px 14px}}
+    @media print{
+      body{background:#fff;font-size:10.8px}
+      .audit-page{max-width:none;padding:0;background:#fff}
+      .audit-actions{display:none}
+      .audit-header{margin-bottom:12px}
+      .audit-section{break-inside:avoid;page-break-inside:avoid;margin:18px 0 24px}
+      .audit-card,.audit-table-wrap,.audit-plot{break-inside:avoid;page-break-inside:avoid}
+      .audit-table th,.audit-table td{font-size:9.4px;padding:4px 5px}
+      .audit-plot{padding:6px}
+      .audit-plot .plotly-graph-div{max-width:100% !important}
+    }
   </style>
 </head>
 <body>
   <main class="audit-page">
-    <header class="audit-top">
+    <header class="audit-header">
       <div>
-        <h1>Auditoria técnica da simulação</h1>
-        <p>CurVE — memória de cálculo, premissas, componentes e limitações.</p>
-        <p class="muted">Gerado em {{ auditoria.gerado_em }}</p>
+        <h1>CurVE :: auditoria da simulação TCO</h1>
+        <p>Memória técnica, equações, gráficos e componentes usados na comparação econômica e ambiental.</p>
+        <p class="muted">&gt;&gt; emissão: {{ auditoria.gerado_em }}</p>
+        <p class="muted">&gt;&gt; origem: CurVE - simulação de custo total</p>
       </div>
       <div class="audit-actions">
-        <button type="button" onclick="window.print()">Exportar PDF</button>
+        <button type="button" onclick="window.print()">Imprimir</button>
         <a href="/simular">Voltar ao Simular</a>
       </div>
     </header>
 
-    <p class="audit-note">Esta auditoria documenta a simulação de custo total recém-calculada. Ela não recalcula histórico FIPE pesado, não substitui a auditoria de depreciação e não representa análise de ciclo de vida completo.</p>
+    <p class="audit-note">Esta auditoria documenta a simulação de custo total recém-calculada. Ela não recalcula histórico FIPE pesado, não substitui a auditoria específica das curvas de depreciação e não representa análise de ciclo de vida completo. O objetivo é permitir rastrear entradas, premissas, fórmulas, componentes anuais, impacto ambiental operacional e resultado final.</p>
+
+    {% for comp in auditoria.comparacoes %}
+      <section class="audit-section">
+        <h2>0. Resumo numérico</h2>
+        <div class="audit-card">
+          <p class="audit-meta">comparação = {{ comp.titulo }}
+vencedor_econômico = {{ comp.vencedor_nome }}
+economia_estimativa = {{ comp.economia }}
+diferença_percentual = {{ comp.economia_percentual }}</p>
+        </div>
+        <div class="audit-grid">
+          {% for item in comp.detalhes %}
+            <div class="audit-card">
+              <h3>Veículo {{ loop.index }}</h3>
+              <dl class="audit-dl">
+                <dt>veículo</dt><dd>{{ item.nome }}</dd>
+                <dt>tipo</dt><dd>{{ item.tipo or '—' }}</dd>
+                <dt>combustível/FIPE</dt><dd>{{ item.combustivel or '—' }}</dd>
+                <dt>VI</dt><dd>{{ item.preco_inicial }}</dd>
+                <dt>custo total final</dt><dd>{{ item.tco_final }}</dd>
+                <dt>custo por km</dt><dd>{{ item.custo_km }}/km</dd>
+                <dt>gasto operacional</dt><dd>{{ item.gasto_operacional }}</dd>
+                <dt>perda por depreciação</dt><dd>{{ item.perda_depreciacao }}</dd>
+                <dt>valor de revenda</dt><dd>{{ item.valor_revenda }}</dd>
+                <dt>CO₂ fóssil operacional</dt><dd>{{ item.co2_total }}</dd>
+                <dt>CO₂ biogênico do etanol</dt><dd>{{ item.co2_biogenico }}</dd>
+              </dl>
+            </div>
+          {% endfor %}
+        </div>
+      </section>
+    {% endfor %}
 
     <section class="audit-section">
-      <h2>1. Parâmetros gerais</h2>
+      <h2>1. Dados de entrada e parâmetros</h2>
       <div class="audit-grid">
         <div class="audit-card">
           <h3>Localização e uso</h3>
           <dl class="audit-dl">
-            <dt>Tipo de comparação</dt><dd>{{ auditoria.tipo_comparacao }}</dd>
+            <dt>tipo de comparação</dt><dd>{{ auditoria.tipo_comparacao }}</dd>
             <dt>UF</dt><dd>{{ auditoria.parametros.uf or '—' }}</dd>
-            <dt>Município</dt><dd>{{ auditoria.parametros.municipio or '—' }}</dd>
-            <dt>Anos de uso</dt><dd>{{ auditoria.parametros.anos or '—' }}</dd>
-            <dt>Km por ano</dt><dd>{{ auditoria.parametros.km_ano or '—' }}</dd>
+            <dt>município</dt><dd>{{ auditoria.parametros.municipio or '—' }}</dd>
+            <dt>horizonte_h</dt><dd>{{ auditoria.parametros.anos or '—' }} anos</dd>
+            <dt>km_a</dt><dd>{{ auditoria.parametros.km_ano or '—' }} km/ano</dd>
           </dl>
         </div>
         <div class="audit-card">
-          <h3>Energia e combustível</h3>
+          <h3>Energia, combustível e reajustes</h3>
           <dl class="audit-dl">
-            <dt>Energia</dt><dd>{{ auditoria.parametros.energia or '—' }}</dd>
-            <dt>Combustível</dt><dd>{{ auditoria.parametros.combustivel or '—' }}</dd>
-            <dt>Aumento energia</dt><dd>{{ auditoria.parametros.aumento_energia }}%</dd>
-            <dt>Aumento combustível</dt><dd>{{ auditoria.parametros.aumento_combustivel }}%</dd>
+            <dt>tarifa energia inicial</dt><dd>{{ auditoria.parametros.energia or '—' }}</dd>
+            <dt>combustível inicial</dt><dd>{{ auditoria.parametros.combustivel or '—' }}</dd>
+            <dt>aumento energia</dt><dd>{{ auditoria.parametros.aumento_energia }}% a.a.</dd>
+            <dt>aumento combustível</dt><dd>{{ auditoria.parametros.aumento_combustivel }}% a.a.</dd>
+          </dl>
+        </div>
+      </div>
+      <div class="audit-grid" style="margin-top:14px">
+        <div class="audit-card">
+          <h3>Perfil flex</h3>
+          <dl class="audit-dl">
+            <dt>configurado</dt><dd>{{ auditoria.perfis.flex_configurado }}</dd>
+            <dt>% etanol</dt><dd>{{ auditoria.perfis.flex_percent_etanol or '—' }}</dd>
+            <dt>% gasolina</dt><dd>{% if auditoria.perfis.flex_percent_gasolina %}{{ auditoria.perfis.flex_percent_gasolina }}{% else %}—{% endif %}</dd>
+            <dt>preço gasolina</dt><dd>{{ auditoria.perfis.flex_preco_gasolina or '—' }}</dd>
+            <dt>preço etanol</dt><dd>{{ auditoria.perfis.flex_preco_etanol or '—' }}</dd>
+            <dt>consumo gasolina</dt><dd>{{ auditoria.perfis.flex_consumo_gasolina or '—' }}</dd>
+            <dt>consumo etanol</dt><dd>{{ auditoria.perfis.flex_consumo_etanol or '—' }}</dd>
+          </dl>
+        </div>
+        <div class="audit-card">
+          <h3>Perfil PHEV</h3>
+          <dl class="audit-dl">
+            <dt>configurado</dt><dd>{{ auditoria.perfis.phev_configurado }}</dd>
+            <dt>% elétrico</dt><dd>{{ auditoria.perfis.phev_percent_eletrico or '—' }}</dd>
+            <dt>% combustível</dt><dd>{% if auditoria.perfis.phev_percent_combustivel %}{{ auditoria.perfis.phev_percent_combustivel }}{% else %}—{% endif %}</dd>
+            <dt>consumo elétrico</dt><dd>{{ auditoria.perfis.phev_consumo_eletrico or '—' }}</dd>
+            <dt>preço combustível</dt><dd>{{ auditoria.perfis.phev_preco_combustivel or '—' }}</dd>
+            <dt>consumo combustível</dt><dd>{{ auditoria.perfis.phev_consumo_combustivel or '—' }}</dd>
           </dl>
         </div>
       </div>
     </section>
 
     <section class="audit-section">
-      <h2>2. Perfis configurados</h2>
-      <div class="audit-grid">
-        <div class="audit-card">
-          <h3>Flex</h3>
-          <dl class="audit-dl">
-            <dt>Configurado</dt><dd>{{ auditoria.perfis.flex_configurado }}</dd>
-            <dt>% etanol</dt><dd>{{ auditoria.perfis.flex_percent_etanol or '—' }}</dd>
-            <dt>Preço gasolina</dt><dd>{{ auditoria.perfis.flex_preco_gasolina or '—' }}</dd>
-            <dt>Preço etanol</dt><dd>{{ auditoria.perfis.flex_preco_etanol or '—' }}</dd>
-            <dt>Consumo gasolina</dt><dd>{{ auditoria.perfis.flex_consumo_gasolina or '—' }}</dd>
-            <dt>Consumo etanol</dt><dd>{{ auditoria.perfis.flex_consumo_etanol or '—' }}</dd>
-          </dl>
-        </div>
-        <div class="audit-card">
-          <h3>PHEV</h3>
-          <dl class="audit-dl">
-            <dt>Configurado</dt><dd>{{ auditoria.perfis.phev_configurado }}</dd>
-            <dt>% elétrico</dt><dd>{{ auditoria.perfis.phev_percent_eletrico or '—' }}</dd>
-            <dt>Consumo elétrico</dt><dd>{{ auditoria.perfis.phev_consumo_eletrico or '—' }}</dd>
-            <dt>Preço combustível</dt><dd>{{ auditoria.perfis.phev_preco_combustivel or '—' }}</dd>
-            <dt>Consumo combustível</dt><dd>{{ auditoria.perfis.phev_consumo_combustivel or '—' }}</dd>
-          </dl>
-        </div>
-      </div>
+      <h2>2. Equações aplicadas</h2>
+      <pre class="audit-code">{% for linha in auditoria.equacoes %}{{ linha }}
+{% endfor %}</pre>
     </section>
 
     {% for comp in auditoria.comparacoes %}
       <section class="audit-section">
-        <h2>3. Resultado auditado — {{ comp.titulo }}</h2>
-        <div class="audit-card">
-          <p><strong>Vencedor econômico:</strong> {{ comp.vencedor_nome }} <span class="badge">Economia {{ comp.economia }}</span> <span class="badge">{{ comp.economia_percentual }}</span></p>
+        <h2>3. Plots técnicos</h2>
+        <div class="audit-plot-grid">
+          {% if comp.graficos.custo_total %}
+            <div class="audit-plot"><h3>Custo total acumulado ano a ano</h3>{{ comp.graficos.custo_total | safe }}</div>
+          {% endif %}
+          {% if comp.graficos.componentes_anuais_v1 %}
+            <div class="audit-plot"><h3>Componentes anuais - veículo 1</h3>{{ comp.graficos.componentes_anuais_v1 | safe }}</div>
+          {% endif %}
+          {% if comp.graficos.componentes_anuais_v2 %}
+            <div class="audit-plot"><h3>Componentes anuais - veículo 2</h3>{{ comp.graficos.componentes_anuais_v2 | safe }}</div>
+          {% endif %}
+          {% if comp.graficos.revenda %}
+            <div class="audit-plot"><h3>Valor estimado de revenda ano a ano</h3>{{ comp.graficos.revenda | safe }}</div>
+          {% endif %}
+          {% if comp.graficos.co2 %}
+            <div class="audit-plot"><h3>CO₂ fóssil operacional acumulado</h3>{{ comp.graficos.co2 | safe }}</div>
+          {% endif %}
+          {% if comp.graficos.diferenca %}
+            <div class="audit-plot"><h3>Diferença acumulada entre os veículos</h3>{{ comp.graficos.diferenca | safe }}</div>
+          {% endif %}
         </div>
       </section>
 
       <section class="audit-section">
         <h2>4. Comparação detalhada por componente</h2>
         <div class="audit-table-wrap">
-          <table class="audit-table">
-            <thead><tr><th>Componente</th><th>Carro 1</th><th>Carro 2</th><th>Diferença</th></tr></thead>
+          <table class="audit-table audit-kv-table">
+            <thead><tr><th>Componente</th><th>Veículo 1</th><th>Veículo 2</th><th>Diferença</th></tr></thead>
             <tbody>
               {% for linha in comp.comparativo_componentes %}
-                <tr><td>{{ linha.rotulo }}{% if linha.ajuda %}<br><span class="muted">{{ linha.ajuda }}</span>{% endif %}</td><td>{{ linha.valor_1 }}</td><td>{{ linha.valor_2 }}</td><td>{{ linha.diferenca }}</td></tr>
+                <tr>
+                  <td><strong>{{ linha.rotulo }}</strong>{% if linha.ajuda %}<small>{{ linha.ajuda }}</small>{% endif %}</td>
+                  <td>{{ linha.valor_1 }}</td>
+                  <td>{{ linha.valor_2 }}</td>
+                  <td>{{ linha.diferenca }}</td>
+                </tr>
               {% endfor %}
             </tbody>
           </table>
@@ -101,67 +218,58 @@
       </section>
 
       <section class="audit-section">
-        <h2>5. Memória anual comparativa</h2>
-        <div class="audit-table-wrap">
-          <table class="audit-table">
-            <thead><tr><th>Ano</th><th>Uso C1</th><th>Uso C2</th><th>Operac. C1</th><th>Operac. C2</th><th>Deprec. C1</th><th>Deprec. C2</th><th>Custo total C1</th><th>Custo total C2</th><th>Dif. custo total</th><th>Revenda C1</th><th>Revenda C2</th><th>CO₂ C1</th><th>CO₂ C2</th></tr></thead>
-            <tbody>
-              {% for linha in comp.memoria_anual_comparativa %}
-                <tr><td>{{ linha.ano }}</td><td>{{ linha.v1_uso }}</td><td>{{ linha.v2_uso }}</td><td>{{ linha.v1_operacional }}</td><td>{{ linha.v2_operacional }}</td><td>{{ linha.v1_depreciacao }}</td><td>{{ linha.v2_depreciacao }}</td><td>{{ linha.v1_tco }}</td><td>{{ linha.v2_tco }}</td><td>{{ linha.diferenca_tco }}</td><td>{{ linha.v1_revenda }}</td><td>{{ linha.v2_revenda }}</td><td>{{ linha.v1_co2 }}</td><td>{{ linha.v2_co2 }}</td></tr>
-              {% endfor %}
-            </tbody>
-          </table>
+        <h2>5. Memória de cálculo ano a ano</h2>
+        <div class="audit-card">
+          <h3>5.1 Comparação anual resumida</h3>
+          <div class="audit-table-wrap">
+            <table class="audit-table">
+              <thead><tr><th>Ano</th><th>Custo total V1</th><th>Custo total V2</th><th>Dif.</th><th>Revenda V1</th><th>Revenda V2</th><th>CO₂ V1</th><th>CO₂ V2</th></tr></thead>
+              <tbody>
+                {% for linha in comp.memoria_anual_comparativa %}
+                  <tr><td>{{ linha.ano }}</td><td>{{ linha.v1_tco }}</td><td>{{ linha.v2_tco }}</td><td>{{ linha.diferenca_tco }}</td><td>{{ linha.v1_revenda }}</td><td>{{ linha.v2_revenda }}</td><td>{{ linha.v1_co2 }}</td><td>{{ linha.v2_co2 }}</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </section>
-
-      <section class="audit-section">
-        <h2>6. Memória anual por veículo</h2>
-        <div class="audit-grid">
-          {% for veic in comp.auditoria_veiculos %}
-            <div class="audit-card">
-              <h3>{{ veic.nome }}</h3>
-              <div class="audit-table-wrap">
-                <table class="audit-table">
-                  <thead><tr><th>Ano</th><th>Uso</th><th>IPVA</th><th>Seguro</th><th>Manut.</th><th>Juros</th><th>Custo total</th><th>CO₂</th></tr></thead>
-                  <tbody>
-                    {% for linha in veic.memoria %}
-                      <tr><td>{{ linha.ano }}</td><td>{{ linha.uso }}</td><td>{{ linha.ipva }}</td><td>{{ linha.seguro }}</td><td>{{ linha.manutencao }}</td><td>{{ linha.financiamento }}</td><td>{{ linha.tco }}</td><td>{{ linha.co2_fossil_acumulado }}</td></tr>
-                    {% endfor %}
-                  </tbody>
-                </table>
-              </div>
+        {% for veic in comp.auditoria_veiculos %}
+          <div class="audit-card" style="margin-top:14px">
+            <h3>5.{{ loop.index + 1 }} Memória anual — {{ veic.nome }}</h3>
+            <div class="audit-table-wrap">
+              <table class="audit-table">
+                <thead><tr><th>Ano</th><th>Uso</th><th>IPVA</th><th>Seguro</th><th>Manut.</th><th>Juros</th><th>Deprec.</th><th>Custo total</th><th>CO₂</th></tr></thead>
+                <tbody>
+                  {% for linha in veic.memoria %}
+                    <tr><td>{{ linha.ano }}</td><td>{{ linha.uso }}</td><td>{{ linha.ipva }}</td><td>{{ linha.seguro }}</td><td>{{ linha.manutencao }}</td><td>{{ linha.financiamento }}</td><td>{{ linha.depreciacao_acumulada }}</td><td>{{ linha.tco }}</td><td>{{ linha.co2_fossil_acumulado }}</td></tr>
+                  {% endfor %}
+                </tbody>
+              </table>
             </div>
-          {% endfor %}
-        </div>
+          </div>
+        {% endfor %}
       </section>
 
       <section class="audit-section">
-        <h2>7. Impacto ambiental</h2>
+        <h2>6. Impacto ambiental</h2>
         <div class="audit-card">
           <dl class="audit-dl">
-            <dt>Menor emissão fóssil</dt><dd>{{ comp.impacto_ambiental.menor_nome }}</dd>
+            <dt>menor emissão fóssil</dt><dd>{{ comp.impacto_ambiental.menor_nome }}</dd>
             <dt>CO₂ evitado</dt><dd>{{ comp.impacto_ambiental.co2_evitado }}</dd>
-            <dt>Árvores equivalentes</dt><dd>{{ comp.impacto_ambiental.arvores_equivalentes }} crescendo por {{ comp.impacto_ambiental.anos }} anos</dd>
-            <dt>Etanol</dt><dd>CO₂ da queima reportado como biogênico separado; não é ACV completo.</dd>
+            <dt>árvores equivalentes</dt><dd>{{ comp.impacto_ambiental.arvores_equivalentes }} crescendo por {{ comp.impacto_ambiental.anos }} anos</dd>
+            <dt>fatores</dt><dd>{{ comp.impacto_ambiental.fatores.energia }}; {{ comp.impacto_ambiental.fatores.gasolina }}; {{ comp.impacto_ambiental.fatores.etanol_biogenico }}; {{ comp.impacto_ambiental.fatores.diesel }}</dd>
+            <dt>etanol</dt><dd>CO₂ da queima reportado como biogênico separado; não é tratado como zero absoluto e não representa ACV completo.</dd>
           </dl>
         </div>
       </section>
     {% endfor %}
 
-    <section class="audit-section">
-      <h2>8. Fórmulas e limitações</h2>
-      <div class="audit-table-wrap">
-        <table class="audit-table">
-          <thead><tr><th>Item</th><th>Fórmula / regra</th></tr></thead>
-          <tbody>
-            {% for f in auditoria.formulas %}
-              <tr><td>{{ f.nome }}</td><td>{{ f.formula }}</td></tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-      <pre class="audit-code">{% for nota in auditoria.notas %}• {{ nota }}
-{% endfor %}</pre>
+    <section class="audit-section audit-reading">
+      <h2>7. Leitura técnica</h2>
+      <ul class="audit-list">
+        {% for nota in auditoria.notas %}
+          <li>{{ nota }}</li>
+        {% endfor %}
+      </ul>
     </section>
   </main>
 </body>
