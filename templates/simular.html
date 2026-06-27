@@ -11,9 +11,17 @@
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
   <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
   <style>
-    .plugve-flow-summary{display:none;margin:.5rem 0 1rem;padding:.45rem .75rem;border:1px solid #e5e7eb;border-radius:.5rem;background:#f9fafb;color:#4b5563;font-size:.78rem;line-height:1.35}
+    .plugve-flow-summary{display:none;margin:.5rem 0 1rem;padding:.45rem .75rem;border:1px solid #bbf7d0;border-radius:.5rem;background:#f9fffb;color:#4b5563;font-size:.78rem;line-height:1.35;position:relative;transition:box-shadow .18s ease,border-color .18s ease}
     .plugve-flow-summary strong{color:#1f2937}
-    .plugve-flow-summary span+span::before{content:" | ";color:#9ca3af;margin:0 .35rem}
+    .plugve-flow-summary .plugve-flow-line span+span::before{content:" | ";color:#9ca3af;margin:0 .35rem}
+    .plugve-flow-summary:hover,.plugve-flow-summary.plugve-flow-open{border-color:#86efac;box-shadow:0 10px 26px rgba(5,150,105,.10);z-index:30}
+    .plugve-flow-summary .plugve-flow-edit{display:none;margin-top:.55rem;padding-top:.55rem;border-top:1px solid #dcfce7;grid-template-columns:repeat(4,minmax(0,1fr));gap:.55rem;align-items:end}
+    .plugve-flow-summary:hover .plugve-flow-edit,.plugve-flow-summary.plugve-flow-open .plugve-flow-edit{display:grid}
+    .plugve-flow-summary .plugve-flow-edit label{display:block;font-size:.68rem;font-weight:800;color:#475569;margin-bottom:.18rem}
+    .plugve-flow-summary .plugve-flow-edit select,.plugve-flow-summary .plugve-flow-edit input{width:100%;border:1px solid #d1d5db;border-radius:.45rem;background:#fff;padding:.38rem .5rem;font-size:.76rem;color:#0f172a}
+    .plugve-flow-summary .plugve-flow-hint{font-size:.68rem;color:#64748b;align-self:center}
+    @media(max-width:760px){.plugve-flow-summary .plugve-flow-edit{grid-template-columns:1fr}.plugve-flow-summary .plugve-flow-line span{display:block}.plugve-flow-summary .plugve-flow-line span+span::before{content:"";margin:0}}
+    .plugve-usage-step{border:1px solid #bbf7d0;background:linear-gradient(135deg,#f0fdf4 0%,#ffffff 78%)}
     .plugve-progress-hidden{display:none !important}
     .plugve-card-selected{border-color:#2563eb !important;background:#eff6ff !important;box-shadow:0 6px 18px rgba(37,99,235,.12)}
     .plugve-select-note{font-size:11px;color:#6b7280;margin-top:3px}
@@ -420,6 +428,35 @@
       </section>
 
       <!-- =========================================================
+        3.2.1) USO PREVISTO
+      ========================================================= -->
+      <section id="secao_uso_previsto" class="border rounded-lg p-4 plugve-usage-step plugve-progress-hidden">
+        <h2 class="font-semibold text-lg mb-3 text-gray-800">Uso previsto</h2>
+        <p class="text-xs text-gray-500 mb-3">
+          Informe o horizonte de análise e a quilometragem anual antes de escolher os veículos.
+        </p>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+          <div>
+            <label class="block text-sm font-medium">Anos de uso</label>
+            <input type="number" id="uso_anos_input" value="10" min="1" class="mt-1 p-2 border rounded w-full" required>
+          </div>
+          <div>
+            <label class="block text-sm font-medium">KM por ano</label>
+            <input type="number" id="uso_km_ano_input" value="15000" min="1" class="mt-1 p-2 border rounded w-full" required>
+          </div>
+          <div class="flex gap-2 md:justify-end">
+            <button type="button" id="btn_cancelar_uso_previsto" class="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">
+              Cancelar
+            </button>
+            <button type="button" id="btn_proximo_uso_previsto" class="px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700">
+              Próximo
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- =========================================================
         3.3) ÁREA LIBERADA APÓS LOCALIZAÇÃO
       ========================================================= -->
       <div id="area_simulacao" class="hidden space-y-6">
@@ -722,7 +759,7 @@
           3.3.3) ENERGIA / COMBUSTÍVEL / USO
         ========================================================= -->
         <section id="bloco_parametros_uso" class="border rounded-lg p-4 plugve-progress-hidden">
-          <h2 class="font-semibold text-lg mb-3 text-gray-800">Energia, Combustível e Uso</h2>
+          <h2 class="font-semibold text-lg mb-3 text-gray-800">Reajustes anuais</h2>
 
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
 
@@ -850,14 +887,14 @@
               </p>
             </div>
 
-            <div>
+            <div class="hidden">
               <label class="block text-sm font-medium">Anos de uso</label>
               <input type="number" id="anos" name="anos" value="10" class="mt-1 p-2 border rounded w-full" required>
             </div>
 
-            <div>
+            <div class="hidden">
               <label class="block text-sm font-medium">KM por ano</label>
-              <input type="number" name="km_ano" value="15000" class="mt-1 p-2 border rounded w-full" required>
+              <input type="number" name="km_ano" id="km_ano_input" value="15000" class="mt-1 p-2 border rounded w-full" required>
             </div>
 
           </div>
@@ -2155,15 +2192,18 @@
     }
 
     function atualizarLiberacaoAreaSimulacao() {
-      const liberado = localizacaoValida();
+      const localOk = localizacaoValida();
+      const usoOk = !!window.plugveUsoPrevistoConfirmado;
       const status = document.getElementById("status_liberacao");
 
-      mostrarElemento("area_simulacao", liberado);
+      mostrarElemento("secao_uso_previsto", localOk && !usoOk);
+      mostrarElemento("area_simulacao", localOk && usoOk);
+      mostrarElemento("secao_localizacao", !localOk);
 
-      if (liberado) {
-        status.textContent = "";
-      } else {
-        status.textContent = "Preencha UF e município para liberar os campos da simulação.";
+      if (status) {
+        status.textContent = localOk
+          ? "Localização preenchida. Informe o uso previsto para liberar a seleção FIPE."
+          : "Preencha UF e município para liberar a próxima etapa.";
       }
     }
 
@@ -3623,7 +3663,7 @@
     function atualizarFluxoSequencialVeiculosPlugVE() {
       const grid = document.getElementById("grid_veiculos_tco");
       if (!grid) return;
-      const localOk = typeof localizacaoValida === "function" ? localizacaoValida() : false;
+      const localOk = (typeof localizacaoValida === "function" ? localizacaoValida() : false) && (typeof usoPrevistoConfirmadoPlugVE === "function" ? usoPrevistoConfirmadoPlugVE() : true);
       const tipo = tipoAtualFluxoTCO();
       const usaIcev = tipo !== "trocar_por_eletrico";
       const veOk = etapaVeConfiguradaPlugVE();
@@ -3980,6 +4020,157 @@
     (function () {
       let cenarioConfirmadoPlugVE = true;
       let detalhesLiberadosPlugVE = false;
+      if (typeof window.plugveUsoPrevistoConfirmado === "undefined") window.plugveUsoPrevistoConfirmado = false;
+
+      function usoPrevistoConfirmadoPlugVE() {
+        return !!window.plugveUsoPrevistoConfirmado;
+      }
+
+      function setUsoPrevistoConfirmadoPlugVE(valor) {
+        window.plugveUsoPrevistoConfirmado = !!valor;
+      }
+
+      function numeroInteiroUsoPlugVE(id, padrao = 0) {
+        const el = document.getElementById(id);
+        const valor = Number(String(el?.value || "").replace(/\D+/g, ""));
+        return Number.isFinite(valor) && valor > 0 ? valor : padrao;
+      }
+
+      function formatarKmResumoPlugVE(valor) {
+        const n = Number(valor || 0);
+        if (!Number.isFinite(n) || n <= 0) return "";
+        return n.toLocaleString("pt-BR", { maximumFractionDigits: 0 });
+      }
+
+      function sincronizarCamposUsoPrevistoPlugVE(origem = "etapa") {
+        const anosEtapa = document.getElementById("uso_anos_input");
+        const kmEtapa = document.getElementById("uso_km_ano_input");
+        const anosFinal = document.getElementById("anos");
+        const kmFinal = document.getElementById("km_ano_input") || document.querySelector("input[name='km_ano']");
+        const anosResumo = document.getElementById("resumo_anos_uso");
+        const kmResumo = document.getElementById("resumo_km_ano");
+
+        if (origem === "resumo") {
+          if (anosResumo && anosEtapa) anosEtapa.value = anosResumo.value || anosEtapa.value || "10";
+          if (kmResumo && kmEtapa) kmEtapa.value = kmResumo.value || kmEtapa.value || "15000";
+        }
+
+        const anos = numeroInteiroUsoPlugVE("uso_anos_input", numeroInteiroUsoPlugVE("anos", 10));
+        const km = numeroInteiroUsoPlugVE("uso_km_ano_input", numeroInteiroUsoPlugVE("km_ano_input", 15000));
+        if (anosEtapa && anos) anosEtapa.value = String(anos);
+        if (kmEtapa && km) kmEtapa.value = String(km);
+        if (anosFinal && anos) anosFinal.value = String(anos);
+        if (kmFinal && km) kmFinal.value = String(km);
+        if (anosResumo && anos) anosResumo.value = String(anos);
+        if (kmResumo && km) kmResumo.value = String(km);
+        return { anos, km };
+      }
+
+      function usoPrevistoValidoPlugVE() {
+        const { anos, km } = sincronizarCamposUsoPrevistoPlugVE();
+        return anos > 0 && km > 0;
+      }
+
+      function confirmarUsoPrevistoPlugVE() {
+        if (!usoPrevistoValidoPlugVE()) {
+          alert("Informe anos de uso e KM por ano para continuar.");
+          return;
+        }
+        setUsoPrevistoConfirmadoPlugVE(true);
+        sincronizarCamposUsoPrevistoPlugVE();
+        atualizarResumoTopoPlugVE();
+        window.atualizarLiberacaoAreaSimulacao?.();
+      }
+
+      function popularResumoUFPlugVE() {
+        const origem = document.getElementById("estado_uf");
+        const destino = document.getElementById("resumo_estado_uf");
+        if (!origem || !destino || destino.dataset.populado === "1") return;
+        destino.innerHTML = origem.innerHTML;
+        destino.dataset.populado = "1";
+      }
+
+      async function popularResumoMunicipiosPlugVE(uf, selecionado = "") {
+        const destino = document.getElementById("resumo_municipio_select");
+        if (!destino) return;
+        const mainMun = document.getElementById("municipio_select");
+        if (!uf) {
+          destino.innerHTML = "<option value=''>Selecione o estado</option>";
+          return;
+        }
+        const mainUf = document.getElementById("estado_uf")?.value || "";
+        if (mainMun && mainUf === uf && mainMun.options.length > 1) {
+          destino.innerHTML = mainMun.innerHTML;
+          destino.value = selecionado || mainMun.value || "";
+          return;
+        }
+        destino.innerHTML = "<option value=''>Carregando...</option>";
+        try {
+          const resp = await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${uf}/municipios`);
+          const lista = await resp.json();
+          const opts = ["<option value=''>Selecione</option>"].concat((Array.isArray(lista) ? lista : []).map(m => `<option value="${m.nome}">${m.nome}</option>`));
+          destino.innerHTML = opts.join("");
+          destino.value = selecionado || "";
+        } catch (e) {
+          destino.innerHTML = selecionado ? `<option value="${selecionado}">${selecionado}</option>` : "<option value=''>Município indisponível</option>";
+        }
+      }
+
+      async function aplicarResumoEditavelPlugVE() {
+        const resumoUf = document.getElementById("resumo_estado_uf");
+        const resumoMun = document.getElementById("resumo_municipio_select");
+        const mainUf = document.getElementById("estado_uf");
+        const mainMun = document.getElementById("municipio_select");
+        const novoUf = resumoUf?.value || mainUf?.value || "";
+        const novoMun = resumoMun?.value || mainMun?.value || "";
+        sincronizarCamposUsoPrevistoPlugVE("resumo");
+
+        if (mainUf && novoUf && mainUf.value !== novoUf) {
+          mainUf.value = novoUf;
+          if (typeof carregarMunicipiosPorUF === "function") await carregarMunicipiosPorUF(novoUf);
+        }
+        if (mainMun && novoMun) {
+          if (![...mainMun.options].some(o => o.value === novoMun)) {
+            const opt = new Option(novoMun, novoMun, true, true);
+            mainMun.add(opt);
+          }
+          mainMun.value = novoMun;
+        }
+        if (typeof atualizarPrecoCombustivelAutomatico === "function") atualizarPrecoCombustivelAutomatico();
+        if (typeof atualizarPrecoEnergiaAutomatico === "function") atualizarPrecoEnergiaAutomatico();
+        atualizarResumoTopoPlugVE();
+        window.atualizarLiberacaoAreaSimulacao?.();
+      }
+
+      function wireResumoTopoEventosPlugVE() {
+        const box = document.getElementById("plugve_fluxo_resumo");
+        if (!box || box.dataset.wired === "1") return;
+        box.dataset.wired = "1";
+        box.addEventListener("mouseenter", async () => {
+          popularResumoUFPlugVE();
+          const uf = document.getElementById("estado_uf")?.value || "";
+          const mun = document.getElementById("municipio_select")?.value || "";
+          const resumoUf = document.getElementById("resumo_estado_uf");
+          if (resumoUf) resumoUf.value = uf;
+          await popularResumoMunicipiosPlugVE(uf, mun);
+          sincronizarCamposUsoPrevistoPlugVE();
+        });
+        box.addEventListener("mouseleave", () => aplicarResumoEditavelPlugVE());
+        box.addEventListener("focusout", ev => {
+          if (!box.contains(ev.relatedTarget)) aplicarResumoEditavelPlugVE();
+        });
+        box.addEventListener("input", ev => {
+          if (["resumo_anos_uso", "resumo_km_ano"].includes(ev.target?.id)) sincronizarCamposUsoPrevistoPlugVE("resumo");
+        });
+        box.addEventListener("change", async ev => {
+          if (ev.target?.id === "resumo_estado_uf") {
+            await popularResumoMunicipiosPlugVE(ev.target.value, "");
+          }
+          if (["resumo_estado_uf", "resumo_municipio_select", "resumo_anos_uso", "resumo_km_ano"].includes(ev.target?.id)) {
+            sincronizarCamposUsoPrevistoPlugVE("resumo");
+          }
+        });
+      }
       const catalogoCurvasPlugVE = { modelos: new Set() };
       const cacheFipeMemoriaPlugVE = new Map();
       const requisicoesFipeEmCursoPlugVE = new Map();
@@ -4122,13 +4313,47 @@
       function atualizarResumoTopoPlugVE() {
         const box = document.getElementById("plugve_fluxo_resumo");
         if (!box) return;
-        const partes = [];
-        if (cenarioConfirmadoPlugVE) partes.push(`<span><strong>Comparação:</strong> ${nomeCenarioPlugVE(tipoAtualPlugVE())}</span>`);
         const uf = document.getElementById("estado_uf")?.value || "";
         const mun = document.getElementById("municipio_select")?.value || "";
+        const { anos, km } = sincronizarCamposUsoPrevistoPlugVE();
+        const partes = [];
         if (uf && mun) partes.push(`<span><strong>Localização:</strong> ${mun}/${uf}</span>`);
-        box.innerHTML = partes.join("");
-        box.style.display = partes.length ? "block" : "none";
+        if (usoPrevistoConfirmadoPlugVE() && anos && km) partes.push(`<span><strong>Uso:</strong> ${anos} anos</span><span><strong>Rodagem:</strong> ${formatarKmResumoPlugVE(km)} km/ano</span>`);
+
+        if (!partes.length) {
+          box.innerHTML = "";
+          box.style.display = "none";
+          return;
+        }
+
+        const ufOptions = document.getElementById("estado_uf")?.innerHTML || "<option value=''>Selecione</option>";
+        const munOptions = document.getElementById("municipio_select")?.innerHTML || (mun ? `<option value="${mun}">${mun}</option>` : "<option value=''>Selecione o estado</option>");
+        box.innerHTML = `
+          <div class="plugve-flow-line">${partes.join("")}</div>
+          <div class="plugve-flow-edit" aria-label="Editar resumo da simulação">
+            <div>
+              <label>Estado</label>
+              <select id="resumo_estado_uf">${ufOptions}</select>
+            </div>
+            <div>
+              <label>Município</label>
+              <select id="resumo_municipio_select">${munOptions}</select>
+            </div>
+            <div>
+              <label>Anos de uso</label>
+              <input type="number" id="resumo_anos_uso" min="1" value="${anos || 10}">
+            </div>
+            <div>
+              <label>KM por ano</label>
+              <input type="number" id="resumo_km_ano" min="1" value="${km || 15000}">
+            </div>
+          </div>`;
+        box.style.display = "block";
+        const resumoUf = document.getElementById("resumo_estado_uf");
+        const resumoMun = document.getElementById("resumo_municipio_select");
+        if (resumoUf) resumoUf.value = uf;
+        if (resumoMun) resumoMun.value = mun;
+        wireResumoTopoEventosPlugVE();
       }
 
       function atualizarRequiredPlugVE() {
@@ -4146,7 +4371,8 @@
       }
 
       function atualizarDetalhesProgressivosPlugVE() {
-        const localOk = typeof localizacaoValida === "function" ? localizacaoValida() : false;
+        const localOkBase = typeof localizacaoValida === "function" ? localizacaoValida() : false;
+        const localOk = localOkBase && usoPrevistoConfirmadoPlugVE();
         const usar = prefixosObrigatoriosPlugVE();
         const veSelecionado = localOk && usar.includes("ve") && prefixoSelecionadoPlugVE("ve");
         const atualSelecionado = localOk && usar.includes("atual") && prefixoSelecionadoPlugVE("atual");
@@ -4206,15 +4432,18 @@
       };
 
       window.atualizarLiberacaoAreaSimulacao = function () {
-        const liberado = typeof localizacaoValida === "function" ? localizacaoValida() : false;
+        const localOk = typeof localizacaoValida === "function" ? localizacaoValida() : false;
+        const usoOk = usoPrevistoConfirmadoPlugVE();
         const status = document.getElementById("status_liberacao");
-        setHiddenPlugVE("secao_localizacao", !cenarioConfirmadoPlugVE || liberado);
-        setHiddenPlugVE("area_simulacao", !liberado);
+        setHiddenPlugVE("secao_localizacao", !cenarioConfirmadoPlugVE || localOk);
+        setHiddenPlugVE("secao_uso_previsto", !localOk || usoOk);
+        setHiddenPlugVE("area_simulacao", !(localOk && usoOk));
         if (status) {
-          status.textContent = liberado
-            ? "Localização preenchida. Selecione os veículos FIPE; os campos complementares aparecem depois."
-            : "Preencha UF e município para liberar a seleção FIPE.";
+          status.textContent = localOk
+            ? "Localização preenchida. Informe o uso previsto para liberar a seleção FIPE."
+            : "Preencha UF e município para liberar a próxima etapa.";
         }
+        atualizarResumoTopoPlugVE();
         atualizarDetalhesProgressivosPlugVE();
       };
 
@@ -4421,9 +4650,21 @@
 
       document.addEventListener("DOMContentLoaded", function () {
         aplicarFormatacaoBlurPlugVE();
+        sincronizarCamposUsoPrevistoPlugVE();
+        document.getElementById("btn_proximo_uso_previsto")?.addEventListener("click", confirmarUsoPrevistoPlugVE);
+        document.getElementById("btn_cancelar_uso_previsto")?.addEventListener("click", function () {
+          window.location.href = "/";
+        });
+        ["uso_anos_input", "uso_km_ano_input"].forEach(id => {
+          document.getElementById(id)?.addEventListener("input", function () {
+            sincronizarCamposUsoPrevistoPlugVE();
+            atualizarResumoTopoPlugVE();
+          });
+        });
         // Mantém a etapa de localização visível na primeira abertura da página.
         // A função de liberação decide se deve esconder localização apenas depois de UF/município preenchidos.
         setHiddenPlugVE("area_simulacao", true);
+        setHiddenPlugVE("secao_uso_previsto", true);
         window.atualizarLiberacaoAreaSimulacao();
         atualizarDetalhesProgressivosPlugVE();
         document.querySelector("form")?.addEventListener("submit", function (ev) {
