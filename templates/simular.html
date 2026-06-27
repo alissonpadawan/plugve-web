@@ -193,6 +193,30 @@
     .plugve-phev-resumo.hidden{display:none!important}
 
     @media(max-width:760px){.plugve-fuel-compact-top{align-items:flex-start;flex-direction:column}.plugve-fuel-compact-price{align-self:flex-end}.plugve-fuel-prices{grid-template-columns:1fr}.plugve-fuel-modal-actions button{flex:1}}
+
+    /* Fluxo progressivo e perfis de uso por veículo */
+    .plugve-veiculos-grid.plugve-etapa-ve-only{max-width:760px;margin-left:auto;margin-right:auto;grid-template-columns:minmax(0,1fr)!important}
+    .plugve-veiculos-grid.plugve-etapa-icev-only{max-width:760px;margin-left:auto;margin-right:auto;grid-template-columns:minmax(0,1fr)!important}
+    .plugve-uso-slot{margin-top:.75rem}
+    .plugve-uso-card{border:1px solid #bbf7d0;border-radius:1rem;background:linear-gradient(135deg,#f0fdf4 0%,#ffffff 72%);box-shadow:0 10px 24px rgba(15,23,42,.05);padding:.85rem}
+    .plugve-uso-card label{font-size:.8rem;font-weight:800;color:#0f172a}
+    .plugve-uso-card input{margin-top:.25rem}
+    .plugve-uso-card #status_energia{font-size:.72rem;line-height:1.25;margin-top:.35rem}
+    .plugve-inline-profile{position:static!important;inset:auto!important;z-index:auto!important;background:transparent!important;align-items:stretch!important;justify-content:stretch!important;padding:0!important;margin:.75rem 0 0!important;width:100%!important}
+    .plugve-inline-profile.hidden{display:none!important}
+    .plugve-inline-profile:not(.hidden){display:block!important}
+    .plugve-inline-profile .plugve-fuel-modal-panel,.plugve-inline-profile .plugve-phev-modal-panel{width:100%!important;border-radius:1rem;box-shadow:0 10px 24px rgba(15,23,42,.05);border:1px solid #bbf7d0;background:linear-gradient(135deg,#f0fdf4 0%,#ffffff 72%);overflow:hidden}
+    .plugve-inline-profile .plugve-phev-modal-panel{border-color:#bfdbfe;background:linear-gradient(135deg,#eff6ff 0%,#fff7ed 100%)}
+    .plugve-inline-profile .plugve-finance-header{padding:.85rem 1rem .55rem;border-bottom:1px solid rgba(148,163,184,.25);background:transparent}
+    .plugve-inline-profile .plugve-finance-header h2{font-size:1rem;line-height:1.25}
+    .plugve-inline-profile .plugve-finance-header p{font-size:.74rem;line-height:1.25}
+    .plugve-inline-profile .plugve-finance-header button[id^="btn_fechar"]{display:none!important}
+    .plugve-inline-profile .plugve-finance-body{padding:.85rem 1rem 1rem}
+    .plugve-inline-profile .plugve-fuel-modal-card{padding:.85rem}
+    .plugve-inline-profile .plugve-fuel-modal-actions{margin-top:.8rem}
+    .plugve-inline-profile .plugve-fuel-modal-actions button{padding:.55rem .9rem;font-size:.86rem}
+    .plugve-phev-save-disabled,.plugve-fuel-save-disabled{background:#d1d5db!important;color:#64748b!important;cursor:not-allowed!important;box-shadow:none!important;opacity:1!important}
+
     @media print{
       header, footer, #form_simulacao_tco, .no-print{display:none !important}
       body{background:#fff !important;color:#111827 !important}
@@ -273,7 +297,7 @@
       <!-- =========================================================
         3.1) CARDS DE COMPARAÇÃO
       ========================================================= -->
-      <section id="secao_tipo_comparacao" class="border rounded-lg p-4 bg-blue-50">
+      <section id="secao_tipo_comparacao" class="border rounded-lg p-4 bg-blue-50 hidden">
         <h2 class="font-semibold text-lg mb-3 text-blue-700">Escolha o tipo de comparação</h2>
         <p class="text-sm text-gray-600 mb-4">
           
@@ -337,7 +361,7 @@
       <!-- =========================================================
         3.2) LOCALIZAÇÃO
       ========================================================= -->
-      <section id="secao_localizacao" class="border rounded-lg p-4 plugve-progress-hidden">
+      <section id="secao_localizacao" class="border rounded-lg p-4">
         <h2 class="font-semibold text-lg mb-3 text-gray-800">Localização</h2>
         <p class="text-xs text-gray-500 mb-3">
           
@@ -486,7 +510,7 @@
         <!-- =========================================================
           3.3.2) BLOCO PRINCIPAL DE VEÍCULOS
         ========================================================= -->
-        <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <section id="grid_veiculos_tco" class="plugve-veiculos-grid grid grid-cols-1 lg:grid-cols-2 gap-6">
 
           <!-- =========================
             VE
@@ -514,6 +538,8 @@
                 </p>
               </div>
             </div>
+
+            <div id="perfil_uso_ve_slot" class="plugve-uso-slot space-y-3"></div>
 
             <div id="dados_ve_box" class="space-y-2 plugve-progress-hidden mt-5 border rounded-lg p-4 bg-white shadow-sm">
               <input type="hidden" name="modelo_ve" id="modelo_ve">
@@ -612,6 +638,8 @@
               </div>
             </div>
 
+            <div id="perfil_uso_icev_slot" class="plugve-uso-slot space-y-3"></div>
+
             <div id="dados_icev_box" class="space-y-2 plugve-progress-hidden mt-5 border rounded-lg p-4 bg-white shadow-sm">
               <input type="hidden" name="modelo_icev" id="modelo_icev">
               <input type="hidden" name="ano_modelo_icev" id="ano_modelo_icev">
@@ -684,7 +712,7 @@
 
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
 
-            <div>
+            <div id="campo_energia_global" class="plugve-uso-card">
               <label class="block text-sm font-medium">Custo energia kW/h</label>
               <input type="checkbox" id="energia_manual_checkbox" class="hidden" aria-hidden="true" tabindex="-1">
 
@@ -702,7 +730,7 @@
               </p>
             </div>
 
-            <div class="md:col-span-2">
+            <div id="campo_combustivel_global" class="md:col-span-2">
               <label class="block text-sm font-medium">Valor do combustível (R$/L)</label>
               <input type="hidden" name="fuel_tipo_detectado" id="fuel_tipo_detectado" value="gasolina">
               <input type="hidden" name="fuel_percent_etanol" id="fuel_percent_etanol" value="0">
@@ -906,7 +934,7 @@
             <button type="button" id="btn_cancelar_combustivel_tco" class="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">
               Cancelar
             </button>
-            <button type="button" id="btn_salvar_combustivel_tco" class="px-4 py-2 rounded-lg bg-green-600 text-white font-semibold hover:bg-green-700">
+            <button type="button" id="btn_salvar_combustivel_tco" class="px-4 py-2 rounded-lg bg-green-600 text-white font-semibold hover:bg-green-700 plugve-fuel-save-disabled" disabled>
               Salvar
             </button>
           </div>
@@ -974,7 +1002,7 @@
             <button type="button" id="btn_cancelar_phev_tco" class="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">
               Cancelar
             </button>
-            <button type="button" id="btn_salvar_phev_tco" class="px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700">
+            <button type="button" id="btn_salvar_phev_tco" class="px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 plugve-phev-save-disabled" disabled>
               Salvar
             </button>
           </div>
@@ -2400,6 +2428,7 @@
         atualizarIpva(prefixo);
         atualizarInterfaceCombustivelPorVeiculo(prefixo, true);
         if (typeof atualizarInterfacePhevPorVeiculo === "function") atualizarInterfacePhevPorVeiculo(prefixo, true);
+        if (typeof atualizarDetalhesProgressivosPlugVE === "function") atualizarDetalhesProgressivosPlugVE();
 
         const detalheDepreciacao = montarDetalheDepreciacaoTCO(prefixo, data, marcaSelect, modeloSelect, anoSelect, valor, nomeModelo, anoModeloStr, combustivelStr);
         await consultarDepreciacaoTCO(prefixo, detalheDepreciacao);
@@ -3009,11 +3038,13 @@
       renderizarCardCombustivelTCO();
       modal.classList.remove("hidden");
       modal.setAttribute("aria-hidden", "false");
+      if (typeof atualizarFluxoSequencialVeiculosPlugVE === "function") atualizarFluxoSequencialVeiculosPlugVE();
     }
 
     function fecharModalCombustivelTCO() {
       const modal = document.getElementById("modal_combustivel_tco");
       if (!modal) return;
+      if (modal.classList.contains("plugve-inline-profile")) return;
       modal.classList.add("hidden");
       modal.setAttribute("aria-hidden", "true");
     }
@@ -3031,6 +3062,7 @@
       renderizarCardCombustivelTCO();
       capturarEstadoFormularioTCO();
       fecharModalCombustivelTCO();
+      if (typeof atualizarPerfisInlinePlugVE === "function") atualizarPerfisInlinePlugVE();
     }
 
     function salvarModalCombustivelTCO() {
@@ -3052,6 +3084,7 @@
       renderizarCardCombustivelTCO();
       capturarEstadoFormularioTCO();
       fecharModalCombustivelTCO();
+      if (typeof atualizarPerfisInlinePlugVE === "function") atualizarPerfisInlinePlugVE();
     }
 
     function atualizarInterfaceCombustivelPorVeiculo(prefixoPreferido, abrirSeFlex = false) {
@@ -3072,6 +3105,7 @@
       }
 
       renderizarCardCombustivelTCO();
+      if (typeof atualizarPerfisInlinePlugVE === "function") atualizarPerfisInlinePlugVE();
 
       if (abrirSeFlex && modoCombustivelTCO === "flex") {
         if (chave && chave !== ultimoFlexAutoAbertoTCO) {
@@ -3322,11 +3356,13 @@
       prepararModalPhevTCO();
       modal.classList.remove("hidden");
       modal.setAttribute("aria-hidden", "false");
+      if (typeof atualizarFluxoSequencialVeiculosPlugVE === "function") atualizarFluxoSequencialVeiculosPlugVE();
     }
 
     function fecharModalPhevTCO() {
       const modal = document.getElementById("modal_phev_tco");
       if (!modal) return;
+      if (modal.classList.contains("plugve-inline-profile")) return;
       modal.classList.add("hidden");
       modal.setAttribute("aria-hidden", "true");
     }
@@ -3345,6 +3381,7 @@
       renderizarCardPhevTCO();
       capturarEstadoFormularioTCO();
       fecharModalPhevTCO();
+      if (typeof atualizarPerfisInlinePlugVE === "function") atualizarPerfisInlinePlugVE();
     }
 
     function salvarModalPhevTCO() {
@@ -3362,6 +3399,7 @@
       renderizarCardPhevTCO();
       capturarEstadoFormularioTCO();
       fecharModalPhevTCO();
+      if (typeof atualizarPerfisInlinePlugVE === "function") atualizarPerfisInlinePlugVE();
     }
 
     function atualizarInterfacePhevPorVeiculo(prefixoPreferido, abrirSePhev = false) {
@@ -3384,6 +3422,7 @@
         chavePhevAtivaTCO = chave;
       }
       renderizarCardPhevTCO();
+      if (typeof atualizarPerfisInlinePlugVE === "function") atualizarPerfisInlinePlugVE();
       if (abrirSePhev && chave && chave !== ultimoPhevAutoAbertoTCO) {
         ultimoPhevAutoAbertoTCO = chave;
         setTimeout(abrirModalPhevTCO, 140);
@@ -3422,6 +3461,117 @@
         if (ev.target === this) fecharModalPhevTCO();
       });
     }
+
+
+    // =========================================================
+    // 6.5.2) Layout progressivo: perfis abaixo de cada veículo
+    // =========================================================
+
+    function setHiddenInlineTCO(id, esconder) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.classList.toggle("hidden", !!esconder);
+      el.classList.toggle("plugve-progress-hidden", !!esconder);
+    }
+
+    function tipoAtualFluxoTCO() {
+      return document.getElementById("tipo_comparacao")?.value || "dois_carros_novos";
+    }
+
+    function prefixoSelecionadoFluxoTCO(prefixo) {
+      const anoSelecionado = !!document.getElementById(`${prefixo}_ano`)?.value;
+      const nomePreenchido = !!document.getElementById(`modelo_${prefixo}`)?.value;
+      const precoPreenchido = !!document.getElementById(`preco_${prefixo}`)?.value;
+      return anoSelecionado || (nomePreenchido && precoPreenchido);
+    }
+
+    function reorganizarCamposUsoPorVeiculoPlugVE() {
+      const slotVe = document.getElementById("perfil_uso_ve_slot");
+      const slotIcev = document.getElementById("perfil_uso_icev_slot");
+      const energia = document.getElementById("campo_energia_global");
+      const combustivel = document.getElementById("campo_combustivel_global");
+      const flexInline = document.getElementById("modal_combustivel_tco");
+      const phevInline = document.getElementById("modal_phev_tco");
+      const phevCard = document.getElementById("plugve_phev_card");
+
+      if (slotVe && energia && energia.parentElement !== slotVe) slotVe.appendChild(energia);
+      if (slotVe && phevCard && phevCard.parentElement !== slotVe) slotVe.appendChild(phevCard);
+      if (slotVe && phevInline && phevInline.parentElement !== slotVe) {
+        phevInline.classList.remove("plugve-finance-modal");
+        phevInline.classList.add("plugve-inline-profile", "hidden");
+        phevInline.setAttribute("aria-hidden", "false");
+        slotVe.appendChild(phevInline);
+      }
+
+      if (slotIcev && combustivel && combustivel.parentElement !== slotIcev) slotIcev.appendChild(combustivel);
+      if (slotIcev && flexInline && flexInline.parentElement !== slotIcev) {
+        flexInline.classList.remove("plugve-finance-modal");
+        flexInline.classList.add("plugve-inline-profile", "hidden");
+        flexInline.setAttribute("aria-hidden", "false");
+        slotIcev.appendChild(flexInline);
+      }
+    }
+
+    function etapaVeConfiguradaPlugVE() {
+      if (!prefixoSelecionadoFluxoTCO("ve")) return false;
+      if (typeof ehPhevSelecionadoTCO === "function" && ehPhevSelecionadoTCO()) {
+        return document.getElementById("phev_configurado")?.value === "1";
+      }
+      return true;
+    }
+
+    function etapaCombustaoConfiguradaPlugVE(prefixo) {
+      const p = prefixo || prefixoCombustaoPreferencialTCO();
+      if (!prefixoSelecionadoFluxoTCO(p)) return false;
+      const modo = modoCombustivelSelecionadoTCO(p);
+      if (modo === "flex") return document.getElementById("fuel_flex_configurado")?.value === "1";
+      return true;
+    }
+
+    function atualizarFluxoSequencialVeiculosPlugVE() {
+      const grid = document.getElementById("grid_veiculos_tco");
+      if (!grid) return;
+      const localOk = typeof localizacaoValida === "function" ? localizacaoValida() : false;
+      const tipo = tipoAtualFluxoTCO();
+      const usaIcev = tipo !== "trocar_por_eletrico";
+      const veOk = etapaVeConfiguradaPlugVE();
+
+      if (localOk && usaIcev && !veOk) {
+        setHiddenInlineTCO("coluna_icev", true);
+        grid.classList.add("plugve-etapa-ve-only");
+      } else {
+        if (usaIcev) setHiddenInlineTCO("coluna_icev", false);
+        grid.classList.remove("plugve-etapa-ve-only");
+      }
+    }
+
+    function atualizarPerfisInlinePlugVE() {
+      reorganizarCamposUsoPorVeiculoPlugVE();
+      const energia = document.getElementById("campo_energia_global");
+      const combustivel = document.getElementById("campo_combustivel_global");
+      const flexInline = document.getElementById("modal_combustivel_tco");
+      const phevInline = document.getElementById("modal_phev_tco");
+      const fuelCard = document.getElementById("plugve_fuel_card");
+
+      const veSelecionado = prefixoSelecionadoFluxoTCO("ve");
+      const phev = typeof ehPhevSelecionadoTCO === "function" && ehPhevSelecionadoTCO();
+      if (energia) energia.classList.toggle("hidden", !veSelecionado || phev);
+      if (phevInline) phevInline.classList.toggle("hidden", !veSelecionado || !phev);
+      if (phev && typeof prepararModalPhevTCO === "function") prepararModalPhevTCO();
+
+      const prefixoComb = prefixoCombustaoPreferencialTCO();
+      const combustaoSelecionada = prefixoSelecionadoFluxoTCO(prefixoComb);
+      const modo = modoCombustivelSelecionadoTCO(prefixoComb);
+      const flex = combustaoSelecionada && modo === "flex";
+
+      if (combustivel) combustivel.classList.toggle("hidden", !combustaoSelecionada || flex);
+      if (fuelCard) fuelCard.classList.toggle("hidden", !combustaoSelecionada || flex);
+      if (flexInline) flexInline.classList.toggle("hidden", !flex);
+      if (flex && typeof prepararModalCombustivelTCO === "function") prepararModalCombustivelTCO();
+
+      atualizarFluxoSequencialVeiculosPlugVE();
+    }
+
 
     // =========================================================
     // 6.6) ANEEL
@@ -3545,6 +3695,8 @@
     // 6.7) DOMContentLoaded
     // =========================================================
     document.addEventListener("DOMContentLoaded", function () {
+      reorganizarCamposUsoPorVeiculoPlugVE();
+
       // cards
       document.querySelectorAll(".card-cenario").forEach(card => {
         card.addEventListener("click", function () {
@@ -3564,10 +3716,12 @@
       document.getElementById("ve_marca")?.addEventListener("change", function () {
         limparEstadoVeiculoSelecionadoTCO("ve");
         carregarModelos("ve_marca", "ve_modelo", "ve_ano");
+        if (typeof atualizarDetalhesProgressivosPlugVE === "function") atualizarDetalhesProgressivosPlugVE();
       });
       document.getElementById("ve_modelo")?.addEventListener("change", function () {
         limparEstadoVeiculoSelecionadoTCO("ve");
         carregarAnos("ve_marca", "ve_modelo", "ve_ano");
+        if (typeof atualizarDetalhesProgressivosPlugVE === "function") atualizarDetalhesProgressivosPlugVE();
       });
       document.getElementById("ve_ano")?.addEventListener("change", function () {
         limparEstadoVeiculoSelecionadoTCO("ve");
@@ -3577,10 +3731,12 @@
       document.getElementById("icev_marca")?.addEventListener("change", function () {
         limparEstadoVeiculoSelecionadoTCO("icev");
         carregarModelos("icev_marca", "icev_modelo", "icev_ano");
+        if (typeof atualizarDetalhesProgressivosPlugVE === "function") atualizarDetalhesProgressivosPlugVE();
       });
       document.getElementById("icev_modelo")?.addEventListener("change", function () {
         limparEstadoVeiculoSelecionadoTCO("icev");
         carregarAnos("icev_marca", "icev_modelo", "icev_ano");
+        if (typeof atualizarDetalhesProgressivosPlugVE === "function") atualizarDetalhesProgressivosPlugVE();
       });
       document.getElementById("icev_ano")?.addEventListener("change", function () {
         limparEstadoVeiculoSelecionadoTCO("icev");
@@ -3659,6 +3815,7 @@
       inicializarEventosPhevTCO();
       renderizarCardCombustivelTCO();
       renderizarCardPhevTCO();
+      atualizarPerfisInlinePlugVE();
       if (localizacaoValida()) atualizarPrecoCombustivelAutomatico();
 
       ["ve", "icev", "atual"].forEach(prefixo => {
@@ -3687,7 +3844,7 @@
 
   <script>
     (function () {
-      let cenarioConfirmadoPlugVE = false;
+      let cenarioConfirmadoPlugVE = true;
       let detalhesLiberadosPlugVE = false;
       const catalogoCurvasPlugVE = { modelos: new Set() };
       const cacheFipeMemoriaPlugVE = new Map();
@@ -3856,15 +4013,25 @@
 
       function atualizarDetalhesProgressivosPlugVE() {
         const localOk = typeof localizacaoValida === "function" ? localizacaoValida() : false;
-        detalhesLiberadosPlugVE = localOk && todosVeiculosSelecionadosPlugVE();
         const usar = prefixosObrigatoriosPlugVE();
-        setHiddenPlugVE("dados_carro_atual_box", !(detalhesLiberadosPlugVE && usar.includes("atual")));
-        setHiddenPlugVE("dados_ve_box", !(detalhesLiberadosPlugVE && usar.includes("ve")));
-        setHiddenPlugVE("dados_icev_box", !(detalhesLiberadosPlugVE && usar.includes("icev")));
+        const veSelecionado = localOk && usar.includes("ve") && prefixoSelecionadoPlugVE("ve");
+        const atualSelecionado = localOk && usar.includes("atual") && prefixoSelecionadoPlugVE("atual");
+        const icevSelecionado = localOk && usar.includes("icev") && prefixoSelecionadoPlugVE("icev");
+        const veOk = typeof etapaVeConfiguradaPlugVE === "function" ? etapaVeConfiguradaPlugVE() : veSelecionado;
+        const combustaoOk = usar.includes("icev")
+          ? (typeof etapaCombustaoConfiguradaPlugVE === "function" ? etapaCombustaoConfiguradaPlugVE("icev") : icevSelecionado)
+          : true;
+        const atualOk = usar.includes("atual") ? atualSelecionado : true;
+        detalhesLiberadosPlugVE = localOk && veOk && combustaoOk && atualOk;
+
+        setHiddenPlugVE("dados_carro_atual_box", !(localOk && usar.includes("atual") && atualSelecionado));
+        setHiddenPlugVE("dados_ve_box", !(localOk && usar.includes("ve") && veSelecionado));
+        setHiddenPlugVE("dados_icev_box", !(localOk && usar.includes("icev") && icevSelecionado));
         setHiddenPlugVE("bloco_parametros_uso", !detalhesLiberadosPlugVE);
         setHiddenPlugVE("btn_simular", !detalhesLiberadosPlugVE);
         atualizarRequiredPlugVE();
         atualizarResumoTopoPlugVE();
+        if (typeof atualizarPerfisInlinePlugVE === "function") atualizarPerfisInlinePlugVE();
       }
 
       window.atualizarCardsCenario = function () {
