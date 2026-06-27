@@ -2,7 +2,7 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Relatório TCO</title>
+    <title>Relatório de Custo Total</title>
     <style>
         @page {
             size: A4;
@@ -30,10 +30,10 @@
 </head>
 <body>
     <div class="container">
-        <h1>Relatório de Custo Total de Propriedade (TCO)</h1>
+        <h1>Relatório de Custo Total de Propriedade</h1>
 
         <div class="intro-text">
-            <p>Este relatório apresenta uma análise comparativa do <strong>Custo Total de Propriedade (TCO)</strong> entre um Veículo Elétrico (VE) e um Veículo a Combustão Interna (ICEV), com base nos parâmetros informados. O TCO considera não apenas o preço de compra, mas todos os custos associados à posse de um veículo ao longo de um período determinado, incluindo combustível/energia, manutenção, impostos, seguro e depreciação. A seguir, são apresentados os resultados financeiros e gráficos que detalham essa comparação.</p>
+            <p>Este relatório apresenta uma análise comparativa do <strong>Custo Total de Propriedade</strong> entre um Veículo Elétrico (VE) e um Veículo a Combustão Interna (ICEV), com base nos parâmetros informados. O custo total considera não apenas o preço de compra, mas todos os custos associados à posse de um veículo ao longo de um período determinado, incluindo combustível/energia, manutenção, impostos, seguro e depreciação. A seguir, são apresentados os resultados financeiros e gráficos que detalham essa comparação.</p>
         </div>
 
         <h2>Parâmetros da Simulação</h2>
@@ -75,7 +75,7 @@
             </thead>
             <tbody>
                 <tr>
-                    <td><strong>TCO Final (Com Depreciação)</strong></td>
+                    <td><strong>Custo total final (com depreciação)</strong></td>
                     <td>{{ resultado.ve_final }}</td>
                     <td>{{ resultado.icev_final }}</td>
                 </tr>
@@ -85,7 +85,7 @@
                     <td>{{ resultado.custo_km_icev }}</td>
                 </tr>
                 <tr>
-                    <td><strong>TCO Final (Sem Depreciação)</strong></td>
+                    <td><strong>Custo total final (sem depreciação)</strong></td>
                     <td>{{ resultado.ve_final_s }}</td>
                     <td>{{ resultado.icev_final_s }}</td>
                 </tr>
@@ -99,15 +99,15 @@
         {% endif %}
 
         <div class="graph-container">
-            <img src="data:image/png;base64,{{ grafico_base64 }}" alt="Gráfico TCO com Depreciação">
+            <img src="data:image/png;base64,{{ grafico_base64 }}" alt="Gráfico de custo total com depreciação">
         </div>
         
         <div class="graph-container">
-            <img src="data:image/png;base64,{{ grafico_sem_depreciacao_base64 }}" alt="Gráfico TCO sem Depreciação">
+            <img src="data:image/png;base64,{{ grafico_sem_depreciacao_base64 }}" alt="Gráfico de custo total sem depreciação">
         </div>
 
         <div class="summary-box">
-            <p><strong>Resumo Comparativo:</strong> O TCO do elétrico tende a ser menor quando a depreciação e custos fixos são favoráveis, especialmente a longo prazo. Avalie sempre o custo por km, pois ele traduz a economia real no seu uso!</p>
+            <p><strong>Resumo Comparativo:</strong> O custo total do elétrico tende a ser menor quando a depreciação e custos fixos são favoráveis, especialmente a longo prazo. Avalie sempre o custo por km, pois ele traduz a economia real no seu uso!</p>
         </div>
 
     </div>

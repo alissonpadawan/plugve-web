@@ -5,7 +5,7 @@
     0) HEAD
   ========================================================= -->
   <meta charset="UTF-8">
-  <title>Simulador TCO | CurVE</title>
+  <title>Simulador CurVE</title>
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/favicon.png') }}">
   <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/favicon-180.png') }}">
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
@@ -57,7 +57,7 @@
     .plugve-component-section{border:1px solid #e2e8f0;border-radius:1rem;background:#fff;padding:1rem 1.05rem;margin-bottom:1.25rem}
     .plugve-component-section h4{font-size:1rem;font-weight:900;color:#0f172a}
     .plugve-component-section p{font-size:.76rem;color:#64748b;margin-top:.2rem}
-    .plugve-component-table{width:100%;border-collapse:collapse;min-width:860px}
+    .plugve-component-table{width:100%;border-collapse:collapse;min-width:760px}
     .plugve-component-table th{background:#f8fafc;color:#334155;font-size:.74rem;text-align:left;padding:.72rem .82rem;border-bottom:1px solid #e2e8f0}
     .plugve-component-table th:not(:first-child),.plugve-component-table td:not(:first-child){text-align:right}
     .plugve-component-table td{padding:.76rem .82rem;border-bottom:1px solid #f1f5f9;font-size:.8rem;vertical-align:middle}
@@ -65,6 +65,12 @@
     .plugve-component-table td:first-child small{display:block;color:#64748b;font-size:.68rem;line-height:1.35;margin-top:.12rem}
     .plugve-component-table td:not(:first-child){font-weight:800;color:#0f172a;font-variant-numeric:tabular-nums;white-space:nowrap}
     .plugve-component-table .plugve-winner-cell{color:#166534;background:#f0fdf4}
+    .plugve-table-group-row td{background:#eef6f1!important;color:#047857!important;text-transform:uppercase;letter-spacing:.05em;font-size:.72rem;font-weight:900;text-align:left!important;border-top:1px solid #bbf7d0;border-bottom:1px solid #bbf7d0}
+    .plugve-versus-final-row td:first-child{background:#fbfdff}
+    .plugve-versus-final-row td[colspan]{text-align:right!important;font-weight:900;color:#0f172a;background:#fbfdff}
+    .plugve-versus-section{padding:0;overflow:hidden}
+    .plugve-versus-section>div:first-child{padding:1rem 1.05rem .5rem}
+    .plugve-versus-section .overflow-x-auto{padding:0 1.05rem 1rem}
     .plugve-audit-link{display:inline-flex;align-items:center;justify-content:center;padding:.5rem .9rem;border-radius:.65rem;background:#0f172a;color:#fff;font-weight:800;font-size:.88rem;text-decoration:none}
     .plugve-audit-link:hover{background:#111827;color:#fff}
     .plugve-annual-details{border:1px solid #e2e8f0;border-radius:1rem;background:#fbfdff;margin-bottom:1.25rem;padding:.9rem 1rem}
@@ -337,7 +343,7 @@
     {% endwith %}
 
     <h1 class="text-2xl font-bold mb-4 text-blue-600">
-      Simulador de Custo Total de Propriedade (TCO)
+      Simulador de Custo Total de Propriedade
     </h1>
 
     <p class="mb-5 text-gray-700 text-sm max-w-3xl">
@@ -1170,14 +1176,14 @@
               {% if comp.detalhes %}
                 <section class="plugve-comparison-hero mb-5">
                   <div>
-                    <span class="plugve-comparison-kicker">Melhor resultado no horizonte</span>
+                    <span class="plugve-comparison-kicker">Resultado mais econômico no horizonte</span>
                     <h4>{{ comp.vencedor_nome }}</h4>
                     <p>Menor custo total de propriedade entre os veículos comparados.</p>
                   </div>
                   <div class="plugve-comparison-gain">
                     <span>Economia estimada</span>
                     <strong>{{ comp.economia }}</strong>
-                    <small>{{ comp.economia_percentual }} em relação à alternativa de maior TCO</small>
+                    <small>{{ comp.economia_percentual }} em relação à alternativa de maior custo total</small>
                   </div>
                 </section>
 
@@ -1196,121 +1202,74 @@
                   {% endfor %}
                 </div>
 
-                {% if comp.comparativo_indicadores %}
-                  <div class="plugve-comparison-table-wrap mb-5">
-                    <table class="plugve-comparison-table">
-                      <thead>
-                        <tr>
-                          <th>Indicador</th>
-                          <th>{{ comp.detalhes[0].nome_curto }}</th>
-                          <th>{{ comp.detalhes[1].nome_curto }}</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {% for linha in comp.comparativo_indicadores %}
-                          <tr>
-                            <td>
-                              <strong>{{ linha.rotulo }}</strong>
-                              {% if linha.ajuda %}<small>{{ linha.ajuda }}</small>{% endif %}
-                            </td>
-                            <td class="{% if linha.melhor == 1 %}plugve-best-value{% endif %}">
-                              <span>{{ linha.valor_1 }}</span>
-                              {% if linha.melhor == 1 %}<em>Melhor</em>{% endif %}
-                            </td>
-                            <td class="{% if linha.melhor == 2 %}plugve-best-value{% endif %}">
-                              <span>{{ linha.valor_2 }}</span>
-                              {% if linha.melhor == 2 %}<em>Melhor</em>{% endif %}
-                            </td>
-                          </tr>
-                        {% endfor %}
-                      </tbody>
-                    </table>
-                  </div>
-                {% endif %}
-
-                {% if comp.comparativo_componentes %}
-                  <section class="plugve-component-section">
+                {% if comp.comparativo_indicadores or comp.comparativo_componentes %}
+                  <section class="plugve-component-section plugve-versus-section">
                     <div class="mb-3">
-                      <span class="plugve-comparison-kicker">Comparação detalhada por componente</span>
-                      <h4>Veja onde cada alternativa pesa no horizonte.</h4>
-                      <p>Os componentes separam uso, tributos, seguro, manutenção, depreciação, financiamento, CO₂ e indicadores por km.</p>
+                      <span class="plugve-comparison-kicker">Comparação lado a lado</span>
+                      <h4>Valores principais da simulação</h4>
+                      <p>Os itens abaixo comparam os dois veículos no mesmo horizonte. O valor mais favorável fica destacado em verde.</p>
                     </div>
-                    {% if comp.comparativo_componentes_resumo %}
-                      <div class="plugve-km-impact mb-3">
-                        <span>Diferença no horizonte: <b>{{ comp.comparativo_componentes_resumo.diferenca_horizonte }}</b></span>
-                        <span>Diferença percentual: <b>{{ comp.comparativo_componentes_resumo.diferenca_percentual }}</b></span>
-                        <span>Por ano: <b>{{ comp.comparativo_componentes_resumo.diferenca_por_ano }}</b></span>
-                        <span>A cada 10.000 km: <b>{{ comp.comparativo_componentes_resumo.diferenca_10000km }}</b></span>
-                      </div>
-                    {% endif %}
                     <div class="overflow-x-auto">
-                      <table class="plugve-component-table">
+                      <table class="plugve-component-table plugve-versus-table">
                         <thead>
                           <tr>
-                            <th>Componente</th>
+                            <th>Item</th>
                             <th>{{ comp.detalhes[0].nome_curto }}</th>
                             <th>{{ comp.detalhes[1].nome_curto }}</th>
-                            <th>Diferença</th>
-                            <th>Melhor</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {% for linha in comp.comparativo_componentes %}
-                            <tr>
-                              <td>
-                                <strong>{{ linha.rotulo }}</strong>
-                                {% if linha.ajuda %}<small>{{ linha.ajuda }}</small>{% endif %}
-                              </td>
-                              <td class="{% if linha.melhor == 1 %}plugve-winner-cell{% endif %}">{{ linha.valor_1 }}</td>
-                              <td class="{% if linha.melhor == 2 %}plugve-winner-cell{% endif %}">{{ linha.valor_2 }}</td>
-                              <td>{{ linha.diferenca }}</td>
-                              <td>{{ linha.melhor_texto }}</td>
+                          {% if comp.comparativo_indicadores %}
+                            <tr class="plugve-table-group-row"><td colspan="3">Resumo da comparação</td></tr>
+                            {% for linha in comp.comparativo_indicadores %}
+                              <tr>
+                                <td>
+                                  <strong>{{ linha.rotulo }}</strong>
+                                  {% if linha.ajuda %}<small>{{ linha.ajuda }}</small>{% endif %}
+                                </td>
+                                <td class="{% if linha.melhor == 1 %}plugve-winner-cell{% endif %}">{{ linha.valor_1 }}</td>
+                                <td class="{% if linha.melhor == 2 %}plugve-winner-cell{% endif %}">{{ linha.valor_2 }}</td>
+                              </tr>
+                            {% endfor %}
+                          {% endif %}
+
+                          {% if comp.comparativo_componentes %}
+                            <tr class="plugve-table-group-row"><td colspan="3">Componentes do custo total</td></tr>
+                            {% for linha in comp.comparativo_componentes %}
+                              <tr>
+                                <td>
+                                  <strong>{{ linha.rotulo }}</strong>
+                                  {% if linha.ajuda %}<small>{{ linha.ajuda }}</small>{% endif %}
+                                </td>
+                                <td class="{% if linha.melhor == 1 %}plugve-winner-cell{% endif %}">{{ linha.valor_1 }}</td>
+                                <td class="{% if linha.melhor == 2 %}plugve-winner-cell{% endif %}">{{ linha.valor_2 }}</td>
+                              </tr>
+                            {% endfor %}
+                          {% endif %}
+
+                          {% if comp.comparativo_componentes_resumo %}
+                            <tr class="plugve-table-group-row"><td colspan="3">Resumo do versus</td></tr>
+                            <tr class="plugve-versus-final-row">
+                              <td><strong>Diferença no horizonte</strong></td>
+                              <td colspan="2">{{ comp.comparativo_componentes_resumo.diferenca_horizonte }}</td>
                             </tr>
-                          {% endfor %}
+                            <tr class="plugve-versus-final-row">
+                              <td><strong>Diferença percentual</strong></td>
+                              <td colspan="2">{{ comp.comparativo_componentes_resumo.diferenca_percentual }}</td>
+                            </tr>
+                            <tr class="plugve-versus-final-row">
+                              <td><strong>Diferença por ano</strong></td>
+                              <td colspan="2">{{ comp.comparativo_componentes_resumo.diferenca_por_ano }}</td>
+                            </tr>
+                            <tr class="plugve-versus-final-row">
+                              <td><strong>Diferença a cada 10.000 km</strong></td>
+                              <td colspan="2">{{ comp.comparativo_componentes_resumo.diferenca_10000km }}</td>
+                            </tr>
+                          {% endif %}
                         </tbody>
                       </table>
                     </div>
                   </section>
-                {% endif %}
-
-                {% if comp.memoria_anual_comparativa %}
-                  <details class="plugve-annual-details">
-                    <summary>Ver memória anual resumida da simulação</summary>
-                    <div class="plugve-annual-table-wrap mt-3">
-                      <table class="plugve-annual-table">
-                        <thead>
-                          <tr>
-                            <th>Ano</th>
-                            <th>Uso C1</th>
-                            <th>Uso C2</th>
-                            <th>TCO C1</th>
-                            <th>TCO C2</th>
-                            <th>Diferença</th>
-                            <th>Revenda C1</th>
-                            <th>Revenda C2</th>
-                            <th>CO₂ C1</th>
-                            <th>CO₂ C2</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {% for linha in comp.memoria_anual_comparativa %}
-                            <tr>
-                              <td>{{ linha.ano }}</td>
-                              <td>{{ linha.v1_uso }}</td>
-                              <td>{{ linha.v2_uso }}</td>
-                              <td>{{ linha.v1_tco }}</td>
-                              <td>{{ linha.v2_tco }}</td>
-                              <td>{{ linha.diferenca_tco }}</td>
-                              <td>{{ linha.v1_revenda }}</td>
-                              <td>{{ linha.v2_revenda }}</td>
-                              <td>{{ linha.v1_co2 }}</td>
-                              <td>{{ linha.v2_co2 }}</td>
-                            </tr>
-                          {% endfor %}
-                        </tbody>
-                      </table>
-                    </div>
-                  </details>
                 {% endif %}
 
                 {% if comp.custo_km_comparacao %}
@@ -1318,7 +1277,7 @@
                     <div class="plugve-km-copy">
                       <span class="plugve-comparison-kicker">Custo total por quilômetro</span>
                       <h4>{{ comp.custo_km_comparacao.vencedor_nome }} apresenta o menor custo por km.</h4>
-                      <p>O indicador considera o TCO completo dividido pela quilometragem total simulada; não representa apenas energia ou combustível.</p>
+                      <p>O indicador considera o custo total completo dividido pela quilometragem total simulada; não representa apenas energia ou combustível.</p>
                     </div>
                     <div class="plugve-km-values">
                       <div class="{% if comp.custo_km_comparacao.melhor == 1 %}plugve-km-best{% endif %}">
@@ -1449,7 +1408,7 @@
                 </div>
               {% endif %}
 
-              <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+              <div class="grid grid-cols-1 gap-6 mb-6">
                 {% if comp.grafico_componentes_anuais_v1 %}
                   <div class="plugve-chart-card">
                     {{ comp.grafico_componentes_anuais_v1 | safe }}

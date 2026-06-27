@@ -395,9 +395,9 @@ def montar_comparacao_componentes(v1: dict, v2: dict) -> list:
         row("Depreciação", "depreciacao", ajuda="Perda estimada entre valor inicial e valor futuro de revenda."),
         row("Financiamento/juros", "financiamento_juros", ajuda="Somente juros do financiamento no horizonte, para não somar o principal duas vezes."),
         row("Gasto operacional acumulado", "operacional", ajuda="Uso, manutenção, IPVA, seguro e juros no período."),
-        row("TCO total", "tco", ajuda="Gasto operacional acumulado somado à perda por depreciação."),
+        row("Custo total", "tco", ajuda="Gasto operacional acumulado somado à perda por depreciação."),
         row("Valor de revenda", "revenda", maior_melhor=True, ajuda="Maior valor residual é favorável."),
-        row("Custo por km", "custo_km", tipo="km", ajuda="TCO dividido pela quilometragem total."),
+        row("Custo por km", "custo_km", tipo="km", ajuda="Custo total dividido pela quilometragem total."),
         row("Diferença a cada 10.000 km", "custo_km_10000", tipo="moeda", ajuda="Leitura financeira do custo por km multiplicado por 10.000 km."),
         row("CO₂ fóssil operacional", "co2_fossil", tipo="ton", ajuda="Emissões operacionais estimadas; não é ACV completo."),
         row("CO₂ biogênico do etanol", "co2_biogenico", tipo="ton", ajuda="Informado à parte para não chamar etanol de zero absoluto.", informativo=True),
@@ -896,15 +896,15 @@ def gerar_graficos_dupla(v1, v2):
         x=v1["anos_lista"], y=v1["tco_lista"], mode="lines+markers", name=v1["nome_curto"],
         line={"color": cor1, "width": 3, "shape": "spline"}, marker={"size": 8},
         customdata=[v1["nome"]] * len(v1["anos_lista"]),
-        hovertemplate="%{customdata}<br>%{x}<br>TCO: R$ %{y:,.2f}<extra></extra>",
+        hovertemplate="%{customdata}<br>%{x}<br>Custo total: R$ %{y:,.2f}<extra></extra>",
     ))
     fig_tco.add_trace(go.Scatter(
         x=v2["anos_lista"], y=v2["tco_lista"], mode="lines+markers", name=v2["nome_curto"],
         line={"color": cor2, "width": 3, "shape": "spline"}, marker={"size": 8},
         customdata=[v2["nome"]] * len(v2["anos_lista"]),
-        hovertemplate="%{customdata}<br>%{x}<br>TCO: R$ %{y:,.2f}<extra></extra>",
+        hovertemplate="%{customdata}<br>%{x}<br>Custo total: R$ %{y:,.2f}<extra></extra>",
     ))
-    fig_tco.update_layout(**obter_layout_web("TCO acumulado ano a ano"), yaxis_title="Custo acumulado (R$)")
+    fig_tco.update_layout(**obter_layout_web("Custo total acumulado ano a ano"), yaxis_title="Custo acumulado (R$)")
 
     fig_gastos = go.Figure()
     fig_gastos.add_trace(go.Scatter(
@@ -942,7 +942,7 @@ def gerar_graficos_dupla(v1, v2):
         hovertemplate="%{x}<br>" + v2["nome_curto"] + ": R$ %{y:,.2f}<extra></extra>",
     ))
     fig_componentes.update_layout(
-        **obter_layout_web("Componentes do TCO no horizonte"),
+        **obter_layout_web("Componentes do custo total no horizonte"),
         yaxis_title="Valor acumulado (R$)",
         barmode="group",
     )
@@ -966,10 +966,13 @@ def gerar_graficos_dupla(v1, v2):
             ))
         layout_componentes_anuais = obter_layout_web(titulo)
         layout_componentes_anuais.update({
+            "height": 500,
             "yaxis_title": "Custo anual (R$)",
             "barmode": "stack",
-            "legend": {"orientation": "h", "yanchor": "bottom", "y": 1.04, "xanchor": "left", "x": 0},
+            "margin": {"l": 70, "r": 30, "t": 88, "b": 118},
+            "legend": {"orientation": "h", "yanchor": "top", "y": -0.22, "xanchor": "left", "x": 0},
         })
+        fig.update_xaxes(tickangle=0)
         fig.update_layout(**layout_componentes_anuais)
         return html_grafico(fig)
 
@@ -1022,17 +1025,17 @@ def gerar_graficos_dupla(v1, v2):
         x=v1.get("anos_lista", []), y=diferenca_tco, mode="lines+markers",
         name=f"{v1['nome_curto']} - {v2['nome_curto']}",
         line={"color": CORES_GRAFICOS[2], "width": 3, "shape": "spline"}, marker={"size": 8},
-        hovertemplate="%{x}<br>Diferença de TCO: R$ %{y:,.2f}<extra></extra>",
+        hovertemplate="%{x}<br>Diferença de custo total: R$ %{y:,.2f}<extra></extra>",
     ))
     fig_diferenca.add_hline(y=0, line_width=1, line_dash="dash", line_color="#94a3b8")
-    fig_diferenca.update_layout(**obter_layout_web("Diferença acumulada ano a ano"), yaxis_title="Diferença de TCO (R$)")
+    fig_diferenca.update_layout(**obter_layout_web("Diferença acumulada ano a ano"), yaxis_title="Diferença de custo total (R$)")
 
     return {
         "grafico": html_grafico(fig_tco),
         "grafico_sem_depreciacao": html_grafico(fig_gastos),
         "grafico_componentes": html_grafico(fig_componentes),
-        "grafico_componentes_anuais_v1": grafico_componentes_anuais(v1, f"Componentes anuais — {nome_curto(v1['nome'], 38)}"),
-        "grafico_componentes_anuais_v2": grafico_componentes_anuais(v2, f"Componentes anuais — {nome_curto(v2['nome'], 38)}"),
+        "grafico_componentes_anuais_v1": grafico_componentes_anuais(v1, "Componentes anuais — Carro 1"),
+        "grafico_componentes_anuais_v2": grafico_componentes_anuais(v2, "Componentes anuais — Carro 2"),
         "grafico_custo_km": "",
         "grafico_revenda_comparativo": html_grafico(fig_revenda),
         "grafico_depreciacao_v1": grafico_depreciacao_individual(v1, cor1),
@@ -1132,8 +1135,8 @@ def montar_bloco_resultado(titulo, v1, v2):
     comp2 = v2.get("componentes_totais") or v2.get("componentes_tco") or extrair_componentes_horizonte(v2)
 
     comparativo_indicadores = [
-        linha_comparativa("TCO no horizonte", v1["tco_final"], v2["tco_final"], ajuda="Custo total de propriedade estimado no período."),
-        linha_comparativa("Custo total por km", v1["custo_km"], v2["custo_km"], ajuda="TCO dividido pela quilometragem total simulada."),
+        linha_comparativa("Custo total no horizonte", v1["tco_final"], v2["tco_final"], ajuda="Custo total de propriedade estimado no período."),
+        linha_comparativa("Custo total por km", v1["custo_km"], v2["custo_km"], ajuda="Custo total dividido pela quilometragem total simulada."),
         linha_comparativa("Gasto operacional acumulado", v1["gasto_operacional_final"], v2["gasto_operacional_final"], ajuda="Energia ou combustível, manutenção, IPVA, seguro e juros no horizonte."),
         {"rotulo": "CO₂ fóssil operacional acumulado", "valor_1": toneladas_format(v1.get("co2_total_t", 0)), "valor_2": toneladas_format(v2.get("co2_total_t", 0)), "melhor": melhor_indice(v1.get("co2_total_t", 0), v2.get("co2_total_t", 0)), "ajuda": "Estimativa operacional; etanol biogênico é reportado à parte."},
         linha_comparativa("Perda por depreciação", v1["perda_depreciacao_final"], v2["perda_depreciacao_final"], ajuda="Diferença entre o valor inicial e o valor estimado de revenda."),
@@ -1152,7 +1155,7 @@ def montar_bloco_resultado(titulo, v1, v2):
         linha_componente("Financiamento/juros", comp1.get("financiamento_juros", 0), comp2.get("financiamento_juros", 0), ajuda="Principal não é somado novamente; entra o custo financeiro."),
         linha_componente("Gasto operacional acumulado", comp1.get("gasto_operacional", comp1.get("operacional", 0)), comp2.get("gasto_operacional", comp2.get("operacional", 0))),
         linha_componente("Valor de revenda", comp1.get("valor_revenda", comp1.get("revenda", 0)), comp2.get("valor_revenda", comp2.get("revenda", 0)), maior_melhor=True),
-        linha_componente("TCO total", comp1.get("tco", comp1.get("tco_total", 0)), comp2.get("tco", comp2.get("tco_total", 0))),
+        linha_componente("Custo total", comp1.get("tco", comp1.get("tco_total", 0)), comp2.get("tco", comp2.get("tco_total", 0))),
         linha_componente("Custo por km", v1.get("custo_km", 0), v2.get("custo_km", 0), tipo="km"),
         linha_componente("CO₂ fóssil operacional", v1.get("co2_total_t", 0), v2.get("co2_total_t", 0), tipo="co2", ajuda="Não inclui fabricação, bateria, descarte nem CO₂ biogênico do etanol."),
         linha_componente("CO₂ biogênico do etanol", v1.get("co2_biogenico_total_t", 0), v2.get("co2_biogenico_total_t", 0), tipo="co2", ajuda="Reportado separadamente; não entra no indicador fóssil principal."),
@@ -1426,7 +1429,7 @@ def montar_payload_auditoria_tco(resultado_final: dict) -> dict:
             "phev_consumo_combustivel": form.get("phev_consumo_combustivel") or "",
         },
         "formulas": [
-            {"nome": "TCO", "formula": "TCO = gasto operacional acumulado + depreciação acumulada"},
+            {"nome": "Custo total", "formula": "custo total = gasto operacional acumulado + depreciação acumulada"},
             {"nome": "Gasto operacional", "formula": "energia/combustível + manutenção + IPVA + seguro + juros do financiamento"},
             {"nome": "Depreciação", "formula": "valor inicial - valor estimado de revenda"},
             {"nome": "Flex", "formula": "km×%gasolina/consumo_gasolina×preço_gasolina + km×%etanol/consumo_etanol×preço_etanol"},
@@ -1436,10 +1439,10 @@ def montar_payload_auditoria_tco(resultado_final: dict) -> dict:
         ],
         "comparacoes": [],
         "notas": [
-            "A auditoria mostra a memória de cálculo da simulação TCO. Não substitui a auditoria específica das curvas de depreciação.",
+            "A auditoria mostra a memória de cálculo da simulação de custo total. Não substitui a auditoria específica das curvas de depreciação.",
             "O CO₂ é estimativa operacional. Não inclui fabricação do veículo, bateria, manutenção, transporte, descarte ou análise de ciclo de vida completa.",
             "O CO₂ da queima do etanol é tratado como biogênico e apresentado separadamente; não é chamado de zero absoluto.",
-            "No financiamento, o TCO considera juros/custos financeiros no horizonte para evitar somar o principal duas vezes.",
+            "No financiamento, o custo total considera juros/custos financeiros no horizonte para evitar somar o principal duas vezes.",
         ],
     }
 

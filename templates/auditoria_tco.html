@@ -14,7 +14,7 @@
   <main class="audit-page">
     <header class="audit-top">
       <div>
-        <h1>Auditoria técnica da simulação TCO</h1>
+        <h1>Auditoria técnica da simulação</h1>
         <p>CurVE — memória de cálculo, premissas, componentes e limitações.</p>
         <p class="muted">Gerado em {{ auditoria.gerado_em }}</p>
       </div>
@@ -24,7 +24,7 @@
       </div>
     </header>
 
-    <p class="audit-note">Esta auditoria documenta a simulação TCO recém-calculada. Ela não recalcula histórico FIPE pesado, não substitui a auditoria de depreciação e não representa análise de ciclo de vida completo.</p>
+    <p class="audit-note">Esta auditoria documenta a simulação de custo total recém-calculada. Ela não recalcula histórico FIPE pesado, não substitui a auditoria de depreciação e não representa análise de ciclo de vida completo.</p>
 
     <section class="audit-section">
       <h2>1. Parâmetros gerais</h2>
@@ -90,10 +90,10 @@
         <h2>4. Comparação detalhada por componente</h2>
         <div class="audit-table-wrap">
           <table class="audit-table">
-            <thead><tr><th>Componente</th><th>Carro 1</th><th>Carro 2</th><th>Diferença</th><th>Melhor</th></tr></thead>
+            <thead><tr><th>Componente</th><th>Carro 1</th><th>Carro 2</th><th>Diferença</th></tr></thead>
             <tbody>
               {% for linha in comp.comparativo_componentes %}
-                <tr><td>{{ linha.rotulo }}{% if linha.ajuda %}<br><span class="muted">{{ linha.ajuda }}</span>{% endif %}</td><td>{{ linha.valor_1 }}</td><td>{{ linha.valor_2 }}</td><td>{{ linha.diferenca }}</td><td>{{ linha.melhor_texto }}</td></tr>
+                <tr><td>{{ linha.rotulo }}{% if linha.ajuda %}<br><span class="muted">{{ linha.ajuda }}</span>{% endif %}</td><td>{{ linha.valor_1 }}</td><td>{{ linha.valor_2 }}</td><td>{{ linha.diferenca }}</td></tr>
               {% endfor %}
             </tbody>
           </table>
@@ -104,7 +104,7 @@
         <h2>5. Memória anual comparativa</h2>
         <div class="audit-table-wrap">
           <table class="audit-table">
-            <thead><tr><th>Ano</th><th>Uso C1</th><th>Uso C2</th><th>Operac. C1</th><th>Operac. C2</th><th>Deprec. C1</th><th>Deprec. C2</th><th>TCO C1</th><th>TCO C2</th><th>Dif. TCO</th><th>Revenda C1</th><th>Revenda C2</th><th>CO₂ C1</th><th>CO₂ C2</th></tr></thead>
+            <thead><tr><th>Ano</th><th>Uso C1</th><th>Uso C2</th><th>Operac. C1</th><th>Operac. C2</th><th>Deprec. C1</th><th>Deprec. C2</th><th>Custo total C1</th><th>Custo total C2</th><th>Dif. custo total</th><th>Revenda C1</th><th>Revenda C2</th><th>CO₂ C1</th><th>CO₂ C2</th></tr></thead>
             <tbody>
               {% for linha in comp.memoria_anual_comparativa %}
                 <tr><td>{{ linha.ano }}</td><td>{{ linha.v1_uso }}</td><td>{{ linha.v2_uso }}</td><td>{{ linha.v1_operacional }}</td><td>{{ linha.v2_operacional }}</td><td>{{ linha.v1_depreciacao }}</td><td>{{ linha.v2_depreciacao }}</td><td>{{ linha.v1_tco }}</td><td>{{ linha.v2_tco }}</td><td>{{ linha.diferenca_tco }}</td><td>{{ linha.v1_revenda }}</td><td>{{ linha.v2_revenda }}</td><td>{{ linha.v1_co2 }}</td><td>{{ linha.v2_co2 }}</td></tr>
@@ -122,7 +122,7 @@
               <h3>{{ veic.nome }}</h3>
               <div class="audit-table-wrap">
                 <table class="audit-table">
-                  <thead><tr><th>Ano</th><th>Uso</th><th>IPVA</th><th>Seguro</th><th>Manut.</th><th>Juros</th><th>TCO</th><th>CO₂</th></tr></thead>
+                  <thead><tr><th>Ano</th><th>Uso</th><th>IPVA</th><th>Seguro</th><th>Manut.</th><th>Juros</th><th>Custo total</th><th>CO₂</th></tr></thead>
                   <tbody>
                     {% for linha in veic.memoria %}
                       <tr><td>{{ linha.ano }}</td><td>{{ linha.uso }}</td><td>{{ linha.ipva }}</td><td>{{ linha.seguro }}</td><td>{{ linha.manutencao }}</td><td>{{ linha.financiamento }}</td><td>{{ linha.tco }}</td><td>{{ linha.co2_fossil_acumulado }}</td></tr>
