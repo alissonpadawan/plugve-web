@@ -8,6 +8,7 @@ import plotly.graph_objs as go
 import plotly.io as pio
 import os
 import uuid
+import re
 from pathlib import Path
 from datetime import datetime, date
 import requests
@@ -78,6 +79,32 @@ def normalizar(s: str) -> str:
         if unicodedata.category(c) != "Mn"
     )
     return s
+
+
+def limpar_nome_veiculo(nome: str) -> str:
+    """Remove duplicações comuns vindas da composição FIPE + ano/combustível."""
+    texto = str(nome or "Veículo").strip()
+    if not texto:
+        return "Veículo"
+
+    texto = re.sub(r"\s+", " ", texto)
+    # Ex.: Zero km Zero km Elétrico -> Zero km Elétrico
+    texto = re.sub(r"(?i)\bzero\s*km\b(?:\s+\bzero\s*km\b)+", "Zero km", texto)
+
+    # Se o modelo já contém a tecnologia entre parênteses, evita repetir no final.
+    tecnologias = ["Elétrico", "Híbrido", "Flex", "Gasolina", "Diesel"]
+    for termo in tecnologias:
+        termo_re = re.escape(termo)
+        if re.search(rf"\({termo_re}\)", texto, flags=re.I):
+            texto = re.sub(rf"(?i)(\bZero\s*km\b)\s+{termo_re}\s*$", r"\1", texto)
+            texto = re.sub(rf"(?i)\s+{termo_re}\s*$", "", texto)
+
+    # Reforço contra repetições finais simples: Híbrido Híbrido, Flex Flex etc.
+    for termo in tecnologias:
+        termo_re = re.escape(termo)
+        texto = re.sub(rf"(?i)\b{termo_re}\b(?:\s+\b{termo_re}\b)+", termo, texto)
+
+    return re.sub(r"\s+", " ", texto).strip()
 
 
 def detectar_phev_texto(modelo: str = "", combustivel: str = "", tipo_form: str = "") -> bool:
@@ -563,7 +590,7 @@ def juros_financiamento_por_ano(financiamento: dict, anos: int) -> list:
 
 
 def nome_curto(nome: str, limite: int = 36) -> str:
-    nome = str(nome or "Veículo").strip()
+    nome = limpar_nome_veiculo(nome)
     return nome if len(nome) <= limite else nome[: limite - 1].rstrip() + "…"
 
 
@@ -600,7 +627,7 @@ def html_grafico(fig):
 # 4.4) Projeção genérica de um veículo
 # Regra V26: energia e combustível sobem a.a.; IPVA e seguro acompanham o valor de mercado do veículo.
 def calcular_projecao_veiculo(veiculo, comum):
-    nome = veiculo.get("nome", "Veículo")
+    nome = limpar_nome_veiculo(veiculo.get("nome", "Veículo"))
     tipo = veiculo.get("tipo", "icev")  # ve, phev ou icev
 
     preco = max(0.0, float(veiculo.get("preco", 0) or 0))
@@ -1371,7 +1398,7 @@ def montar_veiculo_ve(dados_form):
     ipva_ve = 0.0 if "isencao_ipva_ve" in dados_form else conv(dados_form.get("ipva_ve", 0))
 
     preco = conv(dados_form.get("preco_ve", 0))
-    modelo = dados_form.get("modelo_ve", "Veículo elétrico")
+    modelo = limpar_nome_veiculo(dados_form.get("modelo_ve", "Veículo elétrico"))
     combustivel = dados_form.get("combustivel_ve", "")
     tipo_form = dados_form.get("tipo_veiculo_ve", "")
     tipo = "phev" if detectar_phev_texto(modelo, combustivel, tipo_form) else "ve"
@@ -1394,7 +1421,7 @@ def montar_veiculo_ve(dados_form):
 def montar_veiculo_icev(dados_form):
     preco = conv(dados_form.get("preco_icev", 0))
     return {
-        "nome": dados_form.get("modelo_icev", "Veículo a combustão"),
+        "nome": limpar_nome_veiculo(dados_form.get("modelo_icev", "Veículo a combustão")),
         "tipo": "icev",
         "prefixo": "icev",
         "combustivel": dados_form.get("combustivel_icev", ""),
@@ -1412,7 +1439,7 @@ def montar_veiculo_icev(dados_form):
 def montar_veiculo_atual(dados_form):
     preco = conv(dados_form.get("preco_atual", 0))
     return {
-        "nome": dados_form.get("modelo_atual", "Meu carro atual"),
+        "nome": limpar_nome_veiculo(dados_form.get("modelo_atual", "Meu carro atual")),
         "tipo": "icev",
         "prefixo": "atual",
         "combustivel": dados_form.get("combustivel_atual", ""),

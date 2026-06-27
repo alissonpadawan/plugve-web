@@ -29,6 +29,16 @@
     .plugve-metric-card{border:1px solid #e5e7eb;border-radius:1rem;background:linear-gradient(180deg,#ffffff 0%,#f8fafc 100%);padding:1rem;box-shadow:0 8px 22px rgba(15,23,42,.04)}
     .plugve-result-actions{display:flex;gap:.75rem;flex-wrap:wrap;justify-content:flex-end;align-items:center}
     .plugve-comparison-hero{display:flex;align-items:center;justify-content:space-between;gap:1.5rem;border:1px solid #bbf7d0;border-radius:1rem;background:linear-gradient(135deg,#f0fdf4 0%,#ffffff 75%);padding:1.1rem 1.2rem}
+    .plugve-executive-summary{border:1px solid #dbeafe;border-radius:1.1rem;background:linear-gradient(180deg,#ffffff 0%,#f8fbff 100%);padding:1rem;box-shadow:0 10px 28px rgba(15,23,42,.05)}
+    .plugve-executive-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.9rem;margin-bottom:.9rem}
+    .plugve-executive-card{border:1px solid #bbf7d0;border-radius:1rem;background:linear-gradient(135deg,#f0fdf4 0%,#ffffff 78%);padding:1rem 1.05rem;min-height:132px}
+    .plugve-executive-card-env{border-color:#bfdbfe;background:linear-gradient(135deg,#eff6ff 0%,#ffffff 78%)}
+    .plugve-executive-card h4{font-size:1.05rem;line-height:1.35;font-weight:900;color:#0f172a;margin:.1rem 0 .45rem}
+    .plugve-executive-card p{font-size:.78rem;color:#64748b;line-height:1.4;margin:0}
+    .plugve-executive-metrics{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.7rem}
+    .plugve-executive-metrics span{display:inline-flex;align-items:center;gap:.25rem;border:1px solid #e2e8f0;border-radius:999px;background:#fff;padding:.34rem .6rem;font-size:.72rem;color:#475569}
+    .plugve-executive-metrics b{font-weight:900;color:#0f172a;font-variant-numeric:tabular-nums}
+    .plugve-main-trend-chart{margin-top:.9rem}
     .plugve-comparison-kicker{display:block;font-size:.72rem;letter-spacing:.04em;text-transform:uppercase;font-weight:900;color:#047857;margin-bottom:.25rem}
     .plugve-comparison-hero h4{font-size:1.15rem;line-height:1.35;font-weight:900;color:#0f172a;max-width:690px}
     .plugve-comparison-hero p{font-size:.86rem;color:#64748b;margin-top:.25rem}
@@ -42,7 +52,7 @@
     .plugve-vehicle-summary span{display:block;font-size:.69rem;text-transform:uppercase;letter-spacing:.04em;color:#64748b;font-weight:800}
     .plugve-vehicle-summary h4{font-size:.92rem;line-height:1.35;font-weight:800;color:#0f172a;margin-top:.15rem}
     .plugve-vehicle-price{flex:0 0 auto;text-align:right}
-    .plugve-vehicle-price strong{display:block;color:#0f172a;font-variant-numeric:tabular-nums}
+    .plugve-vehicle-price strong{display:block;color:#0f172a;font-variant-numeric:tabular-nums}.plugve-vehicle-price strong+span{margin-top:.45rem}
     .plugve-comparison-table-wrap{overflow-x:auto;border:1px solid #e2e8f0;border-radius:1rem;background:#fff}
     .plugve-comparison-table{width:100%;border-collapse:collapse;min-width:700px}
     .plugve-comparison-table th{background:#f8fafc;color:#334155;font-size:.75rem;text-align:left;padding:.75rem .9rem;border-bottom:1px solid #e2e8f0}
@@ -57,14 +67,14 @@
     .plugve-component-section{border:1px solid #e2e8f0;border-radius:1rem;background:#fff;padding:1rem 1.05rem;margin-bottom:1.25rem}
     .plugve-component-section h4{font-size:1rem;font-weight:900;color:#0f172a}
     .plugve-component-section p{font-size:.76rem;color:#64748b;margin-top:.2rem}
-    .plugve-component-table{width:100%;border-collapse:collapse;min-width:760px}
+    .plugve-component-table{width:100%;border-collapse:separate;border-spacing:0;min-width:760px}
     .plugve-component-table th{background:#f8fafc;color:#334155;font-size:.74rem;text-align:left;padding:.72rem .82rem;border-bottom:1px solid #e2e8f0}
-    .plugve-component-table th:not(:first-child),.plugve-component-table td:not(:first-child){text-align:right}
+    .plugve-component-table th:not(:first-child),.plugve-component-table td:not(:first-child){text-align:right;border-left:8px solid #fff;box-shadow:inset 1px 0 0 #e5e7eb}
     .plugve-component-table td{padding:.76rem .82rem;border-bottom:1px solid #f1f5f9;font-size:.8rem;vertical-align:middle}
     .plugve-component-table td:first-child strong{display:block;color:#0f172a}
     .plugve-component-table td:first-child small{display:block;color:#64748b;font-size:.68rem;line-height:1.35;margin-top:.12rem}
     .plugve-component-table td:not(:first-child){font-weight:800;color:#0f172a;font-variant-numeric:tabular-nums;white-space:nowrap}
-    .plugve-component-table .plugve-winner-cell{color:#166534;background:#f0fdf4}
+    .plugve-component-table .plugve-winner-cell{color:#166534;background:#f0fdf4;background-clip:padding-box}
     .plugve-table-group-row td{background:#f8fafc!important;color:#0f172a!important;text-transform:uppercase;letter-spacing:.05em;font-size:.72rem;font-weight:900;text-align:left!important;border-top:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0;box-shadow:inset 4px 0 0 #168a4a}
     .plugve-versus-final-row td:first-child{background:#fbfdff}
     .plugve-versus-final-row td[colspan]{text-align:right!important;font-weight:900;color:#0f172a;background:#fbfdff}
@@ -124,7 +134,7 @@
     .plugve-premises-grid dl>div:last-child{border-bottom:0}
     .plugve-premises-grid dt{color:#64748b}
     .plugve-premises-grid dd{color:#0f172a;font-weight:700;text-align:right;font-variant-numeric:tabular-nums}
-    @media(max-width:760px){.plugve-comparison-hero{align-items:flex-start;flex-direction:column}.plugve-comparison-gain{width:100%;border-left:0;border-top:1px solid #bbf7d0;padding-left:0;padding-top:.75rem;text-align:left}.plugve-vehicle-strip,.plugve-km-values,.plugve-premises-grid{grid-template-columns:1fr}.plugve-vehicle-summary{align-items:flex-start;flex-direction:column}.plugve-vehicle-price{text-align:left}}
+    @media(max-width:760px){.plugve-executive-grid{grid-template-columns:1fr}.plugve-comparison-hero{align-items:flex-start;flex-direction:column}.plugve-comparison-gain{width:100%;border-left:0;border-top:1px solid #bbf7d0;padding-left:0;padding-top:.75rem;text-align:left}.plugve-vehicle-strip,.plugve-km-values,.plugve-premises-grid{grid-template-columns:1fr}.plugve-vehicle-summary{align-items:flex-start;flex-direction:column}.plugve-vehicle-price{text-align:left}}
     .plugve-page-break{break-inside:avoid;page-break-inside:avoid}
     .plugve-price-finance-field{margin-top:.25rem;border:1px solid #d1d5db;border-radius:.75rem;background:#fff;overflow:visible;transition:border-color .18s ease,box-shadow .18s ease}
     .plugve-price-finance-field:focus-within{border-color:#059669;box-shadow:0 0 0 3px rgba(5,150,105,.10)}
@@ -1174,39 +1184,59 @@
               </div>
 
               {% if comp.detalhes %}
-                <section class="plugve-comparison-hero mb-5">
-                  <div>
-                    <span class="plugve-comparison-kicker">Resultado mais econômico no horizonte</span>
-                    <h4>{{ comp.vencedor_nome }}</h4>
-                    <p>Menor custo total de propriedade entre os veículos comparados.</p>
-                  </div>
-                  <div class="plugve-comparison-gain">
-                    <span>Economia estimada</span>
-                    <strong>{{ comp.economia }}</strong>
-                    <small>{{ comp.economia_percentual }} em relação à alternativa de maior custo total</small>
-                  </div>
-                </section>
-
-                <div class="plugve-vehicle-strip mb-5">
-                  {% for item in comp.detalhes %}
-                    <article class="plugve-vehicle-summary {% if comp.vencedor_indice == loop.index %}plugve-vehicle-summary-winner{% endif %}">
-                      <div>
-                        <span>Carro {{ loop.index }}</span>
-                        <h4>{{ item.nome }}</h4>
-                      </div>
-                      <div class="plugve-vehicle-price">
-                        <span>Valor FIPE inicial</span>
-                        <strong>{{ item.preco_inicial }}</strong>
+                <section class="plugve-executive-summary mb-6">
+                  <div class="plugve-executive-grid">
+                    <article class="plugve-executive-card">
+                      <span class="plugve-comparison-kicker">Melhor opção econômica</span>
+                      <h4>{{ comp.vencedor_nome }}</h4>
+                      <p>Menor custo total no horizonte entre os veículos comparados.</p>
+                      <div class="plugve-executive-metrics">
+                        <span>Economia: <b>{{ comp.economia }}</b></span>
+                        <span>Diferença: <b>{{ comp.economia_percentual }}</b></span>
                       </div>
                     </article>
-                  {% endfor %}
-                </div>
+                    {% if comp.impacto_ambiental %}
+                      <article class="plugve-executive-card plugve-executive-card-env">
+                        <span class="plugve-comparison-kicker">Menor emissão operacional estimada</span>
+                        <h4>{{ comp.impacto_ambiental.menor_nome }}</h4>
+                        <p>Menor CO₂ fóssil operacional/rede elétrica no horizonte. Etanol biogênico é informado à parte.</p>
+                        <div class="plugve-executive-metrics">
+                          <span>CO₂ evitado: <b>{{ comp.impacto_ambiental.co2_evitado }}</b></span>
+                          <span>Equivalente: <b>{{ comp.impacto_ambiental.arvores_equivalentes }}</b></span>
+                        </div>
+                      </article>
+                    {% endif %}
+                  </div>
+
+                  <div class="plugve-vehicle-strip mb-5">
+                    {% for item in comp.detalhes %}
+                      <article class="plugve-vehicle-summary {% if comp.vencedor_indice == loop.index %}plugve-vehicle-summary-winner{% endif %}">
+                        <div>
+                          <span>Carro {{ loop.index }}</span>
+                          <h4>{{ item.nome }}</h4>
+                        </div>
+                        <div class="plugve-vehicle-price">
+                          <span>Valor FIPE inicial</span>
+                          <strong>{{ item.preco_inicial }}</strong>
+                          <span>Custo total no horizonte</span>
+                          <strong>{{ item.tco_final }}</strong>
+                        </div>
+                      </article>
+                    {% endfor %}
+                  </div>
+
+                  {% if comp.grafico %}
+                    <div class="plugve-chart-card plugve-main-trend-chart">
+                      {{ comp.grafico | safe }}
+                    </div>
+                  {% endif %}
+                </section>
 
                 {% if comp.comparativo_indicadores or comp.comparativo_componentes %}
                   <section class="plugve-component-section plugve-versus-section">
                     <div class="mb-3">
-                      <span class="plugve-comparison-kicker">Comparação lado a lado</span>
-                      <h4>Valores principais da simulação</h4>
+                      <span class="plugve-comparison-kicker">Versus detalhado</span>
+                      <h4>Comparação item por item</h4>
                       <p>Os itens abaixo comparam os dois veículos no mesmo horizonte. O valor mais favorável fica destacado em verde.</p>
                     </div>
                     <div class="overflow-x-auto">
@@ -1302,8 +1332,8 @@
                     <div class="plugve-env-head">
                       <div>
                         <span class="plugve-comparison-kicker">Impacto ambiental estimado</span>
-                        <h4>{{ comp.impacto_ambiental.menor_nome }} emite menos CO₂ fóssil operacional no horizonte.</h4>
-                        <p>Estimativa operacional fóssil/rede elétrica. O etanol biogênico é informado à parte; não inclui fabricação, bateria, manutenção ou descarte.</p>
+                        <h4>{{ comp.impacto_ambiental.menor_nome }} apresenta a menor emissão operacional estimada no horizonte.</h4>
+                        <p>Estimativa operacional fóssil/rede elétrica. Em veículo elétrico, representa CO₂ associado à energia consumida; etanol biogênico é informado à parte.</p>
                       </div>
                       <span class="plugve-env-badge">{{ comp.impacto_ambiental.co2_evitado }} evitadas</span>
                     </div>
@@ -1388,12 +1418,6 @@
                     {% endfor %}
                   </div>
                 </details>
-              {% endif %}
-
-              {% if comp.grafico %}
-                <div class="plugve-chart-card mb-6">
-                  {{ comp.grafico | safe }}
-                </div>
               {% endif %}
 
               {% if comp.grafico_sem_depreciacao %}
@@ -2091,6 +2115,22 @@
       return textoOriginal || "";
     }
 
+    function limparNomeVeiculoTCO(texto) {
+      let nome = String(texto || "").replace(/\s+/g, " ").trim();
+      if (!nome) return "";
+      nome = nome.replace(/\bZero\s*km\b(?:\s+\bZero\s*km\b)+/gi, "Zero km");
+      ["Elétrico", "Híbrido", "Flex", "Gasolina", "Diesel"].forEach((termo) => {
+        const termoEsc = termo.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const temParenteses = new RegExp(`\\(${termoEsc}\\)`, "i").test(nome);
+        if (temParenteses) {
+          nome = nome.replace(new RegExp(`(Zero\\s*km)\\s+${termoEsc}\\s*$`, "i"), "$1");
+          nome = nome.replace(new RegExp(`\\s+${termoEsc}\\s*$`, "i"), "");
+        }
+        nome = nome.replace(new RegExp(`\\b${termoEsc}\\b(?:\\s+\\b${termoEsc}\\b)+`, "gi"), termo);
+      });
+      return nome.replace(/\s+/g, " ").trim();
+    }
+
 
     // Seguro padrão adotado provisoriamente para o TCO acadêmico.
     // O campo continua editável porque a cotação real depende de perfil, CEP, cobertura, franquia e seguradora.
@@ -2683,7 +2723,7 @@
         const anoModeloStr = anoModeloParaCalculo(ano, data.AnoModelo || data.Ano || "");
         const combustivelStr = data.Combustivel || textoAnoOriginal;
         const textoAnoTela = textoAnoFipeParaTela(ano, textoAnoOriginal);
-        const nomeCompleto = `${nomeModelo} ${textoAnoTela}`.trim();
+        const nomeCompleto = limparNomeVeiculoTCO(`${nomeModelo} ${textoAnoTela}`.trim());
         const marcaStr = data.Marca || marcaSelect.options[marcaSelect.selectedIndex]?.text || "";
         const tipoSelecionado = classificarTipoVeiculoTCO(nomeModelo, combustivelStr || textoAnoTela, ano, marcaStr, prefixo);
         if (!tipoPermitidoNoBloco(prefixo, tipoSelecionado)) {
