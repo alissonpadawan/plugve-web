@@ -49,8 +49,10 @@
     .audit-badge{display:inline-block;border:1px solid #111827;padding:2px 6px;margin:2px 3px 2px 0;font-weight:700;background:#fff}
     .muted{color:#6b7280}
     .audit-plot-grid{display:grid;grid-template-columns:1fr;gap:14px}
-    .audit-plot{border:1px solid var(--rule);background:#fff;padding:9px;break-inside:avoid;page-break-inside:avoid}
-    .audit-plot h3{margin:0 0 8px;font-size:13px;text-transform:none;text-align:center}
+    .audit-plot{margin:14px 0 20px;border:1px solid var(--rule);background:#fff;padding:10px;break-inside:avoid;page-break-inside:avoid}
+    .audit-plot h3{margin:0 0 8px;font-size:14px;text-transform:none;text-align:center;font-weight:700}
+    .audit-plot .plotly-graph-div{width:100% !important;max-width:100% !important}
+    .audit-plot .plotly text,.audit-plot .plotly .gtitle,.audit-plot .plotly .xtick text,.audit-plot .plotly .ytick text,.audit-plot .plotly .legendtext{font-family:"Courier New",Consolas,monospace !important}
     .audit-reading p{margin:0 0 8px;white-space:pre-wrap}
     .audit-list{margin:0;padding-left:18px}
     .audit-list li{margin:5px 0}
@@ -272,5 +274,46 @@ diferença_percentual = {{ comp.economia_percentual }}</p>
       </ul>
     </section>
   </main>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      if (!window.Plotly) return;
+      const plots = document.querySelectorAll('.audit-plot .plotly-graph-div');
+      plots.forEach(function (plot, index) {
+        if (!plot || !plot.data || !plot.layout) return;
+        const isBar = Array.from(plot.data || []).some(trace => trace.type === 'bar');
+        const relayout = {
+          title: { text: '' },
+          font: { family: 'Courier New, Consolas, monospace', size: 11, color: '#111827' },
+          paper_bgcolor: '#FFFFFF',
+          plot_bgcolor: '#FFFFFF',
+          height: isBar ? 255 : 235,
+          margin: { l: 56, r: 18, t: 8, b: 42 },
+          legend: { orientation: 'h', yanchor: 'top', y: -0.18, xanchor: 'left', x: 0, font: { size: 10, family: 'Courier New, Consolas, monospace' } },
+          hovermode: 'x unified',
+          xaxis: {
+            automargin: true,
+            tickfont: { size: 10, family: 'Courier New, Consolas, monospace' },
+            title: { font: { size: 11, family: 'Courier New, Consolas, monospace' } },
+            showgrid: true,
+            gridcolor: '#E5E7EB',
+            zeroline: false
+          },
+          yaxis: {
+            automargin: true,
+            tickfont: { size: 10, family: 'Courier New, Consolas, monospace' },
+            title: { font: { size: 11, family: 'Courier New, Consolas, monospace' } },
+            showgrid: true,
+            gridcolor: '#E5E7EB',
+            zeroline: false
+          }
+        };
+        if (index === 0) {
+          relayout.height = 225;
+        }
+        Plotly.relayout(plot, relayout);
+      });
+    });
+  </script>
 </body>
 </html>
