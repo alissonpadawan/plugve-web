@@ -51,6 +51,22 @@ class FipeApiError(Exception):
 
 
 class FipeService:
+    TIPOS_CONSULTA_FIPE = {
+        "carros": {"v2": "cars", "v1": "carros", "label": "Carro"},
+        "motos": {"v2": "motorcycles", "v1": "motos", "label": "Moto"},
+        "caminhoes": {"v2": "trucks", "v1": "caminhoes", "label": "Caminhão"},
+    }
+
+    @classmethod
+    def normalizar_tipo_consulta(cls, tipo: str | None) -> str:
+        bruto = str(tipo or "carros").strip().lower()
+        aliases = {
+            "carro": "carros", "carros": "carros", "auto": "carros", "automovel": "carros", "automóvel": "carros",
+            "moto": "motos", "motos": "motos", "motocicleta": "motos", "motocicletas": "motos",
+            "caminhao": "caminhoes", "caminhão": "caminhoes", "caminhoes": "caminhoes", "caminhões": "caminhoes", "truck": "caminhoes", "trucks": "caminhoes",
+        }
+        return aliases.get(bruto, "carros")
+
     def _cache_dir(self) -> Path:
         path = Path(current_app.config.get("FIPE_CACHE_DIR") or (current_app.config["PERSISTENT_DIR"] / "fipe_cache"))
         path.mkdir(parents=True, exist_ok=True)
@@ -253,6 +269,22 @@ class FipeService:
             return str(current_app.config.get("FIPE_PUBLIC_BASE_URL") or "https://parallelum.com.br/fipe/api/v1/carros")
         return str(current_app.config.get("FIPE_BASE_URL") or "https://fipe.parallelum.com.br/api/v2/cars")
 
+    def _base_url_tipo(self, tipo_veiculo: str | None) -> str:
+        """Base FIPE por tipo para a consulta pública simples.
+
+        Mantém a simulação/depreciação usando o fluxo já existente. Esta base
+        só troca o segmento final da API para carros, motos ou caminhões.
+        """
+        tipo = self.normalizar_tipo_consulta(tipo_veiculo)
+        info = self.TIPOS_CONSULTA_FIPE.get(tipo, self.TIPOS_CONSULTA_FIPE["carros"])
+        if self._usar_publica_apenas():
+            configured = str(current_app.config.get("FIPE_PUBLIC_BASE_URL") or "https://parallelum.com.br/fipe/api/v1/carros").rstrip("/")
+            root = configured.rsplit("/", 1)[0] if configured.endswith(("/carros", "/motos", "/caminhoes")) else configured
+            return f"{root}/{info['v1']}"
+        configured = str(current_app.config.get("FIPE_BASE_URL") or "https://fipe.parallelum.com.br/api/v2/cars").rstrip("/")
+        root = configured.rsplit("/", 1)[0] if configured.endswith(("/cars", "/motorcycles", "/trucks")) else configured
+        return f"{root}/{info['v2']}"
+
     def _timeout(self) -> int:
         bruto = os.environ.get("FIPE_REQUEST_TIMEOUT") or current_app.config.get("REQUEST_TIMEOUT", 15)
         try:
@@ -294,6 +326,19 @@ class FipeService:
         base_url = self._base_url()
         token = self._token()
         # Se a URL for da API v2, traduzimos os endpoints internos do app.
+        endpoint_final = self._endpoint_v2(endpoint) if "/api/v2" in base_url else endpoint
+        return self._get_json_cached(
+            base_url,
+            endpoint_final,
+            self._timeout(),
+            token,
+            str(self._cache_dir()),
+            self._catalog_cache_ttl(),
+        )
+
+    def _get_json_tipo(self, tipo_veiculo: str | None, endpoint: str):
+        base_url = self._base_url_tipo(tipo_veiculo)
+        token = self._token()
         endpoint_final = self._endpoint_v2(endpoint) if "/api/v2" in base_url else endpoint
         return self._get_json_cached(
             base_url,
@@ -815,6 +860,27 @@ class FipeService:
         except Exception:
             return ""
         return ""
+
+    def listar_tipos_consulta(self) -> list[dict]:
+        return [
+            {"codigo": "carros", "nome": "Carros"},
+            {"codigo": "motos", "nome": "Motos"},
+            {"codigo": "caminhoes", "nome": "Caminhões"},
+        ]
+
+    def listar_marcas_tipo(self, tipo_veiculo: str | None = None) -> list[dict]:
+        return self._normalizar_marcas(self._get_json_tipo(tipo_veiculo, "marcas"))
+
+    def listar_modelos_tipo(self, tipo_veiculo: str | None, codigo_marca: str) -> dict:
+        return self._normalizar_modelos(self._get_json_tipo(tipo_veiculo, f"marcas/{codigo_marca}/modelos"))
+
+    def listar_anos_tipo(self, tipo_veiculo: str | None, codigo_marca: str, codigo_modelo: str) -> list[dict]:
+        return self._normalizar_anos(self._get_json_tipo(tipo_veiculo, f"marcas/{codigo_marca}/modelos/{codigo_modelo}/anos"))
+
+    def consultar_preco_tipo(self, tipo_veiculo: str | None, codigo_marca: str, codigo_modelo: str, codigo_ano: str) -> dict:
+        data = self._normalizar_preco(self._get_json_tipo(tipo_veiculo, f"marcas/{codigo_marca}/modelos/{codigo_modelo}/anos/{codigo_ano}"))
+        data["TipoConsulta"] = self.normalizar_tipo_consulta(tipo_veiculo)
+        return data
 
     def listar_marcas(self, contexto: str | None = None):
         ctx = contexto_fipe(contexto or "")
