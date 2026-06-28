@@ -411,6 +411,31 @@ def _is_cache_valid(cache: dict[str, Any], ttl_hours: int) -> bool:
     return age_seconds < max(1, ttl_hours) * 3600
 
 
+def _active_source_names(settings: dict[str, Any]) -> set[str]:
+    sources = settings.get("fontes", [])
+    if not isinstance(sources, list):
+        return set()
+    names: set[str] = set()
+    for source in sources:
+        if not isinstance(source, dict) or not source.get("ativo", False):
+            continue
+        name = str(source.get("nome") or "").strip()
+        if name:
+            names.add(name)
+    return names
+
+
+def _filter_items_by_sources(items: list[dict[str, Any]], allowed_sources: set[str]) -> list[dict[str, Any]]:
+    if not allowed_sources:
+        return items
+    filtered: list[dict[str, Any]] = []
+    for item in items:
+        fonte = str(item.get("fonte") or "").strip()
+        if fonte in allowed_sources:
+            filtered.append(item)
+    return filtered
+
+
 def _normalize_item(item: dict[str, Any]) -> dict[str, Any]:
     titulo = str(item.get("titulo") or item.get("title") or "").strip()
     resumo = str(item.get("resumo") or item.get("summary") or item.get("description") or "").strip()
@@ -826,18 +851,17 @@ def _refresh_from_sources(settings: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 def carregar_noticias_home(limite: int | None = None, forcar_atualizacao: bool = False) -> list[dict[str, Any]]:
-    """Carrega o radar da home com cache, diversidade de fontes e fallback seguro.
+    """Carrega o radar da home com cache e fallback seguro.
 
-    Ordem de decisão:
-    1. usa cache persistente recente apenas se houver variedade mínima de fontes;
-    2. tenta atualizar fontes externas configuradas em data/noticias_fontes.json;
-    3. completa com fallback editorial quando os feeds retornam poucas fontes;
-    4. usa cache antigo + fallback, ou fallback puro, se a atualização falhar.
+    Nesta versão do radar, a home usa apenas fontes RSS que já entregaram
+    matérias boas com imagem: InsideEVs Brasil e Motor1 Brasil. O filtro por
+    fontes ativas impede que um cache antigo do Render reapareça com links de
+    assinatura, categorias ou páginas genéricas.
     """
     settings = _load_settings()
     ttl_hours = int(settings.get("atualizacao_horas") or DEFAULT_CACHE_HOURS)
     limit = int(limite or settings.get("limite_total") or DEFAULT_LIMIT)
-    min_sources = int(settings.get("minimo_fontes_home") or 4)
+    allowed_sources = _active_source_names(settings)
 
     cache = _load_cache()
     if not forcar_atualizacao and cache and _is_cache_valid(cache, ttl_hours):
@@ -846,15 +870,16 @@ def carregar_noticias_home(limite: int | None = None, forcar_atualizacao: bool =
             for item in cache.get("items", [])
             if isinstance(item, dict)
         ]
-        if cached_items and _source_count(cached_items) >= min_sources:
+        cached_items = _filter_items_by_sources(cached_items, allowed_sources)
+        if cached_items:
             return _diversify_items(cached_items)[:limit]
 
-    fresh_items = _refresh_from_sources(settings)
+    fresh_items = _filter_items_by_sources(_refresh_from_sources(settings), allowed_sources)
     if fresh_items:
-        final_items = _merge_with_fallback(fresh_items, min_sources=min_sources, limit=limit)
+        final_items = _diversify_items(fresh_items)[:limit]
         payload = {
             "updated_at": datetime.now(timezone.utc).isoformat(),
-            "source": "external_feeds_and_pages",
+            "source": "insideevs_motor1_rss",
             "items": final_items,
             "source_count": _source_count(final_items),
         }
@@ -866,6 +891,9 @@ def carregar_noticias_home(limite: int | None = None, forcar_atualizacao: bool =
 
     if cache and isinstance(cache.get("items"), list) and cache.get("items"):
         cached_items = [_normalize_item(item) for item in cache["items"] if isinstance(item, dict)]
-        return _merge_with_fallback(cached_items, min_sources=min_sources, limit=limit)
+        cached_items = _filter_items_by_sources(cached_items, allowed_sources)
+        if cached_items:
+            return _diversify_items(cached_items)[:limit]
 
-    return _merge_with_fallback([], min_sources=min_sources, limit=limit)
+    fallback_items = _filter_items_by_sources(_load_fallback_news(), allowed_sources)
+    return _diversify_items(fallback_items)[:limit]

@@ -1,6 +1,6 @@
 {
   "atualizacao_horas": 6,
-  "limite_total": 12,
+  "limite_total": 8,
   "palavras_chave": [
     "carro elétrico",
     "carros elétricos",
@@ -27,7 +27,6 @@
     "GWM",
     "Tesla",
     "Volvo EX",
-    "carro chinês",
     "SUV elétrico"
   ],
   "fontes": [
@@ -42,7 +41,7 @@
         "https://insideevs.uol.com.br/rss/category/baterias/"
       ],
       "tag_padrao": "Veículos elétricos",
-      "limite": 5,
+      "limite": 6,
       "aceitar_todos": true,
       "usar_og_image": false,
       "timeout_segundos": 4,
@@ -54,159 +53,12 @@
       "tipo": "rss",
       "rss_url": "https://motor1.uol.com.br/rss/category/eletricos-veiculos-hibridos/",
       "tag_padrao": "Elétricos e híbridos",
-      "limite": 4,
+      "limite": 6,
       "aceitar_todos": true,
       "usar_og_image": false,
       "timeout_segundos": 4,
       "imagem_fallback": "/static/img/home-card-tco.png"
-    },
-    {
-      "nome": "Quatro Rodas",
-      "ativo": false,
-      "tipo": "html",
-      "page_url": "https://quatrorodas.abril.com.br/carros-eletricos/",
-      "tag_padrao": "Carros elétricos",
-      "limite": 4,
-      "usar_og_image": true,
-      "max_og_images": 2,
-      "timeout_segundos": 4,
-      "imagem_fallback": "/static/img/home-card-depreciacao.png",
-      "dominios_permitidos": [
-        "quatrorodas.abril.com.br"
-      ],
-      "observacao": "Desativado para evitar captura de menus, assinatura, rádio, categorias e ofertas em vez de matérias."
-    },
-    {
-      "nome": "AutoPapo",
-      "ativo": false,
-      "tipo": "html",
-      "page_url": "https://autopapo.com.br/noticias/eletrificacao/",
-      "tag_padrao": "Eletrificação",
-      "limite": 4,
-      "usar_og_image": true,
-      "max_og_images": 2,
-      "timeout_segundos": 4,
-      "imagem_fallback": "/static/img/sustentabilidade.jpeg",
-      "dominios_permitidos": [
-        "autopapo.com.br"
-      ],
-      "observacao": "Desativado para evitar captura de menus, assinatura, rádio, categorias e ofertas em vez de matérias."
-    },
-    {
-      "nome": "iG Carros",
-      "ativo": false,
-      "tipo": "html",
-      "page_url": "https://carros.ig.com.br/veiculos-eletricos/",
-      "tag_padrao": "Veículos elétricos",
-      "limite": 4,
-      "usar_og_image": true,
-      "max_og_images": 1,
-      "timeout_segundos": 4,
-      "imagem_fallback": "/static/img/veiculo.jpeg",
-      "dominios_permitidos": [
-        "carros.ig.com.br"
-      ],
-      "observacao": "Desativado para evitar captura de menus, assinatura, rádio, categorias e ofertas em vez de matérias."
-    },
-    {
-      "nome": "Autoesporte",
-      "ativo": false,
-      "tipo": "html",
-      "page_url": "https://autoesporte.globo.com/carros/eletricos-e-hibridos/",
-      "tag_padrao": "Elétricos e híbridos",
-      "limite": 4,
-      "usar_og_image": true,
-      "max_og_images": 2,
-      "timeout_segundos": 4,
-      "imagem_fallback": "/static/img/veiculo.jpeg",
-      "dominios_permitidos": [
-        "autoesporte.globo.com"
-      ],
-      "observacao": "Desativado para evitar captura de menus, assinatura, rádio, categorias e ofertas em vez de matérias."
-    },
-    {
-      "nome": "Mobiauto",
-      "ativo": false,
-      "tipo": "html",
-      "page_url": "https://www.mobiauto.com.br/revista/categoria/carros-eletricos-e-hibridos/57",
-      "tag_padrao": "Carros elétricos e híbridos",
-      "limite": 4,
-      "usar_og_image": true,
-      "max_og_images": 2,
-      "timeout_segundos": 4,
-      "imagem_fallback": "/static/img/sustentabilidade.jpeg",
-      "dominios_permitidos": [
-        "www.mobiauto.com.br",
-        "mobiauto.com.br"
-      ],
-      "observacao": "Desativado para evitar captura de menus, assinatura, rádio, categorias e ofertas em vez de matérias."
-    },
-    {
-      "nome": "Quatro Rodas",
-      "ativo": true,
-      "tipo": "rss",
-      "rss_url": "https://news.google.com/rss/search?q=carro%20el%C3%A9trico%20OR%20carros%20el%C3%A9tricos%20OR%20h%C3%ADbrido%20site%3Aquatrorodas.abril.com.br&hl=pt-BR&gl=BR&ceid=BR:pt-419",
-      "tag_padrao": "Carros elétricos",
-      "limite": 3,
-      "aceitar_todos": false,
-      "usar_og_image": false,
-      "timeout_segundos": 4,
-      "imagem_fallback": "/static/img/home-card-depreciacao.png",
-      "observacao": "Fonte por RSS do Google Notícias para evitar capturar páginas de assinatura/menu do site."
-    },
-    {
-      "nome": "AutoPapo",
-      "ativo": true,
-      "tipo": "rss",
-      "rss_url": "https://news.google.com/rss/search?q=carro%20el%C3%A9trico%20OR%20eletrifica%C3%A7%C3%A3o%20OR%20h%C3%ADbrido%20site%3Aautopapo.com.br&hl=pt-BR&gl=BR&ceid=BR:pt-419",
-      "tag_padrao": "Eletrificação",
-      "limite": 3,
-      "aceitar_todos": false,
-      "usar_og_image": false,
-      "timeout_segundos": 4,
-      "imagem_fallback": "/static/img/sustentabilidade.jpeg",
-      "observacao": "Fonte por RSS do Google Notícias para evitar capturar páginas de assinatura/menu do site."
-    },
-    {
-      "nome": "iG Carros",
-      "ativo": true,
-      "tipo": "rss",
-      "rss_url": "https://news.google.com/rss/search?q=carro%20el%C3%A9trico%20OR%20ve%C3%ADculos%20el%C3%A9tricos%20OR%20h%C3%ADbrido%20site%3Acarros.ig.com.br&hl=pt-BR&gl=BR&ceid=BR:pt-419",
-      "tag_padrao": "Veículos elétricos",
-      "limite": 3,
-      "aceitar_todos": false,
-      "usar_og_image": false,
-      "timeout_segundos": 4,
-      "imagem_fallback": "/static/img/veiculo.jpeg",
-      "observacao": "Fonte por RSS do Google Notícias para evitar capturar páginas de assinatura/menu do site."
-    },
-    {
-      "nome": "Autoesporte",
-      "ativo": true,
-      "tipo": "rss",
-      "rss_url": "https://news.google.com/rss/search?q=carro%20el%C3%A9trico%20OR%20el%C3%A9tricos%20OR%20h%C3%ADbridos%20site%3Aautoesporte.globo.com&hl=pt-BR&gl=BR&ceid=BR:pt-419",
-      "tag_padrao": "Elétricos e híbridos",
-      "limite": 3,
-      "aceitar_todos": false,
-      "usar_og_image": false,
-      "timeout_segundos": 4,
-      "imagem_fallback": "/static/img/veiculo.jpeg",
-      "observacao": "Fonte por RSS do Google Notícias para evitar capturar páginas de assinatura/menu do site."
-    },
-    {
-      "nome": "Mobiauto",
-      "ativo": true,
-      "tipo": "rss",
-      "rss_url": "https://news.google.com/rss/search?q=carro%20el%C3%A9trico%20OR%20carros%20el%C3%A9tricos%20OR%20h%C3%ADbridos%20site%3Amobiauto.com.br&hl=pt-BR&gl=BR&ceid=BR:pt-419",
-      "tag_padrao": "Carros elétricos e híbridos",
-      "limite": 3,
-      "aceitar_todos": false,
-      "usar_og_image": false,
-      "timeout_segundos": 4,
-      "imagem_fallback": "/static/img/sustentabilidade.jpeg",
-      "observacao": "Fonte por RSS do Google Notícias para evitar capturar páginas de assinatura/menu do site."
     }
   ],
-  "minimo_fontes_home": 5,
-  "minimo_fontes": 5
+  "minimo_fontes_home": 2
 }
