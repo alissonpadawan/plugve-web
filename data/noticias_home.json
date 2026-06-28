@@ -2,6 +2,7 @@
   {
     "tag": "Carros elétricos",
     "fonte": "Quatro Rodas",
+<<<<<<< HEAD
     "titulo": "Notícias sobre carros elétricos",
     "resumo": "Lançamentos, testes, tecnologia e mercado de veículos elétricos.",
     "url": "https://quatrorodas.abril.com.br/carros-eletricos/",
@@ -48,3 +49,45 @@
     "imagem": "/static/img/home-card-tco.png"
   }
 ]
+=======
+    "titulo": "Últimas notícias sobre carros elétricos",
+    "resumo": "Acompanhe lançamentos, testes, tecnologia e mercado de veículos elétricos.",
+    "url": "https://quatrorodas.abril.com.br/carros-eletricos/"
+  },
+  {
+    "tag": "Mercado",
+    "fonte": "Quatro Rodas",
+    "titulo": "Tudo sobre carro elétrico",
+    "resumo": "Seleção de notícias e análises sobre modelos, autonomia, recarga e tendências.",
+    "url": "https://quatrorodas.abril.com.br/tudo-sobre/carro-eletrico/"
+  },
+  {
+    "tag": "Guia",
+    "fonte": "Quatro Rodas",
+    "titulo": "Como funciona um carro elétrico",
+    "resumo": "Conteúdo de referência para entender componentes, recarga e uso no dia a dia.",
+    "url": "https://quatrorodas.abril.com.br/carros-eletricos/como-funciona-um-carro-eletrico-e-o-que-saber-antes-de-ter-um/"
+  },
+  {
+    "tag": "Preço",
+    "fonte": "Quatro Rodas",
+    "titulo": "Elétricos de entrada e custo de compra",
+    "resumo": "Notícias sobre modelos acessíveis, preços e movimentação do mercado.",
+    "url": "https://quatrorodas.abril.com.br/carros-eletricos/jmev-ev2-ev3-eletricos-mais-baratos-brasil/"
+  },
+  {
+    "tag": "Compra",
+    "fonte": "Quatro Rodas",
+    "titulo": "Melhores carros elétricos por faixa de preço",
+    "resumo": "Comparativos e guias para apoiar a escolha de veículos eletrificados.",
+    "url": "https://quatrorodas.abril.com.br/melhor-compra/os-melhores-carros-eletricos-para-comprar-ate-r-200-000-em-2025/"
+  },
+  {
+    "tag": "Autonomia",
+    "fonte": "Quatro Rodas",
+    "titulo": "Potência, bateria e autonomia nos elétricos",
+    "resumo": "Conteúdos sobre consumo de energia, autonomia real e fatores de desempenho.",
+    "url": "https://quatrorodas.abril.com.br/auto-servico/carro-eletrico-bateria-acaba-30-minutos-potencia/"
+  }
+]
+>>>>>>> 27babce02c1f6203cea8e090ec186f492f616f95
