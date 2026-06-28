@@ -1,6 +1,0 @@
-Pacote V23: adaptador do fluxo histórico do painel antigo.
-
-Objetivo:
-- parar de tentar consultar código atual em referência antiga;
-- reproduzir a lógica do painel local: referência -> marca -> ano -> modelos -> preço;
-- manter o diagnóstico seguro, sem salvar curva definitiva.

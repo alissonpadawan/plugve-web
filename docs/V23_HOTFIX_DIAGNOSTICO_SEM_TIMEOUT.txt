@@ -1,1 +1,0 @@
-Hotfix: diagnóstico de coorte não faz mais até 50 consultas em uma única requisição. Limita a 8 pontos espalhados e reduz timeout das chamadas FIPE históricas.
