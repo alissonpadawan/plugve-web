@@ -48,15 +48,15 @@
     .audit-kv-table td:first-child{width:34%}
     .audit-badge{display:inline-block;border:1px solid #111827;padding:2px 6px;margin:2px 3px 2px 0;font-weight:700;background:#fff}
     .muted{color:#6b7280}
-    .audit-plot-grid{display:grid;grid-template-columns:1fr;gap:14px}
-    .audit-plot{margin:14px 0 20px;border:1px solid var(--rule);background:#fff;padding:10px;break-inside:avoid;page-break-inside:avoid}
+    .audit-plot-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 18px}
+    .audit-plot{margin:10px 0 14px;border:1px solid var(--rule);background:#fff;padding:9px;break-inside:avoid;page-break-inside:avoid}
     .audit-plot h3{margin:0 0 8px;font-size:14px;text-transform:none;text-align:center;font-weight:700}
     .audit-plot .plotly-graph-div{width:100% !important;max-width:100% !important}
     .audit-plot .plotly text,.audit-plot .plotly .gtitle,.audit-plot .plotly .xtick text,.audit-plot .plotly .ytick text,.audit-plot .plotly .legendtext{font-family:"Courier New",Consolas,monospace !important}
     .audit-reading p{margin:0 0 8px;white-space:pre-wrap}
     .audit-list{margin:0;padding-left:18px}
     .audit-list li{margin:5px 0}
-    @media(max-width:900px){.audit-header,.audit-grid{display:block}.audit-actions{justify-content:flex-start;margin-top:12px}.audit-dl{grid-template-columns:1fr}.audit-card{margin-bottom:12px}.audit-page{padding:18px 14px}}
+    @media(max-width:900px){.audit-header,.audit-grid{display:block}.audit-plot-grid{grid-template-columns:1fr}.audit-actions{justify-content:flex-start;margin-top:12px}.audit-dl{grid-template-columns:1fr}.audit-card{margin-bottom:12px}.audit-page{padding:18px 14px}}
     @media print{
       body{background:#fff;font-size:10.8px}
       .audit-page{max-width:none;padding:0;background:#fff}
@@ -287,9 +287,9 @@ diferença_percentual = {{ comp.economia_percentual }}</p>
           font: { family: 'Courier New, Consolas, monospace', size: 11, color: '#111827' },
           paper_bgcolor: '#FFFFFF',
           plot_bgcolor: '#FFFFFF',
-          height: isBar ? 255 : 235,
-          margin: { l: 56, r: 18, t: 8, b: 42 },
-          legend: { orientation: 'h', yanchor: 'top', y: -0.18, xanchor: 'left', x: 0, font: { size: 10, family: 'Courier New, Consolas, monospace' } },
+          height: isBar ? 215 : 205,
+          margin: { l: 50, r: 12, t: 6, b: 38 },
+          legend: { orientation: 'h', yanchor: 'top', y: -0.22, xanchor: 'left', x: 0, font: { size: 9, family: 'Courier New, Consolas, monospace' } },
           hovermode: 'x unified',
           xaxis: {
             automargin: true,
@@ -309,7 +309,7 @@ diferença_percentual = {{ comp.economia_percentual }}</p>
           }
         };
         if (index === 0) {
-          relayout.height = 225;
+          relayout.height = 205;
         }
         Plotly.relayout(plot, relayout);
       });

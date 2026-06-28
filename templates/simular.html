@@ -37,9 +37,9 @@
     .plugve-executive-card-env{border-color:#bfdbfe;background:linear-gradient(135deg,#eff6ff 0%,#ffffff 78%)}
     .plugve-executive-card h4{font-size:1.05rem;line-height:1.35;font-weight:900;color:#0f172a;margin:.1rem 0 .45rem}
     .plugve-executive-card p{font-size:.78rem;color:#64748b;line-height:1.4;margin:0}
-    .plugve-executive-metrics{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.7rem}
-    .plugve-executive-metrics span{display:inline-flex;align-items:center;gap:.25rem;border:1px solid #e2e8f0;border-radius:999px;background:#fff;padding:.34rem .6rem;font-size:.72rem;color:#475569}
-    .plugve-executive-metrics b{font-weight:900;color:#0f172a;font-variant-numeric:tabular-nums}
+    .plugve-executive-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.7rem;margin-top:1rem}
+    .plugve-executive-metrics span{display:block;border:1px solid #e2e8f0;border-radius:.85rem;background:#fff;padding:.72rem .85rem;font-size:.78rem;color:#64748b;line-height:1.25}
+    .plugve-executive-metrics b{display:block;margin-top:.18rem;font-size:1.35rem;line-height:1.1;font-weight:900;color:#0f172a;font-variant-numeric:tabular-nums}
     .plugve-main-trend-chart{margin-top:.9rem}
     .plugve-comparison-kicker{display:block;font-size:.72rem;letter-spacing:.04em;text-transform:uppercase;font-weight:900;color:#047857;margin-bottom:.25rem}
     .plugve-comparison-hero h4{font-size:1.15rem;line-height:1.35;font-weight:900;color:#0f172a;max-width:690px}
@@ -60,7 +60,7 @@
     .plugve-vehicle-name-block .plugve-vehicle-fipe b{color:#334155;font-weight:800}
     .plugve-vehicle-price .plugve-vehicle-total-label{display:block;font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:#64748b;font-weight:900}
     .plugve-vehicle-price .plugve-vehicle-total-value{display:block;font-size:1.3rem;line-height:1.15;font-weight:900;color:#0f172a;margin-top:.18rem}
-    .plugve-vehicle-summary.plugve-theme-eletrico{border-color:#86efac;background:linear-gradient(135deg,#ecfdf5 0%,#ffffff 88%)}
+    .plugve-vehicle-summary.plugve-theme-eletrico{border-color:#93c5fd;background:linear-gradient(135deg,#eff6ff 0%,#ffffff 88%)}
     .plugve-vehicle-summary.plugve-theme-phev,.plugve-vehicle-summary.plugve-theme-hibrido{border-color:#bfdbfe;background:linear-gradient(135deg,#eff6ff 0%,#ffffff 88%)}
     .plugve-vehicle-summary.plugve-theme-flex{border-color:#bbf7d0;background:linear-gradient(135deg,#f0fdf4 0%,#fff1f2 100%)}
     .plugve-vehicle-summary.plugve-theme-gasolina{border-color:#fecaca;background:linear-gradient(135deg,#fff5f5 0%,#ffffff 88%)}
@@ -84,8 +84,8 @@
     .plugve-component-table th{background:#f8fafc;color:#334155;font-size:.74rem;text-align:left;padding:.72rem .82rem;border-bottom:1px solid #e2e8f0}
     .plugve-component-table thead th:first-child{background:transparent;color:transparent;border-bottom:0;padding:.2rem .82rem .35rem 0;box-shadow:none}
     .plugve-component-table th:not(:first-child),.plugve-component-table td:not(:first-child){text-align:right;border-left:8px solid #fff;box-shadow:inset 1px 0 0 #e5e7eb}
-    .plugve-component-table thead th.plugve-theme-eletrico{background:#ecfdf5;color:#166534}
-    .plugve-component-table thead th.plugve-theme-phev,.plugve-component-table thead th.plugve-theme-hibrido{background:#eff6ff;color:#1d4ed8}
+    .plugve-component-table thead th.plugve-theme-eletrico{background:linear-gradient(135deg,#eff6ff 0%,#ffffff 90%);color:#1d4ed8}
+    .plugve-component-table thead th.plugve-theme-phev,.plugve-component-table thead th.plugve-theme-hibrido{background:linear-gradient(135deg,#eff6ff 0%,#fff7ed 100%);color:#1d4ed8}
     .plugve-component-table thead th.plugve-theme-flex{background:linear-gradient(90deg,#f0fdf4 0%,#fff1f2 100%);color:#166534}
     .plugve-component-table thead th.plugve-theme-gasolina{background:#fff5f5;color:#b91c1c}
     .plugve-component-table thead th.plugve-theme-diesel{background:#f5f5f4;color:#57534e}
@@ -100,7 +100,7 @@
     .plugve-versus-final-row td[colspan]{text-align:right!important;font-weight:900;color:#0f172a;background:#fbfdff}
     .plugve-versus-section{padding:0;overflow:hidden}
     .plugve-versus-section>div:first-child{padding:1rem 1.05rem .25rem}
-    .plugve-versus-title{font-size:2rem;line-height:1.15;font-weight:900;color:#047857;margin:0 0 .65rem}
+    .plugve-versus-title,.plugve-component-section h4.plugve-versus-title{font-size:2rem!important;line-height:1.15!important;font-weight:900!important;color:#047857!important;margin:0 0 1rem!important}
     .plugve-versus-section .overflow-x-auto{padding:0 1.05rem 1rem}
     .plugve-audit-link{display:inline-flex;align-items:center;justify-content:center;padding:.5rem .9rem;border-radius:.65rem;background:#0f172a;color:#fff;font-weight:800;font-size:.88rem;text-decoration:none}
     .plugve-audit-link:hover{background:#111827;color:#fff}
@@ -161,7 +161,7 @@
     .plugve-premises-grid dl>div:last-child{border-bottom:0}
     .plugve-premises-grid dt{color:#64748b}
     .plugve-premises-grid dd{color:#0f172a;font-weight:700;text-align:right;font-variant-numeric:tabular-nums}
-    @media(max-width:760px){.plugve-executive-grid{grid-template-columns:1fr}.plugve-comparison-hero{align-items:flex-start;flex-direction:column}.plugve-comparison-gain{width:100%;border-left:0;border-top:1px solid #bbf7d0;padding-left:0;padding-top:.75rem;text-align:left}.plugve-vehicle-strip,.plugve-km-values,.plugve-premises-grid,.plugve-summary-km-strip{grid-template-columns:1fr}.plugve-vehicle-summary{align-items:flex-start;flex-direction:column}.plugve-vehicle-price{text-align:left}.plugve-result-toolbar{justify-content:flex-start}}
+    @media(max-width:760px){.plugve-executive-grid,.plugve-executive-metrics{grid-template-columns:1fr}.plugve-comparison-hero{align-items:flex-start;flex-direction:column}.plugve-comparison-gain{width:100%;border-left:0;border-top:1px solid #bbf7d0;padding-left:0;padding-top:.75rem;text-align:left}.plugve-vehicle-strip,.plugve-km-values,.plugve-premises-grid,.plugve-summary-km-strip{grid-template-columns:1fr}.plugve-vehicle-summary{align-items:flex-start;flex-direction:column}.plugve-vehicle-price{text-align:left}.plugve-result-toolbar{justify-content:flex-start}}
     .plugve-page-break{break-inside:avoid;page-break-inside:avoid}
     .plugve-price-finance-field{margin-top:.25rem;border:1px solid #d1d5db;border-radius:.75rem;background:#fff;overflow:visible;transition:border-color .18s ease,box-shadow .18s ease}
     .plugve-price-finance-field:focus-within{border-color:#059669;box-shadow:0 0 0 3px rgba(5,150,105,.10)}
