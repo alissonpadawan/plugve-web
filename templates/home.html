@@ -3,17 +3,79 @@
 {% block title %}CurVE | Calculadora Veicular{% endblock %}
 
 {% block content %}
-<section class="home-video-shell card">
-  <div class="home-video-frame">
-    <video class="home-video" controls playsinline preload="metadata" poster="{{ url_for('static', filename='img/logo_curve_horizontal.png') }}">
-      <source src="{{ url_for('static', filename='video/intro_curve.mp4') }}" type="video/mp4">
-      Seu navegador não conseguiu carregar o vídeo de apresentação da CurVE.
-    </video>
+<section class="curve-intro-hero" aria-label="Apresentação inicial CurVE">
+  <video
+    id="curve_intro_video"
+    class="curve-intro-video"
+    autoplay
+    muted
+    playsinline
+    preload="auto"
+    aria-label="Abertura animada da CurVE"
+  >
+    <source src="{{ url_for('static', filename='video/intro_curve.mp4') }}" type="video/mp4">
+  </video>
+
+  <div class="curve-intro-overlay" aria-hidden="true"></div>
+
+  <button type="button" id="curve_intro_skip" class="curve-intro-skip no-print">
+    Pular apresentação
+  </button>
+
+  <div id="curve_intro_actions" class="curve-intro-actions" aria-label="Acessos principais da CurVE">
+    <a class="curve-intro-button curve-intro-primary" href="/simular">Simulação</a>
+    <a class="curve-intro-button curve-intro-secondary" href="/depreciacao">Depreciação</a>
   </div>
 </section>
+{% endblock %}
 
-<section class="home-entry-actions" aria-label="Acessos principais da CurVE">
-  <a class="home-entry-button home-entry-primary" href="/simular">Simulação</a>
-  <a class="home-entry-button home-entry-secondary" href="/depreciacao">Depreciação</a>
-</section>
+{% block scripts %}
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    document.body.classList.add("curve-intro-active");
+
+    const video = document.getElementById("curve_intro_video");
+    const actions = document.getElementById("curve_intro_actions");
+    const skip = document.getElementById("curve_intro_skip");
+    let finished = false;
+
+    function finishIntro() {
+      if (finished) return;
+      finished = true;
+      document.body.classList.remove("curve-intro-active");
+      document.body.classList.add("curve-intro-ready");
+      actions?.classList.add("is-visible");
+      skip?.classList.add("is-hidden");
+      if (video) {
+        try { video.pause(); } catch (e) {}
+      }
+    }
+
+    if (skip) {
+      skip.addEventListener("click", finishIntro);
+    }
+
+    if (video) {
+      video.muted = true;
+      video.controls = false;
+      video.addEventListener("ended", finishIntro);
+      video.addEventListener("error", finishIntro);
+
+      const playPromise = video.play();
+      if (playPromise && typeof playPromise.catch === "function") {
+        playPromise.catch(function () {
+          finishIntro();
+        });
+      }
+
+      window.setTimeout(function () {
+        if (!finished && video.duration && video.currentTime >= Math.max(0.5, video.duration - 0.25)) {
+          finishIntro();
+        }
+      }, 12000);
+    } else {
+      finishIntro();
+    }
+  });
+</script>
 {% endblock %}
