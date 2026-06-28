@@ -3,24 +3,17 @@
 {% block title %}CurVE | Calculadora Veicular{% endblock %}
 
 {% block content %}
-<section class="hero card">
-  <span class="home-kicker">Calculadora Veicular</span>
-  <h1>Cur<span class="curve-accent">VE</span> Calculadora Veicular</h1>
-  <p>A curva inteligente do custo, da depreciação e da decisão veicular.</p>
-  <div class="actions">
-    <a class="button primary" href="/simular">Simular TCO</a>
-    <a class="button secondary" href="/depreciacao">Consultar Depreciação</a>
+<section class="home-video-shell card">
+  <div class="home-video-frame">
+    <video class="home-video" controls playsinline preload="metadata" poster="{{ url_for('static', filename='img/logo_curve_horizontal.png') }}">
+      <source src="{{ url_for('static', filename='video/intro_curve.mp4') }}" type="video/mp4">
+      Seu navegador não conseguiu carregar o vídeo de apresentação da CurVE.
+    </video>
   </div>
 </section>
 
-<section class="grid two">
-  <div class="card">
-    <h2>Análise veicular integrada</h2>
-    <p class="muted">TCO, depreciação, energia, combustível e valor de revenda em uma leitura técnica e direta.</p>
-  </div>
-  <div class="card">
-    <h2>Mobilidade inteligente</h2>
-    <p class="muted">Interface limpa para comparar veículos elétricos e a combustão com base em dados e premissas auditáveis.</p>
-  </div>
+<section class="home-entry-actions" aria-label="Acessos principais da CurVE">
+  <a class="home-entry-button home-entry-primary" href="/simular">Simulação</a>
+  <a class="home-entry-button home-entry-secondary" href="/depreciacao">Depreciação</a>
 </section>
 {% endblock %}

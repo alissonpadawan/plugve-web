@@ -3,41 +3,17 @@
 {% block title %}CurVE | Calculadora Veicular{% endblock %}
 
 {% block content %}
-<section class="hero card">
-  <span class="home-kicker">Calculadora Veicular</span>
-  <h1>Cur<span class="curve-accent">VE</span> Calculadora Veicular</h1>
-  <p>
-    TCO, depreciação e energia em uma análise veicular inteligente para apoiar decisões de compra, troca e uso.
-  </p>
-  <div class="actions">
-    <a class="button primary" href="/simular">Simular TCO</a>
-    <a class="button secondary" href="/depreciacao">Consultar Depreciação</a>
+<section class="home-video-shell card">
+  <div class="home-video-frame">
+    <video class="home-video" controls playsinline preload="metadata" poster="{{ url_for('static', filename='img/logo_curve_horizontal.png') }}">
+      <source src="{{ url_for('static', filename='video/intro_curve.mp4') }}" type="video/mp4">
+      Seu navegador não conseguiu carregar o vídeo de apresentação da CurVE.
+    </video>
   </div>
 </section>
 
-<section class="grid four home-feature-grid">
-  <div class="card">
-    <h2>Custo Total de Propriedade</h2>
-    <p class="muted">Compare aquisição, operação, impostos, seguro, manutenção, financiamento e valor de revenda.</p>
-  </div>
-  <div class="card">
-    <h2>Depreciação Veicular</h2>
-    <p class="muted">Consulte FIPE, curvas salvas e projeções de valor ao longo do horizonte escolhido.</p>
-  </div>
-  <div class="card">
-    <h2>Energia e Combustível</h2>
-    <p class="muted">Inclua custos de energia elétrica e combustível na leitura econômica do veículo.</p>
-  </div>
-  <div class="card">
-    <h2>Decisão com Dados</h2>
-    <p class="muted">Transforme premissas técnicas em indicadores claros para análise veicular.</p>
-  </div>
-</section>
-
-<section class="card">
-  <h2>Plataforma técnica para apresentação acadêmica</h2>
-  <p class="muted">
-    A CurVE reúne simulação de TCO, consulta FIPE e depreciação em uma interface única, limpa e orientada à tomada de decisão.
-  </p>
+<section class="home-entry-actions" aria-label="Acessos principais da CurVE">
+  <a class="home-entry-button home-entry-primary" href="/simular">Simulação</a>
+  <a class="home-entry-button home-entry-secondary" href="/depreciacao">Depreciação</a>
 </section>
 {% endblock %}
