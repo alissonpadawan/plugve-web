@@ -1,25 +1,15 @@
 from __future__ import annotations
 
-import json
-from pathlib import Path
-
 from flask import Blueprint, render_template, redirect, url_for
+
+from services.noticias_service import carregar_noticias_home
 
 main_bp = Blueprint("main", __name__)
 
 
-def _carregar_noticias_home() -> list[dict]:
-    caminho = Path(__file__).resolve().parents[1] / "data" / "noticias_home.json"
-    try:
-        dados = json.loads(caminho.read_text(encoding="utf-8"))
-        return dados if isinstance(dados, list) else []
-    except Exception:
-        return []
-
-
 @main_bp.route("/")
 def index():
-    return render_template("index.html", noticias=_carregar_noticias_home())
+    return render_template("index.html", noticias=carregar_noticias_home())
 
 
 @main_bp.route("/consulta-fipe")

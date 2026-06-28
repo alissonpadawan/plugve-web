@@ -2,49 +2,55 @@
   {
     "tag": "Carros elétricos",
     "fonte": "Quatro Rodas",
-    "titulo": "Notícias sobre carros elétricos",
-    "resumo": "Lançamentos, testes, tecnologia e mercado de veículos elétricos.",
+    "data": "Fonte externa",
+    "titulo": "Elétricos, híbridos e lançamentos no mercado brasileiro",
+    "resumo": "Acompanhe testes, novidades, autonomia, tecnologia embarcada e movimentações do setor automotivo.",
     "url": "https://quatrorodas.abril.com.br/carros-eletricos/",
     "imagem": "/static/img/home-card-tco.png"
   },
   {
-    "tag": "Mercado automotivo",
+    "tag": "Eletrificação",
     "fonte": "AutoPapo",
-    "titulo": "Radar automotivo e eletrificação",
-    "resumo": "Acompanhe notícias sobre modelos, híbridos, elétricos, manutenção e mercado.",
+    "data": "Fonte externa",
+    "titulo": "Notícias sobre eletrificação, consumo e uso veicular",
+    "resumo": "Conteúdos sobre carros elétricos, híbridos, manutenção, mercado e comportamento de compra.",
     "url": "https://autopapo.com.br/noticia/",
-    "imagem": "/static/img/curve-home-main.png"
+    "imagem": "/static/img/eletroposto.jpeg"
   },
   {
-    "tag": "Tabela FIPE",
-    "fonte": "CurVE",
-    "titulo": "Consulta de preços por tipo de veículo",
-    "resumo": "Compare referências de carros, motos e caminhões antes de decidir.",
-    "url": "/consulta-fipe",
-    "imagem": "/static/img/home-card-fipe.png"
+    "tag": "Veículos elétricos",
+    "fonte": "iG Carros",
+    "data": "Fonte externa",
+    "titulo": "Radar de veículos elétricos, híbridos e tecnologia automotiva",
+    "resumo": "Cobertura de lançamentos, tendências de mercado, modelos eletrificados e indústria automotiva.",
+    "url": "https://carros.ig.com.br/",
+    "imagem": "/static/img/veiculo.jpeg"
   },
   {
-    "tag": "Depreciação",
-    "fonte": "CurVE",
-    "titulo": "Valor futuro e perda econômica",
-    "resumo": "Entenda como a desvalorização influencia a decisão de compra e troca.",
-    "url": "/depreciacao",
+    "tag": "Bateria e recarga",
+    "fonte": "Quatro Rodas",
+    "data": "Fonte externa",
+    "titulo": "Guias e análises sobre autonomia, bateria e carregamento",
+    "resumo": "Informações úteis para entender eficiência, infraestrutura de recarga e uso diário de eletrificados.",
+    "url": "https://quatrorodas.abril.com.br/tudo-sobre/carro-eletrico/",
     "imagem": "/static/img/home-card-depreciacao.png"
   },
   {
-    "tag": "Eficiência",
-    "fonte": "Quatro Rodas",
-    "titulo": "Guias sobre consumo, bateria e recarga",
-    "resumo": "Conteúdos para entender autonomia, energia, bateria e uso no dia a dia.",
-    "url": "https://quatrorodas.abril.com.br/tudo-sobre/carro-eletrico/",
-    "imagem": "/static/img/home-card-tco.png"
+    "tag": "Mercado automotivo",
+    "fonte": "AutoPapo",
+    "data": "Fonte externa",
+    "titulo": "Movimentos do mercado, custos e novas tecnologias",
+    "resumo": "Notícias externas para apoiar a leitura de contexto sobre compra, troca e uso de veículos.",
+    "url": "https://autopapo.com.br/noticia/",
+    "imagem": "/static/img/sustentabilidade.jpeg"
   },
   {
-    "tag": "Decisão com dados",
-    "fonte": "CurVE",
-    "titulo": "Simulação de custo total",
-    "resumo": "Avalie custos, revenda, combustível, energia e impacto operacional estimado.",
-    "url": "/simular",
-    "imagem": "/static/img/home-card-tco.png"
+    "tag": "Consulta de mercado",
+    "fonte": "iG Carros",
+    "data": "Fonte externa",
+    "titulo": "Atualizações automotivas para acompanhar antes da decisão",
+    "resumo": "Uma porta de entrada para notícias sobre modelos, preços, tecnologia e tendências do setor.",
+    "url": "https://carros.ig.com.br/",
+    "imagem": "/static/img/home-card-fipe.png"
   }
 ]

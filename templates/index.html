@@ -42,24 +42,28 @@
     .home-card h2{margin:0;color:#10202b;font-size:clamp(1.25rem,2vw,1.8rem);line-height:1.08;font-weight:900;letter-spacing:-.035em}
     .home-card p{margin:0;color:#64748b;font-size:.98rem;line-height:1.45}
     .home-card-action{margin-top:auto;color:var(--curve-green);font-weight:900;font-size:.92rem}
-    .home-news{margin-top:clamp(44px,7vw,78px);border:1px solid #dce7e1;border-radius:26px;background:rgba(255,255,255,.78);box-shadow:0 20px 50px rgba(15,23,42,.06);overflow:hidden}
-    .home-news-head{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;padding:28px 30px 12px}
+    .home-news{margin-top:clamp(44px,7vw,78px);border:1px solid #dce7e1;border-radius:30px;background:rgba(255,255,255,.84);box-shadow:0 24px 62px rgba(15,23,42,.07);overflow:hidden}
+    .home-news-head{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:22px;padding:30px 32px 18px;border-bottom:1px solid #e5eee9}
     .home-news-head h2{margin:0;color:#10202b;font-size:clamp(1.55rem,2.8vw,2.6rem);font-weight:900;letter-spacing:-.045em}
-    .home-news-head p{margin:6px 0 0;color:#64748b;font-size:.95rem;max-width:680px;line-height:1.45}
-    .news-rail{position:relative;overflow:hidden;padding:18px 0 32px}
-    .news-track{display:flex;gap:16px;width:max-content;animation:newsSlide 36s linear infinite;padding:0 30px}
-    .news-rail:hover .news-track{animation-play-state:paused}
-    .news-card{width:310px;min-height:210px;border:1px solid #e2e8f0;border-radius:20px;background:#fff;padding:18px;display:flex;flex-direction:column;text-decoration:none;color:#0f172a;box-shadow:0 10px 26px rgba(15,23,42,.05)}
-    .news-card:hover{border-color:#86efac;box-shadow:0 16px 34px rgba(15,23,42,.09)}
-    .news-meta{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:14px;color:#168a4a;font-size:.72rem;font-weight:900;text-transform:uppercase;letter-spacing:.04em}
-    .news-card h3{margin:0;color:#10202b;font-size:1.05rem;line-height:1.22;font-weight:900}
-    .news-card p{margin:10px 0 0;color:#64748b;font-size:.88rem;line-height:1.42}
-    .news-link{margin-top:auto;color:#065f46;font-weight:900;font-size:.86rem;padding-top:16px}
-    @keyframes newsSlide{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+    .home-news-head p{margin:6px 0 0;color:#64748b;font-size:.95rem;max-width:760px;line-height:1.45}
+    .home-news-note{display:inline-flex;align-items:center;justify-content:center;border:1px solid #d7eee2;background:#f4fbf7;color:#0f6b39;border-radius:999px;padding:.56rem .85rem;font-size:.78rem;font-weight:900;white-space:nowrap}
+    .news-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;padding:24px 30px 32px}
+    .news-card{display:flex;flex-direction:column;min-height:100%;border:1px solid #e2e8f0;border-radius:24px;background:#fff;overflow:hidden;text-decoration:none;color:#0f172a;box-shadow:0 12px 28px rgba(15,23,42,.05);transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}
+    .news-card:hover{transform:translateY(-3px);border-color:#86efac;box-shadow:0 22px 46px rgba(15,23,42,.10)}
+    .news-thumb{position:relative;aspect-ratio:16/9;background:#eef7f2;overflow:hidden}
+    .news-thumb img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .45s ease,filter .45s ease}
+    .news-card:hover .news-thumb img{transform:scale(1.035);filter:saturate(1.04)}
+    .news-source{position:absolute;left:14px;top:14px;display:inline-flex;align-items:center;border-radius:999px;background:rgba(255,255,255,.88);backdrop-filter:blur(8px);color:#065f46;padding:.42rem .68rem;font-size:.72rem;font-weight:900;text-transform:uppercase;letter-spacing:.035em;box-shadow:0 8px 18px rgba(15,23,42,.10)}
+    .news-body{padding:18px 19px 20px;display:flex;flex-direction:column;gap:10px;flex:1}
+    .news-meta{display:flex;align-items:center;justify-content:space-between;gap:12px;color:#168a4a;font-size:.72rem;font-weight:900;text-transform:uppercase;letter-spacing:.04em}
+    .news-date{color:#94a3b8;text-transform:none;letter-spacing:0;font-weight:800}
+    .news-card h3{margin:0;color:#10202b;font-size:1.12rem;line-height:1.2;font-weight:900;letter-spacing:-.025em}
+    .news-card p{margin:0;color:#64748b;font-size:.9rem;line-height:1.43}
+    .news-link{margin-top:auto;color:#065f46;font-weight:900;font-size:.88rem;padding-top:8px}
     .home-footer{padding:28px 20px;text-align:center;background:#171717;color:#fff;font-size:.9rem;border-top:1px solid rgba(255,255,255,.08)}
-    @media(max-width:980px){.home-intro{grid-template-columns:1fr}.home-cards{grid-template-columns:1fr}.home-card-media{aspect-ratio:16/8.5}.home-news-head{display:block}.news-card{width:280px}}
-    @media(max-width:640px){.home-hero{min-height:84vh}.home-hero img{object-position:center center}.hero-actions{bottom:34px}.btn-start{width:100%;min-width:0}.home-content{width:min(100% - 28px,1220px);padding-top:34px}.home-card-body{padding:20px}.news-track{padding:0 18px}.news-card{width:260px}.home-news-head{padding:22px 20px 8px}}
-    @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.news-track{animation:none;flex-wrap:nowrap;overflow-x:auto;width:auto}.home-card,.home-card-media img,.btn-start{transition:none}}
+    @media(max-width:980px){.home-intro{grid-template-columns:1fr}.home-cards{grid-template-columns:1fr}.home-card-media{aspect-ratio:16/8.5}.home-news-head{grid-template-columns:1fr}.news-grid{grid-template-columns:repeat(2,minmax(0,1fr));padding:22px}.home-news-note{justify-self:start}.news-card{min-height:0}}
+    @media(max-width:640px){.home-hero{min-height:84vh}.home-hero img{object-position:center center}.hero-actions{bottom:34px}.btn-start{width:100%;min-width:0}.home-content{width:min(100% - 28px,1220px);padding-top:34px}.home-card-body{padding:20px}.home-news-head{padding:22px 20px 16px}.news-grid{grid-template-columns:1fr;padding:18px}.news-body{padding:16px}.news-card h3{font-size:1.02rem}}
+    @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.home-card,.home-card-media img,.btn-start,.news-card,.news-thumb img{transition:none}}
   </style>
 </head>
 <body>
@@ -117,20 +121,23 @@
               <h2>Notícias para acompanhar o mercado.</h2>
               <p>Links externos selecionados sobre veículos elétricos, bateria, carregadores, lançamentos e mercado automotivo. A leitura completa acontece na fonte original.</p>
             </div>
+            <div class="home-news-note">Links externos atualizados na fonte</div>
           </div>
-          <div class="news-rail" aria-label="Notícias rolando lateralmente">
-            <div class="news-track">
-              {% for rodada in range(2) %}
-                {% for noticia in noticias %}
-                  <a class="news-card" href="{{ noticia.url }}" target="_blank" rel="noopener noreferrer">
-                    <div class="news-meta"><span>{{ noticia.tag }}</span><span>{{ noticia.fonte }}</span></div>
-                    <h3>{{ noticia.titulo }}</h3>
-                    <p>{{ noticia.resumo }}</p>
-                    <span class="news-link">Ler na fonte →</span>
-                  </a>
-                {% endfor %}
-              {% endfor %}
-            </div>
+          <div class="news-grid" aria-label="Cards de notícias e fontes externas sobre mobilidade elétrica">
+            {% for noticia in noticias %}
+              <a class="news-card" href="{{ noticia.url }}" target="_blank" rel="noopener noreferrer">
+                <div class="news-thumb">
+                  <img src="{{ noticia.imagem or url_for('static', filename='img/curve-home-main.png') }}" alt="{{ noticia.titulo }}" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='{{ url_for('static', filename='img/curve-home-main.png') }}';">
+                  <span class="news-source">{{ noticia.fonte }}</span>
+                </div>
+                <div class="news-body">
+                  <div class="news-meta"><span>{{ noticia.tag }}</span><span class="news-date">{{ noticia.data or 'Fonte externa' }}</span></div>
+                  <h3>{{ noticia.titulo }}</h3>
+                  <p>{{ noticia.resumo }}</p>
+                  <span class="news-link">Ler na fonte →</span>
+                </div>
+              </a>
+            {% endfor %}
           </div>
         </section>
       {% endif %}
