@@ -56,7 +56,7 @@
     .news-card p{margin:10px 0 0;color:#64748b;font-size:.88rem;line-height:1.42}
     .news-link{margin-top:auto;color:#065f46;font-weight:900;font-size:.86rem;padding-top:16px}
     @keyframes newsSlide{from{transform:translateX(0)}to{transform:translateX(-50%)}}
-    .home-footer{padding:28px 20px;text-align:center;color:#64748b;font-size:.9rem}
+    .home-footer{padding:28px 20px;text-align:center;background:#171717;color:#fff;font-size:.9rem;border-top:1px solid rgba(255,255,255,.08)}
     @media(max-width:980px){.home-intro{grid-template-columns:1fr}.home-cards{grid-template-columns:1fr}.home-card-media{aspect-ratio:16/8.5}.home-news-head{display:block}.news-card{width:280px}}
     @media(max-width:640px){.home-hero{min-height:72vh}.home-hero img{object-position:center center}.hero-actions{bottom:20px}.btn-start{width:100%;min-width:0}.home-content{width:min(100% - 28px,1220px);padding-top:34px}.home-card-body{padding:20px}.news-track{padding:0 18px}.news-card{width:260px}.home-news-head{padding:22px 20px 8px}}
     @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.news-track{animation:none;flex-wrap:nowrap;overflow-x:auto;width:auto}.home-card,.home-card-media img,.btn-start{transition:none}}
@@ -77,7 +77,7 @@
           <span class="home-kicker">CurVE — Calculadora Veicular</span>
           <h1>Escolha com base em dados.</h1>
         </div>
-        <p>A CurVE apoia decisões de compra, troca e uso de veículos usando FIPE, custo total de propriedade, depreciação, energia, combustível e indicadores ambientais operacionais.</p>
+        <p>A CurVE reúne análise financeira, eficiência energética e histórico de mercado para apoiar decisões de compra, troca e uso veicular.</p>
       </div>
 
       <div class="home-cards">
@@ -85,8 +85,8 @@
           <div class="home-card-media"><img src="{{ url_for('static', filename='img/home-card-tco.png') }}" alt="Comparação de custo total de propriedade entre veículos"></div>
           <div class="home-card-body">
             <h2>Custo Total de Propriedade</h2>
-            <p>Compare aquisição, energia ou combustível, impostos, seguro, manutenção, financiamento, depreciação e impacto ambiental operacional.</p>
-            <span class="home-card-action">Abrir simulação →</span>
+            <p>Descubra o custo real do veículo. Compare energia, combustível, manutenção, impostos, revenda e mais.</p>
+            <span class="home-card-action">Iniciar simulação →</span>
           </div>
         </a>
 
@@ -94,8 +94,8 @@
           <div class="home-card-media"><img src="{{ url_for('static', filename='img/home-card-depreciacao.png') }}" alt="Depreciação veicular representada por carro e moedas"></div>
           <div class="home-card-body">
             <h2>Depreciação Veicular</h2>
-            <p>Estime valor futuro, perda econômica e taxa de depreciação usando FIPE atual e curvas prontas de depreciação da CurVE.</p>
-            <span class="home-card-action">Consultar depreciação →</span>
+            <p>Antecipe a desvalorização. Estime valor futuro e perda econômica com base no histórico FIPE.</p>
+            <span class="home-card-action">Calcular desvalorização →</span>
           </div>
         </a>
 
@@ -103,7 +103,7 @@
           <div class="home-card-media"><img src="{{ url_for('static', filename='img/home-card-fipe.png') }}" alt="Consulta FIPE para carro, moto e caminhão"></div>
           <div class="home-card-body">
             <h2>Consulta FIPE</h2>
-            <p>Consulte o valor FIPE atual de carros, motos e caminhões de forma simples, com marca, modelo, ano, código FIPE e referência.</p>
+            <p>Consulte preços atualizados de carros, motos e caminhões por marca, modelo e ano.</p>
             <span class="home-card-action">Consultar FIPE →</span>
           </div>
         </a>
@@ -137,6 +137,6 @@
     </section>
   </main>
 
-  <footer class="home-footer">CurVE — Calculadora Veicular para custo total, depreciação e decisão com dados.</footer>
+  <footer class="home-footer">CurVE © 2026 — Instituto Federal de Goiás. Todos os direitos reservados.</footer>
 </body>
 </html>
