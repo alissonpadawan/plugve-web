@@ -1,123 +1,314 @@
-{% extends "base.html" %}
-
-{% block title %}CurVE | Calculadora Veicular{% endblock %}
-
-{% block content %}
-<style>
-  .curve-home-clean {
-    width: 100vw;
-    margin-left: calc(50% - 50vw);
-    margin-right: calc(50% - 50vw);
-    margin-top: -1.5rem;
-    background: #f4faf7;
-  }
-
-  .curve-home-hero-photo {
-    position: relative;
-    width: 100%;
-    min-height: calc(100vh - 86px);
-    overflow: hidden;
-    background: #eef5f1;
-  }
-
-  .curve-home-hero-photo img {
-    display: block;
-    width: 100%;
-    height: calc(100vh - 86px);
-    min-height: 560px;
-    object-fit: cover;
-    object-position: center center;
-  }
-
-  .curve-home-actions {
-    position: absolute;
-    left: 50%;
-    bottom: clamp(28px, 6vh, 70px);
-    transform: translateX(-50%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 18px;
-    z-index: 3;
-    width: min(620px, calc(100% - 40px));
-  }
-
-  .curve-home-btn {
-    min-width: 190px;
-    text-align: center;
-    border-radius: 999px;
-    padding: 15px 30px;
-    font-size: 1.05rem;
-    line-height: 1;
-    font-weight: 900;
-    text-decoration: none;
-    transition: transform .18s ease, box-shadow .18s ease, background .18s ease, color .18s ease;
-    box-shadow: 0 14px 30px rgba(15, 23, 42, .12);
-  }
-
-  .curve-home-btn:hover {
-    transform: translateY(-2px);
-  }
-
-  .curve-home-btn-primary {
-    background: #168a4a;
-    border: 2px solid #168a4a;
-    color: #fff;
-  }
-
-  .curve-home-btn-primary:hover {
-    background: #0f6b39;
-    border-color: #0f6b39;
-    color: #fff;
-    box-shadow: 0 18px 38px rgba(22, 138, 74, .24);
-  }
-
-  .curve-home-btn-secondary {
-    background: rgba(255,255,255,.82);
-    border: 2px solid #168a4a;
-    color: #065f46;
-    backdrop-filter: blur(8px);
-  }
-
-  .curve-home-btn-secondary:hover {
-    background: #168a4a;
-    color: #fff;
-    box-shadow: 0 18px 38px rgba(22, 138, 74, .20);
-  }
-
-  @media (max-width: 900px) {
-    .curve-home-clean {
-      margin-top: -1rem;
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CurVE | Decisão com dados</title>
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/favicon.png') }}">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/favicon-180.png') }}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+  <style>
+    :root{
+      --curve-green:#168a4a;
+      --curve-green-dark:#065f46;
+      --curve-ink:#10202b;
+      --curve-muted:#5f6b7a;
+<<<<<<< HEAD
+      --curve-bg:#f3faf6;
+      --curve-line:#dce7e1;
     }
-    .curve-home-hero-photo img {
-      height: calc(100vh - 78px);
-      min-height: 540px;
-      object-position: center center;
+=======
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+>>>>>>> 4a3d9630e1b18edd426302aae04b128c3035e1b5
+      --curve-bg:#f5f8f7;
+      --curve-bg-soft:#eef4f1;
+      --curve-line:#dce7e1;
+      --curve-footer:#161b1f;
     }
-    .curve-home-actions {
-      flex-direction: column;
-      bottom: 24px;
-      gap: 12px;
+    *{box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{margin:0;background:linear-gradient(180deg,#f8fbfa 0%,#edf4f0 42%,#f7faf8 100%);color:var(--curve-ink);font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    a{color:inherit}
+    .home-shell{min-height:100vh;overflow:hidden;background:linear-gradient(180deg,#ffffff 0%,#eef5f1 48%,#f8faf9 100%)}
+    .home-hero{position:relative;min-height:100vh;background:#f2f6f4;display:grid;place-items:center;overflow:hidden}
+    .home-hero img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center center;display:block}
+    .home-hero::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,255,255,.02) 0%,rgba(255,255,255,0) 54%,rgba(239,246,242,.78) 100%);pointer-events:none}
+    .hero-actions{position:absolute;left:50%;bottom:clamp(28px,6vh,74px);transform:translateX(-50%);z-index:2;display:flex;justify-content:center;width:min(380px,calc(100% - 40px))}
+    .btn-start{display:inline-flex;align-items:center;justify-content:center;border:2px solid var(--curve-green);background:var(--curve-green);color:#fff;border-radius:999px;min-width:210px;padding:16px 38px;font-size:1.08rem;font-weight:900;text-decoration:none;box-shadow:0 20px 44px rgba(22,138,74,.24);transition:transform .18s ease,box-shadow .18s ease,background .18s ease}
+    .btn-start:hover{transform:translateY(-2px);background:#0f6b39;box-shadow:0 26px 54px rgba(22,138,74,.30);color:#fff}
+    .home-content{position:relative;width:100%;padding:clamp(48px,7vw,92px) 0 0;background:linear-gradient(180deg,rgba(239,246,242,.96) 0%,#f8faf9 26%,#ffffff 100%)}
+    .home-inner{width:min(1220px,calc(100% - 40px));margin:0 auto}
+    .home-intro{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(280px,.95fr);gap:30px;align-items:end;margin-bottom:28px}
+    .home-kicker{display:inline-flex;align-items:center;border:1px solid #bbf7d0;background:#ecfdf5;color:#065f46;border-radius:999px;padding:.45rem .85rem;font-size:.78rem;font-weight:900;letter-spacing:.04em;text-transform:uppercase;margin-bottom:16px}
+    .home-intro h1{margin:0;color:var(--curve-green);font-size:clamp(2.15rem,4.2vw,4.2rem);line-height:1.02;font-weight:900;letter-spacing:-.055em}
+    .home-intro p{margin:0;color:var(--curve-muted);font-size:clamp(1rem,1.35vw,1.28rem);line-height:1.52;max-width:790px}
+<<<<<<< HEAD
+=======
+=======
+      --curve-bg:#f3faf6;
+      --curve-line:#dce7e1;
     }
-    .curve-home-btn {
-      width: min(360px, 100%);
-    }
-  }
-</style>
+>>>>>>> e10830e1ec41e4befbf347b2083a4c9edc3ad3d7
+    html{scroll-behavior:smooth}
+    body{margin:0;background:linear-gradient(180deg,#f7fbf8 0%,#eef7f2 100%);color:var(--curve-ink);font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    .home-shell{min-height:100vh;overflow:hidden}
+    .home-hero{position:relative;min-height:100vh;background:#eef4f1;display:grid;place-items:center;overflow:hidden}
+    .home-hero img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center center;display:block}
+    .home-hero::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,255,255,.02) 0%,rgba(255,255,255,0) 55%,rgba(244,250,247,.54) 100%);pointer-events:none}
+    .hero-actions{position:absolute;left:50%;bottom:clamp(26px,6vh,70px);transform:translateX(-50%);z-index:2;display:flex;justify-content:center;width:min(380px,calc(100% - 40px))}
+    .btn-start{display:inline-flex;align-items:center;justify-content:center;border:2px solid var(--curve-green);background:var(--curve-green);color:#fff;border-radius:999px;min-width:210px;padding:16px 36px;font-size:1.08rem;font-weight:900;text-decoration:none;box-shadow:0 20px 44px rgba(22,138,74,.24);transition:transform .18s ease,box-shadow .18s ease,background .18s ease}
+    .btn-start:hover{transform:translateY(-2px);background:#0f6b39;box-shadow:0 26px 54px rgba(22,138,74,.30);color:#fff}
+    .home-content{width:min(1220px,calc(100% - 40px));margin:0 auto;padding:clamp(42px,7vw,88px) 0 72px}
+    .home-intro{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(280px,.9fr);gap:30px;align-items:end;margin-bottom:28px}
+    .home-kicker{display:inline-flex;align-items:center;border:1px solid #bbf7d0;background:#ecfdf5;color:#065f46;border-radius:999px;padding:.45rem .85rem;font-size:.78rem;font-weight:900;letter-spacing:.04em;text-transform:uppercase;margin-bottom:16px}
+    .home-intro h1{margin:0;color:var(--curve-green);font-size:clamp(2.15rem,4.2vw,4.2rem);line-height:1.02;font-weight:900;letter-spacing:-.055em}
+    .home-intro p{margin:0;color:var(--curve-muted);font-size:clamp(1rem,1.35vw,1.28rem);line-height:1.52;max-width:760px}
+<<<<<<< HEAD
+=======
+>>>>>>> 27babce02c1f6203cea8e090ec186f492f616f95
+>>>>>>> 4a3d9630e1b18edd426302aae04b128c3035e1b5
+>>>>>>> e10830e1ec41e4befbf347b2083a4c9edc3ad3d7
+    .home-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px;margin-top:30px}
+    .home-card{display:flex;flex-direction:column;border:1px solid #dce7e1;border-radius:24px;background:#fff;overflow:hidden;text-decoration:none;color:inherit;box-shadow:0 20px 50px rgba(15,23,42,.07);transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}
+    .home-card:hover{transform:translateY(-4px);box-shadow:0 28px 66px rgba(15,23,42,.12);border-color:#86efac}
+    .home-card-media{aspect-ratio:16/10;background:#f8fafc;overflow:hidden;border-bottom:1px solid #edf2ef}
+    .home-card-media img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .45s ease}
+    .home-card:hover .home-card-media img{transform:scale(1.035)}
+    .home-card-body{padding:23px 24px 25px;display:flex;flex-direction:column;gap:12px;flex:1}
+    .home-card h2{margin:0;color:#10202b;font-size:clamp(1.25rem,2vw,1.8rem);line-height:1.08;font-weight:900;letter-spacing:-.035em}
+    .home-card p{margin:0;color:#64748b;font-size:.98rem;line-height:1.45}
+    .home-card-action{margin-top:auto;color:var(--curve-green);font-weight:900;font-size:.92rem}
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+>>>>>>> 4a3d9630e1b18edd426302aae04b128c3035e1b5
+    .home-news{margin-top:clamp(46px,7vw,82px);border:1px solid #dce7e1;border-radius:26px;background:rgba(255,255,255,.82);box-shadow:0 20px 50px rgba(15,23,42,.06);overflow:hidden}
+    .home-news-head{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;padding:28px 30px 12px}
+    .home-news-head h2{margin:0;color:#10202b;font-size:clamp(1.55rem,2.8vw,2.6rem);font-weight:900;letter-spacing:-.045em}
+    .home-news-head p{margin:6px 0 0;color:#64748b;font-size:.95rem;max-width:760px;line-height:1.45}
+    .news-rail{position:relative;overflow:hidden;padding:18px 0 32px}
+    .news-track{display:flex;gap:16px;width:max-content;animation:newsSlide 42s linear infinite;padding:0 30px}
+    .news-rail:hover .news-track{animation-play-state:paused}
+    .news-card{width:320px;min-height:320px;border:1px solid #e2e8f0;border-radius:22px;background:#fff;display:flex;flex-direction:column;text-decoration:none;color:#0f172a;box-shadow:0 10px 26px rgba(15,23,42,.05);overflow:hidden}
+    .news-card:hover{border-color:#86efac;box-shadow:0 16px 34px rgba(15,23,42,.09)}
+    .news-media{aspect-ratio:16/9;background:#f1f5f9;overflow:hidden;border-bottom:1px solid #edf2ef}
+    .news-media img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .42s ease}
+    .news-card:hover .news-media img{transform:scale(1.035)}
+    .news-body{padding:16px 17px 18px;display:flex;flex-direction:column;flex:1}
+    .news-meta{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;color:#168a4a;font-size:.7rem;font-weight:900;text-transform:uppercase;letter-spacing:.04em}
+    .news-card h3{margin:0;color:#10202b;font-size:1.05rem;line-height:1.22;font-weight:900}
+    .news-card p{margin:10px 0 0;color:#64748b;font-size:.88rem;line-height:1.42}
+    .news-link{margin-top:auto;color:#065f46;font-weight:900;font-size:.86rem;padding-top:14px}
+    @keyframes newsSlide{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+    .home-footer{margin-top:54px;background:var(--curve-footer);border-top:1px solid rgba(255,255,255,.10);padding:22px 20px;color:#ffffff;font-size:.95rem;font-weight:650;text-align:center;letter-spacing:.01em}
+    @media(max-width:980px){.home-intro{grid-template-columns:1fr}.home-cards{grid-template-columns:1fr}.home-card-media{aspect-ratio:16/8.5}.home-news-head{display:block}.news-card{width:290px}}
+    @media(max-width:640px){.home-hero{min-height:72vh}.home-hero img{object-position:center center}.hero-actions{bottom:20px}.btn-start{width:100%;min-width:0}.home-inner{width:min(100% - 28px,1220px)}.home-content{padding-top:34px}.home-card-body{padding:20px}.news-track{padding:0 18px}.news-card{width:265px}.home-news-head{padding:22px 20px 8px}}
+    @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.news-track{animation:none;flex-wrap:nowrap;overflow-x:auto;width:auto}.home-card,.home-card-media img,.news-media img,.btn-start{transition:none}}
+<<<<<<< HEAD
+=======
+=======
+>>>>>>> e10830e1ec41e4befbf347b2083a4c9edc3ad3d7
+    .home-news{margin-top:clamp(44px,7vw,78px);border:1px solid #dce7e1;border-radius:26px;background:rgba(255,255,255,.78);box-shadow:0 20px 50px rgba(15,23,42,.06);overflow:hidden}
+    .home-news-head{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;padding:28px 30px 12px}
+    .home-news-head h2{margin:0;color:#10202b;font-size:clamp(1.55rem,2.8vw,2.6rem);font-weight:900;letter-spacing:-.045em}
+    .home-news-head p{margin:6px 0 0;color:#64748b;font-size:.95rem;max-width:680px;line-height:1.45}
+    .news-rail{position:relative;overflow:hidden;padding:18px 0 32px}
+    .news-track{display:flex;gap:16px;width:max-content;animation:newsSlide 36s linear infinite;padding:0 30px}
+    .news-rail:hover .news-track{animation-play-state:paused}
+    .news-card{width:310px;min-height:210px;border:1px solid #e2e8f0;border-radius:20px;background:#fff;padding:18px;display:flex;flex-direction:column;text-decoration:none;color:#0f172a;box-shadow:0 10px 26px rgba(15,23,42,.05)}
+    .news-card:hover{border-color:#86efac;box-shadow:0 16px 34px rgba(15,23,42,.09)}
+    .news-meta{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:14px;color:#168a4a;font-size:.72rem;font-weight:900;text-transform:uppercase;letter-spacing:.04em}
+    .news-card h3{margin:0;color:#10202b;font-size:1.05rem;line-height:1.22;font-weight:900}
+    .news-card p{margin:10px 0 0;color:#64748b;font-size:.88rem;line-height:1.42}
+    .news-link{margin-top:auto;color:#065f46;font-weight:900;font-size:.86rem;padding-top:16px}
+    @keyframes newsSlide{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+    .home-footer{padding:28px 20px;text-align:center;color:#64748b;font-size:.9rem}
+    @media(max-width:980px){.home-intro{grid-template-columns:1fr}.home-cards{grid-template-columns:1fr}.home-card-media{aspect-ratio:16/8.5}.home-news-head{display:block}.news-card{width:280px}}
+    @media(max-width:640px){.home-hero{min-height:72vh}.home-hero img{object-position:center center}.hero-actions{bottom:20px}.btn-start{width:100%;min-width:0}.home-content{width:min(100% - 28px,1220px);padding-top:34px}.home-card-body{padding:20px}.news-track{padding:0 18px}.news-card{width:260px}.home-news-head{padding:22px 20px 8px}}
+    @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.news-track{animation:none;flex-wrap:nowrap;overflow-x:auto;width:auto}.home-card,.home-card-media img,.btn-start{transition:none}}
+<<<<<<< HEAD
+=======
+>>>>>>> 27babce02c1f6203cea8e090ec186f492f616f95
+>>>>>>> 4a3d9630e1b18edd426302aae04b128c3035e1b5
+>>>>>>> e10830e1ec41e4befbf347b2083a4c9edc3ad3d7
+  </style>
+</head>
+<body>
+  <main class="home-shell">
+    <section class="home-hero" aria-label="CurVE — Decisão com dados">
+      <img src="{{ url_for('static', filename='img/curve-home-main.png') }}" alt="CurVE — Decisão com dados para mobilidade e análise veicular" loading="eager" decoding="async">
+      <div class="hero-actions">
+        <a class="btn-start" href="#opcoes">Começar</a>
+      </div>
+    </section>
 
-<section class="curve-home-clean" aria-label="Página inicial CurVE">
-  <div class="curve-home-hero-photo">
-    <img
-      src="{{ url_for('static', filename='img/curve-home-main.png') }}"
-      alt="CurVE — decisão com dados para comparação veicular"
-      loading="eager"
-      decoding="async"
-    >
+    <section id="opcoes" class="home-content" aria-label="Opções principais da CurVE">
+<<<<<<< HEAD
+      <div class="home-intro">
+        <div>
+          <span class="home-kicker">CurVE — Calculadora Veicular</span>
+          <h1>Escolha com base em dados.</h1>
+        </div>
+        <p>A CurVE apoia decisões de compra, troca e uso de veículos usando FIPE, custo total de propriedade, depreciação, energia, combustível e indicadores ambientais operacionais.</p>
+      </div>
 
-    <div class="curve-home-actions" aria-label="Ações principais">
-      <a class="curve-home-btn curve-home-btn-primary" href="/simular">Simulação</a>
-      <a class="curve-home-btn curve-home-btn-secondary" href="/depreciacao">Depreciação</a>
-    </div>
-  </div>
-</section>
-{% endblock %}
+=======
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+>>>>>>> 4a3d9630e1b18edd426302aae04b128c3035e1b5
+      <div class="home-inner">
+        <div class="home-intro">
+          <div>
+            <span class="home-kicker">CurVE — Calculadora Veicular</span>
+            <h1>Escolha com base em dados.</h1>
+          </div>
+          <p>A CurVE reúne análise financeira, eficiência energética e histórico de mercado para apoiar decisões de compra, troca e uso veicular.</p>
+        </div>
+
+        <div class="home-cards">
+          <a class="home-card" href="/simular" aria-label="Abrir simulação de custo total de propriedade">
+            <div class="home-card-media"><img src="{{ url_for('static', filename='img/home-card-tco.png') }}" alt="Comparação de custo total de propriedade entre veículos"></div>
+            <div class="home-card-body">
+              <h2>Custo Total de Propriedade</h2>
+              <p>Descubra o custo real do veículo. Compare energia, combustível, manutenção, impostos, revenda e mais.</p>
+              <span class="home-card-action">Iniciar simulação →</span>
+            </div>
+          </a>
+
+          <a class="home-card" href="/depreciacao" aria-label="Abrir análise de depreciação veicular">
+            <div class="home-card-media"><img src="{{ url_for('static', filename='img/home-card-depreciacao.png') }}" alt="Depreciação veicular representada por carro e moedas"></div>
+            <div class="home-card-body">
+              <h2>Depreciação Veicular</h2>
+              <p>Antecipe a desvalorização. Estime valor futuro e perda econômica com base no histórico FIPE.</p>
+              <span class="home-card-action">Calcular desvalorização →</span>
+            </div>
+          </a>
+
+          <a class="home-card" href="/consulta-fipe" aria-label="Abrir consulta FIPE para carros, motos e caminhões">
+            <div class="home-card-media"><img src="{{ url_for('static', filename='img/home-card-fipe.png') }}" alt="Consulta FIPE para carro, moto e caminhão"></div>
+            <div class="home-card-body">
+              <h2>Consulta FIPE</h2>
+              <p>Consulte preços atualizados de carros, motos e caminhões por marca, modelo e ano.</p>
+              <span class="home-card-action">Consultar FIPE →</span>
+            </div>
+          </a>
+        </div>
+
+        {% if noticias %}
+          <section class="home-news" aria-label="Radar de notícias sobre mobilidade elétrica">
+            <div class="home-news-head">
+              <div>
+                <span class="home-kicker">Radar da mobilidade elétrica</span>
+                <h2>Notícias para acompanhar o mercado.</h2>
+                <p>Links externos selecionados sobre veículos elétricos, bateria, carregadores, lançamentos e mercado automotivo. A leitura completa acontece na fonte original.</p>
+              </div>
+            </div>
+            <div class="news-rail" aria-label="Notícias rolando lateralmente">
+              <div class="news-track">
+                {% for rodada in range(2) %}
+                  {% for noticia in noticias %}
+                    <a class="news-card" href="{{ noticia.url }}" target="_blank" rel="noopener noreferrer">
+                      <div class="news-media">
+                        <img src="{{ noticia.imagem or url_for('static', filename='img/curve-home-main.png') }}" alt="{{ noticia.titulo }}" loading="lazy" decoding="async">
+                      </div>
+                      <div class="news-body">
+                        <div class="news-meta"><span>{{ noticia.tag }}</span><span>{{ noticia.fonte }}</span></div>
+                        <h3>{{ noticia.titulo }}</h3>
+                        <p>{{ noticia.resumo }}</p>
+                        <span class="news-link">Ler na fonte →</span>
+                      </div>
+                    </a>
+                  {% endfor %}
+                {% endfor %}
+              </div>
+            </div>
+          </section>
+        {% endif %}
+      </div>
+      <footer class="home-footer">CurVE © 2026 — Instituto Federal de Goiás. Todos os direitos reservados.</footer>
+    </section>
+  </main>
+<<<<<<< HEAD
+=======
+=======
+      <div class="home-intro">
+        <div>
+          <span class="home-kicker">CurVE — Calculadora Veicular</span>
+          <h1>Escolha com base em dados.</h1>
+        </div>
+        <p>A CurVE apoia decisões de compra, troca e uso de veículos usando FIPE, custo total de propriedade, depreciação, energia, combustível e indicadores ambientais operacionais.</p>
+      </div>
+
+>>>>>>> e10830e1ec41e4befbf347b2083a4c9edc3ad3d7
+      <div class="home-cards">
+        <a class="home-card" href="/simular" aria-label="Abrir simulação de custo total de propriedade">
+          <div class="home-card-media"><img src="{{ url_for('static', filename='img/home-card-tco.png') }}" alt="Comparação de custo total de propriedade entre veículos"></div>
+          <div class="home-card-body">
+            <h2>Custo Total de Propriedade</h2>
+            <p>Compare aquisição, energia ou combustível, impostos, seguro, manutenção, financiamento, depreciação e impacto ambiental operacional.</p>
+            <span class="home-card-action">Abrir simulação →</span>
+          </div>
+        </a>
+
+        <a class="home-card" href="/depreciacao" aria-label="Abrir análise de depreciação veicular">
+          <div class="home-card-media"><img src="{{ url_for('static', filename='img/home-card-depreciacao.png') }}" alt="Depreciação veicular representada por carro e moedas"></div>
+          <div class="home-card-body">
+            <h2>Depreciação Veicular</h2>
+            <p>Estime valor futuro, perda econômica e taxa de depreciação usando FIPE atual e curvas prontas de depreciação da CurVE.</p>
+            <span class="home-card-action">Consultar depreciação →</span>
+          </div>
+        </a>
+
+        <a class="home-card" href="/consulta-fipe" aria-label="Abrir consulta FIPE para carros, motos e caminhões">
+          <div class="home-card-media"><img src="{{ url_for('static', filename='img/home-card-fipe.png') }}" alt="Consulta FIPE para carro, moto e caminhão"></div>
+          <div class="home-card-body">
+            <h2>Consulta FIPE</h2>
+            <p>Consulte o valor FIPE atual de carros, motos e caminhões de forma simples, com marca, modelo, ano, código FIPE e referência.</p>
+            <span class="home-card-action">Consultar FIPE →</span>
+          </div>
+        </a>
+      </div>
+
+      {% if noticias %}
+        <section class="home-news" aria-label="Radar de notícias sobre mobilidade elétrica">
+          <div class="home-news-head">
+            <div>
+              <span class="home-kicker">Radar da mobilidade elétrica</span>
+              <h2>Notícias para acompanhar o mercado.</h2>
+              <p>Links externos selecionados sobre veículos elétricos, bateria, carregadores, lançamentos e mercado automotivo. A leitura completa acontece na fonte original.</p>
+            </div>
+          </div>
+          <div class="news-rail" aria-label="Notícias rolando lateralmente">
+            <div class="news-track">
+              {% for rodada in range(2) %}
+                {% for noticia in noticias %}
+                  <a class="news-card" href="{{ noticia.url }}" target="_blank" rel="noopener noreferrer">
+                    <div class="news-meta"><span>{{ noticia.tag }}</span><span>{{ noticia.fonte }}</span></div>
+                    <h3>{{ noticia.titulo }}</h3>
+                    <p>{{ noticia.resumo }}</p>
+                    <span class="news-link">Ler na fonte →</span>
+                  </a>
+                {% endfor %}
+              {% endfor %}
+            </div>
+          </div>
+        </section>
+      {% endif %}
+    </section>
+  </main>
+
+  <footer class="home-footer">CurVE — Calculadora Veicular para custo total, depreciação e decisão com dados.</footer>
+<<<<<<< HEAD
+=======
+>>>>>>> 27babce02c1f6203cea8e090ec186f492f616f95
+>>>>>>> 4a3d9630e1b18edd426302aae04b128c3035e1b5
+>>>>>>> e10830e1ec41e4befbf347b2083a4c9edc3ad3d7
+</body>
+</html>
