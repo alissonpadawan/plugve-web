@@ -3,8 +3,8 @@
     "tag": "Carros elétricos",
     "fonte": "Quatro Rodas",
     "data": "Fonte externa",
-    "titulo": "Elétricos, híbridos e lançamentos no mercado brasileiro",
-    "resumo": "Acompanhe testes, novidades, autonomia, tecnologia embarcada e movimentações do setor automotivo.",
+    "titulo": "Carros elétricos, híbridos e lançamentos no mercado brasileiro",
+    "resumo": "Acompanhe testes, novidades, autonomia, tecnologia embarcada e movimentos do setor automotivo.",
     "url": "https://quatrorodas.abril.com.br/carros-eletricos/",
     "imagem": "/static/img/home-card-tco.png"
   },
@@ -14,7 +14,7 @@
     "data": "Fonte externa",
     "titulo": "Notícias sobre eletrificação, consumo e uso veicular",
     "resumo": "Conteúdos sobre carros elétricos, híbridos, manutenção, mercado e comportamento de compra.",
-    "url": "https://autopapo.com.br/noticia/",
+    "url": "https://autopapo.com.br/noticias/eletrificacao/",
     "imagem": "/static/img/eletroposto.jpeg"
   },
   {
@@ -23,34 +23,43 @@
     "data": "Fonte externa",
     "titulo": "Radar de veículos elétricos, híbridos e tecnologia automotiva",
     "resumo": "Cobertura de lançamentos, tendências de mercado, modelos eletrificados e indústria automotiva.",
-    "url": "https://carros.ig.com.br/",
+    "url": "https://carros.ig.com.br/veiculos-eletricos/",
     "imagem": "/static/img/veiculo.jpeg"
   },
   {
-    "tag": "Bateria e recarga",
-    "fonte": "Quatro Rodas",
+    "tag": "Elétricos e híbridos",
+    "fonte": "Autoesporte",
     "data": "Fonte externa",
-    "titulo": "Guias e análises sobre autonomia, bateria e carregamento",
-    "resumo": "Informações úteis para entender eficiência, infraestrutura de recarga e uso diário de eletrificados.",
-    "url": "https://quatrorodas.abril.com.br/tudo-sobre/carro-eletrico/",
-    "imagem": "/static/img/home-card-depreciacao.png"
-  },
-  {
-    "tag": "Mercado automotivo",
-    "fonte": "AutoPapo",
-    "data": "Fonte externa",
-    "titulo": "Movimentos do mercado, custos e novas tecnologias",
-    "resumo": "Notícias externas para apoiar a leitura de contexto sobre compra, troca e uso de veículos.",
-    "url": "https://autopapo.com.br/noticia/",
+    "titulo": "Atualizações sobre elétricos, híbridos e indústria automotiva",
+    "resumo": "Notícias e análises sobre novos modelos, tecnologia, autonomia, mercado e infraestrutura.",
+    "url": "https://autoesporte.globo.com/carros/eletricos-e-hibridos/",
     "imagem": "/static/img/sustentabilidade.jpeg"
   },
   {
-    "tag": "Consulta de mercado",
-    "fonte": "iG Carros",
+    "tag": "Carros elétricos e híbridos",
+    "fonte": "Mobiauto",
     "data": "Fonte externa",
-    "titulo": "Atualizações automotivas para acompanhar antes da decisão",
-    "resumo": "Uma porta de entrada para notícias sobre modelos, preços, tecnologia e tendências do setor.",
-    "url": "https://carros.ig.com.br/",
+    "titulo": "Comparativos, guias e notícias sobre modelos eletrificados",
+    "resumo": "Conteúdos para acompanhar preço, uso, tecnologia e mercado de carros elétricos e híbridos.",
+    "url": "https://www.mobiauto.com.br/revista/categoria/carros-eletricos-e-hibridos/57",
+    "imagem": "/static/img/home-card-depreciacao.png"
+  },
+  {
+    "tag": "Veículos elétricos",
+    "fonte": "InsideEVs Brasil",
+    "data": "Fonte externa",
+    "titulo": "Cobertura especializada sobre mobilidade elétrica",
+    "resumo": "Notícias sobre veículos elétricos, recarga, baterias, autonomia e novos projetos no Brasil e no mundo.",
+    "url": "https://insideevs.uol.com.br/",
     "imagem": "/static/img/home-card-fipe.png"
+  },
+  {
+    "tag": "Elétricos e híbridos",
+    "fonte": "Motor1 Brasil",
+    "data": "Fonte externa",
+    "titulo": "Lançamentos, testes e mercado de elétricos e híbridos",
+    "resumo": "Atualizações externas para acompanhar tendências, tecnologia e infraestrutura automotiva.",
+    "url": "https://motor1.uol.com.br/features/category/eletricos-veiculos-hibridos/",
+    "imagem": "/static/img/curve-home-main.png"
   }
 ]

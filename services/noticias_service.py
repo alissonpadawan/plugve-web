@@ -703,6 +703,30 @@ def _diversify_items(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return result
 
 
+def _source_count(items: list[dict[str, Any]]) -> int:
+    fontes = {
+        _normalize_text(str(item.get("fonte") or ""))
+        for item in items
+        if isinstance(item, dict) and item.get("fonte")
+    }
+    return len({fonte for fonte in fontes if fonte})
+
+
+def _merge_with_fallback(items: list[dict[str, Any]], min_sources: int, limit: int) -> list[dict[str, Any]]:
+    """Completa o radar com fallback editorial quando os feeds retornam poucas fontes.
+
+    Isso evita a home ficar visualmente dominada por um único portal quando RSS,
+    cache ou scraping de páginas externas entregam resultado limitado.
+    """
+    normalized_items = [_normalize_item(item) for item in items if isinstance(item, dict)]
+    if _source_count(normalized_items) >= min_sources:
+        return _diversify_items(normalized_items)[:limit]
+
+    fallback_items = [_normalize_item(item) for item in _load_fallback_news() if isinstance(item, dict)]
+    merged = _diversify_items(normalized_items + fallback_items)
+    return merged[:limit]
+
+
 def _refresh_from_sources(settings: dict[str, Any]) -> list[dict[str, Any]]:
     keywords = [str(k) for k in settings.get("palavras_chave", DEFAULT_KEYWORDS)]
     sources = settings.get("fontes", [])
@@ -722,38 +746,46 @@ def _refresh_from_sources(settings: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 def carregar_noticias_home(limite: int | None = None, forcar_atualizacao: bool = False) -> list[dict[str, Any]]:
-    """Carrega o radar da home com cache e fallback seguro.
+    """Carrega o radar da home com cache, diversidade de fontes e fallback seguro.
 
     Ordem de decisão:
-    1. usa cache persistente recente;
+    1. usa cache persistente recente apenas se houver variedade mínima de fontes;
     2. tenta atualizar fontes externas configuradas em data/noticias_fontes.json;
-    3. usa cache antigo se a atualização falhar;
-    4. usa data/noticias_home.json como fallback controlado.
+    3. completa com fallback editorial quando os feeds retornam poucas fontes;
+    4. usa cache antigo + fallback, ou fallback puro, se a atualização falhar.
     """
     settings = _load_settings()
     ttl_hours = int(settings.get("atualizacao_horas") or DEFAULT_CACHE_HOURS)
     limit = int(limite or settings.get("limite_total") or DEFAULT_LIMIT)
+    min_sources = int(settings.get("minimo_fontes_home") or 4)
 
     cache = _load_cache()
     if not forcar_atualizacao and cache and _is_cache_valid(cache, ttl_hours):
-        cached_items = cache.get("items", [])
-        if isinstance(cached_items, list) and cached_items:
-            return [_normalize_item(item) for item in cached_items[:limit] if isinstance(item, dict)]
+        cached_items = [
+            _normalize_item(item)
+            for item in cache.get("items", [])
+            if isinstance(item, dict)
+        ]
+        if cached_items and _source_count(cached_items) >= min_sources:
+            return _diversify_items(cached_items)[:limit]
 
     fresh_items = _refresh_from_sources(settings)
     if fresh_items:
+        final_items = _merge_with_fallback(fresh_items, min_sources=min_sources, limit=limit)
         payload = {
             "updated_at": datetime.now(timezone.utc).isoformat(),
             "source": "external_feeds_and_pages",
-            "items": fresh_items,
+            "items": final_items,
+            "source_count": _source_count(final_items),
         }
         try:
             _write_json(_cache_path(), payload)
         except Exception:
             pass
-        return fresh_items[:limit]
+        return final_items
 
     if cache and isinstance(cache.get("items"), list) and cache.get("items"):
-        return [_normalize_item(item) for item in cache["items"][:limit] if isinstance(item, dict)]
+        cached_items = [_normalize_item(item) for item in cache["items"] if isinstance(item, dict)]
+        return _merge_with_fallback(cached_items, min_sources=min_sources, limit=limit)
 
-    return _load_fallback_news()[:limit]
+    return _merge_with_fallback([], min_sources=min_sources, limit=limit)

@@ -1,6 +1,6 @@
 {
   "atualizacao_horas": 6,
-  "limite_total": 10,
+  "limite_total": 12,
   "palavras_chave": [
     "carro elétrico",
     "carros elétricos",
@@ -136,5 +136,6 @@
         "mobiauto.com.br"
       ]
     }
-  ]
+  ],
+  "minimo_fontes_home": 5
 }
