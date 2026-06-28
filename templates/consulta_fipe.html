@@ -1,0 +1,229 @@
+{% extends "base.html" %}
+
+{% block title %}Consulta FIPE | CurVE{% endblock %}
+
+{% block content %}
+<style>
+  .fipe-page{max-width:1120px;margin:0 auto;padding:8px 0 40px}
+  .fipe-hero{border:1px solid #dce7e1;border-radius:28px;background:linear-gradient(135deg,#f0fdf4 0%,#ffffff 70%);box-shadow:0 20px 54px rgba(15,23,42,.06);padding:clamp(24px,4vw,42px);margin-bottom:22px}
+  .fipe-kicker{display:inline-flex;align-items:center;border:1px solid #bbf7d0;background:#ecfdf5;color:#065f46;border-radius:999px;padding:.4rem .75rem;font-size:.76rem;font-weight:900;text-transform:uppercase;letter-spacing:.04em;margin-bottom:14px}
+  .fipe-hero h1{margin:0;color:#047857;font-size:clamp(2rem,4vw,3.6rem);line-height:1.03;font-weight:900;letter-spacing:-.055em}
+  .fipe-hero p{margin:12px 0 0;color:#64748b;font-size:1rem;line-height:1.52;max-width:780px}
+  .fipe-grid{display:grid;grid-template-columns:minmax(0,.95fr) minmax(320px,1.05fr);gap:20px;align-items:start}
+  .fipe-card{border:1px solid #e2e8f0;border-radius:24px;background:#fff;box-shadow:0 16px 38px rgba(15,23,42,.05);padding:22px}
+  .fipe-card h2{margin:0 0 16px;color:#10202b;font-size:1.3rem;font-weight:900;letter-spacing:-.02em}
+  .fipe-type-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:18px}
+  .fipe-type{border:1px solid #dce7e1;border-radius:16px;background:#f8fafc;color:#334155;font-weight:900;padding:12px 10px;cursor:pointer;transition:.16s ease;text-align:center}
+  .fipe-type:hover{border-color:#86efac;background:#f0fdf4;color:#065f46}
+  .fipe-type.active{border-color:#168a4a;background:#ecfdf5;color:#065f46;box-shadow:inset 0 0 0 1px #168a4a}
+  .fipe-field{margin-bottom:14px}
+  .fipe-field label{display:block;font-size:.78rem;font-weight:900;color:#334155;margin-bottom:5px}
+  .fipe-field select{width:100%;border:1px solid #d1d5db;border-radius:14px;background:#fff;color:#0f172a;padding:12px 14px;font-size:.96rem;outline:none;transition:border-color .16s ease,box-shadow .16s ease}
+  .fipe-field select:focus{border-color:#168a4a;box-shadow:0 0 0 4px rgba(22,138,74,.10)}
+  .fipe-field select:disabled{background:#f8fafc;color:#94a3b8}
+  .fipe-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+  .fipe-btn{border:1px solid #168a4a;border-radius:999px;background:#168a4a;color:#fff;padding:12px 20px;font-size:.95rem;font-weight:900;cursor:pointer;transition:.16s ease;text-decoration:none;display:inline-flex;align-items:center;justify-content:center}
+  .fipe-btn:hover{background:#0f6b39;border-color:#0f6b39;color:#fff;transform:translateY(-1px)}
+  .fipe-btn.secondary{background:#fff;color:#065f46}
+  .fipe-btn.secondary:hover{background:#f0fdf4;color:#065f46}
+  .fipe-status{margin-top:14px;color:#64748b;font-size:.88rem;min-height:1.25rem}
+  .fipe-status.error{color:#b91c1c;font-weight:800}
+  .fipe-result{display:none;border:1px solid #bbf7d0;border-radius:24px;background:linear-gradient(135deg,#f0fdf4 0%,#ffffff 72%);padding:22px;box-shadow:0 18px 42px rgba(15,23,42,.06)}
+  .fipe-empty{border:1px dashed #cbd5e1;border-radius:24px;background:#f8fafc;padding:28px;color:#64748b;text-align:center;min-height:270px;display:grid;place-items:center}
+  .fipe-result.show{display:block}
+  .fipe-result-kicker{font-size:.72rem;font-weight:900;letter-spacing:.04em;text-transform:uppercase;color:#047857;margin-bottom:5px}
+  .fipe-value{font-size:clamp(2.2rem,5vw,4rem);line-height:1;font-weight:900;color:#10202b;letter-spacing:-.05em;margin:0 0 10px}
+  .fipe-model{font-size:1.2rem;font-weight:900;color:#10202b;line-height:1.25;margin:0 0 4px}
+  .fipe-meta{margin:0 0 18px;color:#64748b;font-size:.96rem}
+  .fipe-table{width:100%;border-collapse:collapse;margin-top:14px;background:#fff;border-radius:16px;overflow:hidden;border:1px solid #e2e8f0}
+  .fipe-table th,.fipe-table td{padding:11px 12px;border-bottom:1px solid #f1f5f9;text-align:left;font-size:.92rem;vertical-align:top}
+  .fipe-table th{width:38%;color:#64748b;font-weight:800;background:#fbfdff}
+  .fipe-table td{color:#10202b;font-weight:800}
+  .fipe-table tr:last-child th,.fipe-table tr:last-child td{border-bottom:0}
+  .fipe-note{margin-top:16px;font-size:.8rem;color:#64748b;line-height:1.4}
+  @media(max-width:920px){.fipe-grid{grid-template-columns:1fr}.fipe-type-row{grid-template-columns:1fr}.fipe-page{padding:0 0 32px}}
+</style>
+
+<section class="fipe-page">
+  <div class="fipe-hero">
+    <span class="fipe-kicker">Consulta pública</span>
+    <h1>Consulta FIPE</h1>
+    <p>Consulte o valor FIPE atual de carros, motos e caminhões. Escolha o tipo de veículo, marca, modelo e ano/combustível para ver o valor de referência.</p>
+  </div>
+
+  <div class="fipe-grid">
+    <section class="fipe-card" aria-label="Formulário de consulta FIPE">
+      <h2>Dados do veículo</h2>
+      <div class="fipe-type-row" role="tablist" aria-label="Tipo de veículo">
+        <button type="button" class="fipe-type active" data-tipo="carros">Carros</button>
+        <button type="button" class="fipe-type" data-tipo="motos">Motos</button>
+        <button type="button" class="fipe-type" data-tipo="caminhoes">Caminhões</button>
+      </div>
+      <div class="fipe-field">
+        <label for="fipe_marca">Marca</label>
+        <select id="fipe_marca"><option value="">Carregando marcas...</option></select>
+      </div>
+      <div class="fipe-field">
+        <label for="fipe_modelo">Modelo</label>
+        <select id="fipe_modelo" disabled><option value="">Selecione a marca primeiro</option></select>
+      </div>
+      <div class="fipe-field">
+        <label for="fipe_ano">Ano/combustível</label>
+        <select id="fipe_ano" disabled><option value="">Selecione o modelo primeiro</option></select>
+      </div>
+      <div class="fipe-actions">
+        <button type="button" id="btn_consultar_fipe_publica" class="fipe-btn">Consultar valor</button>
+        <button type="button" id="btn_limpar_fipe_publica" class="fipe-btn secondary">Limpar</button>
+      </div>
+      <div id="fipe_status" class="fipe-status" aria-live="polite"></div>
+    </section>
+
+    <section aria-label="Resultado da consulta FIPE">
+      <div id="fipe_empty" class="fipe-empty">
+        <div>
+          <strong>Resultado da FIPE</strong><br>
+          Selecione o veículo para visualizar valor, código FIPE e mês de referência.
+        </div>
+      </div>
+      <div id="fipe_result" class="fipe-result">
+        <div class="fipe-result-kicker" id="fipe_result_tipo">FIPE</div>
+        <p class="fipe-value" id="fipe_result_valor">R$ 0,00</p>
+        <p class="fipe-model" id="fipe_result_modelo">Modelo</p>
+        <p class="fipe-meta" id="fipe_result_marca">Marca</p>
+        <table class="fipe-table">
+          <tbody>
+            <tr><th>Código FIPE</th><td id="fipe_result_codigo">—</td></tr>
+            <tr><th>Ano modelo</th><td id="fipe_result_ano">—</td></tr>
+            <tr><th>Combustível</th><td id="fipe_result_combustivel">—</td></tr>
+            <tr><th>Mês de referência</th><td id="fipe_result_referencia">—</td></tr>
+            <tr><th>Data da consulta</th><td id="fipe_result_consulta">—</td></tr>
+          </tbody>
+        </table>
+        <p class="fipe-note">O valor FIPE é referência de mercado. Estado de conservação, quilometragem, região, opcionais e negociação podem alterar o valor comercial real.</p>
+      </div>
+    </section>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function(){
+  const selects = {
+    marca: document.getElementById('fipe_marca'),
+    modelo: document.getElementById('fipe_modelo'),
+    ano: document.getElementById('fipe_ano')
+  };
+  const statusEl = document.getElementById('fipe_status');
+  const result = document.getElementById('fipe_result');
+  const empty = document.getElementById('fipe_empty');
+  const btnConsultar = document.getElementById('btn_consultar_fipe_publica');
+  const btnLimpar = document.getElementById('btn_limpar_fipe_publica');
+  let tipoAtual = 'carros';
+  let seq = 0;
+  let controller = null;
+
+  function status(msg, erro=false){
+    statusEl.textContent = msg || '';
+    statusEl.classList.toggle('error', !!erro);
+  }
+  function opt(label, value=''){
+    const o = document.createElement('option'); o.value = value; o.textContent = label; return o;
+  }
+  function resetSelect(sel, label, disabled=true){
+    sel.innerHTML = ''; sel.appendChild(opt(label)); sel.disabled = !!disabled;
+  }
+  function requestToken(){
+    seq += 1;
+    if (controller) controller.abort();
+    controller = new AbortController();
+    return {seq, signal: controller.signal};
+  }
+  async function getJSON(url, token){
+    const resp = await fetch(url, {signal: token.signal, headers:{'Accept':'application/json'}});
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok) throw new Error(data.erro || 'Falha na consulta FIPE.');
+    if (token.seq !== seq) throw new Error('__stale__');
+    return data;
+  }
+  function hideResult(){
+    result.classList.remove('show'); empty.style.display = 'grid';
+  }
+  function showResult(data){
+    empty.style.display = 'none'; result.classList.add('show');
+    const tipoLabel = tipoAtual === 'motos' ? 'Moto' : tipoAtual === 'caminhoes' ? 'Caminhão' : 'Carro';
+    document.getElementById('fipe_result_tipo').textContent = `FIPE · ${tipoLabel}`;
+    document.getElementById('fipe_result_valor').textContent = data.Valor || '—';
+    document.getElementById('fipe_result_modelo').textContent = data.Modelo || '—';
+    document.getElementById('fipe_result_marca').textContent = data.Marca || '—';
+    document.getElementById('fipe_result_codigo').textContent = data.CodigoFipe || '—';
+    document.getElementById('fipe_result_ano').textContent = data.AnoModelo || '—';
+    document.getElementById('fipe_result_combustivel').textContent = data.Combustivel || '—';
+    document.getElementById('fipe_result_referencia').textContent = data.MesReferencia || '—';
+    document.getElementById('fipe_result_consulta').textContent = new Date().toLocaleString('pt-BR');
+  }
+  async function carregarMarcas(){
+    const token = requestToken();
+    resetSelect(selects.marca, 'Carregando marcas...', true);
+    resetSelect(selects.modelo, 'Selecione a marca primeiro', true);
+    resetSelect(selects.ano, 'Selecione o modelo primeiro', true);
+    hideResult(); status('Carregando marcas FIPE...');
+    try{
+      const data = await getJSON(`/api/fipe/publica/marcas?tipo=${encodeURIComponent(tipoAtual)}`, token);
+      resetSelect(selects.marca, 'Selecione', false);
+      (Array.isArray(data) ? data : []).forEach(m => selects.marca.appendChild(opt(m.nome || m.name || 'Marca', m.codigo || m.code || '')));
+      status('');
+    }catch(e){ if(e.message !== '__stale__') { resetSelect(selects.marca,'Não foi possível carregar marcas',true); status(e.message,true); } }
+  }
+  async function carregarModelos(){
+    const marca = selects.marca.value;
+    resetSelect(selects.modelo, marca ? 'Carregando modelos...' : 'Selecione a marca primeiro', true);
+    resetSelect(selects.ano, 'Selecione o modelo primeiro', true);
+    hideResult();
+    if(!marca) return;
+    const token = requestToken(); status('Carregando modelos...');
+    try{
+      const data = await getJSON(`/api/fipe/publica/modelos?tipo=${encodeURIComponent(tipoAtual)}&codigo_marca=${encodeURIComponent(marca)}`, token);
+      resetSelect(selects.modelo, 'Selecione', false);
+      (data.modelos || []).forEach(m => selects.modelo.appendChild(opt(m.nome || 'Modelo', m.codigo || '')));
+      status('');
+    }catch(e){ if(e.message !== '__stale__') { resetSelect(selects.modelo,'Não foi possível carregar modelos',true); status(e.message,true); } }
+  }
+  async function carregarAnos(){
+    const marca = selects.marca.value, modelo = selects.modelo.value;
+    resetSelect(selects.ano, modelo ? 'Carregando anos...' : 'Selecione o modelo primeiro', true);
+    hideResult();
+    if(!marca || !modelo) return;
+    const token = requestToken(); status('Carregando anos e combustíveis...');
+    try{
+      const data = await getJSON(`/api/fipe/publica/anos?tipo=${encodeURIComponent(tipoAtual)}&codigo_marca=${encodeURIComponent(marca)}&codigo_modelo=${encodeURIComponent(modelo)}`, token);
+      resetSelect(selects.ano, 'Selecione', false);
+      (Array.isArray(data) ? data : []).forEach(a => selects.ano.appendChild(opt(a.nome || 'Ano', a.codigo || '')));
+      status('');
+    }catch(e){ if(e.message !== '__stale__') { resetSelect(selects.ano,'Não foi possível carregar anos',true); status(e.message,true); } }
+  }
+  async function consultarPreco(){
+    const marca = selects.marca.value, modelo = selects.modelo.value, ano = selects.ano.value;
+    if(!marca || !modelo || !ano){ status('Selecione marca, modelo e ano/combustível.', true); return; }
+    const token = requestToken(); status('Consultando valor FIPE atualizado...');
+    try{
+      const data = await getJSON(`/api/fipe/publica/preco?tipo=${encodeURIComponent(tipoAtual)}&codigo_marca=${encodeURIComponent(marca)}&codigo_modelo=${encodeURIComponent(modelo)}&codigo_ano=${encodeURIComponent(ano)}`, token);
+      showResult(data); status('Consulta concluída.');
+    }catch(e){ if(e.message !== '__stale__') { hideResult(); status(e.message,true); } }
+  }
+  document.querySelectorAll('.fipe-type').forEach(btn => {
+    btn.addEventListener('click', () => {
+      tipoAtual = btn.dataset.tipo || 'carros';
+      document.querySelectorAll('.fipe-type').forEach(b => b.classList.toggle('active', b === btn));
+      carregarMarcas();
+    });
+  });
+  selects.marca.addEventListener('change', carregarModelos);
+  selects.modelo.addEventListener('change', carregarAnos);
+  selects.ano.addEventListener('change', hideResult);
+  btnConsultar.addEventListener('click', consultarPreco);
+  btnLimpar.addEventListener('click', () => carregarMarcas());
+  carregarMarcas();
+})();
+</script>
+{% endblock %}

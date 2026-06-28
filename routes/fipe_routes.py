@@ -52,6 +52,67 @@ def _erro_fipe_response(exc: Exception, default_status: int = 500):
     return jsonify({"erro": str(exc), "tipo": "erro_interno"}), default_status
 
 
+
+
+@fipe_bp.route("/tipos_veiculo")
+def tipos_veiculo():
+    try:
+        return _resposta_catalogo(fipe_service.listar_tipos_consulta())
+    except Exception as exc:
+        return _erro_fipe_response(exc)
+
+
+@fipe_bp.route("/publica/marcas")
+def marcas_publicas():
+    tipo = request.args.get("tipo", "carros").strip()
+    try:
+        return _resposta_catalogo(fipe_service.listar_marcas_tipo(tipo))
+    except Exception as exc:
+        return _erro_fipe_response(exc)
+
+
+@fipe_bp.route("/publica/modelos")
+def modelos_publicos():
+    tipo = request.args.get("tipo", "carros").strip()
+    codigo_marca = request.args.get("codigo_marca", "").strip()
+    if not codigo_marca:
+        return _resposta_catalogo({"modelos": []})
+    try:
+        return _resposta_catalogo(fipe_service.listar_modelos_tipo(tipo, codigo_marca))
+    except Exception as exc:
+        resp, status = _erro_fipe_response(exc)
+        data = resp.get_json() or {}
+        data["modelos"] = []
+        return jsonify(data), status
+
+
+@fipe_bp.route("/publica/anos")
+def anos_publicos():
+    tipo = request.args.get("tipo", "carros").strip()
+    codigo_marca = request.args.get("codigo_marca", "").strip()
+    codigo_modelo = request.args.get("codigo_modelo", "").strip()
+    if not codigo_marca or not codigo_modelo:
+        return _resposta_catalogo([])
+    try:
+        return _resposta_catalogo(fipe_service.listar_anos_tipo(tipo, codigo_marca, codigo_modelo))
+    except Exception as exc:
+        return _erro_fipe_response(exc)
+
+
+@fipe_bp.route("/publica/preco")
+def preco_publico():
+    tipo = request.args.get("tipo", "carros").strip()
+    codigo_marca = request.args.get("codigo_marca", "").strip()
+    codigo_modelo = request.args.get("codigo_modelo", "").strip()
+    codigo_ano = request.args.get("codigo_ano", "").strip()
+    if not codigo_marca or not codigo_modelo or not codigo_ano:
+        return jsonify({"erro": "Parâmetros incompletos."}), 400
+    try:
+        return jsonify(fipe_service.consultar_preco_tipo(tipo, codigo_marca, codigo_modelo, codigo_ano))
+    except Exception as exc:
+        return _erro_fipe_response(exc)
+
+
 @fipe_bp.route("/catalogo_estado")
 @fipe_bp.route("/catalogo/status")
 def catalogo_estado():

@@ -1,0 +1,50 @@
+[
+  {
+    "tag": "Carros elétricos",
+    "fonte": "Quatro Rodas",
+    "titulo": "Notícias sobre carros elétricos",
+    "resumo": "Lançamentos, testes, tecnologia e mercado de veículos elétricos.",
+    "url": "https://quatrorodas.abril.com.br/carros-eletricos/",
+    "imagem": "/static/img/home-card-tco.png"
+  },
+  {
+    "tag": "Mercado automotivo",
+    "fonte": "AutoPapo",
+    "titulo": "Radar automotivo e eletrificação",
+    "resumo": "Acompanhe notícias sobre modelos, híbridos, elétricos, manutenção e mercado.",
+    "url": "https://autopapo.com.br/noticia/",
+    "imagem": "/static/img/curve-home-main.png"
+  },
+  {
+    "tag": "Tabela FIPE",
+    "fonte": "CurVE",
+    "titulo": "Consulta de preços por tipo de veículo",
+    "resumo": "Compare referências de carros, motos e caminhões antes de decidir.",
+    "url": "/consulta-fipe",
+    "imagem": "/static/img/home-card-fipe.png"
+  },
+  {
+    "tag": "Depreciação",
+    "fonte": "CurVE",
+    "titulo": "Valor futuro e perda econômica",
+    "resumo": "Entenda como a desvalorização influencia a decisão de compra e troca.",
+    "url": "/depreciacao",
+    "imagem": "/static/img/home-card-depreciacao.png"
+  },
+  {
+    "tag": "Eficiência",
+    "fonte": "Quatro Rodas",
+    "titulo": "Guias sobre consumo, bateria e recarga",
+    "resumo": "Conteúdos para entender autonomia, energia, bateria e uso no dia a dia.",
+    "url": "https://quatrorodas.abril.com.br/tudo-sobre/carro-eletrico/",
+    "imagem": "/static/img/home-card-tco.png"
+  },
+  {
+    "tag": "Decisão com dados",
+    "fonte": "CurVE",
+    "titulo": "Simulação de custo total",
+    "resumo": "Avalie custos, revenda, combustível, energia e impacto operacional estimado.",
+    "url": "/simular",
+    "imagem": "/static/img/home-card-tco.png"
+  }
+]
