@@ -49,6 +49,29 @@ DEFAULT_KEYWORDS = [
     "volvo ex",
 ]
 
+
+BAD_NEWS_TERMS = [
+    "assine", "assinante", "oferta", "promoção", "promocao", "cupom", "benefício", "beneficio",
+    "login", "entrar", "cadastro", "newsletter", "ouviu na rádio", "ouviu na radio",
+    "rádio", "radio", "podcast", "publicidade", "anuncie", "voltar", "termos de uso",
+    "política de privacidade", "politica de privacidade", "carros", "motos", "ofertas"
+]
+
+BAD_URL_PARTS = [
+    "/assine", "/assinatura", "/ofertas", "/promocoes", "/promoções", "/login",
+    "/cadastro", "/newsletter", "/radio", "/rádio", "/podcast", "/tag/", "/tags/",
+    "/categoria/", "/categorias/", "/editoria/", "/carros/$", "/motos/$"
+]
+
+GOOD_URL_HINTS = [
+    "/noticia", "/noticias", "/materia", "/carros-eletricos", "/eletrificacao",
+    "/eletricos", "/hibridos", "/veiculos-eletricos", "/carros/eletricos-e-hibridos",
+    "/revista/"
+]
+
+MIN_NEWS_TITLE_WORDS = 5
+
+
 _PT_MONTHS = {
     "jan": 1,
     "janeiro": 1,
@@ -513,7 +536,7 @@ def _items_from_rss_url(source: dict[str, Any], rss_url: str, keywords: list[str
                 "data_iso": published_dt.isoformat() if published_dt else "",
             }
         )
-        if item["titulo"] and item["url"] and _is_relevant(item, keywords, aceitar_todos=aceitar_todos):
+        if item["titulo"] and item["url"] and _should_keep_external_news(item, source, keywords):
             items.append(item)
         if len(items) >= max_items:
             break
@@ -570,6 +593,63 @@ def _clean_html_link_text(value: str, source_name: str) -> tuple[str, str, datet
     return _truncate(title, 110), _truncate(summary, 170), published_dt
 
 
+
+
+def _looks_like_bad_news_link(title: str, url: str) -> bool:
+    title_norm = _normalize_text(title or "")
+    url_norm = _normalize_text(url or "")
+    if not title_norm or not url_norm:
+        return True
+
+    # Títulos genéricos de menu não são notícia.
+    words = [w for w in re.split(r"\s+", title_norm) if w]
+    if len(words) < MIN_NEWS_TITLE_WORDS:
+        return True
+
+    for bad in BAD_NEWS_TERMS:
+        bad_norm = _normalize_text(bad)
+        if title_norm == bad_norm or title_norm.startswith(bad_norm + " "):
+            return True
+        if bad_norm in {"assine", "assinante", "oferta", "promocao", "promoção"} and bad_norm in title_norm:
+            return True
+
+    for bad in BAD_URL_PARTS:
+        bad_norm = _normalize_text(bad)
+        if bad_norm.endswith("$"):
+            if url_norm.rstrip("/").endswith(bad_norm[:-1].rstrip("/")):
+                return True
+        elif bad_norm in url_norm:
+            return True
+
+    return False
+
+
+def _looks_like_article_url(url: str, source: dict[str, Any]) -> bool:
+    url_norm = _normalize_text(url or "")
+    if not url_norm:
+        return False
+    if any(part.rstrip("$") in url_norm for part in [_normalize_text(p) for p in BAD_URL_PARTS if not p.endswith("$")]):
+        return False
+    # Para páginas HTML, exige pelo menos um indício de matéria/artigo.
+    if str(source.get("tipo") or "").lower() in {"html", "pagina", "page"}:
+        hints = source.get("url_indicios_noticia") or GOOD_URL_HINTS
+        if isinstance(hints, list) and hints:
+            normalized_hints = [_normalize_text(str(h)) for h in hints]
+            return any(h in url_norm for h in normalized_hints)
+    return True
+
+
+def _should_keep_external_news(item: dict[str, Any], source: dict[str, Any], keywords: list[str]) -> bool:
+    title = str(item.get("titulo") or "")
+    url = str(item.get("url") or "")
+    if _looks_like_bad_news_link(title, url):
+        return False
+    if not _looks_like_article_url(url, source):
+        return False
+    if not _is_relevant(item, keywords, aceitar_todos=bool(source.get("aceitar_todos", False))):
+        return False
+    return True
+
 def _items_from_html_url(source: dict[str, Any], page_url: str, keywords: list[str]) -> list[dict[str, Any]]:
     timeout = int(source.get("timeout_segundos") or DEFAULT_TIMEOUT_SECONDS)
     max_items = int(source.get("limite") or 8)
@@ -624,7 +704,7 @@ def _items_from_html_url(source: dict[str, Any], page_url: str, keywords: list[s
                 "data_iso": published_dt.isoformat() if published_dt else "",
             }
         )
-        if item["titulo"] and item["url"] and _is_relevant(item, keywords, aceitar_todos=aceitar_todos):
+        if item["titulo"] and item["url"] and _should_keep_external_news(item, source, keywords):
             items.append(item)
         if len(items) >= max_items:
             break
