@@ -677,6 +677,32 @@ def _sort_items(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return sorted(items, key=key, reverse=True)
 
 
+def _diversify_items(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Mistura as notícias por fonte para evitar domínio de um único portal na home."""
+    ordered_items = _sort_items(_dedupe_items(items))
+    buckets: dict[str, list[dict[str, Any]]] = {}
+    order: list[str] = []
+    for item in ordered_items:
+        source_key = _normalize_text(str(item.get("fonte") or "fonte externa")) or "fonte externa"
+        if source_key not in buckets:
+            buckets[source_key] = []
+            order.append(source_key)
+        buckets[source_key].append(item)
+
+    result: list[dict[str, Any]] = []
+    while True:
+        progressed = False
+        for source_key in order:
+            bucket = buckets.get(source_key) or []
+            if not bucket:
+                continue
+            result.append(bucket.pop(0))
+            progressed = True
+        if not progressed:
+            break
+    return result
+
+
 def _refresh_from_sources(settings: dict[str, Any]) -> list[dict[str, Any]]:
     keywords = [str(k) for k in settings.get("palavras_chave", DEFAULT_KEYWORDS)]
     sources = settings.get("fontes", [])
@@ -692,7 +718,7 @@ def _refresh_from_sources(settings: dict[str, Any]) -> list[dict[str, Any]]:
         except Exception:
             # Uma fonte fora do ar não deve quebrar a home.
             continue
-    return _sort_items(_dedupe_items(items))
+    return _diversify_items(items)
 
 
 def carregar_noticias_home(limite: int | None = None, forcar_atualizacao: bool = False) -> list[dict[str, Any]]:

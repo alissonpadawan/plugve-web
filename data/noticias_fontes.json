@@ -1,6 +1,6 @@
 {
   "atualizacao_horas": 6,
-  "limite_total": 6,
+  "limite_total": 10,
   "palavras_chave": [
     "carro elétrico",
     "carros elétricos",
@@ -71,7 +71,9 @@
       "max_og_images": 2,
       "timeout_segundos": 4,
       "imagem_fallback": "/static/img/home-card-depreciacao.png",
-      "dominios_permitidos": ["quatrorodas.abril.com.br"]
+      "dominios_permitidos": [
+        "quatrorodas.abril.com.br"
+      ]
     },
     {
       "nome": "AutoPapo",
@@ -84,7 +86,9 @@
       "max_og_images": 2,
       "timeout_segundos": 4,
       "imagem_fallback": "/static/img/sustentabilidade.jpeg",
-      "dominios_permitidos": ["autopapo.com.br"]
+      "dominios_permitidos": [
+        "autopapo.com.br"
+      ]
     },
     {
       "nome": "iG Carros",
@@ -97,7 +101,40 @@
       "max_og_images": 1,
       "timeout_segundos": 4,
       "imagem_fallback": "/static/img/veiculo.jpeg",
-      "dominios_permitidos": ["carros.ig.com.br"]
+      "dominios_permitidos": [
+        "carros.ig.com.br"
+      ]
+    },
+    {
+      "nome": "Autoesporte",
+      "ativo": true,
+      "tipo": "html",
+      "page_url": "https://autoesporte.globo.com/carros/eletricos-e-hibridos/",
+      "tag_padrao": "Elétricos e híbridos",
+      "limite": 4,
+      "usar_og_image": true,
+      "max_og_images": 2,
+      "timeout_segundos": 4,
+      "imagem_fallback": "/static/img/veiculo.jpeg",
+      "dominios_permitidos": [
+        "autoesporte.globo.com"
+      ]
+    },
+    {
+      "nome": "Mobiauto",
+      "ativo": true,
+      "tipo": "html",
+      "page_url": "https://www.mobiauto.com.br/revista/categoria/carros-eletricos-e-hibridos/57",
+      "tag_padrao": "Carros elétricos e híbridos",
+      "limite": 4,
+      "usar_og_image": true,
+      "max_og_images": 2,
+      "timeout_segundos": 4,
+      "imagem_fallback": "/static/img/sustentabilidade.jpeg",
+      "dominios_permitidos": [
+        "www.mobiauto.com.br",
+        "mobiauto.com.br"
+      ]
     }
   ]
 }
