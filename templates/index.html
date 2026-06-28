@@ -1,319 +1,123 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CurVE | Calculadora Veicular</title>
-  <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/favicon.png') }}">
-  <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/favicon-180.png') }}">
-  
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Montserrat:wght@700;800&display=swap" rel="stylesheet">
+{% extends "base.html" %}
 
-  <style>
-    :root {
-      --curve-green: #278B4A;
-      --curve-dark-blue: #12263A;
-      --curve-light: #F8F9FA;
+{% block title %}CurVE | Calculadora Veicular{% endblock %}
+
+{% block content %}
+<style>
+  .curve-home-clean {
+    width: 100vw;
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
+    margin-top: -1.5rem;
+    background: #f4faf7;
+  }
+
+  .curve-home-hero-photo {
+    position: relative;
+    width: 100%;
+    min-height: calc(100vh - 86px);
+    overflow: hidden;
+    background: #eef5f1;
+  }
+
+  .curve-home-hero-photo img {
+    display: block;
+    width: 100%;
+    height: calc(100vh - 86px);
+    min-height: 560px;
+    object-fit: cover;
+    object-position: center center;
+  }
+
+  .curve-home-actions {
+    position: absolute;
+    left: 50%;
+    bottom: clamp(28px, 6vh, 70px);
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    z-index: 3;
+    width: min(620px, calc(100% - 40px));
+  }
+
+  .curve-home-btn {
+    min-width: 190px;
+    text-align: center;
+    border-radius: 999px;
+    padding: 15px 30px;
+    font-size: 1.05rem;
+    line-height: 1;
+    font-weight: 900;
+    text-decoration: none;
+    transition: transform .18s ease, box-shadow .18s ease, background .18s ease, color .18s ease;
+    box-shadow: 0 14px 30px rgba(15, 23, 42, .12);
+  }
+
+  .curve-home-btn:hover {
+    transform: translateY(-2px);
+  }
+
+  .curve-home-btn-primary {
+    background: #168a4a;
+    border: 2px solid #168a4a;
+    color: #fff;
+  }
+
+  .curve-home-btn-primary:hover {
+    background: #0f6b39;
+    border-color: #0f6b39;
+    color: #fff;
+    box-shadow: 0 18px 38px rgba(22, 138, 74, .24);
+  }
+
+  .curve-home-btn-secondary {
+    background: rgba(255,255,255,.82);
+    border: 2px solid #168a4a;
+    color: #065f46;
+    backdrop-filter: blur(8px);
+  }
+
+  .curve-home-btn-secondary:hover {
+    background: #168a4a;
+    color: #fff;
+    box-shadow: 0 18px 38px rgba(22, 138, 74, .20);
+  }
+
+  @media (max-width: 900px) {
+    .curve-home-clean {
+      margin-top: -1rem;
     }
-
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
+    .curve-home-hero-photo img {
+      height: calc(100vh - 78px);
+      min-height: 540px;
+      object-position: center center;
     }
-
-    body {
-      background-color: var(--curve-light);
-      font-family: 'Inter', sans-serif;
-      overflow: hidden;
+    .curve-home-actions {
+      flex-direction: column;
+      bottom: 24px;
+      gap: 12px;
     }
-
-    /* Container Principal da Hero Section */
-    .curve-hero {
-      position: relative;
-      width: 100%;
-      height: 100vh;
-      min-height: 600px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background-color: var(--curve-light);
+    .curve-home-btn {
+      width: min(360px, 100%);
     }
+  }
+</style>
 
-    /* Camada 1: Cenário de Fundo */
-    .hero-background {
-      position: absolute;
-      top: 0; left: 0; right: 0; bottom: 0;
-      /* Foto dos carros + película clara para não competir com o conteúdo */
-      background:
-        linear-gradient(
-          180deg,
-          rgba(248, 249, 250, 0.52) 0%,
-          rgba(248, 249, 250, 0.46) 100%
-        ),
-        url('{{ url_for('static', filename='img/curve-hero-base.png') }}');
-      background-size: cover;
-      background-position: center center;
-      background-repeat: no-repeat;
-      z-index: 1;
-    }
+<section class="curve-home-clean" aria-label="Página inicial CurVE">
+  <div class="curve-home-hero-photo">
+    <img
+      src="{{ url_for('static', filename='img/curve-home-main.png') }}"
+      alt="CurVE — decisão com dados para comparação veicular"
+      loading="eager"
+      decoding="async"
+    >
 
-    /* Camada 2: Gráficos SVG sobrepostos */
-    .hero-graphics {
-      position: absolute;
-      top: 0; left: 0; right: 0; bottom: 0;
-      z-index: 2;
-      pointer-events: none; /* Garante que cliques passem para os botões */
-      opacity: 0.82;
-    }
-
-    .hero-graphics svg {
-      width: 100%;
-      height: 100%;
-    }
-
-    /* --- ESTADOS INICIAIS DA ANIMAÇÃO --- */
-
-    /* Barras do Gráfico */
-    .animated-bars rect {
-      fill: var(--curve-green);
-      opacity: 0;
-      transform-origin: bottom;
-      transform: translateY(40px);
-    }
-
-    /* Curva de Crescimento */
-    .animated-curve {
-      stroke-dasharray: 1500;
-      stroke-dashoffset: 1500;
-    }
-
-    /* Seta da Curva */
-    .animated-arrow {
-      opacity: 0;
-      transform: scale(0.5);
-      transform-origin: 1000px 80px;
-    }
-
-    /* Textos */
-    .logo-text {
-      font-family: 'Montserrat', sans-serif;
-      font-weight: 800;
-      font-size: 5.5rem;
-      color: var(--curve-dark-blue);
-      margin: 0;
-      opacity: 0;
-      transform: translateY(25px);
-      letter-spacing: -1px;
-    }
-
-    .tagline-text {
-      font-weight: 400;
-      font-size: 1.6rem;
-      color: #4A5568;
-      letter-spacing: 3px;
-      margin-top: 5px;
-      opacity: 0;
-      transform: translateY(15px);
-    }
-
-    /* Botões */
-    .hero-actions {
-      display: flex;
-      gap: 24px;
-      justify-content: center;
-      margin-top: 45px;
-      opacity: 0;
-      transform: translateY(15px);
-    }
-
-    /* --- DISPARADORES DA ANIMAÇÃO (Gatilho da Classe .start-anim) --- */
-
-    /* Animação Sequencial das Barras */
-    .start-anim .animated-bars rect {
-      animation: fadeUpBar 1.2s cubic-bezier(0.23, 1, 0.32, 1) forwards;
-    }
-    .start-anim .animated-bars rect:nth-child(1) { animation-delay: 0.8s; }
-    .start-anim .animated-bars rect:nth-child(2) { animation-delay: 1.0s; }
-    .start-anim .animated-bars rect:nth-child(3) { animation-delay: 1.2s; }
-    .start-anim .animated-bars rect:nth-child(4) { animation-delay: 1.4s; }
-    .start-anim .animated-bars rect:nth-child(5) { animation-delay: 1.6s; }
-    .start-anim .animated-bars rect:nth-child(6) { animation-delay: 1.8s; }
-
-    @keyframes fadeUpBar {
-      to { 
-        opacity: 0.12; 
-        transform: translateY(0); 
-      }
-    }
-
-    /* Animação do Desenho da Curva */
-    .start-anim .animated-curve {
-      animation: drawCurve 2.2s cubic-bezier(0.45, 0, 0.15, 1) 0.3s forwards;
-    }
-    @keyframes drawCurve {
-      to { stroke-dashoffset: 0; }
-    }
-
-    /* Surgimento da Seta com leve pulso */
-    .start-anim .animated-arrow {
-      animation: fadeInArrow 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) 2.3s forwards;
-    }
-    @keyframes fadeInArrow {
-      to { 
-        opacity: 1; 
-        transform: scale(1); 
-      }
-    }
-
-    /* Entrada do Título Principal */
-    .start-anim .logo-text {
-      animation: textReveal 1.2s cubic-bezier(0.215, 0.610, 0.355, 1) 2.5s forwards;
-    }
-
-    /* Entrada do Slogan secundário */
-    .start-anim .tagline-text {
-      animation: textReveal 1.0s cubic-bezier(0.215, 0.610, 0.355, 1) 3.1s forwards;
-    }
-
-    /* Entrada Suave dos Botões de Ação */
-    .start-anim .hero-actions {
-      animation: textReveal 1.0s cubic-bezier(0.215, 0.610, 0.355, 1) 4.0s forwards;
-    }
-
-    @keyframes textReveal {
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    /* --- ESTILIZAÇÃO DA CAMADA DE CONTEÚDO --- */
-    
-    .hero-content {
-      position: relative;
-      z-index: 3;
-      text-align: center;
-      padding: 0 20px;
-    }
-
-    .btn {
-      padding: 16px 44px;
-      border-radius: 8px;
-      font-weight: 600;
-      font-size: 1.1rem;
-      text-decoration: none;
-      transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-      display: inline-block;
-    }
-
-    .btn-primary {
-      background-color: var(--curve-green);
-      color: #ffffff;
-      border: 2px solid var(--curve-green);
-      box-shadow: 0 4px 20px rgba(39, 139, 74, 0.25);
-    }
-
-    .btn-primary:hover {
-      background-color: #1b6635;
-      border-color: #1b6635;
-      transform: translateY(-2px);
-      box-shadow: 0 6px 24px rgba(39, 139, 74, 0.35);
-    }
-
-    .btn-secondary {
-      background-color: transparent;
-      color: var(--curve-dark-blue);
-      border: 2px solid var(--curve-dark-blue);
-    }
-
-    .btn-secondary:hover {
-      background-color: var(--curve-dark-blue);
-      color: #ffffff;
-      transform: translateY(-2px);
-    }
-
-    /* --- RESPONSIVIDADE --- */
-    @media (max-width: 768px) {
-      .logo-text { font-size: 3.8rem; }
-      .tagline-text { font-size: 1.2rem; letter-spacing: 2px; }
-      .hero-actions { flex-direction: column; gap: 16px; margin-top: 35px; }
-      .btn { width: 100%; text-align: center; }
-    }
-
-    /* --- ACESSIBILIDADE --- */
-    @media (prefers-reduced-motion: reduce) {
-      .animated-bars rect,
-      .animated-curve,
-      .animated-arrow,
-      .logo-text,
-      .tagline-text,
-      .hero-actions {
-        animation: none !important;
-        opacity: 1 !important;
-        transform: none !important;
-        stroke-dashoffset: 0 !important;
-      }
-      .animated-bars rect { opacity: 0.12 !important; }
-    }
-  </style>
-</head>
-<body>
-
-  <section class="curve-hero" id="hero">
-    
-    <div class="hero-background"></div>
-
-    <div class="hero-graphics">
-      <svg viewBox="0 0 1200 600" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <linearGradient id="curveGradient" x1="0%" y1="100%" x2="100%" y2="0%">
-            <stop offset="0%" stop-color="rgba(39, 139, 74, 0.1)" />
-            <stop offset="60%" stop-color="rgba(39, 139, 74, 0.6)" />
-            <stop offset="100%" stop-color="rgba(39, 139, 74, 1)" />
-          </linearGradient>
-        </defs>
-
-        <g class="animated-bars">
-          <!-- Barras corrigidas: todas partem da mesma base visual
-               e ficam abaixo da curva verde -->
-          <rect x="555" y="468" width="34" height="92" rx="4" />
-          <rect x="635" y="405" width="34" height="155" rx="4" />
-          <rect x="715" y="350" width="34" height="210" rx="4" />
-          <rect x="795" y="292" width="34" height="268" rx="4" />
-          <rect x="875" y="226" width="34" height="334" rx="4" />
-          <rect x="955" y="168" width="34" height="392" rx="4" />
-        </g>
-
-        <path class="animated-curve" d="M 100,520 C 400,520 600,220 1000,80" 
-              fill="none" stroke="url(#curveGradient)" stroke-width="7" stroke-linecap="round"/>
-        
-        <polygon class="animated-arrow" points="985,73 1015,85 1003,60" fill="#278B4A"/>
-      </svg>
+    <div class="curve-home-actions" aria-label="Ações principais">
+      <a class="curve-home-btn curve-home-btn-primary" href="/simular">Simulação</a>
+      <a class="curve-home-btn curve-home-btn-secondary" href="/depreciacao">Depreciação</a>
     </div>
-
-    <div class="hero-content">
-      <div class="text-container">
-        <h1 class="logo-text">CurVE</h1>
-        <p class="tagline-text">Decisão com dados</p>
-      </div>
-      
-      <div class="hero-actions">
-        <a href="/simular" class="btn btn-primary">Simulação</a>
-        <a href="/depreciacao" class="btn btn-secondary">Depreciação</a>
-      </div>
-    </div>
-    
-  </section>
-
-  <script>
-    window.addEventListener('load', () => {
-      const hero = document.getElementById('hero');
-      // Adiciona a classe que dispara as animações coordenadas no CSS
-      hero.classList.add('start-anim');
-    });
-  </script>
-</body>
-</html>
+  </div>
+</section>
+{% endblock %}
