@@ -21,6 +21,8 @@
     html{scroll-behavior:smooth}
     body{margin:0;background:linear-gradient(180deg,#f7fbf8 0%,#eef7f2 100%);color:var(--curve-ink);font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
     .home-shell{min-height:100vh;overflow:hidden}
+    .home-topbar{position:fixed;left:0;right:0;top:0;z-index:50;transform:translateY(-105%);opacity:0;pointer-events:none;transition:transform .24s ease,opacity .24s ease;box-shadow:0 14px 34px rgba(15,23,42,.08)}
+    .home-topbar.is-visible{transform:translateY(0);opacity:1;pointer-events:auto}
     .home-hero{position:relative;min-height:clamp(108vh,114vh,126vh);background:#eef4f1;display:grid;place-items:center;overflow:hidden}
     .home-hero img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center top;display:block}
     .home-hero::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,255,255,.02) 0%,rgba(255,255,255,0) 52%,rgba(244,250,247,.28) 78%,rgba(244,250,247,.92) 100%);pointer-events:none}
@@ -30,7 +32,7 @@
     .home-content{width:min(1220px,calc(100% - 40px));margin:0 auto;padding:clamp(42px,7vw,88px) 0 72px}
     .home-intro{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(280px,.9fr);gap:30px;align-items:end;margin-bottom:28px}
     .home-kicker{display:inline-flex;align-items:center;border:1px solid #bbf7d0;background:#ecfdf5;color:#065f46;border-radius:999px;padding:.45rem .85rem;font-size:.78rem;font-weight:900;letter-spacing:.04em;text-transform:uppercase;margin-bottom:16px}
-    .home-intro h1{margin:0;color:#10202b;font-size:clamp(2.15rem,4.2vw,4.2rem);line-height:1.02;font-weight:900;letter-spacing:-.055em}
+    .home-intro h1{margin:0;color:#10202b;font-size:clamp(1.45rem,2.5vw,2.15rem);line-height:1.05;font-weight:900;letter-spacing:-.04em}
     .home-intro p{margin:0;color:var(--curve-muted);font-size:clamp(1rem,1.35vw,1.28rem);line-height:1.52;max-width:760px}
     .home-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px;margin-top:30px}
     .home-card{display:flex;flex-direction:column;border:1px solid #dce7e1;border-radius:24px;background:#fff;overflow:hidden;text-decoration:none;color:inherit;box-shadow:0 20px 50px rgba(15,23,42,.07);transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}
@@ -67,6 +69,21 @@
   </style>
 </head>
 <body>
+  <header class="topbar home-topbar" id="homeTopbar" aria-label="Menu principal da CurVE">
+    <div class="container nav">
+      <a class="brand" href="/" aria-label="CurVE Calculadora Veicular">
+        <img src="{{ url_for('static', filename='img/logo_curve_horizontal.png') }}" alt="CurVE Calculadora Veicular">
+      </a>
+      <nav class="site-nav" aria-label="Menu principal">
+        <a href="/" class="active">Início</a>
+        <a href="/simular">Simular</a>
+        <a href="/depreciacao">Depreciação</a>
+        <a href="/consulta-fipe">Consulta FIPE</a>
+        <a href="/sobre">Sobre</a>
+        <a href="/contato">Contato</a>
+      </nav>
+    </div>
+  </header>
   <main class="home-shell">
     <section class="home-hero" aria-label="CurVE — Decisão com dados">
       <img src="{{ url_for('static', filename='img/curve-home-main.png') }}" alt="CurVE — Decisão com dados para mobilidade e análise veicular" loading="eager" decoding="async">
@@ -143,5 +160,21 @@
   </main>
 
   <footer class="home-footer">CurVE © 2026 — Instituto Federal de Goiás. Todos os direitos reservados.</footer>
+  <script>
+    (() => {
+      const topbar = document.getElementById('homeTopbar');
+      const target = document.getElementById('opcoes');
+      if (!topbar || !target) return;
+
+      const updateTopbar = () => {
+        const threshold = Math.max(120, target.offsetTop - 96);
+        topbar.classList.toggle('is-visible', window.scrollY >= threshold);
+      };
+
+      updateTopbar();
+      window.addEventListener('scroll', updateTopbar, { passive: true });
+      window.addEventListener('resize', updateTopbar);
+    })();
+  </script>
 </body>
 </html>
