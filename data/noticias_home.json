@@ -1,0 +1,100 @@
+[
+  {
+    "tag": "Carros elétricos",
+    "fonte": "Quatro Rodas",
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+>>>>>>> 4a3d9630e1b18edd426302aae04b128c3035e1b5
+    "titulo": "Notícias sobre carros elétricos",
+    "resumo": "Lançamentos, testes, tecnologia e mercado de veículos elétricos.",
+    "url": "https://quatrorodas.abril.com.br/carros-eletricos/",
+    "imagem": "/static/img/home-card-tco.png"
+  },
+  {
+    "tag": "Mercado automotivo",
+    "fonte": "AutoPapo",
+    "titulo": "Radar automotivo e eletrificação",
+    "resumo": "Acompanhe notícias sobre modelos, híbridos, elétricos, manutenção e mercado.",
+    "url": "https://autopapo.com.br/noticia/",
+    "imagem": "/static/img/curve-home-main.png"
+  },
+  {
+    "tag": "Tabela FIPE",
+    "fonte": "CurVE",
+    "titulo": "Consulta de preços por tipo de veículo",
+    "resumo": "Compare referências de carros, motos e caminhões antes de decidir.",
+    "url": "/consulta-fipe",
+    "imagem": "/static/img/home-card-fipe.png"
+  },
+  {
+    "tag": "Depreciação",
+    "fonte": "CurVE",
+    "titulo": "Valor futuro e perda econômica",
+    "resumo": "Entenda como a desvalorização influencia a decisão de compra e troca.",
+    "url": "/depreciacao",
+    "imagem": "/static/img/home-card-depreciacao.png"
+  },
+  {
+    "tag": "Eficiência",
+    "fonte": "Quatro Rodas",
+    "titulo": "Guias sobre consumo, bateria e recarga",
+    "resumo": "Conteúdos para entender autonomia, energia, bateria e uso no dia a dia.",
+    "url": "https://quatrorodas.abril.com.br/tudo-sobre/carro-eletrico/",
+    "imagem": "/static/img/home-card-tco.png"
+  },
+  {
+    "tag": "Decisão com dados",
+    "fonte": "CurVE",
+    "titulo": "Simulação de custo total",
+    "resumo": "Avalie custos, revenda, combustível, energia e impacto operacional estimado.",
+    "url": "/simular",
+    "imagem": "/static/img/home-card-tco.png"
+  }
+<<<<<<< HEAD
+]
+=======
+]
+=======
+    "titulo": "Últimas notícias sobre carros elétricos",
+    "resumo": "Acompanhe lançamentos, testes, tecnologia e mercado de veículos elétricos.",
+    "url": "https://quatrorodas.abril.com.br/carros-eletricos/"
+  },
+  {
+    "tag": "Mercado",
+    "fonte": "Quatro Rodas",
+    "titulo": "Tudo sobre carro elétrico",
+    "resumo": "Seleção de notícias e análises sobre modelos, autonomia, recarga e tendências.",
+    "url": "https://quatrorodas.abril.com.br/tudo-sobre/carro-eletrico/"
+  },
+  {
+    "tag": "Guia",
+    "fonte": "Quatro Rodas",
+    "titulo": "Como funciona um carro elétrico",
+    "resumo": "Conteúdo de referência para entender componentes, recarga e uso no dia a dia.",
+    "url": "https://quatrorodas.abril.com.br/carros-eletricos/como-funciona-um-carro-eletrico-e-o-que-saber-antes-de-ter-um/"
+  },
+  {
+    "tag": "Preço",
+    "fonte": "Quatro Rodas",
+    "titulo": "Elétricos de entrada e custo de compra",
+    "resumo": "Notícias sobre modelos acessíveis, preços e movimentação do mercado.",
+    "url": "https://quatrorodas.abril.com.br/carros-eletricos/jmev-ev2-ev3-eletricos-mais-baratos-brasil/"
+  },
+  {
+    "tag": "Compra",
+    "fonte": "Quatro Rodas",
+    "titulo": "Melhores carros elétricos por faixa de preço",
+    "resumo": "Comparativos e guias para apoiar a escolha de veículos eletrificados.",
+    "url": "https://quatrorodas.abril.com.br/melhor-compra/os-melhores-carros-eletricos-para-comprar-ate-r-200-000-em-2025/"
+  },
+  {
+    "tag": "Autonomia",
+    "fonte": "Quatro Rodas",
+    "titulo": "Potência, bateria e autonomia nos elétricos",
+    "resumo": "Conteúdos sobre consumo de energia, autonomia real e fatores de desempenho.",
+    "url": "https://quatrorodas.abril.com.br/auto-servico/carro-eletrico-bateria-acaba-30-minutos-potencia/"
+  }
+]
+>>>>>>> 27babce02c1f6203cea8e090ec186f492f616f95
+>>>>>>> 4a3d9630e1b18edd426302aae04b128c3035e1b5
