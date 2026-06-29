@@ -42,7 +42,7 @@
     .plugve-select-note{font-size:11px;color:#6b7280;margin-top:3px}
     .plugve-chart-card{border:1px solid #e5e7eb;border-radius:1rem;background:#fff;box-shadow:0 10px 28px rgba(15,23,42,.06);padding:1rem;overflow:hidden}
     .plugve-metric-card{border:1px solid #e5e7eb;border-radius:1rem;background:linear-gradient(180deg,#ffffff 0%,#f8fafc 100%);padding:1rem;box-shadow:0 8px 22px rgba(15,23,42,.04)}
-    .plugve-result-toolbar{display:flex;gap:.75rem;flex-wrap:wrap;justify-content:flex-end;align-items:center;margin:0 0 1rem;padding:1rem 1.1rem;border:1px solid #e5e7eb;border-radius:1rem;background:rgba(255,255,255,.9);box-shadow:0 10px 24px rgba(15,23,42,.04)}
+    .plugve-result-toolbar{display:flex;gap:.75rem;flex-wrap:wrap;justify-content:flex-end;align-items:center;margin:0 0 1rem;padding:0;border:0;background:transparent;box-shadow:none}
     .plugve-result-surface{padding:0;background:transparent;border:0;box-shadow:none}
     .plugve-result-actions{display:flex;gap:.75rem;flex-wrap:wrap;justify-content:flex-end;align-items:center}
     .plugve-comparison-hero{display:flex;align-items:center;justify-content:space-between;gap:1.5rem;border:1px solid #bbf7d0;border-radius:1rem;background:linear-gradient(135deg,#f0fdf4 0%,#ffffff 75%);padding:1.1rem 1.2rem}
@@ -477,10 +477,6 @@
         </div>
       {% endif %}
     {% endwith %}
-
-    <h1 class="text-2xl font-bold mb-4 text-blue-600">
-      Simulador de Custo Total de Propriedade
-    </h1>
 
     <div id="plugve_fluxo_resumo" class="plugve-flow-summary"></div>
 

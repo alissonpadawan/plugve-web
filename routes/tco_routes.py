@@ -940,14 +940,14 @@ def gerar_graficos_dupla(v1, v2):
     fig_tco.add_trace(go.Scatter(
         x=v1["anos_lista"], y=v1["tco_lista"], mode="lines+markers", name=v1["nome_curto"],
         line={"color": cor1, "width": 3, "shape": "spline"}, marker={"size": 8},
-        customdata=[v1["nome"]] * len(v1["anos_lista"]),
-        hovertemplate="%{customdata}<br>%{x}<br>Custo total: R$ %{y:,.2f}<extra></extra>",
+        customdata=[v1["nome_curto"]] * len(v1["anos_lista"]),
+        hovertemplate="%{customdata}: R$ %{y:,.2f}<extra></extra>",
     ))
     fig_tco.add_trace(go.Scatter(
         x=v2["anos_lista"], y=v2["tco_lista"], mode="lines+markers", name=v2["nome_curto"],
         line={"color": cor2, "width": 3, "shape": "spline"}, marker={"size": 8},
-        customdata=[v2["nome"]] * len(v2["anos_lista"]),
-        hovertemplate="%{customdata}<br>%{x}<br>Custo total: R$ %{y:,.2f}<extra></extra>",
+        customdata=[v2["nome_curto"]] * len(v2["anos_lista"]),
+        hovertemplate="%{customdata}: R$ %{y:,.2f}<extra></extra>",
     ))
     fig_tco.update_layout(**obter_layout_web("Custo total acumulado ano a ano"), yaxis_title="Custo acumulado (R$)")
 
@@ -955,14 +955,14 @@ def gerar_graficos_dupla(v1, v2):
     fig_gastos.add_trace(go.Scatter(
         x=v1["anos_lista"], y=v1["tco_lista_s"], mode="lines+markers", name=v1["nome_curto"],
         line={"color": cor1, "width": 3, "shape": "spline"}, marker={"size": 8},
-        customdata=[v1["nome"]] * len(v1["anos_lista"]),
-        hovertemplate="%{customdata}<br>%{x}<br>Gasto operacional: R$ %{y:,.2f}<extra></extra>",
+        customdata=[v1["nome_curto"]] * len(v1["anos_lista"]),
+        hovertemplate="%{customdata}: R$ %{y:,.2f}<extra></extra>",
     ))
     fig_gastos.add_trace(go.Scatter(
         x=v2["anos_lista"], y=v2["tco_lista_s"], mode="lines+markers", name=v2["nome_curto"],
         line={"color": cor2, "width": 3, "shape": "spline"}, marker={"size": 8},
-        customdata=[v2["nome"]] * len(v2["anos_lista"]),
-        hovertemplate="%{customdata}<br>%{x}<br>Gasto operacional: R$ %{y:,.2f}<extra></extra>",
+        customdata=[v2["nome_curto"]] * len(v2["anos_lista"]),
+        hovertemplate="%{customdata}: R$ %{y:,.2f}<extra></extra>",
     ))
     fig_gastos.update_layout(**obter_layout_web("Gastos operacionais acumulados"), yaxis_title="Gasto acumulado (R$)")
 
@@ -990,14 +990,14 @@ def gerar_graficos_dupla(v1, v2):
             y=[comp1.get(k, 0.0) for k in chaves_componentes],
             name=v1["nome_curto"],
             marker_color=cor1,
-            hovertemplate="%{x}<br>" + v1["nome_curto"] + ": R$ %{y:,.2f}<extra></extra>",
+            hovertemplate=v1["nome_curto"] + ": R$ %{y:,.2f}<extra></extra>",
         ))
         fig_componentes.add_trace(go.Bar(
             x=labels_componentes,
             y=[comp2.get(k, 0.0) for k in chaves_componentes],
             name=v2["nome_curto"],
             marker_color=cor2,
-            hovertemplate="%{x}<br>" + v2["nome_curto"] + ": R$ %{y:,.2f}<extra></extra>",
+            hovertemplate=v2["nome_curto"] + ": R$ %{y:,.2f}<extra></extra>",
         ))
         fig_componentes.update_layout(
             **obter_layout_web("Componentes do custo total no horizonte"),
@@ -1026,7 +1026,7 @@ def gerar_graficos_dupla(v1, v2):
                 x=v.get("anos_lista", []),
                 y=valores,
                 name=nome_comp,
-                hovertemplate=nome_comp + "<br>%{x}: R$ %{y:,.2f}<extra></extra>",
+                hovertemplate=nome_comp + ": R$ %{y:,.2f}<extra></extra>",
             ))
         layout_componentes_anuais = obter_layout_web(titulo)
         layout_componentes_anuais.update({
@@ -1045,15 +1045,15 @@ def gerar_graficos_dupla(v1, v2):
         x=v1["anos_eixo"], y=v1["valor_mercado_lista"], mode="lines+markers", name=v1["nome_curto"],
         line={"color": cor1, "width": 3, "shape": "spline"}, marker={"size": 8},
         fill="tozeroy", fillcolor="rgba(22, 138, 74, 0.10)",
-        customdata=[v1["nome"]] * len(v1["anos_eixo"]),
-        hovertemplate="%{customdata}<br>%{x}<br>Valor estimado: R$ %{y:,.2f}<extra></extra>",
+        customdata=[v1["nome_curto"]] * len(v1["anos_eixo"]),
+        hovertemplate="%{customdata}: R$ %{y:,.2f}<extra></extra>",
     ))
     fig_revenda.add_trace(go.Scatter(
         x=v2["anos_eixo"], y=v2["valor_mercado_lista"], mode="lines+markers", name=v2["nome_curto"],
         line={"color": cor2, "width": 3, "shape": "spline"}, marker={"size": 8},
         fill="tozeroy", fillcolor="rgba(20, 35, 44, 0.08)",
-        customdata=[v2["nome"]] * len(v2["anos_eixo"]),
-        hovertemplate="%{customdata}<br>%{x}<br>Valor estimado: R$ %{y:,.2f}<extra></extra>",
+        customdata=[v2["nome_curto"]] * len(v2["anos_eixo"]),
+        hovertemplate="%{customdata}: R$ %{y:,.2f}<extra></extra>",
     ))
     fig_revenda.update_layout(**obter_layout_web("Valor estimado de revenda ano a ano"), yaxis_title="Valor de mercado (R$)")
 
@@ -1063,7 +1063,7 @@ def gerar_graficos_dupla(v1, v2):
             x=v["anos_eixo"], y=v["valor_mercado_lista"], mode="lines+markers", name="Valor de revenda",
             line={"color": cor, "width": 3, "shape": "spline"}, marker={"size": 8},
             fill="tozeroy", fillcolor="rgba(22, 138, 74, 0.10)",
-            hovertemplate="%{x}<br>Valor estimado: R$ %{y:,.2f}<extra></extra>",
+            hovertemplate="R$ %{y:,.2f}<extra></extra>",
         ))
         fig.update_layout(**obter_layout_web(f"Depreciação — {nome_curto(v['nome'], 42)}"), yaxis_title="Valor de mercado (R$)")
         return html_grafico(fig)
@@ -1072,14 +1072,14 @@ def gerar_graficos_dupla(v1, v2):
     fig_co2.add_trace(go.Scatter(
         x=v1["anos_lista"], y=v1.get("co2_acumulado_t_lista", []), mode="lines+markers", name=v1["nome_curto"],
         line={"color": cor1, "width": 3, "shape": "spline"}, marker={"size": 8},
-        customdata=[v1["nome"]] * len(v1["anos_lista"]),
-        hovertemplate="%{customdata}<br>%{x}<br>CO₂ fóssil operacional: %{y:,.2f} t<extra></extra>",
+        customdata=[v1["nome_curto"]] * len(v1["anos_lista"]),
+        hovertemplate="%{customdata}: %{y:,.2f} tCO₂<extra></extra>",
     ))
     fig_co2.add_trace(go.Scatter(
         x=v2["anos_lista"], y=v2.get("co2_acumulado_t_lista", []), mode="lines+markers", name=v2["nome_curto"],
         line={"color": cor2, "width": 3, "shape": "spline"}, marker={"size": 8},
-        customdata=[v2["nome"]] * len(v2["anos_lista"]),
-        hovertemplate="%{customdata}<br>%{x}<br>CO₂ fóssil operacional: %{y:,.2f} t<extra></extra>",
+        customdata=[v2["nome_curto"]] * len(v2["anos_lista"]),
+        hovertemplate="%{customdata}: %{y:,.2f} tCO₂<extra></extra>",
     ))
     fig_co2.update_layout(**obter_layout_web("CO₂ fóssil operacional acumulado"), yaxis_title="Emissões acumuladas (tCO₂)")
 
@@ -1089,7 +1089,7 @@ def gerar_graficos_dupla(v1, v2):
         x=v1.get("anos_lista", []), y=diferenca_tco, mode="lines+markers",
         name=f"{v1['nome_curto']} - {v2['nome_curto']}",
         line={"color": CORES_GRAFICOS[2], "width": 3, "shape": "spline"}, marker={"size": 8},
-        hovertemplate="%{x}<br>Diferença de custo total: R$ %{y:,.2f}<extra></extra>",
+        hovertemplate="Diferença: R$ %{y:,.2f}<extra></extra>",
     ))
     fig_diferenca.add_hline(y=0, line_width=1, line_dash="dash", line_color="#94a3b8")
     fig_diferenca.update_layout(**obter_layout_web("Diferença acumulada ano a ano"), yaxis_title="Diferença de custo total (R$)")
