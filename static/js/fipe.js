@@ -710,7 +710,7 @@ async function consultarPrecoFipe() {
   const codigoAno = ano.value;
 
   try {
-    const url = `/api/fipe/preco?codigo_marca=${encodeURIComponent(codigoMarca)}&codigo_modelo=${encodeURIComponent(codigoModelo)}&codigo_ano=${encodeURIComponent(codigoAno)}&_=${Date.now()}`;
+    const url = `/api/fipe/preco?codigo_marca=${encodeURIComponent(codigoMarca)}&codigo_modelo=${encodeURIComponent(codigoModelo)}&codigo_ano=${encodeURIComponent(codigoAno)}`;
     const { data } = await buscarJsonFipeSeguro(url);
     if (seq !== sequenciaConsultaPrecoFipe || marca.value !== codigoMarca || modelo.value !== codigoModelo || ano.value !== codigoAno) return;
     limparErroFipe();

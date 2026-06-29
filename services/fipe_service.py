@@ -334,6 +334,7 @@ class FipeService:
             token,
             str(self._cache_dir()),
             self._catalog_cache_ttl(),
+            self._price_cache_ttl(),
         )
 
     def _get_json_tipo(self, tipo_veiculo: str | None, endpoint: str):
@@ -347,6 +348,7 @@ class FipeService:
             token,
             str(self._cache_dir()),
             self._catalog_cache_ttl(),
+            self._price_cache_ttl(),
         )
 
     def _catalog_cache_ttl(self) -> int:
@@ -358,14 +360,19 @@ class FipeService:
         except (TypeError, ValueError):
             return 604800
 
+
+    def _price_cache_ttl(self) -> int:
+        bruto = os.environ.get("FIPE_PRICE_CACHE_TTL_SECONDS")
+        if bruto is None:
+            bruto = current_app.config.get("FIPE_PRICE_CACHE_TTL_SECONDS", 21600)
+        try:
+            return max(900, int(bruto))
+        except (TypeError, ValueError):
+            return 21600
+
     @staticmethod
     def _endpoint_catalogo(endpoint: str) -> bool:
-        """Retorna True somente para listas estáveis do catálogo FIPE.
-
-        Não inclui o endpoint final de preço. Assim, marcas/modelos/anos podem
-        sobreviver a reinícios do Render, mas o valor FIPE continua sendo
-        consultado normalmente para evitar preço antigo em produção.
-        """
+        """Retorna True somente para listas estáveis do catálogo FIPE."""
         partes = [p for p in str(endpoint or "").strip("/").split("/") if p]
         if partes in (["brands"], ["marcas"]):
             return True
@@ -384,11 +391,41 @@ class FipeService:
         return False
 
     @staticmethod
-    def _catalog_cache_path(cache_dir: Path, base_url: str, endpoint: str) -> Path:
+    def _endpoint_preco_atual(endpoint: str) -> bool:
+        """Retorna True somente para consulta final de preço atual.
+
+        Não inclui endpoints de histórico. O cache curto evita que uma consulta
+        de preço FIPE trave a interface em cold start ou em repetição imediata.
+        """
+        texto = str(endpoint or "").strip("/")
+        if not texto or "/history" in texto.lower():
+            return False
+        partes = [p for p in texto.split("/") if p]
+        if len(partes) == 6:
+            return (
+                partes[0] == "brands" and partes[2] == "models" and partes[4] == "years"
+            ) or (
+                partes[0] == "marcas" and partes[2] == "modelos" and partes[4] == "anos"
+            )
+        # API v2 por código FIPE: /{codigoFipe}/years/{yearId}
+        if len(partes) == 3 and partes[1] == "years":
+            return True
+        return False
+
+    @staticmethod
+    def _http_cache_path(cache_dir: Path, base_url: str, endpoint: str, subpasta: str) -> Path:
         chave = hashlib.sha256(f"{base_url.rstrip('/')}|{endpoint.strip('/')}".encode("utf-8")).hexdigest()
-        pasta = cache_dir / "catalogo_http"
+        pasta = cache_dir / subpasta
         pasta.mkdir(parents=True, exist_ok=True)
         return pasta / f"{chave}.json"
+
+    @staticmethod
+    def _catalog_cache_path(cache_dir: Path, base_url: str, endpoint: str) -> Path:
+        return FipeService._http_cache_path(cache_dir, base_url, endpoint, "catalogo_http")
+
+    @staticmethod
+    def _price_cache_path(cache_dir: Path, base_url: str, endpoint: str) -> Path:
+        return FipeService._http_cache_path(cache_dir, base_url, endpoint, "preco_http")
 
     @staticmethod
     def _ler_catalog_cache(path: Path) -> tuple[Any | None, float | None]:
@@ -425,28 +462,38 @@ class FipeService:
         token: str,
         cache_dir: str,
         catalog_cache_ttl: int,
+        price_cache_ttl: int,
     ):
         url = f"{base_url.rstrip('/')}/{endpoint.lstrip('/')}"
-        headers = {"Accept": "application/json", "User-Agent": "PlugVE-Web/24.7"}
+        headers = {"Accept": "application/json", "User-Agent": "PlugVE-Web/31"}
         if token:
             headers["X-Subscription-Token"] = token
             headers["Authorization"] = f"Bearer {token}"
 
+        cache_base = Path(cache_dir)
         cache_path: Path | None = None
         cache_stale: Any | None = None
+        ttl_ativo = 0
+
         if FipeService._endpoint_catalogo(endpoint):
-            cache_path = FipeService._catalog_cache_path(Path(cache_dir), base_url, endpoint)
+            cache_path = FipeService._catalog_cache_path(cache_base, base_url, endpoint)
+            ttl_ativo = max(3600, int(catalog_cache_ttl or 0))
+        elif FipeService._endpoint_preco_atual(endpoint):
+            cache_path = FipeService._price_cache_path(cache_base, base_url, endpoint)
+            ttl_ativo = max(900, int(price_cache_ttl or 0))
+
+        if cache_path is not None:
             dados_cache, idade_cache = FipeService._ler_catalog_cache(cache_path)
             if dados_cache is not None:
                 cache_stale = dados_cache
-                if idade_cache is not None and idade_cache <= max(3600, int(catalog_cache_ttl or 0)):
+                if idade_cache is not None and idade_cache <= ttl_ativo:
                     return dados_cache
 
         try:
-            FipeService._registrar_requisicao_static(Path(cache_dir), token_ativo=bool(token))
+            FipeService._registrar_requisicao_static(cache_base, token_ativo=bool(token))
             resp = requests.get(url, timeout=timeout, headers=headers)
             if resp.status_code >= 400:
-                FipeService._registrar_erro_static(Path(cache_dir), resp.status_code, url, resp.text[:300])
+                FipeService._registrar_erro_static(cache_base, resp.status_code, url, resp.text[:300])
                 if resp.status_code == 429:
                     raise FipeApiError("Limite diário da API FIPE atingido. Aguarde a janela de 24 horas ou use o token premium/gratuito ampliado.", 429, endpoint)
                 if resp.status_code == 404:
@@ -465,12 +512,12 @@ class FipeService:
                 return cache_stale
             raise
         except requests.exceptions.Timeout:
-            FipeService._registrar_erro_static(Path(cache_dir), None, url, "timeout")
+            FipeService._registrar_erro_static(cache_base, None, url, "timeout")
             if cache_stale is not None:
                 return cache_stale
             raise FipeApiError("Tempo esgotado ao consultar a FIPE. Tente novamente em alguns minutos.", None, endpoint)
         except requests.exceptions.RequestException as exc:
-            FipeService._registrar_erro_static(Path(cache_dir), None, url, str(exc)[:300])
+            FipeService._registrar_erro_static(cache_base, None, url, str(exc)[:300])
             if cache_stale is not None:
                 return cache_stale
             raise FipeApiError("Falha de conexão ao consultar a FIPE.", None, endpoint)

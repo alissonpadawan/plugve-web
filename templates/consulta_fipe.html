@@ -145,10 +145,39 @@
     controller = new AbortController();
     return {seq, signal: controller.signal};
   }
+  const CACHE_TTL_CATALOGO_FIPE = 7 * 24 * 60 * 60 * 1000;
+  const CACHE_TTL_PRECO_FIPE = 30 * 60 * 1000;
+  function ttlCacheFipe(url){
+    return String(url || '').includes('/preco') ? CACHE_TTL_PRECO_FIPE : CACHE_TTL_CATALOGO_FIPE;
+  }
+  function lerCacheFipePublica(url){
+    const chave = `plugve:fipe-publica:v31:${url}`;
+    try{
+      const bruto = localStorage.getItem(chave) || sessionStorage.getItem(chave);
+      if(!bruto) return null;
+      const item = JSON.parse(bruto);
+      if(!item || !item.salvoEm || (Date.now() - item.salvoEm) > ttlCacheFipe(url)){
+        localStorage.removeItem(chave); sessionStorage.removeItem(chave); return null;
+      }
+      return item.dados;
+    }catch(e){ return null; }
+  }
+  function salvarCacheFipePublica(url, dados){
+    const chave = `plugve:fipe-publica:v31:${url}`;
+    const payload = JSON.stringify({salvoEm: Date.now(), dados});
+    try{ sessionStorage.setItem(chave, payload); }catch(e){}
+    try{ localStorage.setItem(chave, payload); }catch(e){}
+  }
   async function getJSON(url, token){
+    const cache = lerCacheFipePublica(url);
+    if(cache !== null){
+      if (token.seq !== seq) throw new Error('__stale__');
+      return cache;
+    }
     const resp = await fetch(url, {signal: token.signal, headers:{'Accept':'application/json'}});
     const data = await resp.json().catch(() => ({}));
     if (!resp.ok) throw new Error(data.erro || 'Falha na consulta FIPE.');
+    salvarCacheFipePublica(url, data);
     if (token.seq !== seq) throw new Error('__stale__');
     return data;
   }

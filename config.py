@@ -43,8 +43,10 @@ class Config:
     REQUEST_TIMEOUT = int(os.environ.get("FIPE_REQUEST_TIMEOUT", "15"))
     FIPE_HISTORICO_TIMEOUT = int(os.environ.get("FIPE_HISTORICO_TIMEOUT", "12"))
     # Catálogo (marcas/modelos/anos) é estável e pode ser mantido no disco
-    # persistente do Render. Preços FIPE não entram neste cache.
+    # persistente do Render. O preço final também recebe cache curto para evitar
+    # travamentos em cold start, sem alterar códigos ou metodologia FIPE.
     FIPE_CATALOG_CACHE_TTL_SECONDS = int(os.environ.get("FIPE_CATALOG_CACHE_TTL_SECONDS", "604800"))
+    FIPE_PRICE_CACHE_TTL_SECONDS = int(os.environ.get("FIPE_PRICE_CACHE_TTL_SECONDS", "21600"))
 
     # Token simples para sincronização de leitura painel local -> Render.
     # Configure PLUGVE_SYNC_TOKEN no Render com o mesmo valor do painel local.

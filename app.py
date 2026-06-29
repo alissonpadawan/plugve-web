@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import os
+import threading
+
 from flask import Flask
 
 from config import Config
@@ -9,6 +12,24 @@ from routes.depreciacao_routes import depreciacao_bp
 from routes.tco_routes import tco_bp
 from routes.utility_routes import utility_bp
 from services.persistent_storage import bootstrap_persistent_storage
+
+
+def _preaquecer_catalogo_fipe_async(app: Flask) -> None:
+    if os.environ.get("PLUGVE_PREWARM_FIPE", "1").strip().lower() in {"0", "false", "nao", "não", "no", "off"}:
+        return
+
+    def _worker() -> None:
+        try:
+            with app.app_context():
+                from services.fipe_service import FipeService
+
+                service = FipeService()
+                for contexto in ("ve", "icev", ""):
+                    service.listar_marcas(contexto=contexto)
+        except Exception as exc:
+            app.logger.debug("Pré-aquecimento FIPE ignorado: %s", exc)
+
+    threading.Thread(target=_worker, name="plugve-fipe-prewarm", daemon=True).start()
 
 
 def create_app() -> Flask:
@@ -24,6 +45,8 @@ def create_app() -> Flask:
     # usem a versão modular, mesmo que existam rotas antigas no módulo TCO.
     app.register_blueprint(utility_bp)
     app.register_blueprint(tco_bp)
+
+    _preaquecer_catalogo_fipe_async(app)
 
     return app
 

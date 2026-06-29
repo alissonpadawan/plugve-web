@@ -3044,6 +3044,78 @@
       }
     }
 
+    function textoOpcaoSelecionadaFipeTCO(select) {
+      return select?.options?.[select.selectedIndex]?.textContent?.replace(/^✓\s*/, "").trim() || "";
+    }
+
+    function combustivelPorTextoAnoFipeTCO(codigoAno, textoAno) {
+      let texto = String(textoAno || "").replace(/^✓\s*/, "").trim();
+      if (codigoAnoFipeZeroKm(codigoAno)) {
+        texto = texto.replace(/^32000\s*/i, "").replace(/^Zero\s*km\s*/i, "").trim();
+      }
+      return texto || textoAnoFipeParaTela(codigoAno, textoAno);
+    }
+
+    function campoPrecoFipePorPrefixoTCO(prefixo) {
+      return document.getElementById(`preco_${prefixo}`);
+    }
+
+    function aplicarSelecaoFipeRapidaTCO(prefixo) {
+      const marcaSelect = document.getElementById(`${prefixo}_marca`);
+      const modeloSelect = document.getElementById(`${prefixo}_modelo`);
+      const anoSelect = document.getElementById(`${prefixo}_ano`);
+      if (!marcaSelect || !modeloSelect || !anoSelect) return null;
+      const marca = marcaSelect.value;
+      const modelo = modeloSelect.value;
+      const ano = anoSelect.value;
+      if (!marca || !modelo || !ano) return null;
+
+      const nomeModelo = textoOpcaoSelecionadaFipeTCO(modeloSelect);
+      const textoAnoOriginal = textoOpcaoSelecionadaFipeTCO(anoSelect);
+      const marcaStr = textoOpcaoSelecionadaFipeTCO(marcaSelect);
+      const textoAnoTela = textoAnoFipeParaTela(ano, textoAnoOriginal);
+      const anoModeloStr = anoModeloParaCalculo(ano, "");
+      const combustivelStr = combustivelPorTextoAnoFipeTCO(ano, textoAnoOriginal);
+      const nomeCompleto = limparNomeVeiculoTCO(`${nomeModelo} ${textoAnoTela}`.trim());
+      const tipoSelecionado = classificarTipoVeiculoTCO(nomeModelo, combustivelStr || textoAnoTela, ano, marcaStr, prefixo);
+
+      if (!tipoPermitidoNoBloco(prefixo, tipoSelecionado)) {
+        limparCamposVeiculo(prefixo);
+        alert(mensagemBloqueioTipo(prefixo, tipoSelecionado));
+        return { bloqueado: true };
+      }
+
+      limparEstadoVeiculoSelecionadoTCO(prefixo);
+
+      const preco = campoPrecoFipePorPrefixoTCO(prefixo);
+      if (preco) {
+        preco.value = "";
+        preco.dataset.fipePrecoPendente = "1";
+        preco.placeholder = "Consultando FIPE...";
+      }
+
+      if (prefixo === "ve") {
+        document.getElementById("modelo_ve").value = nomeCompleto;
+        document.getElementById("ano_modelo_ve").value = anoModeloStr;
+        document.getElementById("combustivel_ve").value = combustivelStr;
+        setValorInputTCO("tipo_veiculo_ve", tipoSelecionado);
+      } else if (prefixo === "icev") {
+        document.getElementById("modelo_icev").value = nomeCompleto;
+        document.getElementById("ano_modelo_icev").value = anoModeloStr;
+        document.getElementById("combustivel_icev").value = combustivelStr;
+      } else if (prefixo === "atual") {
+        document.getElementById("modelo_atual").value = nomeCompleto;
+        document.getElementById("ano_modelo_atual").value = anoModeloStr;
+        document.getElementById("combustivel_atual").value = combustivelStr;
+      }
+
+      atualizarInterfaceCombustivelPorVeiculo(prefixo, true);
+      if (typeof atualizarInterfacePhevPorVeiculo === "function") atualizarInterfacePhevPorVeiculo(prefixo, true);
+      if (typeof atualizarPerfisInlinePlugVE === "function") atualizarPerfisInlinePlugVE();
+      if (typeof window.atualizarDetalhesProgressivosPlugVE === "function") window.atualizarDetalhesProgressivosPlugVE();
+      return { bloqueado: false, nomeModelo, textoAnoOriginal, textoAnoTela, anoModeloStr, combustivelStr, marcaStr, tipoSelecionado };
+    }
+
     async function preencherPorFipe(prefixo) {
       const marcaSelect = document.getElementById(prefixo + "_marca");
       const modeloSelect = document.getElementById(prefixo + "_modelo");
@@ -3057,24 +3129,37 @@
 
       if (!marca || !modelo || !ano) return;
 
+      const selecaoRapida = aplicarSelecaoFipeRapidaTCO(prefixo);
+      if (selecaoRapida?.bloqueado) return;
+
+      const precoCampo = campoPrecoFipePorPrefixoTCO(prefixo);
+
       try {
         const params = new URLSearchParams({ codigo_marca: marca, codigo_modelo: modelo, codigo_ano: ano });
-        const resp = await fetch(`/api/fipe/preco?${params.toString()}`);
+        const resp = await fetch(`/api/fipe/preco?${params.toString()}`, { headers: { Accept: "application/json" } });
         const data = await resp.json();
+        if (!resp.ok) throw new Error(data?.erro || "Erro ao consultar FIPE.");
+
+        if (marcaSelect.value !== marca || modeloSelect.value !== modelo || anoSelect.value !== ano) return;
 
         const valor = limparValorMonetario(data.Valor);
-        const nomeModelo = data.Modelo || modeloSelect.options[modeloSelect.selectedIndex].text;
-        const textoAnoOriginal = anoSelect.options[anoSelect.selectedIndex].text;
+        const nomeModelo = data.Modelo || selecaoRapida?.nomeModelo || textoOpcaoSelecionadaFipeTCO(modeloSelect);
+        const textoAnoOriginal = selecaoRapida?.textoAnoOriginal || textoOpcaoSelecionadaFipeTCO(anoSelect);
         const anoModeloStr = anoModeloParaCalculo(ano, data.AnoModelo || data.Ano || "");
-        const combustivelStr = data.Combustivel || textoAnoOriginal;
+        const combustivelStr = data.Combustivel || selecaoRapida?.combustivelStr || combustivelPorTextoAnoFipeTCO(ano, textoAnoOriginal);
         const textoAnoTela = textoAnoFipeParaTela(ano, textoAnoOriginal);
         const nomeCompleto = limparNomeVeiculoTCO(`${nomeModelo} ${textoAnoTela}`.trim());
-        const marcaStr = data.Marca || marcaSelect.options[marcaSelect.selectedIndex]?.text || "";
+        const marcaStr = data.Marca || selecaoRapida?.marcaStr || textoOpcaoSelecionadaFipeTCO(marcaSelect);
         const tipoSelecionado = classificarTipoVeiculoTCO(nomeModelo, combustivelStr || textoAnoTela, ano, marcaStr, prefixo);
         if (!tipoPermitidoNoBloco(prefixo, tipoSelecionado)) {
           limparCamposVeiculo(prefixo);
           alert(mensagemBloqueioTipo(prefixo, tipoSelecionado));
           return;
+        }
+
+        if (precoCampo) {
+          delete precoCampo.dataset.fipePrecoPendente;
+          precoCampo.placeholder = "";
         }
 
         if (prefixo === "ve") {
@@ -3102,12 +3187,21 @@
         if (typeof window.atualizarDetalhesProgressivosPlugVE === "function") window.atualizarDetalhesProgressivosPlugVE();
 
         const detalheDepreciacao = montarDetalheDepreciacaoTCO(prefixo, data, marcaSelect, modeloSelect, anoSelect, valor, nomeModelo, anoModeloStr, combustivelStr);
-        await consultarDepreciacaoTCO(prefixo, detalheDepreciacao);
+        consultarDepreciacaoTCO(prefixo, detalheDepreciacao).catch(e => {
+          console.error("Erro ao consultar depreciação em segundo plano:", e);
+        });
       } catch (e) {
+        if (precoCampo) {
+          delete precoCampo.dataset.fipePrecoPendente;
+          precoCampo.value = "";
+          precoCampo.placeholder = "";
+        }
+        if (typeof window.atualizarDetalhesProgressivosPlugVE === "function") window.atualizarDetalhesProgressivosPlugVE();
         console.error("Erro ao buscar preço FIPE:", e);
-        alert("Erro ao consultar FIPE.");
+        alert(e?.message || "Erro ao consultar FIPE.");
       }
     }
+
 
 
 
@@ -4189,8 +4283,7 @@
     function prefixoSelecionadoFluxoTCO(prefixo) {
       const anoSelecionado = !!document.getElementById(`${prefixo}_ano`)?.value;
       const nomePreenchido = !!document.getElementById(`modelo_${prefixo}`)?.value;
-      const precoPreenchido = !!document.getElementById(`preco_${prefixo}`)?.value;
-      return !!(anoSelecionado && nomePreenchido && precoPreenchido);
+      return !!(anoSelecionado && nomePreenchido);
     }
 
     function reorganizarCamposUsoPorVeiculoPlugVE() {
@@ -4750,7 +4843,7 @@
       const catalogoCurvasPlugVE = { modelos: new Set() };
       const cacheFipeMemoriaPlugVE = new Map();
       const requisicoesFipeEmCursoPlugVE = new Map();
-      const FIPE_CACHE_TTL_PLUGVE = 12 * 60 * 60 * 1000;
+      const FIPE_CACHE_TTL_PLUGVE = 7 * 24 * 60 * 60 * 1000;
       const sequenciaFipePlugVE = { modelos: {}, anos: {} };
 
       function novaSequenciaFipePlugVE(tipo, selectId) {
@@ -4772,26 +4865,29 @@
 
       function lerCacheFipeSessaoPlugVE(url) {
         if (cacheFipeMemoriaPlugVE.has(url)) return cacheFipeMemoriaPlugVE.get(url);
-        try {
-          const bruto = sessionStorage.getItem(`plugve:fipe:v2:${url}`);
-          if (!bruto) return null;
-          const item = JSON.parse(bruto);
-          if (!item || !item.salvoEm || (Date.now() - item.salvoEm) > FIPE_CACHE_TTL_PLUGVE) {
-            sessionStorage.removeItem(`plugve:fipe:v2:${url}`);
-            return null;
-          }
-          cacheFipeMemoriaPlugVE.set(url, item.dados);
-          return item.dados;
-        } catch (e) {
-          return null;
+        const chave = `plugve:fipe:v2:${url}`;
+        for (const storage of [sessionStorage, localStorage]) {
+          try {
+            const bruto = storage.getItem(chave);
+            if (!bruto) continue;
+            const item = JSON.parse(bruto);
+            if (!item || !item.salvoEm || (Date.now() - item.salvoEm) > FIPE_CACHE_TTL_PLUGVE) {
+              storage.removeItem(chave);
+              continue;
+            }
+            cacheFipeMemoriaPlugVE.set(url, item.dados);
+            return item.dados;
+          } catch (e) {}
         }
+        return null;
       }
 
       function salvarCacheFipeSessaoPlugVE(url, dados) {
         cacheFipeMemoriaPlugVE.set(url, dados);
-        try {
-          sessionStorage.setItem(`plugve:fipe:v2:${url}`, JSON.stringify({ salvoEm: Date.now(), dados }));
-        } catch (e) {}
+        const chave = `plugve:fipe:v2:${url}`;
+        const payload = JSON.stringify({ salvoEm: Date.now(), dados });
+        try { sessionStorage.setItem(chave, payload); } catch (e) {}
+        try { localStorage.setItem(chave, payload); } catch (e) {}
       }
 
       async function fetchJsonFipePlugVE(url) {
@@ -4884,7 +4980,8 @@
       function prefixoSelecionadoPlugVE(prefixo) {
         const anoSelecionado = !!document.getElementById(`${prefixo}_ano`)?.value;
         const nomePreenchido = !!document.getElementById(`modelo_${prefixo}`)?.value;
-        const precoPreenchido = !!document.getElementById(`preco_${prefixo}`)?.value;
+        const precoEl = document.getElementById(`preco_${prefixo}`);
+        const precoPreenchido = !!precoEl?.value && precoEl.dataset.fipePrecoPendente !== "1";
         return !!(anoSelecionado && nomePreenchido && precoPreenchido);
       }
 

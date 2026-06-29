@@ -17,6 +17,13 @@ def _resposta_catalogo(dados):
     return resp
 
 
+def _resposta_preco(dados):
+    """Cache HTTP curto para preço atual FIPE, sem alterar a consulta feita."""
+    resp = jsonify(dados)
+    resp.headers["Cache-Control"] = "public, max-age=1800, stale-while-revalidate=21600"
+    return resp
+
+
 def _admin_token_recebido() -> str:
     token = request.headers.get("X-PlugVE-Admin-Token", "").strip()
     if token:
@@ -108,7 +115,7 @@ def preco_publico():
     if not codigo_marca or not codigo_modelo or not codigo_ano:
         return jsonify({"erro": "Parâmetros incompletos."}), 400
     try:
-        return jsonify(fipe_service.consultar_preco_tipo(tipo, codigo_marca, codigo_modelo, codigo_ano))
+        return _resposta_preco(fipe_service.consultar_preco_tipo(tipo, codigo_marca, codigo_modelo, codigo_ano))
     except Exception as exc:
         return _erro_fipe_response(exc)
 
@@ -343,6 +350,6 @@ def preco():
     if not codigo_marca or not codigo_modelo or not codigo_ano:
         return jsonify({"erro": "Parâmetros incompletos."}), 400
     try:
-        return jsonify(fipe_service.consultar_preco(codigo_marca, codigo_modelo, codigo_ano))
+        return _resposta_preco(fipe_service.consultar_preco(codigo_marca, codigo_modelo, codigo_ano))
     except Exception as exc:
         return _erro_fipe_response(exc)
