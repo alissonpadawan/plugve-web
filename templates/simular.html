@@ -42,19 +42,21 @@
     .plugve-select-note{font-size:11px;color:#6b7280;margin-top:3px}
     .plugve-chart-card{border:1px solid #e5e7eb;border-radius:1rem;background:#fff;box-shadow:0 10px 28px rgba(15,23,42,.06);padding:1rem;overflow:hidden}
     .plugve-metric-card{border:1px solid #e5e7eb;border-radius:1rem;background:linear-gradient(180deg,#ffffff 0%,#f8fafc 100%);padding:1rem;box-shadow:0 8px 22px rgba(15,23,42,.04)}
-    .plugve-result-toolbar{display:flex;gap:.75rem;flex-wrap:wrap;justify-content:flex-end;align-items:center;margin:0 0 1rem}
+    .plugve-result-header{display:flex;align-items:flex-end;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:1rem}
+    .plugve-result-top{display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:1rem}
+    .plugve-result-toolbar{display:flex;gap:.75rem;flex-wrap:wrap;justify-content:flex-end;align-items:center;margin:0 0 1rem;padding:1rem 1.1rem;border:1px solid #e5e7eb;border-radius:1rem;background:rgba(255,255,255,.9);box-shadow:0 10px 24px rgba(15,23,42,.04)}
+    .plugve-result-surface{padding:0;background:transparent;border:0;box-shadow:none}
     .plugve-result-actions{display:flex;gap:.75rem;flex-wrap:wrap;justify-content:flex-end;align-items:center}
     .plugve-comparison-hero{display:flex;align-items:center;justify-content:space-between;gap:1.5rem;border:1px solid #bbf7d0;border-radius:1rem;background:linear-gradient(135deg,#f0fdf4 0%,#ffffff 75%);padding:1.1rem 1.2rem}
-    .plugve-executive-summary{border:1px solid #dbeafe;border-radius:1.1rem;background:linear-gradient(180deg,#ffffff 0%,#f8fbff 100%);padding:1rem;box-shadow:0 10px 28px rgba(15,23,42,.05)}
+    .plugve-executive-summary{border:1px solid #dbeafe;border-radius:1.1rem;background:linear-gradient(180deg,rgba(255,255,255,.96) 0%,rgba(248,251,255,.96) 100%);padding:1rem;box-shadow:0 10px 28px rgba(15,23,42,.05)}
     .plugve-summary-title{font-size:2rem;line-height:1.15;font-weight:900;color:#047857}
     .plugve-executive-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.9rem;margin-bottom:.9rem}
-    .plugve-executive-card{border:1px solid #bbf7d0;border-radius:1rem;background:linear-gradient(135deg,#f0fdf4 0%,#ffffff 78%);padding:1rem 1.05rem;min-height:132px}
+    .plugve-executive-card{border:1px solid #bbf7d0;border-radius:1rem;background:linear-gradient(135deg,#f0fdf4 0%,#ffffff 78%);padding:1rem 1.05rem;min-height:auto}
     .plugve-executive-card-env{border-color:#bfdbfe;background:linear-gradient(135deg,#eff6ff 0%,#ffffff 78%)}
-    .plugve-executive-card h4{font-size:1.05rem;line-height:1.35;font-weight:900;color:#0f172a;margin:.1rem 0 .45rem}
-    .plugve-executive-card p{font-size:.78rem;color:#64748b;line-height:1.4;margin:0}
-    .plugve-executive-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.7rem;margin-top:1rem}
-    .plugve-executive-metrics span{display:block;border:1px solid #e2e8f0;border-radius:.85rem;background:#fff;padding:.72rem .85rem;font-size:.78rem;color:#64748b;line-height:1.25}
-    .plugve-executive-metrics b{display:block;margin-top:.18rem;font-size:1.35rem;line-height:1.1;font-weight:900;color:#0f172a;font-variant-numeric:tabular-nums}
+    .plugve-executive-card h4{font-size:1.05rem;line-height:1.35;font-weight:900;color:#0f172a;margin:.1rem 0 0}
+    .plugve-executive-values{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.7rem;margin-top:.95rem}
+    .plugve-executive-value{display:block;border-top:1px solid #dbe4ea;padding-top:.65rem;font-size:.78rem;color:#64748b;line-height:1.25}
+    .plugve-executive-value strong{display:block;margin-top:.18rem;font-size:1.35rem;line-height:1.1;font-weight:900;color:#0f172a;font-variant-numeric:tabular-nums}
     .plugve-main-trend-chart{margin-top:.9rem}
     .plugve-comparison-kicker{display:block;font-size:.72rem;letter-spacing:.04em;text-transform:uppercase;font-weight:900;color:#047857;margin-bottom:.25rem}
     .plugve-comparison-hero h4{font-size:1.15rem;line-height:1.35;font-weight:900;color:#0f172a;max-width:690px}
@@ -176,7 +178,7 @@
     .plugve-premises-grid dl>div:last-child{border-bottom:0}
     .plugve-premises-grid dt{color:#64748b}
     .plugve-premises-grid dd{color:#0f172a;font-weight:700;text-align:right;font-variant-numeric:tabular-nums}
-    @media(max-width:760px){.plugve-executive-grid,.plugve-executive-metrics{grid-template-columns:1fr}.plugve-comparison-hero{align-items:flex-start;flex-direction:column}.plugve-comparison-gain{width:100%;border-left:0;border-top:1px solid #bbf7d0;padding-left:0;padding-top:.75rem;text-align:left}.plugve-vehicle-strip,.plugve-km-values,.plugve-premises-grid,.plugve-summary-km-strip{grid-template-columns:1fr}.plugve-vehicle-summary{align-items:flex-start;flex-direction:column}.plugve-vehicle-price{text-align:left}.plugve-result-toolbar{justify-content:flex-start}}
+    @media(max-width:760px){.plugve-executive-grid,.plugve-executive-metrics{grid-template-columns:1fr}.plugve-comparison-hero{align-items:flex-start;flex-direction:column}.plugve-comparison-gain{width:100%;border-left:0;border-top:1px solid #bbf7d0;padding-left:0;padding-top:.75rem;text-align:left}.plugve-vehicle-strip,.plugve-km-values,.plugve-premises-grid,.plugve-summary-km-strip{grid-template-columns:1fr}.plugve-vehicle-summary{align-items:flex-start;flex-direction:column}.plugve-vehicle-price{text-align:left}.plugve-result-toolbar{justify-content:flex-start}.plugve-result-header,.plugve-result-top{align-items:flex-start}}
     .plugve-page-break{break-inside:avoid;page-break-inside:avoid}
     .plugve-price-finance-field{margin-top:.25rem;border:1px solid #d1d5db;border-radius:.75rem;background:#fff;overflow:visible;transition:border-color .18s ease,box-shadow .18s ease}
     .plugve-price-finance-field:focus-within{border-color:#059669;box-shadow:0 0 0 3px rgba(5,150,105,.10)}
@@ -397,12 +399,13 @@
     .tco-pdf-vehicle-total{text-align:right;white-space:nowrap}
     .tco-pdf-vehicle-total span{display:block;color:#64748b;font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.04em}
     .tco-pdf-vehicle-total strong{display:block;color:#0f172a;font-size:16px;font-weight:900}
-    .tco-pdf-chart{border:1px solid #e5e7eb;border-radius:14px;background:#fff;padding:14px;margin:12px 0 16px;break-inside:avoid;page-break-inside:avoid;overflow:hidden}
+    .tco-pdf-chart{border:1px solid #e5e7eb;border-radius:14px;background:#fff;padding:12px;margin:10px 0 14px;break-inside:avoid;page-break-inside:avoid;overflow:hidden}
     .tco-pdf-chart img{display:block;width:100%;max-width:100%;height:auto;border:0}
-    .tco-pdf-chart-wait{display:flex;align-items:center;justify-content:center;height:260px;color:#64748b;font-size:11px;background:#f8fafc;border-radius:10px}
-    .tco-pdf-chart .plotly-graph-div{width:100% !important;max-width:100% !important;height:300px !important;min-height:300px !important}
-    .tco-pdf-chart.compact .plotly-graph-div{height:255px !important;min-height:255px !important}
-    .tco-pdf-chart.tall .plotly-graph-div{height:340px !important;min-height:340px !important}
+    .tco-pdf-chart-wait{display:flex;align-items:center;justify-content:center;height:210px;color:#64748b;font-size:11px;background:#f8fafc;border-radius:10px}
+    .tco-pdf-chart .plotly-graph-div{width:100% !important;max-width:100% !important;height:250px !important;min-height:250px !important}
+    .tco-pdf-chart.compact .plotly-graph-div{height:215px !important;min-height:215px !important}
+    .tco-pdf-chart.small .plotly-graph-div{height:185px !important;min-height:185px !important}
+    .tco-pdf-chart.tall .plotly-graph-div{height:285px !important;min-height:285px !important}
     .tco-pdf-table{width:100%;border-collapse:collapse;border:1px solid #dbe7df;border-radius:12px;overflow:hidden;font-size:10px;background:#fff;margin:10px 0 16px;break-inside:avoid;page-break-inside:avoid}
     .tco-pdf-table th,.tco-pdf-table td{border-bottom:1px solid #edf2ef;padding:7px 8px;vertical-align:top;text-align:right}
     .tco-pdf-table th:first-child,.tco-pdf-table td:first-child{text-align:left;width:43%}
@@ -416,6 +419,7 @@
     .tco-pdf-env-metric strong{display:block;font-size:14px;color:#0f172a;font-weight:900;margin-top:5px;line-height:1.15}
     .tco-pdf-env-metric small{display:block;color:#64748b;font-size:8.5px;margin-top:3px;line-height:1.25}
     .tco-pdf-note{font-size:9.5px;color:#64748b;line-height:1.35;border-left:3px solid #168A4A;padding:8px 10px;background:#f8fbf9;margin-top:10px}
+    .tco-pdf-chart-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
     .tco-pdf-footer{margin-top:14px;border-top:1px solid #e5e7eb;padding-top:8px;color:#64748b;font-size:9px;display:flex;justify-content:space-between;gap:12px}
 
     @media print{
@@ -479,9 +483,6 @@
       Simulador de Custo Total de Propriedade
     </h1>
 
-    <p class="mb-5 text-gray-700 text-sm max-w-3xl">
-      Compare custos de aquisição, energia, combustível, impostos, seguro, manutenção, financiamento e depreciação em uma análise veicular inteligente.
-    </p>
     <div id="plugve_fluxo_resumo" class="plugve-flow-summary"></div>
 
     <!-- =========================================================
@@ -1272,6 +1273,9 @@
     ========================================================= -->
     {% if resultado and resultado.comparacoes %}
       <section id="secao_resultados_tco" class="mt-10 plugve-page-break">
+        <div class="plugve-result-top">
+          <h2 class="plugve-summary-title">Resumo dos Resultados</h2>
+        </div>
         <div class="plugve-result-toolbar no-print">
           <button type="button" id="btn_nova_consulta_tco" class="px-4 py-2 rounded-lg border border-red-500 text-red-600 font-semibold hover:bg-red-50">
             Nova consulta
@@ -1288,11 +1292,7 @@
             Exportar PDF
           </button>
         </div>
-        <div class="bg-white rounded-xl shadow-md p-6">
-          <div class="mb-6">
-            <h2 class="plugve-summary-title">Resumo dos Resultados</h2>
-          </div>
-
+        <div class="plugve-result-surface">
           <h2 class="plugve-summary-title mb-6 hidden print:block">Resumo dos Resultados</h2>
 
           {% for comp in resultado.comparacoes %}
@@ -1303,20 +1303,18 @@
                     <article class="plugve-executive-card">
                       <span class="plugve-comparison-kicker">Melhor opção econômica</span>
                       <h4>{{ comp.vencedor_nome }}</h4>
-                      <p>Menor custo total no horizonte entre os veículos comparados.</p>
-                      <div class="plugve-executive-metrics">
-                        <span>Economia: <b>{{ comp.economia }}</b></span>
-                        <span>Diferença: <b>{{ comp.economia_percentual }}</b></span>
+                      <div class="plugve-executive-values">
+                        <div class="plugve-executive-value">Economia<strong>{{ comp.economia }}</strong></div>
+                        <div class="plugve-executive-value">Diferença<strong>{{ comp.economia_percentual }}</strong></div>
                       </div>
                     </article>
                     {% if comp.impacto_ambiental %}
                       <article class="plugve-executive-card plugve-executive-card-env">
                         <span class="plugve-comparison-kicker">Menor emissão operacional estimada</span>
                         <h4>{{ comp.impacto_ambiental.menor_nome }}</h4>
-                        <p>Menor CO₂ fóssil operacional/rede elétrica no horizonte. Etanol biogênico é informado à parte.</p>
-                        <div class="plugve-executive-metrics">
-                          <span>CO₂ evitado: <b>{{ comp.impacto_ambiental.co2_evitado }}</b></span>
-                          <span>Equivalente: <b>{{ comp.impacto_ambiental.arvores_equivalentes }}</b></span>
+                        <div class="plugve-executive-values">
+                          <div class="plugve-executive-value">CO₂ evitado<strong>{{ comp.impacto_ambiental.co2_evitado }}</strong></div>
+                          <div class="plugve-executive-value">Equivalente<strong>{{ comp.impacto_ambiental.arvores_equivalentes }}</strong></div>
                         </div>
                       </article>
                     {% endif %}
@@ -1607,7 +1605,6 @@
                 <section class="tco-pdf-card">
                   <span class="tco-pdf-kicker">Melhor opção econômica</span>
                   <h4>{{ comp.vencedor_nome }}</h4>
-                  <p>Menor custo total no horizonte entre os veículos comparados.</p>
                   <div class="tco-pdf-metric-row">
                     <div class="tco-pdf-metric">Economia<strong>{{ comp.economia }}</strong></div>
                     <div class="tco-pdf-metric">Diferença<strong>{{ comp.economia_percentual }}</strong></div>
@@ -1617,7 +1614,6 @@
                   <section class="tco-pdf-card env">
                     <span class="tco-pdf-kicker">Menor emissão operacional estimada</span>
                     <h4>{{ comp.impacto_ambiental.menor_nome }}</h4>
-                    <p>Menor CO₂ fóssil operacional/rede elétrica no horizonte. Etanol biogênico é informado à parte.</p>
                     <div class="tco-pdf-metric-row">
                       <div class="tco-pdf-metric">CO₂ evitado<strong>{{ comp.impacto_ambiental.co2_evitado }}</strong></div>
                       <div class="tco-pdf-metric">Equivalente<strong>{{ comp.impacto_ambiental.arvores_equivalentes }}</strong></div>
@@ -1648,7 +1644,7 @@
             {% endif %}
 
             {% if comp.grafico %}
-              <section class="tco-pdf-chart tall" data-tco-chart-copy="main-{{ loop.index }}">
+              <section class="tco-pdf-chart compact" data-tco-chart-copy="main-{{ loop.index }}">
                 <div class="tco-pdf-chart-wait">Preparando gráfico de custo total...</div>
               </section>
             {% endif %}
@@ -1700,13 +1696,37 @@
                   {% endif %}
                 </tbody>
               </table>
-            {% endif %}
-            {% if comp.grafico_componentes %}
-              <section class="tco-pdf-chart compact" data-tco-chart-copy="componentes-{{ loop.index }}">
-                <div class="tco-pdf-chart-wait">Preparando gráfico de componentes...</div>
-              </section>
+            {% else %}
+              <p class="tco-pdf-note">Os dados comparativos detalhados não estavam disponíveis para esta simulação.</p>
             {% endif %}
             <footer class="tco-pdf-footer"><span>CurVE © 2026 - Instituto Federal de Goiás</span><span>Página 2 - Comparativo financeiro</span></footer>
+          </article>
+
+          <article class="tco-pdf-page">
+            <header class="tco-pdf-head">
+              <img class="tco-pdf-logo" src="{{ url_for('static', filename='img/logo_curve_horizontal.png') }}" alt="CurVE">
+              <div class="tco-pdf-meta"><strong>Relatório TCO</strong><br>Evolução do custo</div>
+            </header>
+            <h2 class="tco-pdf-section-title">Evolução do custo e componentes</h2>
+            {% if comp.grafico_componentes %}
+              <section class="tco-pdf-chart compact" data-tco-chart-copy="componentes-{{ loop.index }}"><div class="tco-pdf-chart-wait">Preparando gráfico de componentes...</div></section>
+            {% endif %}
+            {% if comp.grafico_diferenca_anual %}
+              <section class="tco-pdf-chart compact" data-tco-chart-copy="diferenca-{{ loop.index }}"><div class="tco-pdf-chart-wait">Preparando gráfico da diferença anual...</div></section>
+            {% endif %}
+            {% if comp.grafico_sem_depreciacao %}
+              <section class="tco-pdf-chart compact" data-tco-chart-copy="operacional-{{ loop.index }}"><div class="tco-pdf-chart-wait">Preparando gráfico operacional...</div></section>
+            {% elif comp.grafico_componentes_anuais_v1 or comp.grafico_componentes_anuais_v2 %}
+              <div class="tco-pdf-chart-grid">
+                {% if comp.grafico_componentes_anuais_v1 %}
+                  <section class="tco-pdf-chart small" data-tco-chart-copy="anuais1-{{ loop.index }}"><div class="tco-pdf-chart-wait">Preparando gráfico anual...</div></section>
+                {% endif %}
+                {% if comp.grafico_componentes_anuais_v2 %}
+                  <section class="tco-pdf-chart small" data-tco-chart-copy="anuais2-{{ loop.index }}"><div class="tco-pdf-chart-wait">Preparando gráfico anual...</div></section>
+                {% endif %}
+              </div>
+            {% endif %}
+            <footer class="tco-pdf-footer"><span>CurVE © 2026 - Instituto Federal de Goiás</span><span>Página 3 - Evolução do custo</span></footer>
           </article>
 
           {% if comp.impacto_ambiental or comp.grafico_ambiental %}
@@ -1727,11 +1747,9 @@
                 <p class="tco-pdf-note">Estimativa operacional fóssil/rede elétrica. Não inclui fabricação, bateria, descarte ou análise de ciclo de vida completa. O CO₂ biogênico do etanol é informado separadamente.</p>
               {% endif %}
               {% if comp.grafico_ambiental %}
-                <section class="tco-pdf-chart compact" data-tco-chart-copy="ambiental-{{ loop.index }}">
-                  <div class="tco-pdf-chart-wait">Preparando gráfico ambiental...</div>
-                </section>
+                <section class="tco-pdf-chart compact" data-tco-chart-copy="ambiental-{{ loop.index }}"><div class="tco-pdf-chart-wait">Preparando gráfico ambiental...</div></section>
               {% endif %}
-              <footer class="tco-pdf-footer"><span>CurVE © 2026 - Instituto Federal de Goiás</span><span>Página 3 - Ambiental</span></footer>
+              <footer class="tco-pdf-footer"><span>CurVE © 2026 - Instituto Federal de Goiás</span><span>Página 4 - Ambiental</span></footer>
             </article>
           {% endif %}
 
@@ -1741,12 +1759,12 @@
               <div class="tco-pdf-meta"><strong>Relatório TCO</strong><br>Depreciação e revenda</div>
             </header>
             <h2 class="tco-pdf-section-title">Depreciação e valor estimado de revenda</h2>
-            <div class="tco-pdf-grid">
+            <div class="tco-pdf-chart-grid">
               {% if comp.grafico_depreciacao_v1 %}
-                <section class="tco-pdf-chart compact" data-tco-chart-copy="dep1-{{ loop.index }}"><div class="tco-pdf-chart-wait">Preparando gráfico...</div></section>
+                <section class="tco-pdf-chart small" data-tco-chart-copy="dep1-{{ loop.index }}"><div class="tco-pdf-chart-wait">Preparando gráfico...</div></section>
               {% endif %}
               {% if comp.grafico_depreciacao_v2 %}
-                <section class="tco-pdf-chart compact" data-tco-chart-copy="dep2-{{ loop.index }}"><div class="tco-pdf-chart-wait">Preparando gráfico...</div></section>
+                <section class="tco-pdf-chart small" data-tco-chart-copy="dep2-{{ loop.index }}"><div class="tco-pdf-chart-wait">Preparando gráfico...</div></section>
               {% endif %}
             </div>
             {% if comp.grafico_revenda_comparativo %}
@@ -1764,7 +1782,7 @@
                 </tbody>
               </table>
             {% endif %}
-            <footer class="tco-pdf-footer"><span>CurVE © 2026 - Instituto Federal de Goiás</span><span>Página 4 - Depreciação</span></footer>
+            <footer class="tco-pdf-footer"><span>CurVE © 2026 - Instituto Federal de Goiás</span><span>Página 5 - Depreciação</span></footer>
           </article>
         {% endfor %}
       </section>
@@ -5267,8 +5285,11 @@
             const origem = document.querySelector(`[data-tco-chart-key="${chave}"] .plotly-graph-div`);
             if (!origem) continue;
             try {
-              const largura = alvo.classList.contains("compact") ? 650 : 720;
-              const altura = alvo.classList.contains("tall") ? 360 : 285;
+              let largura = 720;
+              let altura = 250;
+              if (alvo.classList.contains("small")) { largura = 520; altura = 185; }
+              else if (alvo.classList.contains("compact")) { largura = 650; altura = 215; }
+              else if (alvo.classList.contains("tall")) { largura = 720; altura = 285; }
               const url = await window.Plotly.toImage(origem, { format: "png", width: largura, height: altura, scale: 2 });
               alvo.innerHTML = `<img src="${url}" alt="Gráfico do relatório CurVE">`;
             } catch (e) {
