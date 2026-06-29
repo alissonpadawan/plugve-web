@@ -6,10 +6,9 @@
 <style>
   .fipe-page{max-width:1120px;margin:0 auto;padding:8px 0 40px}
   .fipe-hero{border:1px solid #dce7e1;border-radius:28px;background:linear-gradient(135deg,#f0fdf4 0%,#ffffff 70%);box-shadow:0 20px 54px rgba(15,23,42,.06);padding:clamp(24px,4vw,42px);margin-bottom:22px}
-  .fipe-kicker{display:inline-flex;align-items:center;border:1px solid #bbf7d0;background:#ecfdf5;color:#065f46;border-radius:999px;padding:.4rem .75rem;font-size:.76rem;font-weight:900;text-transform:uppercase;letter-spacing:.04em;margin-bottom:14px}
   .fipe-hero h1{margin:0;color:#047857;font-size:clamp(2rem,4vw,3.6rem);line-height:1.03;font-weight:900;letter-spacing:-.055em}
-  .fipe-hero p{margin:12px 0 0;color:#64748b;font-size:1rem;line-height:1.52;max-width:780px}
-  .fipe-grid{display:grid;grid-template-columns:minmax(0,.95fr) minmax(320px,1.05fr);gap:20px;align-items:start}
+  .fipe-hero p{margin:12px 0 0;color:#64748b;font-size:1rem;line-height:1.52;max-width:620px}
+  .fipe-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;align-items:start}
   .fipe-card{border:1px solid #e2e8f0;border-radius:24px;background:#fff;box-shadow:0 16px 38px rgba(15,23,42,.05);padding:22px}
   .fipe-card h2{margin:0 0 16px;color:#10202b;font-size:1.3rem;font-weight:900;letter-spacing:-.02em}
   .fipe-type-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:18px}
@@ -28,27 +27,26 @@
   .fipe-btn.secondary:hover{background:#f0fdf4;color:#065f46}
   .fipe-status{margin-top:14px;color:#64748b;font-size:.88rem;min-height:1.25rem}
   .fipe-status.error{color:#b91c1c;font-weight:800}
-  .fipe-result{display:none;border:1px solid #bbf7d0;border-radius:24px;background:linear-gradient(135deg,#f0fdf4 0%,#ffffff 72%);padding:22px;box-shadow:0 18px 42px rgba(15,23,42,.06)}
-  .fipe-empty{border:1px dashed #cbd5e1;border-radius:24px;background:#f8fafc;padding:28px;color:#64748b;text-align:center;min-height:270px;display:grid;place-items:center}
+  .fipe-result{display:none;border:1px solid #bbf7d0;border-radius:24px;background:linear-gradient(135deg,#f0fdf4 0%,#ffffff 72%);padding:20px;box-shadow:0 16px 38px rgba(15,23,42,.05)}
+  .fipe-empty{border:1px dashed #cbd5e1;border-radius:24px;background:#f8fafc;padding:28px;color:#64748b;text-align:center;min-height:240px;display:grid;place-items:center}
   .fipe-result.show{display:block}
-  .fipe-result-kicker{font-size:.72rem;font-weight:900;letter-spacing:.04em;text-transform:uppercase;color:#047857;margin-bottom:5px}
-  .fipe-value{font-size:clamp(2.2rem,5vw,4rem);line-height:1;font-weight:900;color:#10202b;letter-spacing:-.05em;margin:0 0 10px}
-  .fipe-model{font-size:1.2rem;font-weight:900;color:#10202b;line-height:1.25;margin:0 0 4px}
-  .fipe-meta{margin:0 0 18px;color:#64748b;font-size:.96rem}
-  .fipe-table{width:100%;border-collapse:collapse;margin-top:14px;background:#fff;border-radius:16px;overflow:hidden;border:1px solid #e2e8f0}
-  .fipe-table th,.fipe-table td{padding:11px 12px;border-bottom:1px solid #f1f5f9;text-align:left;font-size:.92rem;vertical-align:top}
+  .fipe-result-kicker{font-size:.7rem;font-weight:900;letter-spacing:.04em;text-transform:uppercase;color:#047857;margin-bottom:4px}
+  .fipe-value{font-size:clamp(2.1rem,4vw,3.35rem);line-height:1;font-weight:900;color:#10202b;letter-spacing:-.05em;margin:0 0 8px}
+  .fipe-model{font-size:1.08rem;font-weight:900;color:#10202b;line-height:1.25;margin:0 0 4px}
+  .fipe-meta{margin:0 0 12px;color:#64748b;font-size:.92rem}
+  .fipe-table{width:100%;border-collapse:collapse;margin-top:10px;background:#fff;border-radius:16px;overflow:hidden;border:1px solid #e2e8f0}
+  .fipe-table th,.fipe-table td{padding:9px 11px;border-bottom:1px solid #f1f5f9;text-align:left;font-size:.88rem;vertical-align:top}
   .fipe-table th{width:38%;color:#64748b;font-weight:800;background:#fbfdff}
   .fipe-table td{color:#10202b;font-weight:800}
   .fipe-table tr:last-child th,.fipe-table tr:last-child td{border-bottom:0}
-  .fipe-note{margin-top:16px;font-size:.8rem;color:#64748b;line-height:1.4}
+  .fipe-note{margin-top:12px;font-size:.78rem;color:#64748b;line-height:1.36}
   @media(max-width:920px){.fipe-grid{grid-template-columns:1fr}.fipe-type-row{grid-template-columns:1fr}.fipe-page{padding:0 0 32px}}
 </style>
 
 <section class="fipe-page">
   <div class="fipe-hero">
-    <span class="fipe-kicker">Consulta pública</span>
     <h1>Consulta FIPE</h1>
-    <p>Consulte o valor FIPE atual de carros, motos e caminhões. Escolha o tipo de veículo, marca, modelo e ano/combustível para ver o valor de referência.</p>
+    <p>Consulte o valor FIPE atual de carros, motos e caminhões.</p>
   </div>
 
   <div class="fipe-grid">
@@ -133,6 +131,14 @@
   function resetSelect(sel, label, disabled=true){
     sel.innerHTML = ''; sel.appendChild(opt(label)); sel.disabled = !!disabled;
   }
+  function formatarAnoZeroKm(label){
+    const texto = String(label || '');
+    return texto.replace(/^\s*32000\b/i, 'Zero km');
+  }
+  function textoAnoModelo(valor){
+    const texto = String(valor ?? '').trim();
+    return texto === '32000' ? 'Zero km' : (texto || '—');
+  }
   function requestToken(){
     seq += 1;
     if (controller) controller.abort();
@@ -157,7 +163,7 @@
     document.getElementById('fipe_result_modelo').textContent = data.Modelo || '—';
     document.getElementById('fipe_result_marca').textContent = data.Marca || '—';
     document.getElementById('fipe_result_codigo').textContent = data.CodigoFipe || '—';
-    document.getElementById('fipe_result_ano').textContent = data.AnoModelo || '—';
+    document.getElementById('fipe_result_ano').textContent = textoAnoModelo(data.AnoModelo);
     document.getElementById('fipe_result_combustivel').textContent = data.Combustivel || '—';
     document.getElementById('fipe_result_referencia').textContent = data.MesReferencia || '—';
     document.getElementById('fipe_result_consulta').textContent = new Date().toLocaleString('pt-BR');
@@ -198,7 +204,7 @@
     try{
       const data = await getJSON(`/api/fipe/publica/anos?tipo=${encodeURIComponent(tipoAtual)}&codigo_marca=${encodeURIComponent(marca)}&codigo_modelo=${encodeURIComponent(modelo)}`, token);
       resetSelect(selects.ano, 'Selecione', false);
-      (Array.isArray(data) ? data : []).forEach(a => selects.ano.appendChild(opt(a.nome || 'Ano', a.codigo || '')));
+      (Array.isArray(data) ? data : []).forEach(a => selects.ano.appendChild(opt(formatarAnoZeroKm(a.nome || 'Ano'), a.codigo || '')));
       status('');
     }catch(e){ if(e.message !== '__stale__') { resetSelect(selects.ano,'Não foi possível carregar anos',true); status(e.message,true); } }
   }
