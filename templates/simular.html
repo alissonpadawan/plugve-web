@@ -11,6 +11,18 @@
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
   <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
   <style>
+
+    .curve-internal-page{min-height:100vh;display:flex;flex-direction:column;position:relative;background:linear-gradient(180deg,#f5f8f6 0%,#eef3ef 100%);color:#1f2937}
+    .curve-internal-page::before{content:'';position:fixed;inset:0;background:url('{{ url_for('static', filename='img/internal-page-bg.png') }}') center center/cover no-repeat;opacity:.58;pointer-events:none;z-index:-2}
+    .curve-internal-page::after{content:'';position:fixed;inset:0;background:linear-gradient(180deg,rgba(255,255,255,.72) 0%,rgba(248,250,249,.84) 100%);pointer-events:none;z-index:-1}
+    .curve-header{background:rgba(255,255,255,.92) !important;border-bottom:1px solid #e5e7eb;backdrop-filter:blur(12px);box-shadow:none}
+    .curve-brand-logo{display:block;width:min(260px,48vw);height:54px;object-fit:contain;object-position:left center}
+    .curve-nav{display:flex;align-items:center;gap:1.35rem}
+    .curve-nav a{display:inline-flex;align-items:center;color:#1f2933 !important;text-decoration:none;padding:.52rem 0 !important;border-bottom:2px solid transparent;font-size:14px;font-weight:700 !important;transition:color .18s ease,border-color .18s ease,opacity .18s ease;background:transparent !important;border-radius:0 !important;box-shadow:none !important}
+    .curve-nav a:hover{color:#0b1720 !important;border-bottom-color:rgba(20,35,44,.28)}
+    .curve-nav a.curve-nav-active{color:#0f5f36 !important;border-bottom-color:#168A4A;background:transparent !important;border-radius:0 !important;box-shadow:none !important}
+    .curve-shell{position:relative;z-index:1;flex:1 0 auto;background:rgba(255,255,255,.88) !important;border:1px solid #e5e7eb !important;box-shadow:0 10px 28px rgba(15,23,42,.05) !important}
+    .curve-footer{margin-top:auto;padding:26px 0 30px;text-align:center;font-size:14px;color:#6b7280;position:relative;z-index:1}
     .plugve-flow-summary{display:none;margin:.5rem 0 1rem;padding:.45rem .75rem;border:1px solid #bbf7d0;border-radius:.5rem;background:#f9fffb;color:#4b5563;font-size:.78rem;line-height:1.35;position:relative;transition:box-shadow .18s ease,border-color .18s ease}
     .plugve-flow-summary strong{color:#1f2937}
     .plugve-flow-summary .plugve-flow-line span+span::before{content:" | ";color:#9ca3af;margin:0 .35rem}
@@ -339,7 +351,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/curve-tailwind.css') }}">
 </head>
 
-<body class="bg-gray-50 text-gray-800">
+<body class="curve-internal-page text-gray-800">
 
   <!-- =========================================================
     1) HEADER
@@ -364,7 +376,7 @@
   <!-- =========================================================
     2) MAIN
   ========================================================= -->
-  <main class="curve-shell max-w-6xl mx-auto p-6 bg-white shadow mt-6 rounded-xl">
+  <main class="curve-shell max-w-6xl mx-auto p-6 shadow mt-6 rounded-xl">
 
     <!-- =========================================================
       2.1) FLASH MESSAGES
@@ -1492,7 +1504,7 @@
   <!-- =========================================================
     5) FOOTER
   ========================================================= -->
-  <footer class="text-center text-sm text-gray-500 py-6 mt-6">
+  <footer class="curve-footer">
     CurVE © 2026 — Instituto Federal de Goiás. Todos os direitos reservados.
   </footer>
 
