@@ -127,7 +127,7 @@
   }
 
   function criarInstancia(select) {
-    if (!select || instancias.has(select)) return null;
+    if (!select || instancias.has(select) || select.dataset.fipeComboboxEnhanced === "1") return null;
 
     select.classList.add("fipe-native-select-hidden");
     select.dataset.fipeComboboxEnhanced = "1";
@@ -169,7 +169,7 @@
     const icon = document.createElement("span");
     icon.className = "fipe-combobox-search-icon";
     icon.setAttribute("aria-hidden", "true");
-    icon.textContent = "⌕";
+    icon.textContent = "";
 
     searchWrap.appendChild(search);
     searchWrap.appendChild(icon);

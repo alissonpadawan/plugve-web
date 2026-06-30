@@ -3104,7 +3104,7 @@ textarea { resize: vertical; }
   }
 }
 
-/* V31 - Busca pesquisável nos seletores FIPE */
+/* V31 - Busca FIPE pesquisável padronizada */
 .fipe-native-select-hidden {
   display: none !important;
 }
@@ -3115,23 +3115,36 @@ textarea { resize: vertical; }
   margin-top: .25rem;
   font: inherit;
   color: var(--text, #0f172a);
+  isolation: isolate;
+  z-index: 40;
+}
+
+.fipe-combobox.open {
+  z-index: 5600;
+}
+
+.fipe-combobox.is-disabled {
+  opacity: .68;
+  pointer-events: none;
 }
 
 .fipe-combobox-toggle {
   width: 100%;
   min-height: 42px;
   border: 1px solid #D1D5DB;
-  border-radius: 12px;
+  border-radius: 10px;
   background: #FFFFFF;
   color: #0F172A;
-  padding: 9px 12px;
+  padding: 9px 34px 9px 12px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  justify-content: flex-start;
+  gap: 10px;
   font: inherit;
   text-align: left;
   cursor: pointer;
+  position: relative;
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, .04);
   transition: border-color .16s ease, box-shadow .16s ease, background .16s ease;
 }
 
@@ -3143,7 +3156,7 @@ textarea { resize: vertical; }
 .fipe-combobox.open .fipe-combobox-toggle {
   outline: none;
   border-color: #168A4A;
-  box-shadow: 0 0 0 4px rgba(22, 138, 74, .10);
+  box-shadow: 0 0 0 3px rgba(22, 138, 74, .12), inset 0 1px 2px rgba(15, 23, 42, .04);
 }
 
 .fipe-combobox-toggle:disabled {
@@ -3180,28 +3193,34 @@ textarea { resize: vertical; }
 }
 
 .fipe-combobox-caret {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
   flex: 0 0 auto;
   color: #64748B;
-  font-size: .75rem;
-  transform: translateY(-1px);
+  font-size: .72rem;
+  line-height: 1;
+  pointer-events: none;
 }
 
 .fipe-combobox.open .fipe-combobox-caret {
-  transform: rotate(180deg) translateY(1px);
+  transform: translateY(-50%) rotate(180deg);
 }
 
 .fipe-combobox-panel {
   display: none;
   position: absolute;
-  top: calc(100% + 6px);
+  top: calc(100% + 4px);
   left: 0;
   right: 0;
-  z-index: 4000;
-  padding: 8px;
-  border: 1px solid #CBD5E1;
-  border-radius: 14px;
+  z-index: 5700;
+  padding: 4px;
+  border: 1px solid #9CA3AF;
+  border-radius: 6px;
   background: #FFFFFF;
-  box-shadow: 0 18px 38px rgba(15, 23, 42, .18);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, .18);
+  overflow: hidden;
 }
 
 .fipe-combobox.open .fipe-combobox-panel {
@@ -3210,59 +3229,91 @@ textarea { resize: vertical; }
 
 .fipe-combobox-search-wrap {
   position: relative;
+  margin: 0 0 4px 0;
 }
 
 .fipe-combobox-search {
   width: 100%;
-  min-height: 36px;
-  border: 1px solid #CBD5E1;
-  border-radius: 10px;
+  height: 34px;
+  border: 1px solid #B6C0CA;
+  border-radius: 3px;
   background: #FFFFFF;
   color: #0F172A;
-  padding: 8px 34px 8px 10px;
+  padding: 6px 34px 6px 8px;
+  font: inherit;
   font-size: .92rem;
+  line-height: 1.2;
   outline: none;
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, .05);
+}
+
+.fipe-combobox-search::placeholder {
+  color: #94A3B8;
 }
 
 .fipe-combobox-search:focus {
   border-color: #168A4A;
-  box-shadow: 0 0 0 3px rgba(22, 138, 74, .10);
+  box-shadow: 0 0 0 2px rgba(22, 138, 74, .10), inset 0 1px 2px rgba(15, 23, 42, .05);
 }
 
 .fipe-combobox-search-icon {
   position: absolute;
   top: 50%;
-  right: 11px;
+  right: 10px;
+  width: 16px;
+  height: 16px;
   transform: translateY(-50%);
   color: #64748B;
   pointer-events: none;
-  font-size: 1rem;
-  font-weight: 800;
+}
+
+.fipe-combobox-search-icon::before {
+  content: "";
+  position: absolute;
+  left: 1px;
+  top: 1px;
+  width: 9px;
+  height: 9px;
+  border: 2px solid currentColor;
+  border-radius: 999px;
+}
+
+.fipe-combobox-search-icon::after {
+  content: "";
+  position: absolute;
+  left: 10px;
+  top: 11px;
+  width: 7px;
+  height: 2px;
+  border-radius: 999px;
+  background: currentColor;
+  transform: rotate(45deg);
+  transform-origin: left center;
 }
 
 .fipe-combobox-list {
-  margin-top: 7px;
-  max-height: 296px;
+  max-height: 264px;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding-right: 2px;
+  padding: 0;
+  background: #FFFFFF;
 }
 
 .fipe-combobox-option {
   width: 100%;
-  min-height: 37px;
+  min-height: 32px;
   border: 0;
-  border-radius: 9px;
+  border-radius: 3px;
   background: transparent;
   color: #0F172A;
-  padding: 8px 9px;
+  padding: 6px 8px;
   display: flex;
   align-items: center;
   justify-content: flex-start;
   gap: 8px;
   font: inherit;
   font-size: .92rem;
-  line-height: 1.25;
+  line-height: 1.2;
   text-align: left;
   cursor: pointer;
 }
@@ -3270,12 +3321,12 @@ textarea { resize: vertical; }
 .fipe-combobox-option:hover,
 .fipe-combobox-option:focus-visible {
   outline: none;
-  background: #F1F5F9;
+  background: #E8F1FA;
 }
 
 .fipe-combobox-option.is-selected {
-  background: #EAF7EF;
-  color: #065F46;
+  background: #D7E7F7;
+  color: #0F172A;
   font-weight: 800;
 }
 
@@ -3301,16 +3352,16 @@ textarea { resize: vertical; }
 }
 
 .fipe-combobox-empty {
-  padding: 10px 9px;
+  padding: 10px 8px;
   color: #64748B;
   font-size: .9rem;
 }
 
 @media (max-width: 680px) {
   .fipe-combobox-panel {
-    border-radius: 12px;
+    border-radius: 8px;
   }
   .fipe-combobox-list {
-    max-height: 260px;
+    max-height: 238px;
   }
 }

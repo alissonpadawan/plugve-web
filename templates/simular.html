@@ -42,37 +42,267 @@
     .plugve-card-selected{border-color:#2563eb !important;background:#eff6ff !important;box-shadow:0 6px 18px rgba(37,99,235,.12)}
     .plugve-select-note{font-size:11px;color:#6b7280;margin-top:3px}
 
-    /* Combobox FIPE pesquisável — usado na Simular porque esta página não herda o base.html. */
-    .fipe-native-select-hidden{position:absolute!important;opacity:0!important;pointer-events:none!important;width:1px!important;height:1px!important;margin:0!important;padding:0!important;border:0!important;clip:rect(0 0 0 0)!important;overflow:hidden!important}
-    .fipe-combobox{position:relative;width:100%;margin-top:.25rem;font-family:inherit;z-index:30}
-    .fipe-combobox.is-disabled{opacity:.64;pointer-events:none}
-    .fipe-combobox-toggle{width:100%;min-height:2.65rem;display:flex;align-items:center;justify-content:space-between;gap:.7rem;border:1px solid #d1d5db;border-radius:.65rem;background:#fff;color:#0f172a;padding:.55rem .7rem;text-align:left;font-size:1rem;line-height:1.25;box-shadow:inset 0 1px 2px rgba(15,23,42,.04);transition:border-color .18s ease,box-shadow .18s ease,background .18s ease}
-    .fipe-combobox-toggle:hover{border-color:#94a3b8;background:#fff}
-    .fipe-combobox-toggle:focus-visible,.fipe-combobox.open .fipe-combobox-toggle{outline:none;border-color:#059669;box-shadow:0 0 0 3px rgba(5,150,105,.12)}
-    .fipe-combobox-toggle:disabled{cursor:not-allowed;background:#f8fafc;color:#94a3b8}
-    .fipe-combobox-label{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}
-    .fipe-combobox.has-placeholder .fipe-combobox-label{font-weight:400;color:#64748b}
-    .fipe-combobox.has-value .fipe-combobox-label{color:#0f172a}
-    .fipe-combobox.selected-zero-km .fipe-combobox-label{font-weight:800;color:#0f172a}
-    .fipe-combobox.selected-pending .fipe-combobox-label{color:#b91c1c;font-weight:800}
-    .fipe-combobox-caret{flex:0 0 auto;color:#64748b;font-size:.8rem;transition:transform .18s ease}
-    .fipe-combobox.open .fipe-combobox-caret{transform:rotate(180deg)}
-    .fipe-combobox-panel{display:none;position:absolute;left:0;right:0;top:calc(100% + .25rem);z-index:150;background:#fff;border:1px solid #cbd5e1;border-radius:.75rem;box-shadow:0 18px 42px rgba(15,23,42,.18);overflow:hidden}
-    .fipe-combobox.open .fipe-combobox-panel{display:block}
-    .fipe-combobox-search-wrap{position:relative;padding:.45rem;border-bottom:1px solid #e5e7eb;background:#f8fafc}
-    .fipe-combobox-search{width:100%;border:1px solid #cbd5e1;border-radius:.55rem;background:#fff;color:#0f172a;padding:.52rem 2.15rem .52rem .65rem;font-size:.95rem;line-height:1.25;outline:none}
-    .fipe-combobox-search:focus{border-color:#059669;box-shadow:0 0 0 3px rgba(5,150,105,.10)}
-    .fipe-combobox-search-icon{position:absolute;right:1rem;top:50%;transform:translateY(-50%);color:#64748b;font-weight:900;pointer-events:none}
-    .fipe-combobox-list{max-height:18.8rem;overflow-y:auto;padding:.25rem;background:#fff}
-    .fipe-combobox-option{width:100%;display:flex;align-items:center;border:0;border-radius:.45rem;background:transparent;color:#0f172a;text-align:left;padding:.48rem .65rem;font-size:.95rem;line-height:1.25;cursor:pointer}
-    .fipe-combobox-option:hover,.fipe-combobox-option:focus-visible{outline:none;background:#eef6ff}
-    .fipe-combobox-option.is-selected{background:#dbeafe;color:#0f172a;font-weight:800}
-    .fipe-combobox-option.is-zero-km .fipe-combobox-option-text{font-weight:900}
-    .fipe-combobox-option.is-pending .fipe-combobox-option-text{color:#b91c1c;font-weight:800}
-    .fipe-combobox-option:disabled{cursor:not-allowed;color:#94a3b8;background:transparent}
-    .fipe-combobox-option-text{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-    .fipe-combobox-empty{padding:.75rem;color:#64748b;font-size:.9rem;text-align:center}
-    @media(max-width:640px){.fipe-combobox-panel{position:fixed;left:1rem;right:1rem;top:auto;bottom:1rem;max-height:70vh}.fipe-combobox-list{max-height:52vh}}
+    /* V31 - Busca FIPE pesquisável padronizada */
+    .fipe-native-select-hidden {
+      display: none !important;
+    }
+
+    .fipe-combobox {
+      position: relative;
+      width: 100%;
+      margin-top: .25rem;
+      font: inherit;
+      color: var(--text, #0f172a);
+      isolation: isolate;
+      z-index: 40;
+    }
+
+    .fipe-combobox.open {
+      z-index: 5600;
+    }
+
+    .fipe-combobox.is-disabled {
+      opacity: .68;
+      pointer-events: none;
+    }
+
+    .fipe-combobox-toggle {
+      width: 100%;
+      min-height: 42px;
+      border: 1px solid #D1D5DB;
+      border-radius: 10px;
+      background: #FFFFFF;
+      color: #0F172A;
+      padding: 9px 34px 9px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 10px;
+      font: inherit;
+      text-align: left;
+      cursor: pointer;
+      position: relative;
+      box-shadow: inset 0 1px 2px rgba(15, 23, 42, .04);
+      transition: border-color .16s ease, box-shadow .16s ease, background .16s ease;
+    }
+
+    .fipe-combobox-toggle:hover {
+      border-color: #9CA3AF;
+    }
+
+    .fipe-combobox-toggle:focus-visible,
+    .fipe-combobox.open .fipe-combobox-toggle {
+      outline: none;
+      border-color: #168A4A;
+      box-shadow: 0 0 0 3px rgba(22, 138, 74, .12), inset 0 1px 2px rgba(15, 23, 42, .04);
+    }
+
+    .fipe-combobox-toggle:disabled {
+      cursor: not-allowed;
+      background: #F8FAFC;
+      color: #94A3B8;
+      box-shadow: none;
+    }
+
+    .fipe-combobox-label {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      line-height: 1.25;
+    }
+
+    .fipe-combobox.has-placeholder .fipe-combobox-label {
+      color: #64748B;
+      font-weight: 500;
+    }
+
+    .fipe-combobox.has-value .fipe-combobox-label {
+      color: #0F172A;
+      font-weight: 650;
+    }
+
+    .fipe-combobox.selected-zero-km .fipe-combobox-label {
+      font-weight: 850;
+    }
+
+    .fipe-combobox.selected-pending .fipe-combobox-label {
+      color: #B91C1C;
+    }
+
+    .fipe-combobox-caret {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      flex: 0 0 auto;
+      color: #64748B;
+      font-size: .72rem;
+      line-height: 1;
+      pointer-events: none;
+    }
+
+    .fipe-combobox.open .fipe-combobox-caret {
+      transform: translateY(-50%) rotate(180deg);
+    }
+
+    .fipe-combobox-panel {
+      display: none;
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0;
+      right: 0;
+      z-index: 5700;
+      padding: 4px;
+      border: 1px solid #9CA3AF;
+      border-radius: 6px;
+      background: #FFFFFF;
+      box-shadow: 0 12px 28px rgba(15, 23, 42, .18);
+      overflow: hidden;
+    }
+
+    .fipe-combobox.open .fipe-combobox-panel {
+      display: block;
+    }
+
+    .fipe-combobox-search-wrap {
+      position: relative;
+      margin: 0 0 4px 0;
+    }
+
+    .fipe-combobox-search {
+      width: 100%;
+      height: 34px;
+      border: 1px solid #B6C0CA;
+      border-radius: 3px;
+      background: #FFFFFF;
+      color: #0F172A;
+      padding: 6px 34px 6px 8px;
+      font: inherit;
+      font-size: .92rem;
+      line-height: 1.2;
+      outline: none;
+      box-shadow: inset 0 1px 2px rgba(15, 23, 42, .05);
+    }
+
+    .fipe-combobox-search::placeholder {
+      color: #94A3B8;
+    }
+
+    .fipe-combobox-search:focus {
+      border-color: #168A4A;
+      box-shadow: 0 0 0 2px rgba(22, 138, 74, .10), inset 0 1px 2px rgba(15, 23, 42, .05);
+    }
+
+    .fipe-combobox-search-icon {
+      position: absolute;
+      top: 50%;
+      right: 10px;
+      width: 16px;
+      height: 16px;
+      transform: translateY(-50%);
+      color: #64748B;
+      pointer-events: none;
+    }
+
+    .fipe-combobox-search-icon::before {
+      content: "";
+      position: absolute;
+      left: 1px;
+      top: 1px;
+      width: 9px;
+      height: 9px;
+      border: 2px solid currentColor;
+      border-radius: 999px;
+    }
+
+    .fipe-combobox-search-icon::after {
+      content: "";
+      position: absolute;
+      left: 10px;
+      top: 11px;
+      width: 7px;
+      height: 2px;
+      border-radius: 999px;
+      background: currentColor;
+      transform: rotate(45deg);
+      transform-origin: left center;
+    }
+
+    .fipe-combobox-list {
+      max-height: 264px;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      padding: 0;
+      background: #FFFFFF;
+    }
+
+    .fipe-combobox-option {
+      width: 100%;
+      min-height: 32px;
+      border: 0;
+      border-radius: 3px;
+      background: transparent;
+      color: #0F172A;
+      padding: 6px 8px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 8px;
+      font: inherit;
+      font-size: .92rem;
+      line-height: 1.2;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .fipe-combobox-option:hover,
+    .fipe-combobox-option:focus-visible {
+      outline: none;
+      background: #E8F1FA;
+    }
+
+    .fipe-combobox-option.is-selected {
+      background: #D7E7F7;
+      color: #0F172A;
+      font-weight: 800;
+    }
+
+    .fipe-combobox-option.is-zero-km .fipe-combobox-option-text {
+      font-weight: 900;
+    }
+
+    .fipe-combobox-option.is-pending .fipe-combobox-option-text {
+      color: #B91C1C;
+      font-weight: 800;
+    }
+
+    .fipe-combobox-option:disabled {
+      cursor: not-allowed;
+      color: #94A3B8;
+    }
+
+    .fipe-combobox-option-text {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .fipe-combobox-empty {
+      padding: 10px 8px;
+      color: #64748B;
+      font-size: .9rem;
+    }
+
+    @media (max-width: 680px) {
+      .fipe-combobox-panel {
+        border-radius: 8px;
+      }
+      .fipe-combobox-list {
+        max-height: 238px;
+      }
+    }
     .plugve-chart-card{border:1px solid #e5e7eb;border-radius:1rem;background:#fff;box-shadow:0 10px 28px rgba(15,23,42,.06);padding:1rem;overflow:hidden}
     .plugve-metric-card{border:1px solid #e5e7eb;border-radius:1rem;background:linear-gradient(180deg,#ffffff 0%,#f8fafc 100%);padding:1rem;box-shadow:0 8px 22px rgba(15,23,42,.04)}
     .plugve-result-toolbar{display:flex;gap:.75rem;flex-wrap:wrap;justify-content:flex-end;align-items:center;margin:0 0 1rem;padding:0;border:0;background:transparent;box-shadow:none}
@@ -239,9 +469,12 @@
     .plugve-finance-tooltip-row{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.2rem 0;border-bottom:1px solid #f1f5f9}
     .plugve-finance-tooltip-row:last-child{border-bottom:0}
     .plugve-finance-tooltip-row span:first-child{color:#64748b}
-    .plugve-finance-modal{position:fixed;inset:0;z-index:100;background:rgba(15,23,42,.55);display:flex;align-items:flex-start;justify-content:center;padding:4vh 1rem;overflow:auto}
+    .plugve-finance-modal{position:fixed;inset:0;z-index:1000;background:rgba(15,23,42,.55);display:flex;align-items:flex-start;justify-content:center;padding:calc(72px + 1rem) 1rem 1.25rem;overflow:auto;box-sizing:border-box}
     .plugve-finance-modal.hidden{display:none !important}
     .plugve-finance-panel{width:min(1080px,100%);background:#fff;border-radius:1.1rem;box-shadow:0 24px 80px rgba(15,23,42,.28);overflow:hidden}
+    .plugve-finance-modal>.plugve-finance-panel,.plugve-finance-modal>.plugve-fuel-modal-panel,.plugve-finance-modal>.plugve-phev-modal-panel{max-height:calc(100vh - 104px);display:flex;flex-direction:column;min-height:0}
+    .plugve-finance-modal>.plugve-finance-panel>.plugve-finance-body,.plugve-finance-modal>.plugve-fuel-modal-panel>.plugve-finance-body,.plugve-finance-modal>.plugve-phev-modal-panel>.plugve-finance-body{overflow-y:auto;flex:1 1 auto;min-height:0}
+    .plugve-finance-modal .plugve-finance-header{flex:0 0 auto}
     .plugve-finance-header{padding:1.2rem 1.4rem;border-bottom:1px solid #e5e7eb;background:linear-gradient(180deg,#eff6ff 0%,#ffffff 100%)}
     .plugve-finance-body{padding:1.25rem}
     .plugve-finance-vehicle{border:1px solid #e5e7eb;border-radius:1rem;padding:1rem;background:#fff;box-shadow:0 10px 25px rgba(15,23,42,.04)}
@@ -251,6 +484,7 @@
     .plugve-finance-control input{height:2.9rem}
     .plugve-finance-total{background:#f8fafc;border:1px solid #e2e8f0;border-radius:.75rem;padding:.7rem;font-size:.8rem;color:#334155}
     .plugve-finance-footer{display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap}
+    .plugve-finance-modal .plugve-finance-footer,.plugve-inline-profile.plugve-edit-modal .plugve-fuel-modal-actions{position:sticky;bottom:0;background:#fff;padding-top:1rem;z-index:2}
     .plugve-finance-actions{display:flex;align-items:center;justify-content:flex-end;gap:.75rem;flex-wrap:wrap}
     .plugve-finance-replicar{display:inline-flex;align-items:center;gap:.45rem;border:1px solid #bbf7d0;background:#ecfdf5;color:#065f46;border-radius:999px;padding:.55rem .85rem;font-size:.86rem;font-weight:800;user-select:none}
     .plugve-finance-replicar input{accent-color:#059669}
@@ -368,10 +602,11 @@
     .plugve-inline-profile .plugve-fuel-modal-actions{margin-top:.8rem}
     .plugve-inline-profile .plugve-fuel-modal-actions button{padding:.55rem .9rem;font-size:.86rem}
     .plugve-phev-save-disabled,.plugve-fuel-save-disabled{background:#d1d5db!important;color:#64748b!important;cursor:not-allowed!important;box-shadow:none!important;opacity:1!important}
-    .plugve-inline-profile.plugve-edit-modal{position:fixed!important;inset:0!important;z-index:100!important;background:rgba(15,23,42,.55)!important;display:flex!important;align-items:flex-start!important;justify-content:center!important;padding:4vh 1rem!important;overflow:auto!important;border:0!important;border-radius:0!important;box-shadow:none!important}
+    .plugve-inline-profile.plugve-edit-modal{position:fixed!important;inset:0!important;z-index:1000!important;background:rgba(15,23,42,.55)!important;display:flex!important;align-items:flex-start!important;justify-content:center!important;padding:calc(72px + 1rem) 1rem 1.25rem!important;overflow:auto!important;box-sizing:border-box!important;border:0!important;border-radius:0!important;box-shadow:none!important}
     .plugve-inline-profile.plugve-edit-modal.hidden{display:none!important}
     .plugve-inline-profile.plugve-edit-modal .plugve-fuel-modal-panel,
-    .plugve-inline-profile.plugve-edit-modal .plugve-phev-modal-panel{width:min(760px,100%)!important;background:#fff!important;border-radius:1.1rem!important;box-shadow:0 24px 80px rgba(15,23,42,.28)!important;overflow:hidden!important;border:0!important}
+    .plugve-inline-profile.plugve-edit-modal .plugve-phev-modal-panel{width:min(760px,100%)!important;max-height:calc(100vh - 104px)!important;background:#fff!important;border-radius:1.1rem!important;box-shadow:0 24px 80px rgba(15,23,42,.28)!important;overflow:hidden!important;border:0!important;display:flex!important;flex-direction:column!important;min-height:0!important}
+    .plugve-inline-profile.plugve-edit-modal .plugve-finance-body{overflow-y:auto!important;flex:1 1 auto!important;min-height:0!important}
     .plugve-inline-profile.plugve-edit-modal .plugve-finance-header{background:#fff!important}
     button:disabled.plugve-phev-save-disabled,
     button:disabled.plugve-fuel-save-disabled{background:#d1d5db!important;color:#64748b!important;border-color:#d1d5db!important;opacity:1!important;filter:none!important}
@@ -3328,7 +3563,7 @@
           campo.dataset.depreciacaoValidada = "0";
           campo.dataset.origemDepreciacao = "";
         }
-        escreverStatusDepreciacaoTCO(prefixo, "Sem curva pronta no Render.", "text-yellow-700 font-semibold");
+        escreverStatusDepreciacaoTCO(prefixo, "", "hidden");
         configurarBotaoDepreciacaoTCO(prefixo, false, detalhe, "calcular");
       } catch (e) {
         console.error("Erro ao consultar depreciação no TCO:", e);
@@ -5538,7 +5773,7 @@
     })();
   </script>
 
-  <script src="{{ url_for('static', filename='js/fipe_combobox.js') }}?v=20260629_v31_busca_fipe_simular_fix"></script>
+  <script src="{{ url_for('static', filename='js/fipe_combobox.js') }}?v=20260630_v31_busca_fipe_modal_fix"></script>
 
 </body>
 </html>
