@@ -571,12 +571,17 @@
     .plugve-phev-resumo.hidden{display:none!important}
     .plugve-energy-card{cursor:default;background:linear-gradient(135deg,#eff6ff 0%,#ffffff 74%);border-color:#bfdbfe}
     .plugve-energy-card:hover{border-color:#60a5fa;box-shadow:0 16px 36px rgba(15,23,42,.10);transform:none}
-    .plugve-energy-card #status_energia{display:none!important}
+    .plugve-energy-card #status_energia{position:absolute!important;width:1px!important;height:1px!important;overflow:hidden!important;clip:rect(0 0 0 0)!important;white-space:nowrap!important}
     .plugve-energy-row span:first-child{color:#1d4ed8}
     .plugve-energy-row span:last-child{color:#1d4ed8;text-align:right}
+    .plugve-energy-row #energia_compact_right{display:flex;justify-content:flex-end;min-width:0}
+    .plugve-energy-row .plugve-energy-tooltip{max-width:100%}
+    .plugve-energy-row .plugve-energy-tooltip-trigger{display:inline-flex;align-items:center;justify-content:flex-end;gap:.25rem;max-width:100%;white-space:nowrap}
+    .plugve-energy-row .plugve-energy-tooltip-panel{left:auto;right:0;text-align:left}
     .plugve-energy-input-wrap{display:flex;align-items:center;gap:.45rem;min-width:9.8rem}
     .plugve-energy-input-wrap .plugve-money-field{flex:1}
-    .plugve-energy-input-wrap input{width:100%;border:1px solid #e5e7eb;border-radius:.65rem;background:#fff;padding:.45rem .55rem .45rem 2.05rem;text-align:right;font-weight:900;color:#0f172a;font-variant-numeric:tabular-nums;box-shadow:inset 0 1px 2px rgba(15,23,42,.06)}
+    .plugve-energy-input-wrap .plugve-money-prefix{display:none}
+    .plugve-energy-input-wrap input{width:100%;border:1px solid #e5e7eb;border-radius:.65rem;background:#fff;padding:.45rem .55rem;text-align:right;font-weight:900;color:#0f172a;font-variant-numeric:tabular-nums;box-shadow:inset 0 1px 2px rgba(15,23,42,.06)}
 
     @media(max-width:760px){.plugve-fuel-compact-top{align-items:flex-start;flex-direction:column}.plugve-fuel-compact-price{align-self:flex-end}.plugve-fuel-prices{grid-template-columns:1fr}.plugve-fuel-modal-actions button{flex:1}}
 
@@ -1220,8 +1225,8 @@
                   <div class="plugve-fuel-title">
                     <span class="plugve-fuel-icon" aria-hidden="true">🔌</span>
                     <div>
-                      <strong>Elétrico</strong>
-                      <small>100% energia elétrica</small>
+                      <strong>Energia elétrica</strong>
+                      <small>Tarifa ANEEL residencial</small>
                     </div>
                   </div>
                   <div class="plugve-energy-input-wrap" aria-label="Tarifa de energia em reais por kWh">
@@ -2127,30 +2132,62 @@
         .replace(/'/g, "&#39;");
     }
 
+    const plugveEnergiaResumoAtual = {
+      texto: "Tarifa ANEEL",
+      distribuidora: "",
+      vigencia: ""
+    };
+
     function atualizarCardEnergiaEletricaPlugVE() {
       const input = document.getElementById("energia_input");
       const destino = document.getElementById("energia_compact_right");
       if (!destino) return;
+
       const valor = numeroBRParaFloat(input?.value || 0);
-      destino.textContent = valor > 0 ? `R$ ${formatarNumero5(valor)}/kWh` : "Tarifa ANEEL";
+      const valorTexto = valor > 0 ? `R$ ${formatarNumero5(valor)}/kWh` : "Tarifa ANEEL";
+      const distribuidora = plugveEnergiaResumoAtual.distribuidora || "";
+      const texto = plugveEnergiaResumoAtual.texto || "Tarifa de energia";
+      const vigencia = plugveEnergiaResumoAtual.vigencia || "";
+      const metaKey = `${distribuidora}||${texto}||${vigencia}`;
+      const valorAtual = destino.querySelector("#energia_compact_value");
+
+      if (!distribuidora) {
+        destino.dataset.energyMetaKey = "";
+        destino.textContent = valorTexto;
+        return;
+      }
+
+      if (valorAtual && destino.dataset.energyMetaKey === metaKey) {
+        valorAtual.textContent = valorTexto;
+        return;
+      }
+
+      const distribuidoraSegura = escaparHTMLPlugVE(distribuidora);
+      const textoSeguro = escaparHTMLPlugVE(texto);
+      const vigenciaSegura = escaparHTMLPlugVE(vigencia);
+      const valorSeguro = escaparHTMLPlugVE(valorTexto);
+      destino.dataset.energyMetaKey = metaKey;
+      destino.innerHTML = `<span class="plugve-energy-tooltip"><span class="plugve-energy-tooltip-trigger">${distribuidoraSegura} — <span id="energia_compact_value">${valorSeguro}</span></span><span class="plugve-energy-tooltip-panel"><span class="block text-xs font-semibold text-gray-700 mb-1">Composição da tarifa de energia</span><span class="block text-[11px] font-semibold text-gray-500 mb-1">${textoSeguro}</span><span id="status_energia_vigencia" class="block text-[11px] text-gray-400 mb-2">${vigenciaSegura}</span><div id="energia_breakdown_wrap" class="mt-2"><div class="w-full h-3 rounded overflow-hidden bg-gray-200 flex" id="energia_bar"></div><div class="mt-2 space-y-1 text-[11px]" id="energia_legenda"></div></div></span></span>`;
     }
 
     function montarStatusEnergiaPlugVE(texto, distribuidora, vigenciaTexto) {
       const status = document.getElementById("status_energia");
-      if (!status) return;
-      const textoSeguro = escaparHTMLPlugVE(texto || "Tarifa de energia");
-      const distribuidoraSegura = escaparHTMLPlugVE(distribuidora || "");
-      const vigenciaSegura = escaparHTMLPlugVE(vigenciaTexto || "");
+      const textoStatus = texto || "Tarifa de energia";
+      const distribuidoraStatus = distribuidora || "";
+      const vigenciaStatus = vigenciaTexto || "";
+      plugveEnergiaResumoAtual.texto = textoStatus;
+      plugveEnergiaResumoAtual.distribuidora = distribuidoraStatus;
+      plugveEnergiaResumoAtual.vigencia = vigenciaStatus;
+
       const cardEnergia = document.getElementById("plugve_energy_card");
       if (cardEnergia) {
-        const titulo = distribuidora ? `${texto || "Tarifa de energia"} (${distribuidora})` : (texto || "Tarifa de energia");
+        const titulo = distribuidoraStatus ? `${textoStatus} (${distribuidoraStatus})` : textoStatus;
         cardEnergia.setAttribute("title", titulo);
       }
-      if (!distribuidoraSegura) {
-        status.textContent = textoSeguro;
-        return;
+      if (status) {
+        status.textContent = distribuidoraStatus ? `${textoStatus} (${distribuidoraStatus})` : textoStatus;
       }
-      status.innerHTML = `${textoSeguro} (<span class="plugve-energy-tooltip"><span class="plugve-energy-tooltip-trigger">${distribuidoraSegura}</span><span class="plugve-energy-tooltip-panel"><span class="block text-xs font-semibold text-gray-700 mb-2">Composição da tarifa de energia</span><span id="status_energia_vigencia" class="block text-[11px] text-gray-400 mb-2">${vigenciaSegura}</span><div id="energia_breakdown_wrap" class="mt-2"><div class="w-full h-3 rounded overflow-hidden bg-gray-200 flex" id="energia_bar"></div><div class="mt-2 space-y-1 text-[11px]" id="energia_legenda"></div></div></span></span>)`;
+      atualizarCardEnergiaEletricaPlugVE();
     }
 
     const PLUGVE_TCO_STORAGE_KEY = "plugve_tco_form_state_v26";
