@@ -130,6 +130,11 @@
       color: #B91C1C;
     }
 
+    .fipe-combobox.selected-saved-curve .fipe-combobox-label {
+      color: #047857;
+      font-weight: 850;
+    }
+
     .fipe-combobox-caret {
       position: absolute;
       right: 12px;
@@ -275,6 +280,20 @@
     .fipe-combobox-option.is-pending .fipe-combobox-option-text {
       color: #B91C1C;
       font-weight: 800;
+    }
+
+    .fipe-combobox-option.is-saved-curve .fipe-combobox-option-text {
+      color: #047857;
+      font-weight: 850;
+    }
+
+    .fipe-combobox-curve-check {
+      flex: 0 0 auto;
+      width: 1rem;
+      color: #047857;
+      font-weight: 950;
+      text-align: center;
+      line-height: 1;
     }
 
     .fipe-combobox-option:disabled {
@@ -5112,7 +5131,9 @@
           }
         });
       }
-      const catalogoCurvasPlugVE = { modelos: new Set() };
+      const catalogoCurvasPlugVE = { modelos: new Set(), codigosModelo: new Set(), carregado: false };
+      const CURVAS_CACHE_KEY_PLUGVE = "plugve:curvas:marcadores:v31";
+      const CURVAS_CACHE_TTL_PLUGVE = 30 * 60 * 1000;
       const cacheFipeMemoriaPlugVE = new Map();
       const requisicoesFipeEmCursoPlugVE = new Map();
       const FIPE_CACHE_TTL_PLUGVE = 7 * 24 * 60 * 60 * 1000;
@@ -5180,40 +5201,97 @@
         return requisicao;
       }
 
+      function normalizarNomeModeloOptionPlugVE(opt) {
+        return String(opt?.dataset?.nome || opt?.textContent || "").replace(/^\s*[✓✔]\s*/u, "").trim();
+      }
+
+      function aplicarMarcadorCurvaOptionPlugVE(opt, nomeModelo) {
+        if (!opt || !opt.value) return;
+        const nome = String(nomeModelo || normalizarNomeModeloOptionPlugVE(opt) || "").trim();
+        opt.dataset.nome = nome;
+        const temCurva = modeloTemCurvaPlugVE(nome, opt.value);
+        opt.dataset.curvaSalva = temCurva ? "1" : "0";
+        opt.textContent = `${temCurva ? "✓ " : ""}${nome}`;
+      }
+
       function atualizarMarcadoresCurvaNosSelectsPlugVE() {
         ["ve_modelo", "icev_modelo", "atual_modelo"].forEach(id => {
           const select = document.getElementById(id);
           if (!select) return;
           Array.from(select.options).forEach(opt => {
             if (!opt.value) return;
-            const nome = opt.dataset.nome || opt.textContent.replace(/^✓\s*/, "");
-            opt.dataset.nome = nome;
-            opt.textContent = `${modeloTemCurvaPlugVE(nome) ? "✓ " : ""}${nome}`;
+            aplicarMarcadorCurvaOptionPlugVE(opt);
           });
         });
+        if (typeof window.atualizarComboboxesFipeCurVE === "function") window.atualizarComboboxesFipeCurVE();
+      }
+
+      function aplicarCatalogoCurvasPlugVE(data) {
+        const itens = Array.isArray(data?.modelos)
+          ? data.modelos
+          : [...(data?.curvas_combustao || []), ...(data?.curvas_eletrico || [])];
+        const nomes = [];
+        const codigos = [];
+        itens.forEach(item => {
+          nomes.push(item.titulo, item.modelo, `${item.marca || ""} ${item.modelo || ""}`);
+          if (item.codigo_modelo) codigos.push(String(item.codigo_modelo));
+        });
+        catalogoCurvasPlugVE.modelos = new Set(nomes.map(normPlugVE).filter(Boolean));
+        catalogoCurvasPlugVE.codigosModelo = new Set(codigos.filter(Boolean));
+        catalogoCurvasPlugVE.carregado = true;
+        atualizarMarcadoresCurvaNosSelectsPlugVE();
+      }
+
+      function lerCacheCatalogoCurvasPlugVE() {
+        try {
+          const bruto = localStorage.getItem(CURVAS_CACHE_KEY_PLUGVE);
+          if (!bruto) return null;
+          const item = JSON.parse(bruto);
+          if (!item?.salvoEm || (Date.now() - item.salvoEm) > CURVAS_CACHE_TTL_PLUGVE) {
+            localStorage.removeItem(CURVAS_CACHE_KEY_PLUGVE);
+            return null;
+          }
+          return item.dados || null;
+        } catch (e) {
+          return null;
+        }
+      }
+
+      function salvarCacheCatalogoCurvasPlugVE(dados) {
+        try {
+          localStorage.setItem(CURVAS_CACHE_KEY_PLUGVE, JSON.stringify({ salvoEm: Date.now(), dados }));
+        } catch (e) {}
       }
 
       let catalogoCurvasCarregamentoIniciadoPlugVE = false;
       function iniciarCatalogoCurvasPlugVE() {
+        const cache = lerCacheCatalogoCurvasPlugVE();
+        if (cache) aplicarCatalogoCurvasPlugVE(cache);
         if (catalogoCurvasCarregamentoIniciadoPlugVE) return;
         catalogoCurvasCarregamentoIniciadoPlugVE = true;
-        fetch("/api/depreciacao/painel", { headers: { Accept: "application/json" } })
+
+        fetch("/api/depreciacao/marcadores_curvas", { headers: { Accept: "application/json" } })
           .then(resp => resp.ok ? resp.json() : {})
           .then(data => {
-            const itens = [...(data.curvas_combustao || []), ...(data.curvas_eletrico || [])];
-            catalogoCurvasPlugVE.modelos = new Set(itens.flatMap(item => [item.titulo, item.modelo]).map(normPlugVE).filter(Boolean));
-            atualizarMarcadoresCurvaNosSelectsPlugVE();
+            if (!data || data.ok === false) return;
+            salvarCacheCatalogoCurvasPlugVE(data);
+            aplicarCatalogoCurvasPlugVE(data);
           })
           .catch(() => {});
       }
 
-      // O catálogo de curvas serve apenas para o marcador "✓". Ele não deve
-      // disputar o único worker do Render com a primeira consulta de modelos.
-      // Por isso, é carregado depois da primeira lista FIPE ou como fallback
-      // alguns segundos após a página ficar pronta.
-      setTimeout(iniciarCatalogoCurvasPlugVE, 6000);
+      // O catálogo de curvas serve apenas para o marcador "✓". Ele é leve e
+      // assíncrono: primeiro a lista FIPE abre normalmente; os checks entram
+      // em seguida, sem segurar marca, modelo, ano ou perfil de uso.
+      if ("requestIdleCallback" in window) {
+        requestIdleCallback(iniciarCatalogoCurvasPlugVE, { timeout: 1600 });
+      } else {
+        setTimeout(iniciarCatalogoCurvasPlugVE, 900);
+      }
 
-      function modeloTemCurvaPlugVE(nomeModelo) {
+      function modeloTemCurvaPlugVE(nomeModelo, codigoModelo) {
+        const cod = String(codigoModelo || "").trim();
+        if (cod && catalogoCurvasPlugVE.codigosModelo.has(cod)) return true;
         const n = normPlugVE(nomeModelo);
         if (!n) return false;
         if (catalogoCurvasPlugVE.modelos.has(n)) return true;
@@ -5499,9 +5577,9 @@
             const opt = document.createElement("option");
             const nome = mod.nome || "";
             opt.value = mod.codigo;
-            opt.textContent = `${modeloTemCurvaPlugVE(nome) ? "✓ " : ""}${nome}`;
             opt.dataset.nome = nome;
             opt.dataset.codigoMarca = marcaInicial;
+            aplicarMarcadorCurvaOptionPlugVE(opt, nome);
             if (mod.tem_zero_km) destacarOpcaoZeroKmPlugVE(opt);
             if (mod.modelo_novo) {
               opt.dataset.modeloNovo = "1";
@@ -5810,7 +5888,7 @@
     })();
   </script>
 
-  <script src="{{ url_for('static', filename='js/fipe_combobox.js') }}?v=20260630_v31_busca_fipe_modal_fix"></script>
+  <script src="{{ url_for('static', filename='js/fipe_combobox.js') }}?v=20260630_v31_checks_curva_salva"></script>
 
 </body>
 </html>

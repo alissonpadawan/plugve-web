@@ -3192,6 +3192,11 @@ textarea { resize: vertical; }
   color: #B91C1C;
 }
 
+.fipe-combobox.selected-saved-curve .fipe-combobox-label {
+  color: #047857;
+  font-weight: 850;
+}
+
 .fipe-combobox-caret {
   position: absolute;
   right: 12px;
@@ -3337,6 +3342,20 @@ textarea { resize: vertical; }
 .fipe-combobox-option.is-pending .fipe-combobox-option-text {
   color: #B91C1C;
   font-weight: 800;
+}
+
+.fipe-combobox-option.is-saved-curve .fipe-combobox-option-text {
+  color: #047857;
+  font-weight: 850;
+}
+
+.fipe-combobox-curve-check {
+  flex: 0 0 auto;
+  width: 1rem;
+  color: #047857;
+  font-weight: 950;
+  text-align: center;
+  line-height: 1;
 }
 
 .fipe-combobox-option:disabled {

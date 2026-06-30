@@ -24,9 +24,13 @@
       .trim();
   }
 
+  function limparMarcadorCurva(texto) {
+    return String(texto || "").replace(/^\s*[✓✔]\s*/u, "").trim();
+  }
+
   function textoOpcao(option) {
     if (!option) return "";
-    return option.dataset.nome || option.dataset.nomeOriginal || option.textContent || option.label || "";
+    return limparMarcadorCurva(option.dataset.nome || option.dataset.nomeOriginal || option.textContent || option.label || "");
   }
 
   function opcaoSelecionada(select) {
@@ -55,19 +59,26 @@
     return option?.dataset?.varrida === "0" || cls.includes("marca-pendente-varredura") || option?.dataset?.modeloNovo === "1";
   }
 
+  function optionTemCurvaSalva(option) {
+    if (!option || !option.value) return false;
+    return option.dataset.curvaSalva === "1" || /^\s*[✓✔]\s*/u.test(option.textContent || "");
+  }
+
   function atualizarBotao(inst) {
     const select = inst.select;
     const option = opcaoSelecionada(select);
     const texto = textoOpcao(option) || select.dataset.placeholder || "Selecione";
     const semValor = !select.value;
 
-    inst.label.textContent = texto;
+    const temCurva = !!option && optionTemCurvaSalva(option);
+    inst.label.textContent = temCurva ? `✓ ${texto}` : texto;
     inst.button.disabled = !!select.disabled;
     inst.wrapper.classList.toggle("is-disabled", !!select.disabled);
     inst.wrapper.classList.toggle("has-value", !semValor);
     inst.wrapper.classList.toggle("has-placeholder", semValor);
     inst.wrapper.classList.toggle("selected-zero-km", !!option && optionTemDestaqueZero(option));
     inst.wrapper.classList.toggle("selected-pending", !!option && optionPendente(option));
+    inst.wrapper.classList.toggle("selected-saved-curve", temCurva);
   }
 
   function montarItem(inst, option) {
@@ -78,6 +89,14 @@
     item.dataset.value = option.value || "";
     item.disabled = !!option.disabled;
     item.title = option.title || textoOpcao(option);
+
+    if (optionTemCurvaSalva(option)) {
+      const marker = document.createElement("span");
+      marker.className = "fipe-combobox-curve-check";
+      marker.textContent = "✓";
+      marker.setAttribute("aria-hidden", "true");
+      item.appendChild(marker);
+    }
 
     const label = document.createElement("span");
     label.className = "fipe-combobox-option-text";
@@ -92,6 +111,7 @@
     }
     if (optionTemDestaqueZero(option)) item.classList.add("is-zero-km");
     if (optionPendente(option)) item.classList.add("is-pending");
+    if (optionTemCurvaSalva(option)) item.classList.add("is-saved-curve");
 
     item.addEventListener("click", () => {
       if (item.disabled) return;
@@ -273,7 +293,7 @@
       subtree: true,
       attributes: true,
       characterData: true,
-      attributeFilter: ["disabled", "class", "style", "title", "data-nome", "data-nome-original", "data-tem-zero-km", "data-varrida", "data-modelo-novo", "selected"]
+      attributeFilter: ["disabled", "class", "style", "title", "data-nome", "data-nome-original", "data-tem-zero-km", "data-varrida", "data-modelo-novo", "data-curva-salva", "selected"]
     });
 
     select.form?.addEventListener("reset", () => {

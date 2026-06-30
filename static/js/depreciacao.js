@@ -2,6 +2,11 @@ let ultimoResumoDepreciacao = null;
 let ultimoJobDiagnosticoV1917 = null;
 let painelDepreciacaoDados = null;
 let modelosComCurva = new Set();
+let codigosModelosComCurva = new Set();
+let marcadoresCurvasCarregados = false;
+let carregamentoMarcadoresCurvasIniciado = false;
+const MARCADORES_CURVAS_CACHE_KEY = "curve:depreciacao:marcadores:v31";
+const MARCADORES_CURVAS_CACHE_TTL = 30 * 60 * 1000;
 let diagnosticoV1917AutoAtivo = false;
 let diagnosticoV1917Ciclos = 0;
 let terminalV1917Linhas = [];
@@ -1156,23 +1161,74 @@ function normalizarBusca(txt) {
 
 function registrarModelosComCurva(lista) {
   modelosComCurva = new Set();
+  codigosModelosComCurva = new Set();
   (lista || []).forEach(item => {
     const modelo = normalizarBusca(item.modelo || item.titulo || "");
     const titulo = normalizarBusca(item.titulo || "");
+    const marcaModelo = normalizarBusca(`${item.marca || ""} ${item.modelo || ""}`);
+    const codigoModelo = String(item.codigo_modelo || item.modelo_id || "").trim();
     if (modelo) modelosComCurva.add(modelo);
     if (titulo) modelosComCurva.add(titulo);
+    if (marcaModelo) modelosComCurva.add(marcaModelo);
+    if (codigoModelo) codigosModelosComCurva.add(codigoModelo);
   });
+  marcadoresCurvasCarregados = true;
   window.PLUGVE_MODELOS_COM_CURVA = modelosComCurva;
   if (typeof window.aplicarChecksModelosFipe === "function") window.aplicarChecksModelosFipe();
 }
 
-function modeloTemCurva(textoModelo) {
+function modeloTemCurva(textoModelo, codigoModelo = "") {
+  const codigo = String(codigoModelo || "").trim();
+  if (codigo && codigosModelosComCurva.has(codigo)) return true;
   const alvo = normalizarBusca(textoModelo);
   if (!alvo) return false;
   for (const salvo of modelosComCurva) {
     if (alvo.includes(salvo) || salvo.includes(alvo)) return true;
   }
   return false;
+}
+
+function lerCacheMarcadoresCurvas() {
+  try {
+    const bruto = localStorage.getItem(MARCADORES_CURVAS_CACHE_KEY);
+    if (!bruto) return null;
+    const item = JSON.parse(bruto);
+    if (!item?.salvoEm || (Date.now() - item.salvoEm) > MARCADORES_CURVAS_CACHE_TTL) {
+      localStorage.removeItem(MARCADORES_CURVAS_CACHE_KEY);
+      return null;
+    }
+    return item.dados || null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function salvarCacheMarcadoresCurvas(dados) {
+  try {
+    localStorage.setItem(MARCADORES_CURVAS_CACHE_KEY, JSON.stringify({ salvoEm: Date.now(), dados }));
+  } catch (e) {}
+}
+
+function aplicarMarcadoresCurvasData(data) {
+  const itens = Array.isArray(data?.modelos)
+    ? data.modelos
+    : [...(data?.curvas_combustao || []), ...(data?.curvas_eletrico || [])];
+  registrarModelosComCurva(itens);
+}
+
+function carregarMarcadoresCurvasSalvas() {
+  const cache = lerCacheMarcadoresCurvas();
+  if (cache) aplicarMarcadoresCurvasData(cache);
+  if (carregamentoMarcadoresCurvasIniciado) return;
+  carregamentoMarcadoresCurvasIniciado = true;
+  fetch("/api/depreciacao/marcadores_curvas", { headers: { Accept: "application/json" } })
+    .then(resp => resp.ok ? resp.json() : {})
+    .then(data => {
+      if (!data || data.ok === false) return;
+      salvarCacheMarcadoresCurvas(data);
+      aplicarMarcadoresCurvasData(data);
+    })
+    .catch(() => {});
 }
 
 function renderizarListaCurvasLateral(lista) {
@@ -2663,14 +2719,15 @@ function aplicarChecksModelosFipe() {
   const select = document.getElementById("fipe_modelo");
   if (!select) return;
   Array.from(select.options || []).forEach(opt => {
-    if (!opt.value || opt.dataset.checkAplicado === "1") return;
-    const nomeOriginal = opt.dataset.nome || opt.textContent || "";
-    if (modeloTemCurva(nomeOriginal)) {
-      opt.textContent = `✓ ${nomeOriginal}`;
-      opt.style.fontWeight = opt.dataset.temZeroKm === "1" ? "800" : opt.style.fontWeight;
-      opt.dataset.checkAplicado = "1";
-    }
+    if (!opt.value) return;
+    const nomeOriginal = String(opt.dataset.nome || opt.textContent || "").replace(/^\s*[✓✔]\s*/u, "").trim();
+    opt.dataset.nome = nomeOriginal;
+    const temCurva = modeloTemCurva(nomeOriginal, opt.value);
+    opt.dataset.curvaSalva = temCurva ? "1" : "0";
+    opt.textContent = `${temCurva ? "✓ " : ""}${nomeOriginal}`;
+    if (temCurva && opt.dataset.temZeroKm === "1") opt.style.fontWeight = "800";
   });
+  if (typeof window.atualizarComboboxesFipeCurVE === "function") window.atualizarComboboxesFipeCurVE();
 }
 window.aplicarChecksModelosFipe = aplicarChecksModelosFipe;
 
@@ -2688,6 +2745,7 @@ if (typeof carregarModelosOriginalDep === "function") {
 function abrirBaseProvisoria() {
   document.getElementById("base_provisoria_drawer")?.classList.remove("hidden-drawer");
   document.getElementById("base_drawer_backdrop")?.classList.remove("hidden");
+  carregarStatusBases();
 }
 
 function fecharBaseProvisoria() {
@@ -2701,7 +2759,12 @@ document.addEventListener("DOMContentLoaded", () => {
   mostrarAuditoriaArea(false);
   mostrarAuditoriaCalculoArea(false);
   mostrarAbasDepreciacao(false);
-  carregarStatusBases();
+  carregarMarcadoresCurvasSalvas();
+  if ("requestIdleCallback" in window) {
+    requestIdleCallback(() => carregarStatusBases(), { timeout: 4500 });
+  } else {
+    setTimeout(() => carregarStatusBases(), 3500);
+  }
 
   document.getElementById("tipo_veiculo")?.addEventListener("change", () => {
     if (ultimoDetalheFipe) consultarResumoDepreciacao(ultimoDetalheFipe);

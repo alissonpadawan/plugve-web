@@ -409,6 +409,50 @@ class DepreciacaoService:
         return item
 
 
+    def marcadores_curvas_salvas(self) -> dict[str, Any]:
+        """Retorna uma lista leve para marcar modelos com curva pronta na interface.
+
+        Este endpoint não carrega históricos FIPE nem famílias. Ele lê apenas os
+        CSVs de curvas já prontas, para que os checks dos selects sejam
+        atualizados em segundo plano sem atrasar a escolha de marca/modelo.
+        """
+        curvas_combustao = self.curvas._ler_csv(self.curvas._arquivo_curvas_combustao())
+        curvas_eletrico = self.curvas._ler_csv(self.curvas._arquivo_curvas_eletrico())
+
+        modelos: list[dict[str, Any]] = []
+
+        def adicionar(row: dict[str, Any], tipo: str) -> None:
+            resumo = self._resumir_curva(row, tipo)
+            codigo_modelo = str(self._primeiro_valor(row, ["modelo_id", "codigo_modelo", "model_id"], "")).strip()
+            codigo_marca = str(self._primeiro_valor(row, ["marca_id", "codigo_marca", "brand_id"], "")).strip()
+            titulo = str(resumo.get("titulo") or "").strip()
+            marca = str(resumo.get("marca") or "").strip()
+            modelo = str(resumo.get("modelo") or "").strip()
+            if not (titulo or modelo or resumo.get("codigo_fipe")):
+                return
+            modelos.append({
+                "tipo": tipo,
+                "titulo": titulo,
+                "marca": marca,
+                "modelo": modelo,
+                "codigo_fipe": str(resumo.get("codigo_fipe") or "").strip(),
+                "codigo_marca": codigo_marca,
+                "codigo_modelo": codigo_modelo,
+            })
+
+        for row in curvas_combustao:
+            adicionar(row, "combustao")
+        for row in curvas_eletrico:
+            adicionar(row, "eletrico")
+
+        return {
+            "ok": True,
+            "total": len(modelos),
+            "gerado_em": datetime.now().isoformat(timespec="seconds"),
+            "modelos": modelos,
+        }
+
+
     def painel_dados(self) -> dict[str, Any]:
         """Retorna dados consolidados para o painel web de depreciação.
 

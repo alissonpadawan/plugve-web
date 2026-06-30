@@ -55,6 +55,16 @@ def painel():
         return jsonify({"erro": str(exc)}), 500
 
 
+@depreciacao_bp.route("/marcadores_curvas")
+def marcadores_curvas():
+    try:
+        resp = jsonify(depreciacao_service.marcadores_curvas_salvas())
+        resp.headers["Cache-Control"] = "public, max-age=300"
+        return resp
+    except Exception as exc:
+        return jsonify({"ok": False, "erro": str(exc), "modelos": []}), 200
+
+
 @depreciacao_bp.route("/resumo", methods=["POST"])
 def resumo():
     payload = request.get_json(silent=True) or {}
