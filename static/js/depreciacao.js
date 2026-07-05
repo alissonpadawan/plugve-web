@@ -7,7 +7,7 @@ let marcadoresCurvasPorNome = new Map();
 let marcadoresCurvasPorCodigo = new Map();
 let marcadoresCurvasCarregados = false;
 let carregamentoMarcadoresCurvasIniciado = false;
-const MARCADORES_CURVAS_CACHE_KEY = "curve:depreciacao:marcadores:v35_dep_visual_verde_sem_check_v4";
+const MARCADORES_CURVAS_CACHE_KEY = "curve:depreciacao:marcadores:v35_marcadores_unificados_legacy_unused";
 const MARCADORES_CURVAS_CACHE_TTL = 30 * 60 * 1000;
 let diagnosticoV1917AutoAtivo = false;
 let diagnosticoV1917Ciclos = 0;
@@ -1271,6 +1271,11 @@ function registrarModelosComCurva(lista) {
 }
 
 function obterMarcadorCurva(textoModelo, codigoModelo = "") {
+  const servico = window.CurVE?.marcadores;
+  if (servico?.obter) {
+    const marcador = servico.obter(textoModelo, codigoModelo);
+    if (marcador) return marcador;
+  }
   const codigo = String(codigoModelo || "").trim();
   if (codigo && marcadoresCurvasPorCodigo.has(codigo)) return marcadoresCurvasPorCodigo.get(codigo);
   const alvo = normalizarBusca(textoModelo);
@@ -1325,15 +1330,22 @@ function aplicarMarcadoresCurvasData(data) {
 }
 
 function carregarMarcadoresCurvasSalvas() {
-  const cache = lerCacheMarcadoresCurvas();
-  if (cache) aplicarMarcadoresCurvasData(cache);
   if (carregamentoMarcadoresCurvasIniciado) return;
   carregamentoMarcadoresCurvasIniciado = true;
-  fetch("/api/depreciacao/marcadores_curvas?v=20260705_dep_visual_verde_sem_check_v4", { cache: "no-store", headers: { Accept: "application/json", "Cache-Control": "no-cache", "Pragma": "no-cache" } })
+  const servico = window.CurVE?.marcadores;
+  if (servico?.carregar) {
+    servico.carregar({ forcar: true })
+      .then(data => {
+        if (data && data.ok !== false) aplicarMarcadoresCurvasData(data);
+        try { servico.aplicarNosSelects?.(); } catch (e) {}
+      })
+      .catch(() => {});
+    return;
+  }
+  fetch("/api/depreciacao/marcadores_curvas?v=20260705_v35_marcadores_unificados", { cache: "no-store", headers: { Accept: "application/json", "Cache-Control": "no-cache", "Pragma": "no-cache" } })
     .then(resp => resp.ok ? resp.json() : {})
     .then(data => {
       if (!data || data.ok === false) return;
-      salvarCacheMarcadoresCurvas(data);
       aplicarMarcadoresCurvasData(data);
     })
     .catch(() => {});
@@ -2849,6 +2861,10 @@ function aplicarChecksModelosFipe() {
     if (!opt.value) return;
     const nomeOriginal = String(opt.dataset.nome || opt.textContent || "").replace(/^\s*[✓✔≈]\s*/u, "").trim();
     opt.dataset.nome = nomeOriginal;
+    if (window.CurVE?.marcadores?.aplicarNoOption) {
+      window.CurVE.marcadores.aplicarNoOption(opt, nomeOriginal);
+      return;
+    }
     const marcador = obterMarcadorCurva(nomeOriginal, opt.value);
     const temCurva = Boolean(marcador);
     const tipoCurva = marcador?.tipo_curva === "similaridade" ? "similaridade" : (temCurva ? "propria" : "");
@@ -2859,10 +2875,6 @@ function aplicarChecksModelosFipe() {
     opt.dataset.chaveCurvaReferencia = marcador?.chave_curva_referencia || "";
     opt.textContent = `${simbolo ? `${simbolo} ` : ""}${nomeOriginal}`;
 
-    // V35: na página Depreciação alguns navegadores ainda mostram o <select>
-    // nativo em vez do combobox pesquisável. Por isso o estado visual também
-    // precisa ficar gravado no próprio <option>, e não apenas no combobox.
-    // Curva própria: verde + check. Similaridade: verde sem check.
     if (temCurva) {
       opt.classList.add("option-saved-curve");
       opt.style.color = "#047857";
@@ -2880,6 +2892,12 @@ function aplicarChecksModelosFipe() {
   if (typeof window.atualizarComboboxesFipeCurVE === "function") window.atualizarComboboxesFipeCurVE();
 }
 window.aplicarChecksModelosFipe = aplicarChecksModelosFipe;
+document.addEventListener("curve:marcadores-curvas:atualizados", (ev) => {
+  try {
+    if (ev?.detail?.data) aplicarMarcadoresCurvasData(ev.detail.data);
+    aplicarChecksModelosFipe();
+  } catch (e) {}
+});
 
 // Pequeno gancho para reaplicar os checks depois que o fipe.js carrega os modelos.
 const carregarModelosOriginalDep = window.carregarModelosFipe;

@@ -8,7 +8,7 @@
   <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/favicon-180.png') }}">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}?v=20260705_v35_dep_visual_verde_sem_check_v4">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}?v=20260705_v35_marcadores_unificados">
 </head>
 <body class="internal-page">
   <header class="topbar">
@@ -35,7 +35,8 @@
     <div class="container">CurVE © 2026 — Instituto Federal de Goiás. Todos os direitos reservados.</div>
   </footer>
 
+  <script src="{{ url_for('static', filename='js/curve_marcadores_curvas.js') }}?v=20260705_v35_marcadores_unificados"></script>
   {% block scripts %}{% endblock %}
-  <script src="{{ url_for('static', filename='js/fipe_combobox.js') }}?v=20260705_v35_dep_visual_verde_sem_check_v4"></script>
+  <script src="{{ url_for('static', filename='js/fipe_combobox.js') }}?v=20260705_v35_marcadores_unificados"></script>
 </body>
 </html>

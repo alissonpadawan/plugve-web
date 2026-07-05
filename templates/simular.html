@@ -10,6 +10,7 @@
   <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/favicon-180.png') }}">
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
   <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+  <script src="{{ url_for('static', filename='js/curve_marcadores_curvas.js') }}?v=20260705_v35_marcadores_unificados"></script>
   <style>
 
     .curve-internal-page{min-height:100vh;display:flex;flex-direction:column;position:relative;background:linear-gradient(180deg,#f5f8f6 0%,#eef3ef 100%);color:#1f2937}
@@ -5132,7 +5133,7 @@
         });
       }
       const catalogoCurvasPlugVE = { modelos: new Set(), codigosModelo: new Set(), porNome: new Map(), porCodigo: new Map(), carregado: false };
-      const CURVAS_CACHE_KEY_PLUGVE = "plugve:curvas:marcadores:v35";
+      const CURVAS_CACHE_KEY_PLUGVE = "plugve:curvas:marcadores:v35_marcadores_unificados_legacy_unused";
       const CURVAS_CACHE_TTL_PLUGVE = 30 * 60 * 1000;
       const cacheFipeMemoriaPlugVE = new Map();
       const requisicoesFipeEmCursoPlugVE = new Map();
@@ -5209,6 +5210,10 @@
         if (!opt || !opt.value) return;
         const nome = String(nomeModelo || normalizarNomeModeloOptionPlugVE(opt) || "").trim();
         opt.dataset.nome = nome;
+        if (window.CurVE?.marcadores?.aplicarNoOption) {
+          window.CurVE.marcadores.aplicarNoOption(opt, nome);
+          return;
+        }
         const marcador = obterMarcadorCurvaPlugVE(nome, opt.value);
         const temCurva = Boolean(marcador);
         const tipoCurva = marcador?.tipo_curva === "similaridade" ? "similaridade" : (temCurva ? "propria" : "");
@@ -5287,20 +5292,33 @@
 
       let catalogoCurvasCarregamentoIniciadoPlugVE = false;
       function iniciarCatalogoCurvasPlugVE() {
-        const cache = lerCacheCatalogoCurvasPlugVE();
-        if (cache) aplicarCatalogoCurvasPlugVE(cache);
         if (catalogoCurvasCarregamentoIniciadoPlugVE) return;
         catalogoCurvasCarregamentoIniciadoPlugVE = true;
 
-        fetch("/api/depreciacao/marcadores_curvas", { headers: { Accept: "application/json" } })
+        if (window.CurVE?.marcadores?.carregar) {
+          window.CurVE.marcadores.carregar({ forcar: true })
+            .then(data => {
+              if (!data || data.ok === false) return;
+              aplicarCatalogoCurvasPlugVE(data);
+              atualizarMarcadoresCurvaNosSelectsPlugVE();
+            })
+            .catch(() => {});
+          return;
+        }
+
+        fetch("/api/depreciacao/marcadores_curvas?v=20260705_v35_marcadores_unificados", { cache: "no-store", headers: { Accept: "application/json", "Cache-Control": "no-cache", "Pragma": "no-cache" } })
           .then(resp => resp.ok ? resp.json() : {})
           .then(data => {
             if (!data || data.ok === false) return;
-            salvarCacheCatalogoCurvasPlugVE(data);
             aplicarCatalogoCurvasPlugVE(data);
           })
           .catch(() => {});
       }
+
+      document.addEventListener("curve:marcadores-curvas:atualizados", (ev) => {
+        if (ev?.detail?.data) aplicarCatalogoCurvasPlugVE(ev.detail.data);
+        atualizarMarcadoresCurvaNosSelectsPlugVE();
+      });
 
       // O catálogo de curvas serve apenas para o marcador "✓/≈". Ele é leve e
       // assíncrono: primeiro a lista FIPE abre normalmente; os marcadores entram
@@ -5312,6 +5330,11 @@
       }
 
       function obterMarcadorCurvaPlugVE(nomeModelo, codigoModelo) {
+        const servico = window.CurVE?.marcadores;
+        if (servico?.obter) {
+          const marcador = servico.obter(nomeModelo, codigoModelo);
+          if (marcador) return marcador;
+        }
         const cod = String(codigoModelo || "").trim();
         if (cod && catalogoCurvasPlugVE.porCodigo.has(cod)) return catalogoCurvasPlugVE.porCodigo.get(cod);
         const n = normPlugVE(nomeModelo);
@@ -5912,7 +5935,7 @@
     })();
   </script>
 
-  <script src="{{ url_for('static', filename='js/fipe_combobox.js') }}?v=20260704_v35_similaridade_visual2"></script>
+  <script src="{{ url_for('static', filename='js/fipe_combobox.js') }}?v=20260705_v35_marcadores_unificados"></script>
 
 </body>
 </html>

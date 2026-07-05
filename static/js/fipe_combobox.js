@@ -70,6 +70,11 @@
 
   function marcadorGlobalOption(option) {
     if (!option || !option.value) return null;
+    const servico = window.CurVE?.marcadores;
+    if (servico?.obterPorOption) {
+      const marcador = servico.obterPorOption(option);
+      if (marcador) return marcador;
+    }
     const porCodigo = window.PLUGVE_MARCADORES_CURVAS_CODIGO;
     const codigo = String(option.value || "").trim();
     if (codigo && porCodigo && typeof porCodigo.has === "function" && porCodigo.has(codigo)) {
@@ -283,10 +288,18 @@
 
     function abrir() {
       if (select.disabled) return;
-      // Reaplica os marcadores no momento da abertura. Isso evita que a página
-      // Depreciação mostre a lista antiga quando os vínculos de similaridade
-      // chegaram depois do carregamento inicial dos modelos FIPE.
-      try { window.aplicarChecksModelosFipe?.(); } catch (e) {}
+      // Reaplica os marcadores no momento da abertura. O combobox deve
+      // renderizar a verdade única do endpoint de marcadores, não depender
+      // de texto/cache de cada página.
+      try {
+        window.CurVE?.marcadores?.aplicarNoSelect?.(select);
+        window.aplicarChecksModelosFipe?.();
+        window.CurVE?.marcadores?.carregar?.().then(() => {
+          window.CurVE?.marcadores?.aplicarNoSelect?.(select);
+          atualizarBotao(inst);
+          if (wrapper.classList.contains("open")) inst.renderizarLista(search.value || "");
+        });
+      } catch (e) {}
       if (instanciaAberta && instanciaAberta !== inst) fecharInstancia(instanciaAberta);
       const jaAberta = wrapper.classList.contains("open");
       if (jaAberta) {
@@ -377,6 +390,11 @@
     });
     if (document.body) obs.observe(document.body, { childList: true, subtree: true });
   }
+
+  document.addEventListener("curve:marcadores-curvas:atualizados", () => {
+    try { window.CurVE?.marcadores?.aplicarNosSelects?.(); } catch (e) {}
+    try { window.atualizarComboboxesFipeCurVE?.(); } catch (e) {}
+  });
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", inicializarComboboxesFipeCurVE);

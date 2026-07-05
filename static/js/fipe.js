@@ -640,6 +640,7 @@ async function carregarModelosFipe() {
       opt.value = item.codigo;
       opt.textContent = item.nome;
       opt.dataset.nome = item.nome;
+      try { window.CurVE?.marcadores?.aplicarNoOption?.(opt, item.nome); } catch (e) {}
       if (item.tem_zero_km) {
         destacarOpcaoModeloZeroKm(opt);
       }
@@ -649,6 +650,13 @@ async function carregarModelosFipe() {
       limparSelect(modelo, "Nenhum modelo elegível nesta marca");
     }
     ultimoIndiceModeloNavegacao = -1;
+    try { window.CurVE?.marcadores?.aplicarNoSelect?.(modelo); } catch (e) {}
+    try {
+      window.CurVE?.marcadores?.carregar?.().then(() => {
+        window.CurVE?.marcadores?.aplicarNoSelect?.(modelo);
+        window.atualizarComboboxesFipeCurVE?.();
+      });
+    } catch (e) {}
     if (typeof window.aplicarChecksModelosFipe === "function") {
       window.aplicarChecksModelosFipe();
     }
