@@ -7,7 +7,7 @@ let marcadoresCurvasPorNome = new Map();
 let marcadoresCurvasPorCodigo = new Map();
 let marcadoresCurvasCarregados = false;
 let carregamentoMarcadoresCurvasIniciado = false;
-const MARCADORES_CURVAS_CACHE_KEY = "curve:depreciacao:marcadores:v35";
+const MARCADORES_CURVAS_CACHE_KEY = "curve:depreciacao:marcadores:v35_dep_visual_sem_check_v2";
 const MARCADORES_CURVAS_CACHE_TTL = 30 * 60 * 1000;
 let diagnosticoV1917AutoAtivo = false;
 let diagnosticoV1917Ciclos = 0;
@@ -1219,7 +1219,12 @@ function atualizarKpisPainel(status) {
 }
 
 function normalizarBusca(txt) {
-  return String(txt || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+  return String(txt || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
 }
 
 function registrarModelosComCurva(lista) {
@@ -1257,7 +1262,11 @@ function registrarModelosComCurva(lista) {
   marcadoresCurvasCarregados = true;
   window.PLUGVE_MODELOS_COM_CURVA = modelosComCurva;
   window.PLUGVE_MARCADORES_CURVAS = marcadoresCurvasPorNome;
-  if (typeof window.aplicarChecksModelosFipe === "function") window.aplicarChecksModelosFipe();
+  if (typeof window.aplicarChecksModelosFipe === "function") {
+    window.aplicarChecksModelosFipe();
+    setTimeout(() => window.aplicarChecksModelosFipe?.(), 80);
+    setTimeout(() => window.aplicarChecksModelosFipe?.(), 250);
+  }
 }
 
 function obterMarcadorCurva(textoModelo, codigoModelo = "") {
@@ -1307,7 +1316,7 @@ function carregarMarcadoresCurvasSalvas() {
   if (cache) aplicarMarcadoresCurvasData(cache);
   if (carregamentoMarcadoresCurvasIniciado) return;
   carregamentoMarcadoresCurvasIniciado = true;
-  fetch("/api/depreciacao/marcadores_curvas", { headers: { Accept: "application/json" } })
+  fetch("/api/depreciacao/marcadores_curvas?v=20260705_dep_visual_sem_check_v2", { cache: "no-store", headers: { Accept: "application/json", "Cache-Control": "no-cache" } })
     .then(resp => resp.ok ? resp.json() : {})
     .then(data => {
       if (!data || data.ok === false) return;
@@ -2801,6 +2810,25 @@ function exportarAuditoriaMatematica() {
   }, 150);
 }
 
+let timerReaplicarChecksModelosFipe = null;
+
+function agendarReaplicarChecksModelosFipe(atraso = 0) {
+  clearTimeout(timerReaplicarChecksModelosFipe);
+  timerReaplicarChecksModelosFipe = setTimeout(() => {
+    if (marcadoresCurvasCarregados && typeof window.aplicarChecksModelosFipe === "function") {
+      window.aplicarChecksModelosFipe();
+    }
+  }, atraso);
+}
+
+function observarSelectModeloDepreciacaoParaChecks() {
+  const select = document.getElementById("fipe_modelo");
+  if (!select || select.dataset.curveChecksObserver === "1") return;
+  select.dataset.curveChecksObserver = "1";
+  const observer = new MutationObserver(() => agendarReaplicarChecksModelosFipe(0));
+  observer.observe(select, { childList: true });
+}
+
 function aplicarChecksModelosFipe() {
   const select = document.getElementById("fipe_modelo");
   if (!select) return;
@@ -2851,6 +2879,7 @@ document.addEventListener("DOMContentLoaded", () => {
   mostrarAuditoriaArea(false);
   mostrarAuditoriaCalculoArea(false);
   mostrarAbasDepreciacao(false);
+  observarSelectModeloDepreciacaoParaChecks();
   carregarMarcadoresCurvasSalvas();
   if ("requestIdleCallback" in window) {
     requestIdleCallback(() => carregarStatusBases(), { timeout: 4500 });
