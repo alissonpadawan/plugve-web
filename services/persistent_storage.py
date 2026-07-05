@@ -28,7 +28,7 @@ def bootstrap_persistent_storage(app: Flask) -> None:
     persistent_dir.mkdir(parents=True, exist_ok=True)
 
     # Subpastas persistentes usadas pelo sistema
-    for relative in ["combustao", "eletrico", "fipe_cache", "noticias"]:
+    for relative in ["combustao", "eletrico", "fipe_cache", "noticias", "_staging", "_backups"]:
         (persistent_dir / relative).mkdir(parents=True, exist_ok=True)
     (persistent_dir / "fipe_cache" / "catalogo_http").mkdir(parents=True, exist_ok=True)
 
@@ -55,3 +55,11 @@ def bootstrap_persistent_storage(app: Flask) -> None:
     vinculos = persistent_dir / "vinculos_similaridade_curvas.json"
     if not vinculos.exists():
         vinculos.write_text("[]", encoding="utf-8")
+
+    manifest = persistent_dir / "sync_manifest_curvas.json"
+    if not manifest.exists():
+        manifest.write_text("{}", encoding="utf-8")
+
+    status = persistent_dir / "sync_status_curvas.json"
+    if not status.exists():
+        status.write_text("{}", encoding="utf-8")

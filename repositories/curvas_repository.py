@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import csv
+import hashlib
 import json
 import re
-from datetime import datetime
+import shutil
+from datetime import datetime, timezone
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -39,6 +41,7 @@ class CurvasRepository:
             "arquivo_vinculos_similaridade": str(self._arquivo_vinculos_similaridade()),
             "persistent_dir": str(current_app.config.get("PERSISTENT_DIR", "")),
             "fipe_cache_dir": str(current_app.config.get("FIPE_CACHE_DIR", "")),
+            "snapshot_sync": self._ler_json_seguro(self._arquivo_status_snapshot(), {}),
         }
 
     def buscar_curva_combustao(self, veiculo: VeiculoSelecionado) -> dict[str, Any] | None:
@@ -307,12 +310,16 @@ class CurvasRepository:
     def importar_curvas_painel(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Importa curvas prontas exportadas pelo painel local.
 
-        O Render não calcula curva aqui. Ele apenas recebe linhas já validadas
-        pelo painel local e atualiza os CSVs persistentes em /var/data/plugve.
-        A partir da V35, também preserva os vínculos explícitos de similaridade
-        enviados pelo painel para que o site diferencie curva própria de curva
-        herdada por similaridade.
+        V35: o modo padrão da integração Painel → Render passa a ser snapshot
+        completo. Nesse modo, o painel local é a fonte da verdade e o Render
+        substitui a base publicada pela fotografia enviada, removendo órfãos e
+        reconstruindo os marcadores. O merge incremental antigo fica preservado
+        apenas como modo legado/diagnóstico.
         """
+        modo = str(payload.get("modo") or payload.get("modo_importacao") or "").strip().lower()
+        if modo in {"snapshot_completo", "snapshot", "espelho_completo", "full_snapshot"}:
+            return self.sincronizar_snapshot_painel(payload)
+
         curvas_combustao = payload.get("curvas_combustao") or []
         curvas_eletrico = payload.get("curvas_eletrico") or []
         vinculos_similaridade = payload.get("vinculos_similaridade")
@@ -321,6 +328,11 @@ class CurvasRepository:
         if not isinstance(curvas_eletrico, list):
             curvas_eletrico = []
         resultado = {
+            "modo_importacao": "merge_legacy",
+            "aviso": (
+                "Modo incremental legado: pode preservar curvas antigas no disco persistente. "
+                "Use snapshot_completo para manter o Render como espelho fiel do Painel Local."
+            ),
             "combustao": self._importar_curvas_csv("combustao", curvas_combustao),
             "eletrico": self._importar_curvas_csv("eletrico", curvas_eletrico),
         }
@@ -335,7 +347,399 @@ class CurvasRepository:
             }
         return resultado
 
+    def _agora_sync_iso(self) -> str:
+        return datetime.now(timezone.utc).isoformat()
+
+    def _arquivo_manifest_snapshot(self) -> Path:
+        return Path(current_app.config.get("PERSISTENT_DIR", "data/_runtime")) / "sync_manifest_curvas.json"
+
+    def _arquivo_status_snapshot(self) -> Path:
+        return Path(current_app.config.get("PERSISTENT_DIR", "data/_runtime")) / "sync_status_curvas.json"
+
+    def _pasta_staging_snapshot(self) -> Path:
+        return Path(current_app.config.get("PERSISTENT_DIR", "data/_runtime")) / "_staging"
+
+    def _pasta_backups_snapshot(self) -> Path:
+        return Path(current_app.config.get("PERSISTENT_DIR", "data/_runtime")) / "_backups"
+
+    @staticmethod
+    def _hash_payload_snapshot(payload: dict[str, Any]) -> str:
+        """Hash estável do conteúdo técnico do snapshot.
+
+        Campos voláteis como data_envio_local e manifest ficam fora do hash.
+        Esta regra espelha o painel local para permitir validação no Render.
+        """
+        dados_hash = {
+            "modo": "snapshot_completo",
+            "schema_snapshot": payload.get("schema_snapshot") or payload.get("schema_version") or "curve_snapshot_v35",
+            "schema_auditoria_curva": payload.get("schema_auditoria_curva"),
+            "contrato_auditoria_curva": payload.get("contrato_auditoria_curva"),
+            "curvas_combustao": payload.get("curvas_combustao", []),
+            "curvas_eletrico": payload.get("curvas_eletrico", []),
+            "vinculos_similaridade": payload.get("vinculos_similaridade", []),
+        }
+        bruto = json.dumps(dados_hash, ensure_ascii=False, sort_keys=True, default=str)
+        return hashlib.sha256(bruto.encode("utf-8")).hexdigest()
+
+    def _ler_json_seguro(self, path: Path, padrao: Any) -> Any:
+        try:
+            if path.exists():
+                return json.loads(path.read_text(encoding="utf-8") or "")
+        except Exception:
+            pass
+        return padrao
+
+    def _validar_snapshot_payload(self, payload: dict[str, Any]) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]], dict[str, Any], str]:
+        if not isinstance(payload, dict):
+            raise ValueError("Snapshot inválido: payload não é um objeto JSON.")
+        modo = str(payload.get("modo") or payload.get("modo_importacao") or "").strip().lower()
+        if modo not in {"snapshot_completo", "snapshot", "espelho_completo", "full_snapshot"}:
+            raise ValueError("Snapshot inválido: modo deve ser snapshot_completo.")
+        if "curvas_combustao" not in payload or "curvas_eletrico" not in payload:
+            raise ValueError("Snapshot inválido: curvas_combustao e curvas_eletrico são obrigatórios.")
+        curvas_combustao = payload.get("curvas_combustao")
+        curvas_eletrico = payload.get("curvas_eletrico")
+        vinculos = payload.get("vinculos_similaridade")
+        if not isinstance(curvas_combustao, list) or not isinstance(curvas_eletrico, list):
+            raise ValueError("Snapshot inválido: listas de curvas em formato incorreto.")
+        if vinculos is None:
+            vinculos = []
+        if not isinstance(vinculos, list):
+            raise ValueError("Snapshot inválido: vinculos_similaridade deve ser uma lista.")
+        if len(curvas_combustao) + len(curvas_eletrico) <= 0:
+            raise ValueError("Snapshot recusado: pacote sem curvas. O Render não substitui a base por snapshot vazio.")
+
+        manifest = payload.get("manifest")
+        if not isinstance(manifest, dict):
+            raise ValueError("Snapshot recusado: manifest obrigatório ausente ou inválido.")
+        hash_calculado = self._hash_payload_snapshot(payload)
+        hash_manifest = str(
+            manifest.get("hash_payload")
+            or manifest.get("hash_payload_curvas")
+            or manifest.get("payload_hash_sha256")
+            or ""
+        ).strip()
+        if not hash_manifest:
+            raise ValueError("Snapshot recusado: manifest sem hash do payload.")
+        if hash_manifest != hash_calculado:
+            raise ValueError("Snapshot recusado: hash do manifest não bate com o conteúdo recebido.")
+
+        contagens = manifest.get("contagens") if isinstance(manifest.get("contagens"), dict) else {}
+        esperadas = {
+            "curvas_combustao": len(curvas_combustao),
+            "curvas_eletrico": len(curvas_eletrico),
+            "vinculos_similaridade": len(vinculos),
+        }
+        for chave, valor in esperadas.items():
+            if chave in contagens:
+                try:
+                    if int(contagens.get(chave) or 0) != int(valor):
+                        raise ValueError(f"Snapshot recusado: contagem divergente em {chave}.")
+                except ValueError:
+                    raise
+                except Exception as exc:
+                    raise ValueError(f"Snapshot recusado: contagem inválida em {chave}.") from exc
+        return curvas_combustao, curvas_eletrico, vinculos, manifest, hash_calculado
+
+    def _chave_importacao_curva(self, row: dict[str, Any]) -> str:
+        for campo in ("curve_id", "chave_curva", "chave_curva_eletrico", "chave_curva_combustao"):
+            val = str(row.get(campo, "") or "").strip()
+            if val:
+                return f"{campo}:{val}"
+        partes = [
+            str(row.get("codigo_fipe", "") or "").strip(),
+            str(row.get("marca_id", "") or row.get("codigo_marca", "") or "").strip(),
+            str(row.get("modelo_id", "") or row.get("codigo_modelo", "") or "").strip(),
+            str(row.get("marca", "") or "").strip().lower(),
+            str(row.get("modelo", "") or "").strip().lower(),
+            str(row.get("ano_modelo", "") or "").strip(),
+            str(row.get("modo_pandemia", "") or "").strip().lower(),
+        ]
+        return "fallback:" + "|".join(partes)
+
+    def _linha_curva_minimamente_valida(self, row: dict[str, Any], tipo: str) -> bool:
+        if not isinstance(row, dict):
+            return False
+        status = str(row.get("status", "OK") or "OK").strip().upper()
+        if status not in {"", "OK", "HOMOLOGADA", "EXPLORATORIA", "EXPLORATÓRIA"}:
+            return False
+        chave = str(row.get("chave_curva") or row.get("curve_id") or row.get("chave_curva_eletrico") or row.get("chave_curva_combustao") or "").strip()
+        codigo_fipe = str(row.get("codigo_fipe") or "").strip()
+        marca_id = str(row.get("marca_id") or row.get("codigo_marca") or "").strip()
+        modelo_id = str(row.get("modelo_id") or row.get("codigo_modelo") or "").strip()
+        modelo = str(row.get("modelo") or row.get("titulo") or row.get("veiculo") or "").strip()
+        if tipo == "eletrico":
+            return bool(chave or codigo_fipe or (marca_id and modelo_id) or modelo)
+        return bool(chave or codigo_fipe or modelo)
+
+    def _campos_curvas_snapshot(self, curvas: list[dict[str, Any]]) -> list[str]:
+        campos: list[str] = []
+        for row in curvas:
+            if isinstance(row, dict):
+                for campo in row.keys():
+                    if campo not in campos:
+                        campos.append(campo)
+        for campo in ["origem_importacao", "data_importacao_render"]:
+            if campo not in campos:
+                campos.append(campo)
+        return campos or ["origem_importacao", "data_importacao_render"]
+
+    def _preparar_curvas_snapshot(self, tipo: str, curvas: list[dict[str, Any]], data_importacao: str) -> tuple[list[dict[str, Any]], list[str], int]:
+        tipo_norm = str(tipo or "").strip().lower()
+        campos = self._campos_curvas_snapshot([row for row in curvas if isinstance(row, dict)])
+        linhas: list[dict[str, Any]] = []
+        ignoradas = 0
+        chaves_vistas: set[str] = set()
+        for row in curvas:
+            if not isinstance(row, dict) or not self._linha_curva_minimamente_valida(row, tipo_norm):
+                ignoradas += 1
+                continue
+            nova = {campo: row.get(campo, "") for campo in campos}
+            nova["origem_importacao"] = "painel_local_snapshot"
+            nova["data_importacao_render"] = data_importacao
+            chave = self._chave_importacao_curva(nova)
+            if chave in chaves_vistas:
+                # Snapshot deve ser determinístico. Mantém a última linha recebida para a chave.
+                linhas = [item for item in linhas if self._chave_importacao_curva(item) != chave]
+            chaves_vistas.add(chave)
+            linhas.append(nova)
+        if curvas and not linhas:
+            raise ValueError(f"Snapshot recusado: nenhuma curva válida em {tipo_norm}.")
+        return linhas, campos, ignoradas
+
+    def _escrever_csv_snapshot(self, caminho: Path, campos: list[str], linhas: list[dict[str, Any]]) -> None:
+        caminho.parent.mkdir(parents=True, exist_ok=True)
+        with open(caminho, mode="w", encoding="utf-8-sig", newline="") as arquivo:
+            escritor = csv.DictWriter(arquivo, fieldnames=campos, extrasaction="ignore")
+            escritor.writeheader()
+            for linha in linhas:
+                escritor.writerow({campo: linha.get(campo, "") for campo in campos})
+
+    def _chaves_vinculos_snapshot(self, vinculos: list[dict[str, Any]]) -> set[str]:
+        chaves: set[str] = set()
+        for row in vinculos:
+            if not isinstance(row, dict):
+                continue
+            tipo = str(row.get("tipo") or "combustao").strip().lower()
+            marca_id = str(row.get("marca_id") or row.get("codigo_marca") or "").strip()
+            modelo_id = str(row.get("modelo_id") or row.get("codigo_modelo") or "").strip()
+            marca = normalizar_texto(row.get("marca") or "")
+            modelo = normalizar_texto(row.get("modelo") or "")
+            chave_ref = str(row.get("chave_curva_referencia") or "").strip()
+            chaves.add("|".join([tipo, marca_id, modelo_id, marca, modelo, chave_ref]))
+        return chaves
+
+    def _preparar_vinculos_snapshot(self, vinculos: list[dict[str, Any]], curvas_por_tipo: dict[str, list[dict[str, Any]]], data_importacao: str) -> tuple[list[dict[str, Any]], int, int]:
+        chaves_ref_por_tipo: dict[str, set[str]] = {}
+        for tipo, curvas in curvas_por_tipo.items():
+            chaves_ref_por_tipo[tipo] = {
+                str(row.get("chave_curva") or row.get("curve_id") or row.get("chave_curva_eletrico") or row.get("chave_curva_combustao") or "").strip()
+                for row in curvas
+                if str(row.get("chave_curva") or row.get("curve_id") or row.get("chave_curva_eletrico") or row.get("chave_curva_combustao") or "").strip()
+            }
+        importados: list[dict[str, Any]] = []
+        ignorados = 0
+        referencias_orfas = 0
+        chaves_vistas: set[str] = set()
+        for row in vinculos:
+            if not isinstance(row, dict):
+                ignorados += 1
+                continue
+            item = self._normalizar_vinculo_similaridade(row)
+            item["data_importacao_render"] = data_importacao
+            if not item.get("modelo") and not item.get("modelo_id"):
+                ignorados += 1
+                continue
+            chave_ref = str(item.get("chave_curva_referencia") or "").strip()
+            if not chave_ref:
+                ignorados += 1
+                continue
+            tipo = str(item.get("tipo") or "combustao").strip().lower()
+            if chave_ref not in chaves_ref_por_tipo.get(tipo, set()):
+                referencias_orfas += 1
+                continue
+            chave_item = next(iter(self._chaves_vinculos_snapshot([item])))
+            if chave_item in chaves_vistas:
+                continue
+            chaves_vistas.add(chave_item)
+            importados.append(item)
+        return importados, ignorados, referencias_orfas
+
+    def _copiar_se_existir(self, origem: Path, destino: Path) -> bool:
+        if origem.exists():
+            destino.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(origem, destino)
+            return True
+        return False
+
+    def _criar_backup_snapshot(self, backup_dir: Path) -> dict[str, Any]:
+        backup_dir.mkdir(parents=True, exist_ok=True)
+        itens = {
+            "curvas_combustao": self._arquivo_curvas_combustao(),
+            "curvas_eletrico": self._arquivo_curvas_eletrico(),
+            "vinculos_similaridade": self._arquivo_vinculos_similaridade(),
+            "manifest": self._arquivo_manifest_snapshot(),
+            "status": self._arquivo_status_snapshot(),
+        }
+        copiados: dict[str, str] = {}
+        ausentes: list[str] = []
+        for nome, origem in itens.items():
+            destino = backup_dir / origem.name
+            if self._copiar_se_existir(origem, destino):
+                copiados[nome] = str(destino)
+            else:
+                ausentes.append(nome)
+        return {"criado": True, "diretorio": str(backup_dir), "copiados": copiados, "ausentes": ausentes}
+
+    def _limpar_caches_curvas(self) -> None:
+        try:
+            self._ler_csv_cache.cache_clear()
+        except Exception:
+            pass
+
+    def _resumo_curvas_snapshot(self, tipo: str, caminho: Path, recebidas: int, linhas: list[dict[str, Any]], ignoradas: int, orfaos: int) -> dict[str, Any]:
+        return {
+            "tipo": tipo,
+            "arquivo": str(caminho),
+            "recebidas": recebidas,
+            "gravadas": len(linhas),
+            "importadas": len(linhas),
+            "ignoradas": ignoradas,
+            "total_final": len(linhas),
+            "orfaos_removidos": orfaos,
+        }
+
+    def sincronizar_snapshot_painel(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Substitui a base persistente do Render por um snapshot completo do painel.
+
+        Não faz merge. Curvas/vínculos que não vieram no snapshot deixam de existir
+        no espelho publicado e, portanto, deixam de gerar checks no site.
+        """
+        curvas_combustao, curvas_eletrico, vinculos, manifest, hash_calculado = self._validar_snapshot_payload(payload)
+        data_importacao = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        persistent_dir = Path(current_app.config.get("PERSISTENT_DIR", "data/_runtime"))
+        staging_dir = self._pasta_staging_snapshot() / f"sync_{timestamp}"
+        backup_dir = self._pasta_backups_snapshot() / f"sync_{timestamp}"
+        staging_dir.mkdir(parents=True, exist_ok=True)
+        persistent_dir.mkdir(parents=True, exist_ok=True)
+
+        antigas_combustao = self._ler_csv(self._arquivo_curvas_combustao())
+        antigas_eletrico = self._ler_csv(self._arquivo_curvas_eletrico())
+        antigos_vinculos = self.listar_vinculos_similaridade()
+
+        linhas_combustao, campos_combustao, ignoradas_combustao = self._preparar_curvas_snapshot("combustao", curvas_combustao, data_importacao)
+        linhas_eletrico, campos_eletrico, ignoradas_eletrico = self._preparar_curvas_snapshot("eletrico", curvas_eletrico, data_importacao)
+        if len(linhas_combustao) + len(linhas_eletrico) <= 0:
+            raise ValueError("Snapshot recusado: nenhuma curva válida após validação.")
+
+        vinculos_importados, vinculos_ignorados, vinculos_orfaos_ref = self._preparar_vinculos_snapshot(
+            vinculos,
+            {"combustao": linhas_combustao, "eletrico": linhas_eletrico},
+            data_importacao,
+        )
+
+        chaves_antigas_c = {self._chave_importacao_curva(row) for row in antigas_combustao}
+        chaves_novas_c = {self._chave_importacao_curva(row) for row in linhas_combustao}
+        chaves_antigas_e = {self._chave_importacao_curva(row) for row in antigas_eletrico}
+        chaves_novas_e = {self._chave_importacao_curva(row) for row in linhas_eletrico}
+        chaves_vinculos_antigos = self._chaves_vinculos_snapshot(antigos_vinculos)
+        chaves_vinculos_novos = self._chaves_vinculos_snapshot(vinculos_importados)
+
+        staging_combustao = staging_dir / self._arquivo_curvas_combustao().name
+        staging_eletrico = staging_dir / self._arquivo_curvas_eletrico().name
+        staging_vinculos = staging_dir / self._arquivo_vinculos_similaridade().name
+        staging_manifest = staging_dir / "sync_manifest_curvas.json"
+        staging_status = staging_dir / "sync_status_curvas.json"
+        staging_payload = staging_dir / "payload_snapshot_recebido.json"
+
+        self._escrever_csv_snapshot(staging_combustao, campos_combustao, linhas_combustao)
+        self._escrever_csv_snapshot(staging_eletrico, campos_eletrico, linhas_eletrico)
+        staging_vinculos.write_text(json.dumps(vinculos_importados, ensure_ascii=False, indent=2), encoding="utf-8")
+
+        status_sync = {
+            "ok": True,
+            "modo": "snapshot_completo",
+            "schema_snapshot": payload.get("schema_snapshot") or payload.get("schema_version") or "curve_snapshot_v35",
+            "data_sincronizacao_render": self._agora_sync_iso(),
+            "data_envio_local": payload.get("data_envio_local"),
+            "hash_payload": hash_calculado,
+            "manifest_recebido": manifest,
+            "contagens": {
+                "curvas_combustao_recebidas": len(curvas_combustao),
+                "curvas_combustao_gravadas": len(linhas_combustao),
+                "curvas_eletrico_recebidas": len(curvas_eletrico),
+                "curvas_eletrico_gravadas": len(linhas_eletrico),
+                "vinculos_similaridade_recebidos": len(vinculos),
+                "vinculos_similaridade_gravados": len(vinculos_importados),
+            },
+            "orfaos_removidos": {
+                "curvas_combustao": len(chaves_antigas_c - chaves_novas_c),
+                "curvas_eletrico": len(chaves_antigas_e - chaves_novas_e),
+                "vinculos_similaridade": len(chaves_vinculos_antigos - chaves_vinculos_novos),
+            },
+            "ignorados": {
+                "curvas_combustao": ignoradas_combustao,
+                "curvas_eletrico": ignoradas_eletrico,
+                "vinculos_similaridade": vinculos_ignorados,
+                "vinculos_referencia_orfa": vinculos_orfaos_ref,
+            },
+        }
+        staging_manifest.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+        staging_status.write_text(json.dumps(status_sync, ensure_ascii=False, indent=2), encoding="utf-8")
+        staging_payload.write_text(json.dumps(payload, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
+
+        backup_info = self._criar_backup_snapshot(backup_dir)
+
+        # Troca controlada: só substitui arquivos oficiais depois de validar e preparar staging.
+        self._arquivo_curvas_combustao().parent.mkdir(parents=True, exist_ok=True)
+        self._arquivo_curvas_eletrico().parent.mkdir(parents=True, exist_ok=True)
+        self._arquivo_vinculos_similaridade().parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(staging_combustao, self._arquivo_curvas_combustao())
+        shutil.copy2(staging_eletrico, self._arquivo_curvas_eletrico())
+        shutil.copy2(staging_vinculos, self._arquivo_vinculos_similaridade())
+        shutil.copy2(staging_manifest, self._arquivo_manifest_snapshot())
+        shutil.copy2(staging_status, self._arquivo_status_snapshot())
+        self._limpar_caches_curvas()
+
+        resultado = {
+            "ok": True,
+            "modo_importacao": "snapshot_completo",
+            "mensagem": "Snapshot completo sincronizado. Render agora é espelho do Painel Local.",
+            "hash_payload": hash_calculado,
+            "staging": {"diretorio": str(staging_dir)},
+            "backup": backup_info,
+            "combustao": self._resumo_curvas_snapshot(
+                "combustao",
+                self._arquivo_curvas_combustao(),
+                len(curvas_combustao),
+                linhas_combustao,
+                ignoradas_combustao,
+                len(chaves_antigas_c - chaves_novas_c),
+            ),
+            "eletrico": self._resumo_curvas_snapshot(
+                "eletrico",
+                self._arquivo_curvas_eletrico(),
+                len(curvas_eletrico),
+                linhas_eletrico,
+                ignoradas_eletrico,
+                len(chaves_antigas_e - chaves_novas_e),
+            ),
+            "vinculos_similaridade": {
+                "arquivo": str(self._arquivo_vinculos_similaridade()),
+                "recebidos": len(vinculos),
+                "importados": len(vinculos_importados),
+                "ignorados": vinculos_ignorados,
+                "referencia_orfa": vinculos_orfaos_ref,
+                "total_final": len(vinculos_importados),
+                "orfaos_removidos": len(chaves_vinculos_antigos - chaves_vinculos_novos),
+            },
+            "status_sincronizacao": status_sync,
+        }
+        return resultado
+
     def _importar_curvas_csv(self, tipo: str, curvas: list[dict[str, Any]]) -> dict[str, Any]:
+        """Modo incremental legado. Não usar como sincronização principal."""
         tipo_norm = str(tipo or "").strip().lower()
         caminho = self._arquivo_curvas_eletrico() if tipo_norm == "eletrico" else self._arquivo_curvas_combustao()
         caminho.parent.mkdir(parents=True, exist_ok=True)
@@ -364,28 +768,12 @@ class CurvasRepository:
             if campo not in campos:
                 campos.append(campo)
 
-        def chave(row: dict[str, Any]) -> str:
-            for campo in ("curve_id", "chave_curva"):
-                val = str(row.get(campo, "") or "").strip()
-                if val:
-                    return f"{campo}:{val}"
-            partes = [
-                str(row.get("codigo_fipe", "") or "").strip(),
-                str(row.get("marca_id", "") or row.get("codigo_marca", "") or "").strip(),
-                str(row.get("modelo_id", "") or row.get("codigo_modelo", "") or "").strip(),
-                str(row.get("marca", "") or "").strip().lower(),
-                str(row.get("modelo", "") or "").strip().lower(),
-                str(row.get("ano_modelo", "") or "").strip(),
-                str(row.get("modo_pandemia", "") or "").strip().lower(),
-            ]
-            return "fallback:" + "|".join(partes)
-
         mapa: dict[str, dict[str, Any]] = {}
         ordem: list[str] = []
         for row in linhas_existentes:
             if not isinstance(row, dict):
                 continue
-            k = chave(row)
+            k = self._chave_importacao_curva(row)
             if k not in mapa:
                 ordem.append(k)
             mapa[k] = row
@@ -402,9 +790,9 @@ class CurvasRepository:
                 ignoradas += 1
                 continue
             nova = {campo: row.get(campo, "") for campo in campos}
-            nova["origem_importacao"] = "painel_local"
+            nova["origem_importacao"] = "painel_local_merge_legacy"
             nova["data_importacao_render"] = agora
-            k = chave(nova)
+            k = self._chave_importacao_curva(nova)
             if k not in mapa:
                 ordem.append(k)
             mapa[k] = nova
@@ -425,10 +813,7 @@ class CurvasRepository:
                 row = mapa.get(k, {})
                 escritor.writerow({campo: row.get(campo, "") for campo in campos})
 
-        try:
-            self._ler_csv_cache.cache_clear()
-        except Exception:
-            pass
+        self._limpar_caches_curvas()
 
         return {
             "tipo": tipo_norm,
@@ -437,6 +822,7 @@ class CurvasRepository:
             "importadas": importadas,
             "ignoradas": ignoradas,
             "total_final": len(mapa),
+            "modo_importacao": "merge_legacy",
         }
 
 
@@ -677,7 +1063,7 @@ class CurvasRepository:
 
     @staticmethod
     def _chave_curva_linha(row: dict[str, Any]) -> str:
-        return str(row.get("chave_curva") or row.get("curve_id") or "").strip()
+        return str(row.get("chave_curva") or row.get("curve_id") or row.get("chave_curva_eletrico") or row.get("chave_curva_combustao") or "").strip()
 
     def _curva_valida_para_similaridade(self, row: dict[str, Any]) -> bool:
         if not isinstance(row, dict):

@@ -120,7 +120,7 @@ def importar_curvas():
     try:
         resultado = curvas_repository.importar_curvas_painel(payload)
         resultado["ok"] = True
-        resultado["mensagem"] = "Curvas importadas no Render a partir do painel local."
+        resultado.setdefault("mensagem", "Curvas importadas no Render a partir do painel local.")
         resultado["status_bases"] = depreciacao_service.status_bases()
         return jsonify(resultado), 200
     except Exception as exc:
@@ -128,6 +128,31 @@ def importar_curvas():
             "ok": False,
             "erro": str(exc),
             "tipo": "erro_importacao_curvas",
+            "traceback_resumo": traceback.format_exc(limit=4),
+        }), 500
+
+
+@depreciacao_bp.route("/sincronizar_snapshot", methods=["POST"])
+@depreciacao_bp.route("/admin/sincronizar_snapshot", methods=["POST"])
+def sincronizar_snapshot_curvas():
+    if not _admin_token_valido():
+        return jsonify({
+            "ok": False,
+            "erro": "Token administrativo inválido ou ausente.",
+            "tipo": "nao_autorizado",
+        }), 401
+    payload = request.get_json(silent=True) or {}
+    try:
+        payload["modo"] = "snapshot_completo"
+        resultado = curvas_repository.sincronizar_snapshot_painel(payload)
+        resultado["ok"] = True
+        resultado["status_bases"] = depreciacao_service.status_bases()
+        return jsonify(resultado), 200
+    except Exception as exc:
+        return jsonify({
+            "ok": False,
+            "erro": str(exc),
+            "tipo": "erro_sincronizacao_snapshot",
             "traceback_resumo": traceback.format_exc(limit=4),
         }), 500
 
