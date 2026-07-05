@@ -5131,8 +5131,8 @@
           }
         });
       }
-      const catalogoCurvasPlugVE = { modelos: new Set(), codigosModelo: new Set(), carregado: false };
-      const CURVAS_CACHE_KEY_PLUGVE = "plugve:curvas:marcadores:v31";
+      const catalogoCurvasPlugVE = { modelos: new Set(), codigosModelo: new Set(), porNome: new Map(), porCodigo: new Map(), carregado: false };
+      const CURVAS_CACHE_KEY_PLUGVE = "plugve:curvas:marcadores:v35";
       const CURVAS_CACHE_TTL_PLUGVE = 30 * 60 * 1000;
       const cacheFipeMemoriaPlugVE = new Map();
       const requisicoesFipeEmCursoPlugVE = new Map();
@@ -5202,17 +5202,24 @@
       }
 
       function normalizarNomeModeloOptionPlugVE(opt) {
-        return String(opt?.dataset?.nome || opt?.textContent || "").replace(/^\s*[✓✔]\s*/u, "").trim();
+        return String(opt?.dataset?.nome || opt?.textContent || "").replace(/^\s*[✓✔≈]\s*/u, "").trim();
       }
 
       function aplicarMarcadorCurvaOptionPlugVE(opt, nomeModelo) {
         if (!opt || !opt.value) return;
         const nome = String(nomeModelo || normalizarNomeModeloOptionPlugVE(opt) || "").trim();
         opt.dataset.nome = nome;
-        const temCurva = modeloTemCurvaPlugVE(nome, opt.value);
+        const marcador = obterMarcadorCurvaPlugVE(nome, opt.value);
+        const temCurva = Boolean(marcador);
+        const tipoCurva = marcador?.tipo_curva === "similaridade" ? "similaridade" : (temCurva ? "propria" : "");
+        const simbolo = tipoCurva === "similaridade" ? "≈" : (temCurva ? "✓" : "");
         opt.dataset.curvaSalva = temCurva ? "1" : "0";
-        opt.textContent = `${temCurva ? "✓ " : ""}${nome}`;
+        opt.dataset.tipoCurva = tipoCurva;
+        opt.dataset.modeloReferencia = marcador?.modelo_referencia || marcador?.modelo_referencia_similaridade || "";
+        opt.dataset.chaveCurvaReferencia = marcador?.chave_curva_referencia || "";
+        opt.textContent = `${simbolo ? `${simbolo} ` : ""}${nome}`;
       }
+
 
       function atualizarMarcadoresCurvaNosSelectsPlugVE() {
         ["ve_modelo", "icev_modelo", "atual_modelo"].forEach(id => {
@@ -5230,17 +5237,32 @@
         const itens = Array.isArray(data?.modelos)
           ? data.modelos
           : [...(data?.curvas_combustao || []), ...(data?.curvas_eletrico || [])];
-        const nomes = [];
-        const codigos = [];
+        catalogoCurvasPlugVE.modelos = new Set();
+        catalogoCurvasPlugVE.codigosModelo = new Set();
+        catalogoCurvasPlugVE.porNome = new Map();
+        catalogoCurvasPlugVE.porCodigo = new Map();
+        const registrar = (chave, marcador) => {
+          const n = normPlugVE(chave);
+          if (!n) return;
+          catalogoCurvasPlugVE.modelos.add(n);
+          catalogoCurvasPlugVE.porNome.set(n, marcador);
+        };
         itens.forEach(item => {
-          nomes.push(item.titulo, item.modelo, `${item.marca || ""} ${item.modelo || ""}`);
-          if (item.codigo_modelo) codigos.push(String(item.codigo_modelo));
+          const tipoCurva = String(item.tipo_curva || item.tipo_curva_aplicada || (item.curva_por_similaridade ? "similaridade" : "propria")).toLowerCase();
+          const marcador = { ...item, tipo_curva: tipoCurva === "similaridade" ? "similaridade" : "propria" };
+          registrar(item.titulo, marcador);
+          registrar(item.modelo, marcador);
+          registrar(`${item.marca || ""} ${item.modelo || ""}`, marcador);
+          const codigoModelo = String(item.codigo_modelo || item.modelo_id || "").trim();
+          if (codigoModelo) {
+            catalogoCurvasPlugVE.codigosModelo.add(codigoModelo);
+            catalogoCurvasPlugVE.porCodigo.set(codigoModelo, marcador);
+          }
         });
-        catalogoCurvasPlugVE.modelos = new Set(nomes.map(normPlugVE).filter(Boolean));
-        catalogoCurvasPlugVE.codigosModelo = new Set(codigos.filter(Boolean));
         catalogoCurvasPlugVE.carregado = true;
         atualizarMarcadoresCurvaNosSelectsPlugVE();
       }
+
 
       function lerCacheCatalogoCurvasPlugVE() {
         try {
@@ -5280,8 +5302,8 @@
           .catch(() => {});
       }
 
-      // O catálogo de curvas serve apenas para o marcador "✓". Ele é leve e
-      // assíncrono: primeiro a lista FIPE abre normalmente; os checks entram
+      // O catálogo de curvas serve apenas para o marcador "✓/≈". Ele é leve e
+      // assíncrono: primeiro a lista FIPE abre normalmente; os marcadores entram
       // em seguida, sem segurar marca, modelo, ano ou perfil de uso.
       if ("requestIdleCallback" in window) {
         requestIdleCallback(iniciarCatalogoCurvasPlugVE, { timeout: 1600 });
@@ -5289,17 +5311,19 @@
         setTimeout(iniciarCatalogoCurvasPlugVE, 900);
       }
 
-      function modeloTemCurvaPlugVE(nomeModelo, codigoModelo) {
+      function obterMarcadorCurvaPlugVE(nomeModelo, codigoModelo) {
         const cod = String(codigoModelo || "").trim();
-        if (cod && catalogoCurvasPlugVE.codigosModelo.has(cod)) return true;
+        if (cod && catalogoCurvasPlugVE.porCodigo.has(cod)) return catalogoCurvasPlugVE.porCodigo.get(cod);
         const n = normPlugVE(nomeModelo);
-        if (!n) return false;
-        if (catalogoCurvasPlugVE.modelos.has(n)) return true;
-        for (const curva of catalogoCurvasPlugVE.modelos) {
-          if (curva && (curva.includes(n) || n.includes(curva))) return true;
-        }
-        return false;
+        if (!n) return null;
+        if (catalogoCurvasPlugVE.porNome.has(n)) return catalogoCurvasPlugVE.porNome.get(n);
+        return null;
       }
+
+      function modeloTemCurvaPlugVE(nomeModelo, codigoModelo) {
+        return Boolean(obterMarcadorCurvaPlugVE(nomeModelo, codigoModelo));
+      }
+
 
       function setHiddenPlugVE(id, esconder) {
         const el = document.getElementById(id);
@@ -5888,7 +5912,7 @@
     })();
   </script>
 
-  <script src="{{ url_for('static', filename='js/fipe_combobox.js') }}?v=20260630_v31_checks_curva_salva"></script>
+  <script src="{{ url_for('static', filename='js/fipe_combobox.js') }}?v=20260704_v35_similaridade"></script>
 
 </body>
 </html>

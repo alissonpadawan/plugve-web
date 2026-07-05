@@ -3,9 +3,11 @@ let ultimoJobDiagnosticoV1917 = null;
 let painelDepreciacaoDados = null;
 let modelosComCurva = new Set();
 let codigosModelosComCurva = new Set();
+let marcadoresCurvasPorNome = new Map();
+let marcadoresCurvasPorCodigo = new Map();
 let marcadoresCurvasCarregados = false;
 let carregamentoMarcadoresCurvasIniciado = false;
-const MARCADORES_CURVAS_CACHE_KEY = "curve:depreciacao:marcadores:v31";
+const MARCADORES_CURVAS_CACHE_KEY = "curve:depreciacao:marcadores:v35";
 const MARCADORES_CURVAS_CACHE_TTL = 30 * 60 * 1000;
 let diagnosticoV1917AutoAtivo = false;
 let diagnosticoV1917Ciclos = 0;
@@ -432,13 +434,54 @@ function obterDataBaseFipeProfissional(data) {
   );
 }
 
+function obterSimilaridadeProfissional(data) {
+  const detalhes = data?.detalhes || {};
+  const curva = detalhes.curva || {};
+  const auditoria = detalhes.auditoria_historico || data?.auditoria_historico || {};
+  const bruto = textoRelatorioBruto(data);
+  const curvaPorSimilaridade = Boolean(
+    data?.curva_por_similaridade || detalhes.curva_por_similaridade || curva.curva_por_similaridade || auditoria.curva_por_similaridade ||
+    String(data?.tipo_curva_aplicada || detalhes.tipo_curva_aplicada || curva.tipo_curva_aplicada || "").toLowerCase() === "similaridade"
+  );
+  return {
+    curvaPorSimilaridade,
+    modeloReferencia: limparTextoInternoRelatorio(primeiroTextoValido(
+      data?.modelo_referencia_similaridade,
+      detalhes.modelo_referencia_similaridade,
+      curva.modelo_referencia_similaridade,
+      auditoria.modelo_referencia_similaridade,
+      data?.modelo_referencia,
+      detalhes.modelo_referencia,
+      curva.modelo_referencia,
+      auditoria.modelo_referencia,
+      extrairTextoPorPadroes(bruto, [/Modelo referência da curva:\s*([^\n\r]+)/i])
+    )),
+    origem: limparTextoInternoRelatorio(primeiroTextoValido(
+      data?.origem_similaridade,
+      detalhes.origem_similaridade,
+      curva.origem_similaridade,
+      auditoria.origem_similaridade,
+      extrairTextoPorPadroes(bruto, [/Origem do vínculo:\s*([^\n\r]+)/i])
+    )),
+    chave: limparTextoInternoRelatorio(primeiroTextoValido(
+      data?.chave_curva_referencia,
+      detalhes.chave_curva_referencia,
+      curva.chave_curva_referencia,
+      auditoria.chave_curva_referencia,
+      extrairTextoPorPadroes(bruto, [/Chave da curva referência:\s*([^\n\r]+)/i])
+    ))
+  };
+}
+
 function obterModeloBaseProfissional(data) {
   const detalhes = data?.detalhes || {};
   const curva = detalhes.curva || {};
   const familia = detalhes.familia || {};
   const auditoria = detalhes.auditoria_historico || data?.motor?.auditoria_historico || {};
   const bruto = textoRelatorioBruto(data);
+  const sim = obterSimilaridadeProfissional(data);
   return limparTextoInternoRelatorio(primeiroTextoValido(
+    sim.curvaPorSimilaridade ? sim.modeloReferencia : "",
     extrairTextoPorPadroes(bruto, [/Modelo base usado como referência:\s*([^\n\r]+)/i, /Modelo-base\/curva de referência:\s*([^\n\r]+)/i, /Curva\/modelo referência:\s*([^\n\r]+)/i]),
     curva.modelo_base_curva,
     familia.modelo_base_curva,
@@ -479,6 +522,8 @@ function obterDataZeroKmBaseProfissional(data) {
 
 function obterTipoCurvaProfissional(data) {
   const detalhes = data?.detalhes || {};
+  const sim = obterSimilaridadeProfissional(data);
+  if (sim.curvaPorSimilaridade) return "Curva herdada por similaridade";
   const origem = String(data?.origem_curva || detalhes.origem_curva || "").toLowerCase();
   if (origem.includes("proxy")) return "Curva por proxy técnico";
   if (origem.includes("fam") || origem.includes("familiar")) return "Curva familiar";
@@ -515,6 +560,10 @@ function obterBaseTecnicaResumoProfissional(info) {
   let texto = partes.filter(Boolean).join(" - ");
   if (!texto) texto = "Base histórica FIPE disponível";
   if (detalhe.length) texto += `, com ${detalhe.join(" e ")}`;
+  if (info.curvaPorSimilaridade) {
+    const ref = info.modeloReferenciaSimilaridade || info.modeloBase || "modelo referência";
+    texto += `. Curva herdada por similaridade manual do ${ref}; o valor FIPE inicial é do veículo selecionado`;
+  }
   return `${texto}.`;
 }
 
@@ -536,6 +585,7 @@ function montarDadosRelatorioProfissional(data) {
   const taxaMensal = primeiroValorPositivo(data?.taxa_mensal_hibrida_percentual, detalhes.taxa_mensal_hibrida_percentual, curva.taxa_mensal_hibrida_percentual, curva.taxa_mensal_percentual);
   const idadeMeses = Number(data?.idade_entrada_meses || detalhes.idade_entrada_meses || 0);
   const idadeAnos = Number(data?.idade_entrada_anos || detalhes.idade_entrada_anos || (idadeMeses / 12) || 0);
+  const similaridade = obterSimilaridadeProfissional(data);
   const inicioCurvaMeses = Number(data?.inicio_curva_meses ?? detalhes.inicio_curva_meses ?? idadeMeses);
   const fimCurvaMeses = Number(data?.fim_curva_meses ?? detalhes.fim_curva_meses ?? (idadeMeses + horizonteMeses));
   const pontosHistoricos = Number(data?.pontos_historicos || detalhes.pontos_historicos || curva.pontos_historicos || auditoria.pontos || auditoria.pontos_historicos || 0);
@@ -563,6 +613,10 @@ function montarDadosRelatorioProfissional(data) {
     confianca: primeiroTextoValido(data?.confianca, detalhes.confianca, curva.confianca),
     tipoLabel: tipoMotorizacaoProfissional(data),
     tipoCurva: obterTipoCurvaProfissional(data),
+    curvaPorSimilaridade: similaridade.curvaPorSimilaridade,
+    modeloReferenciaSimilaridade: similaridade.modeloReferencia,
+    origemSimilaridade: similaridade.origem,
+    chaveCurvaReferencia: similaridade.chave,
     modeloBase: obterModeloBaseProfissional(data),
     anoBase: obterAnoBaseProfissional(data),
     dataZeroKmBase: obterDataZeroKmBaseProfissional(data),
@@ -603,6 +657,8 @@ function montarRelatorioHTMLProfissional(data) {
   const tabelaBase = [
     linhaTabelaProfissional("Tipo de curva", info.tipoCurva),
     linhaTabelaProfissional("Modelo de referência", info.modeloBase),
+    linhaTabelaProfissional("Origem da similaridade", info.curvaPorSimilaridade ? info.origemSimilaridade : ""),
+    linhaTabelaProfissional("Chave da curva referência", info.curvaPorSimilaridade ? info.chaveCurvaReferencia : ""),
     linhaTabelaProfissional("Coorte ou ano-base", info.anoBase),
     linhaTabelaProfissional("Base zero km da coorte", info.dataZeroKmBase),
     linhaTabelaProfissional("Pontos históricos FIPE", info.pontosHistoricos > 0 ? `${info.pontosHistoricos}` : ""),
@@ -661,6 +717,7 @@ function montarRelatorioHTMLProfissional(data) {
       <p class="report-kicker">Metodologia</p>
       <h3>Como a estimativa é construída</h3>
       <p>O valor de entrada vem da FIPE para o ano e combustível selecionados. A curva de depreciação é calibrada com histórico do próprio modelo ou de uma base técnica de referência, usando a série nominal e a série corrigida pelo IPCA para leitura econômica da trajetória.</p>
+      ${info.curvaPorSimilaridade ? `<p><strong>Curva por similaridade:</strong> o veículo analisado mantém seu próprio valor FIPE atual, mas a função/taxa de depreciação é herdada do modelo referência ${escaparHtml(info.modeloReferenciaSimilaridade || info.modeloBase || "informado pelo painel local")}.</p>` : ""}
       <p>Em veículos usados, a projeção considera a idade já percorrida dentro da curva e estima apenas a depreciação futura. Isso evita tratar um veículo usado como se fosse zero km.</p>
       <p>O resultado deve ser interpretado como estimativa estatística de valor futuro, não como avaliação comercial individual. Estado de conservação, quilometragem, versão, região e negociação podem alterar o preço final de mercado.</p>
     </section>
@@ -684,7 +741,13 @@ function montarRelatorioTextual(data, origem = "curva") {
     `Horizonte de análise: ${info.horizonteLabel}`,
     `Depreciação total: ${valorPercentualTexto(info.depreciacaoTotal)}`,
     `Taxa anual equivalente: ${valorPercentualTexto(info.taxaAnual, 2, "% a.a.")}`,
-    `Base técnica utilizada: ${info.baseTecnicaResumo}`
+    `Base técnica utilizada: ${info.baseTecnicaResumo}`,
+    ...(info.curvaPorSimilaridade ? [
+      `Tipo de curva: curva herdada por similaridade`,
+      `Modelo referência: ${info.modeloReferenciaSimilaridade || info.modeloBase || "não informado"}`,
+      `Origem da similaridade: ${info.origemSimilaridade || "não informada"}`,
+      `Chave da curva referência: ${info.chaveCurvaReferencia || "não informada"}`
+    ] : [])
   ].join("\n");
 }
 
@@ -1162,31 +1225,54 @@ function normalizarBusca(txt) {
 function registrarModelosComCurva(lista) {
   modelosComCurva = new Set();
   codigosModelosComCurva = new Set();
+  marcadoresCurvasPorNome = new Map();
+  marcadoresCurvasPorCodigo = new Map();
+
+  const registrarChave = (chave, marcador) => {
+    const normalizada = normalizarBusca(chave);
+    if (!normalizada) return;
+    modelosComCurva.add(normalizada);
+    marcadoresCurvasPorNome.set(normalizada, marcador);
+  };
+
   (lista || []).forEach(item => {
-    const modelo = normalizarBusca(item.modelo || item.titulo || "");
-    const titulo = normalizarBusca(item.titulo || "");
-    const marcaModelo = normalizarBusca(`${item.marca || ""} ${item.modelo || ""}`);
+    const tipoCurva = String(item.tipo_curva || item.tipo_curva_aplicada || (item.curva_por_similaridade ? "similaridade" : "propria")).toLowerCase();
+    const marcador = {
+      ...item,
+      tipo_curva: tipoCurva === "similaridade" ? "similaridade" : "propria",
+      simbolo: tipoCurva === "similaridade" ? "≈" : "✓",
+    };
+    const modelo = item.modelo || item.titulo || "";
+    const titulo = item.titulo || "";
+    const marcaModelo = `${item.marca || ""} ${item.modelo || ""}`;
     const codigoModelo = String(item.codigo_modelo || item.modelo_id || "").trim();
-    if (modelo) modelosComCurva.add(modelo);
-    if (titulo) modelosComCurva.add(titulo);
-    if (marcaModelo) modelosComCurva.add(marcaModelo);
-    if (codigoModelo) codigosModelosComCurva.add(codigoModelo);
+    registrarChave(modelo, marcador);
+    registrarChave(titulo, marcador);
+    registrarChave(marcaModelo, marcador);
+    if (codigoModelo) {
+      codigosModelosComCurva.add(codigoModelo);
+      marcadoresCurvasPorCodigo.set(codigoModelo, marcador);
+    }
   });
   marcadoresCurvasCarregados = true;
   window.PLUGVE_MODELOS_COM_CURVA = modelosComCurva;
+  window.PLUGVE_MARCADORES_CURVAS = marcadoresCurvasPorNome;
   if (typeof window.aplicarChecksModelosFipe === "function") window.aplicarChecksModelosFipe();
 }
 
-function modeloTemCurva(textoModelo, codigoModelo = "") {
+function obterMarcadorCurva(textoModelo, codigoModelo = "") {
   const codigo = String(codigoModelo || "").trim();
-  if (codigo && codigosModelosComCurva.has(codigo)) return true;
+  if (codigo && marcadoresCurvasPorCodigo.has(codigo)) return marcadoresCurvasPorCodigo.get(codigo);
   const alvo = normalizarBusca(textoModelo);
-  if (!alvo) return false;
-  for (const salvo of modelosComCurva) {
-    if (alvo.includes(salvo) || salvo.includes(alvo)) return true;
-  }
-  return false;
+  if (!alvo) return null;
+  if (marcadoresCurvasPorNome.has(alvo)) return marcadoresCurvasPorNome.get(alvo);
+  return null;
 }
+
+function modeloTemCurva(textoModelo, codigoModelo = "") {
+  return Boolean(obterMarcadorCurva(textoModelo, codigoModelo));
+}
+
 
 function lerCacheMarcadoresCurvas() {
   try {
@@ -2720,11 +2806,17 @@ function aplicarChecksModelosFipe() {
   if (!select) return;
   Array.from(select.options || []).forEach(opt => {
     if (!opt.value) return;
-    const nomeOriginal = String(opt.dataset.nome || opt.textContent || "").replace(/^\s*[✓✔]\s*/u, "").trim();
+    const nomeOriginal = String(opt.dataset.nome || opt.textContent || "").replace(/^\s*[✓✔≈]\s*/u, "").trim();
     opt.dataset.nome = nomeOriginal;
-    const temCurva = modeloTemCurva(nomeOriginal, opt.value);
+    const marcador = obterMarcadorCurva(nomeOriginal, opt.value);
+    const temCurva = Boolean(marcador);
+    const tipoCurva = marcador?.tipo_curva === "similaridade" ? "similaridade" : (temCurva ? "propria" : "");
+    const simbolo = tipoCurva === "similaridade" ? "≈" : (temCurva ? "✓" : "");
     opt.dataset.curvaSalva = temCurva ? "1" : "0";
-    opt.textContent = `${temCurva ? "✓ " : ""}${nomeOriginal}`;
+    opt.dataset.tipoCurva = tipoCurva;
+    opt.dataset.modeloReferencia = marcador?.modelo_referencia || marcador?.modelo_referencia_similaridade || "";
+    opt.dataset.chaveCurvaReferencia = marcador?.chave_curva_referencia || "";
+    opt.textContent = `${simbolo ? `${simbolo} ` : ""}${nomeOriginal}`;
     if (temCurva && opt.dataset.temZeroKm === "1") opt.style.fontWeight = "800";
   });
   if (typeof window.atualizarComboboxesFipeCurVE === "function") window.atualizarComboboxesFipeCurVE();

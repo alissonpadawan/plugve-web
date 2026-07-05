@@ -25,7 +25,7 @@
   }
 
   function limparMarcadorCurva(texto) {
-    return String(texto || "").replace(/^\s*[✓✔]\s*/u, "").trim();
+    return String(texto || "").replace(/^\s*[✓✔≈]\s*/u, "").trim();
   }
 
   function textoOpcao(option) {
@@ -61,7 +61,19 @@
 
   function optionTemCurvaSalva(option) {
     if (!option || !option.value) return false;
-    return option.dataset.curvaSalva === "1" || /^\s*[✓✔]\s*/u.test(option.textContent || "");
+    return option.dataset.curvaSalva === "1" || /^\s*[✓✔≈]\s*/u.test(option.textContent || "");
+  }
+
+  function tipoCurvaOption(option) {
+    const tipo = String(option?.dataset?.tipoCurva || "").toLowerCase();
+    if (tipo === "similaridade") return "similaridade";
+    return optionTemCurvaSalva(option) ? "propria" : "";
+  }
+
+  function simboloCurvaOption(option) {
+    const tipo = tipoCurvaOption(option);
+    if (tipo === "similaridade") return "≈";
+    return tipo === "propria" ? "✓" : "";
   }
 
   function atualizarBotao(inst) {
@@ -71,7 +83,8 @@
     const semValor = !select.value;
 
     const temCurva = !!option && optionTemCurvaSalva(option);
-    inst.label.textContent = temCurva ? `✓ ${texto}` : texto;
+    const simbolo = simboloCurvaOption(option);
+    inst.label.textContent = temCurva && simbolo ? `${simbolo} ${texto}` : texto;
     inst.button.disabled = !!select.disabled;
     inst.wrapper.classList.toggle("is-disabled", !!select.disabled);
     inst.wrapper.classList.toggle("has-value", !semValor);
@@ -88,12 +101,16 @@
     item.setAttribute("role", "option");
     item.dataset.value = option.value || "";
     item.disabled = !!option.disabled;
-    item.title = option.title || textoOpcao(option);
+    const tipoCurva = tipoCurvaOption(option);
+    const simboloCurva = simboloCurvaOption(option);
+    item.title = option.title || (tipoCurva === "similaridade" && option.dataset.modeloReferencia
+      ? `${textoOpcao(option)} — curva herdada de ${option.dataset.modeloReferencia}`
+      : textoOpcao(option));
 
     if (optionTemCurvaSalva(option)) {
       const marker = document.createElement("span");
       marker.className = "fipe-combobox-curve-check";
-      marker.textContent = "✓";
+      marker.textContent = simboloCurva || "✓";
       marker.setAttribute("aria-hidden", "true");
       item.appendChild(marker);
     }
@@ -112,6 +129,7 @@
     if (optionTemDestaqueZero(option)) item.classList.add("is-zero-km");
     if (optionPendente(option)) item.classList.add("is-pending");
     if (optionTemCurvaSalva(option)) item.classList.add("is-saved-curve");
+    if (tipoCurva === "similaridade") item.classList.add("is-similarity-curve");
 
     item.addEventListener("click", () => {
       if (item.disabled) return;
@@ -293,7 +311,7 @@
       subtree: true,
       attributes: true,
       characterData: true,
-      attributeFilter: ["disabled", "class", "style", "title", "data-nome", "data-nome-original", "data-tem-zero-km", "data-varrida", "data-modelo-novo", "data-curva-salva", "selected"]
+      attributeFilter: ["disabled", "class", "style", "title", "data-nome", "data-nome-original", "data-tem-zero-km", "data-varrida", "data-modelo-novo", "data-curva-salva", "data-tipo-curva", "data-modelo-referencia", "data-chave-curva-referencia", "selected"]
     });
 
     select.form?.addEventListener("reset", () => {

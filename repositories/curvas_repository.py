@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import json
 import re
 from datetime import datetime
 from functools import lru_cache
@@ -24,15 +25,18 @@ class CurvasRepository:
     def status_bases(self) -> dict[str, Any]:
         curvas_c = self._ler_csv(self._arquivo_curvas_combustao())
         curvas_e = self._ler_csv(self._arquivo_curvas_eletrico())
+        vinculos = self.listar_vinculos_similaridade()
         hist_c = self.historico.carregar_historico_combustao()
         hist_e = self.historico.carregar_historico_eletrico()
         return {
             "curvas_combustao": len(curvas_c),
             "curvas_eletrico": len(curvas_e),
+            "vinculos_similaridade": len(vinculos),
             "historico_combustao": len(hist_c),
             "historico_eletrico": len(hist_e),
             "arquivo_curvas_combustao": str(self._arquivo_curvas_combustao()),
             "arquivo_curvas_eletrico": str(self._arquivo_curvas_eletrico()),
+            "arquivo_vinculos_similaridade": str(self._arquivo_vinculos_similaridade()),
             "persistent_dir": str(current_app.config.get("PERSISTENT_DIR", "")),
             "fipe_cache_dir": str(current_app.config.get("FIPE_CACHE_DIR", "")),
         }
@@ -42,9 +46,22 @@ class CurvasRepository:
         if not curvas:
             return None
 
+        # Prioridade metodológica: curva própria sempre vence.
         curva = self._buscar_por_codigo_fipe(curvas, veiculo.codigo_fipe)
         if curva:
             return self._montar_resultado_combustao(curva, veiculo, tipo_match="codigo_fipe")
+
+        # Em seguida, usa apenas vínculo explícito vindo do Painel Local.
+        vinculo = self._buscar_vinculo_similaridade_veiculo(veiculo, "combustao", curvas)
+        if vinculo:
+            curva_ref = self.buscar_curva_referencia_por_vinculo(vinculo, curvas)
+            if curva_ref:
+                return self._montar_resultado_combustao(
+                    curva_ref,
+                    veiculo,
+                    tipo_match="similaridade_manual",
+                    similaridade_info=self._montar_info_similaridade(vinculo, curva_ref, veiculo),
+                )
 
         familia = self.familias.buscar_familia(veiculo.codigo_marca, veiculo.codigo_modelo, veiculo.marca, veiculo.modelo)
         if familia:
@@ -65,9 +82,22 @@ class CurvasRepository:
         if not curvas:
             return None
 
+        # Prioridade metodológica: curva própria sempre vence.
         curva = self._buscar_ev_por_codigos(curvas, veiculo.codigo_marca, veiculo.codigo_modelo)
         if curva:
             return self._montar_resultado_eletrico(curva, veiculo, tipo_match="codigo_modelo")
+
+        # Em seguida, usa apenas vínculo explícito vindo do Painel Local.
+        vinculo = self._buscar_vinculo_similaridade_veiculo(veiculo, "eletrico", curvas)
+        if vinculo:
+            curva_ref = self.buscar_curva_referencia_por_vinculo(vinculo, curvas)
+            if curva_ref:
+                return self._montar_resultado_eletrico(
+                    curva_ref,
+                    veiculo,
+                    tipo_match="similaridade_manual",
+                    similaridade_info=self._montar_info_similaridade(vinculo, curva_ref, veiculo),
+                )
 
         curva = self._buscar_por_nome(curvas, veiculo.marca, veiculo.modelo)
         if curva:
@@ -279,17 +309,31 @@ class CurvasRepository:
 
         O Render não calcula curva aqui. Ele apenas recebe linhas já validadas
         pelo painel local e atualiza os CSVs persistentes em /var/data/plugve.
+        A partir da V35, também preserva os vínculos explícitos de similaridade
+        enviados pelo painel para que o site diferencie curva própria de curva
+        herdada por similaridade.
         """
         curvas_combustao = payload.get("curvas_combustao") or []
         curvas_eletrico = payload.get("curvas_eletrico") or []
+        vinculos_similaridade = payload.get("vinculos_similaridade")
         if not isinstance(curvas_combustao, list):
             curvas_combustao = []
         if not isinstance(curvas_eletrico, list):
             curvas_eletrico = []
-        return {
+        resultado = {
             "combustao": self._importar_curvas_csv("combustao", curvas_combustao),
             "eletrico": self._importar_curvas_csv("eletrico", curvas_eletrico),
         }
+        if isinstance(vinculos_similaridade, list):
+            resultado["vinculos_similaridade"] = self._importar_vinculos_similaridade(vinculos_similaridade)
+        else:
+            resultado["vinculos_similaridade"] = {
+                "recebidos": 0,
+                "importados": 0,
+                "mantido_arquivo_existente": True,
+                "arquivo": str(self._arquivo_vinculos_similaridade()),
+            }
+        return resultado
 
     def _importar_curvas_csv(self, tipo: str, curvas: list[dict[str, Any]]) -> dict[str, Any]:
         tipo_norm = str(tipo or "").strip().lower()
@@ -548,6 +592,168 @@ class CurvasRepository:
 
     def _arquivo_curvas_eletrico(self) -> Path:
         return Path(current_app.config["ARQUIVO_CURVAS_ELETRICO"])
+
+    def _arquivo_vinculos_similaridade(self) -> Path:
+        return Path(current_app.config.get("PERSISTENT_DIR", "data/_runtime")) / "vinculos_similaridade_curvas.json"
+
+    def _normalizar_vinculo_similaridade(self, row: dict[str, Any]) -> dict[str, Any]:
+        tipo = str(row.get("tipo") or row.get("tipo_curva") or "combustao").strip().lower()
+        if tipo in {"ev", "eletrico", "elétrico", "phev", "bev"}:
+            tipo = "eletrico"
+        else:
+            tipo = "combustao"
+        modelo_id = str(row.get("modelo_id") or row.get("codigo_modelo") or "").strip()
+        marca_id = str(row.get("marca_id") or row.get("codigo_marca") or "").strip()
+        chave = str(row.get("chave_curva_referencia") or row.get("chave_curva") or row.get("curve_id_referencia") or "").strip()
+        return {
+            "tipo": tipo,
+            "marca": str(row.get("marca") or row.get("marca_nome") or "").strip(),
+            "marca_id": marca_id,
+            "modelo": str(row.get("modelo") or row.get("modelo_nome") or "").strip(),
+            "modelo_id": modelo_id,
+            "codigo_marca": marca_id,
+            "codigo_modelo": modelo_id,
+            "codigo_fipe": str(row.get("codigo_fipe") or "").strip(),
+            "chave_curva_referencia": chave,
+            "similaridade_status": str(row.get("similaridade_status") or row.get("status_similaridade") or row.get("status") or "").strip(),
+            "modelo_referencia": str(row.get("modelo_referencia") or row.get("modelo_base") or row.get("modelo_pai") or "").strip(),
+            "modelo_referencia_id": str(row.get("modelo_referencia_id") or row.get("modelo_id_referencia") or "").strip(),
+            "marca_referencia": str(row.get("marca_referencia") or row.get("marca") or "").strip(),
+            "origem_similaridade": str(row.get("origem_similaridade") or row.get("origem") or "painel_local_similaridade").strip(),
+            "origem": str(row.get("origem") or "painel_local_similaridade").strip(),
+            "data_importacao_render": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        }
+
+    def _importar_vinculos_similaridade(self, vinculos: list[dict[str, Any]]) -> dict[str, Any]:
+        caminho = self._arquivo_vinculos_similaridade()
+        caminho.parent.mkdir(parents=True, exist_ok=True)
+        importados: list[dict[str, Any]] = []
+        ignorados = 0
+        for row in vinculos:
+            if not isinstance(row, dict):
+                ignorados += 1
+                continue
+            item = self._normalizar_vinculo_similaridade(row)
+            if not item.get("modelo") and not item.get("modelo_id"):
+                ignorados += 1
+                continue
+            if not item.get("chave_curva_referencia"):
+                ignorados += 1
+                continue
+            importados.append(item)
+        try:
+            if caminho.exists():
+                backup = caminho.with_suffix(caminho.suffix + f".bak_{datetime.now().strftime('%Y%m%d_%H%M%S')}")
+                backup.write_bytes(caminho.read_bytes())
+        except Exception:
+            pass
+        caminho.write_text(json.dumps(importados, ensure_ascii=False, indent=2), encoding="utf-8")
+        return {
+            "arquivo": str(caminho),
+            "recebidos": len(vinculos),
+            "importados": len(importados),
+            "ignorados": ignorados,
+        }
+
+    def listar_vinculos_similaridade(self) -> list[dict[str, Any]]:
+        caminho = self._arquivo_vinculos_similaridade()
+        if not caminho.exists():
+            return []
+        try:
+            dados = json.loads(caminho.read_text(encoding="utf-8") or "[]")
+            if isinstance(dados, dict):
+                dados = dados.get("vinculos") or dados.get("items") or []
+            if not isinstance(dados, list):
+                return []
+            return [self._normalizar_vinculo_similaridade(row) for row in dados if isinstance(row, dict)]
+        except Exception:
+            return []
+
+    def _vinculo_eh_similaridade_aplicavel(self, vinculo: dict[str, Any]) -> bool:
+        status = normalizar_texto(vinculo.get("similaridade_status") or vinculo.get("status") or "")
+        if status not in {"sim", "similar", "similaridade"}:
+            return False
+        return bool(str(vinculo.get("chave_curva_referencia") or "").strip())
+
+    @staticmethod
+    def _chave_curva_linha(row: dict[str, Any]) -> str:
+        return str(row.get("chave_curva") or row.get("curve_id") or "").strip()
+
+    def _curva_valida_para_similaridade(self, row: dict[str, Any]) -> bool:
+        if not isinstance(row, dict):
+            return False
+        status = str(row.get("status", "OK") or "OK").strip().upper()
+        if status not in {"", "OK", "HOMOLOGADA", "EXPLORATORIA", "EXPLORATÓRIA"}:
+            return False
+        return not self._curva_combustao_v2_invalida(row)
+
+    def buscar_curva_referencia_por_vinculo(self, vinculo: dict[str, Any], curvas: list[dict[str, Any]] | None = None) -> dict[str, Any] | None:
+        if not self._vinculo_eh_similaridade_aplicavel(vinculo):
+            return None
+        tipo = str(vinculo.get("tipo") or "combustao").strip().lower()
+        if curvas is None:
+            caminho = self._arquivo_curvas_eletrico() if tipo == "eletrico" else self._arquivo_curvas_combustao()
+            curvas = self._ler_csv(caminho)
+        chave = str(vinculo.get("chave_curva_referencia") or "").strip()
+        if not chave:
+            return None
+        candidatos = [row for row in curvas if self._chave_curva_linha(row) == chave and self._curva_valida_para_similaridade(row)]
+        candidatos = self._ordenar_curvas_preferidas(candidatos)
+        return candidatos[0] if candidatos else None
+
+    def _vinculo_corresponde_veiculo(self, vinculo: dict[str, Any], veiculo: VeiculoSelecionado, tipo: str) -> bool:
+        tipo_v = str(vinculo.get("tipo") or "").strip().lower()
+        if tipo_v and tipo_v != tipo:
+            return False
+        marca_id_v = str(vinculo.get("marca_id") or vinculo.get("codigo_marca") or "").strip()
+        modelo_id_v = str(vinculo.get("modelo_id") or vinculo.get("codigo_modelo") or "").strip()
+        marca_id = str(veiculo.codigo_marca or "").strip()
+        modelo_id = str(veiculo.codigo_modelo or "").strip()
+        if marca_id_v and modelo_id_v and marca_id and modelo_id:
+            return marca_id_v == marca_id and modelo_id_v == modelo_id
+        marca_v = normalizar_texto(vinculo.get("marca", ""))
+        modelo_v = normalizar_texto(vinculo.get("modelo", ""))
+        marca = normalizar_texto(veiculo.marca)
+        modelo = normalizar_texto(veiculo.modelo)
+        return bool(marca_v and modelo_v and marca_v == marca and modelo_v == modelo)
+
+    def _buscar_vinculo_similaridade_veiculo(self, veiculo: VeiculoSelecionado, tipo: str, curvas: list[dict[str, Any]]) -> dict[str, Any] | None:
+        candidatos: list[dict[str, Any]] = []
+        for vinculo in self.listar_vinculos_similaridade():
+            if not self._vinculo_eh_similaridade_aplicavel(vinculo):
+                continue
+            if not self._vinculo_corresponde_veiculo(vinculo, veiculo, tipo):
+                continue
+            if not self.buscar_curva_referencia_por_vinculo(vinculo, curvas):
+                continue
+            candidatos.append(vinculo)
+        return candidatos[0] if candidatos else None
+
+    def _montar_info_similaridade(self, vinculo: dict[str, Any], curva_referencia: dict[str, Any], veiculo: VeiculoSelecionado) -> dict[str, Any]:
+        modelo_ref = str(
+            vinculo.get("modelo_referencia")
+            or curva_referencia.get("modelo")
+            or curva_referencia.get("titulo")
+            or ""
+        ).strip()
+        marca_ref = str(vinculo.get("marca_referencia") or curva_referencia.get("marca") or vinculo.get("marca") or "").strip()
+        if marca_ref and modelo_ref and marca_ref.lower() not in modelo_ref.lower():
+            modelo_ref_titulo = f"{marca_ref} {modelo_ref}".strip()
+        else:
+            modelo_ref_titulo = modelo_ref or str(curva_referencia.get("titulo") or "").strip()
+        return {
+            "tipo_curva_aplicada": "similaridade",
+            "curva_propria": False,
+            "curva_por_similaridade": True,
+            "similaridade_curva": True,
+            "modelo_selecionado": " ".join(parte for parte in [veiculo.marca, veiculo.modelo] if parte).strip(),
+            "modelo_referencia_similaridade": modelo_ref_titulo,
+            "modelo_referencia": modelo_ref_titulo,
+            "modelo_referencia_id": str(vinculo.get("modelo_referencia_id") or curva_referencia.get("modelo_id") or "").strip(),
+            "chave_curva_referencia": str(vinculo.get("chave_curva_referencia") or self._chave_curva_linha(curva_referencia) or "").strip(),
+            "origem_similaridade": str(vinculo.get("origem_similaridade") or "painel_local_similaridade").strip(),
+            "similaridade_status": str(vinculo.get("similaridade_status") or "sim").strip(),
+        }
 
     @staticmethod
     @lru_cache(maxsize=16)
@@ -914,6 +1120,7 @@ class CurvasRepository:
         janela: int,
         confianca: str,
         relatorio_original: str,
+        similaridade_info: dict[str, Any] | None = None,
     ) -> str:
         titulo = " ".join(parte for parte in [veiculo.marca, veiculo.modelo, str(veiculo.ano_modelo or "").strip()] if parte).strip()
         codigo_fipe = str(veiculo.codigo_fipe or curva.get("codigo_fipe") or "").strip()
@@ -938,6 +1145,19 @@ class CurvasRepository:
             f"Pontos históricos: {pontos}",
             f"Janela histórica: {janela} meses",
             f"Confiança: {confianca or '-'}",
+        ]
+        if similaridade_info and similaridade_info.get("curva_por_similaridade"):
+            linhas.extend([
+                "",
+                "2.1. HERANÇA POR SIMILARIDADE",
+                "Tipo de curva aplicada: curva herdada por similaridade",
+                f"Modelo selecionado pelo usuário: {similaridade_info.get('modelo_selecionado') or titulo or '-'}",
+                f"Modelo referência da curva: {similaridade_info.get('modelo_referencia_similaridade') or similaridade_info.get('modelo_referencia') or '-'}",
+                f"Origem do vínculo: {similaridade_info.get('origem_similaridade') or '-'}",
+                f"Chave da curva referência: {similaridade_info.get('chave_curva_referencia') or '-'}",
+                "Observação: o valor FIPE inicial permanece sendo o do veículo selecionado; somente a função/taxa de depreciação é herdada do modelo referência.",
+            ])
+        linhas.extend([
             "",
             "3. TAXAS E PROJEÇÃO",
             f"Taxa mensal híbrida base da curva: {taxa_mensal_hibrida:.4f}% a.m.",
@@ -950,7 +1170,7 @@ class CurvasRepository:
             "",
             "4. OBSERVAÇÃO METODOLÓGICA",
             "O site aplicou a curva salva sobre o valor FIPE do ano/combustível selecionado. Para veículos usados, a projeção começa na idade atual do veículo dentro da curva, usando o mesmo offset de idade e o mesmo taper mensal do painel local.",
-        ]
+        ])
         original = str(relatorio_original or "").strip()
         if original:
             linhas.extend([
@@ -960,7 +1180,7 @@ class CurvasRepository:
             ])
         return "\n".join(linhas).strip()
 
-    def _montar_resultado_combustao(self, curva: dict[str, Any], veiculo: VeiculoSelecionado, tipo_match: str) -> dict[str, Any]:
+    def _montar_resultado_combustao(self, curva: dict[str, Any], veiculo: VeiculoSelecionado, tipo_match: str, similaridade_info: dict[str, Any] | None = None) -> dict[str, Any]:
         """Aplica a curva salva ao valor FIPE selecionado.
 
         Esta rotina replica a etapa leve do painel local: a curva já existe e
@@ -1023,6 +1243,9 @@ class CurvasRepository:
         ).strip()
 
         origem_curva = str(curva.get("fonte_ajuste", "curva salva combustão") or "curva salva combustão")
+        if similaridade_info and similaridade_info.get("curva_por_similaridade"):
+            modelo_ref = similaridade_info.get("modelo_referencia_similaridade") or similaridade_info.get("modelo_referencia") or "modelo referência"
+            origem_curva = f"Curva herdada por similaridade manual do modelo {modelo_ref}"
         if idade_entrada_meses > 0:
             origem_curva = f"{origem_curva} | reaplicada com offset de idade de {idade_entrada_anos:.2f} ano(s)"
 
@@ -1047,6 +1270,7 @@ class CurvasRepository:
             janela=janela,
             confianca=confianca_resultado,
             relatorio_original=relatorio_tecnico,
+            similaridade_info=similaridade_info,
         )
 
         valor_base_salvo = self._valor_cenario_curva(curva, horizonte, "base")
@@ -1054,7 +1278,12 @@ class CurvasRepository:
         valor_pe_salvo = self._valor_cenario_curva(curva, horizonte, "pessimista")
 
         curva_aplicada = dict(curva)
+        metadados_similaridade = dict(similaridade_info or {})
         curva_aplicada.update({
+            **metadados_similaridade,
+            "tipo_curva_aplicada": "similaridade" if metadados_similaridade else "propria",
+            "curva_propria": False if metadados_similaridade else True,
+            "curva_por_similaridade": bool(metadados_similaridade),
             "valor_fipe_atual": round(valor_atual, 2),
             "valor_futuro_base": round(valor_futuro, 2),
             "valor_futuro_otimista": round(valor_futuro_otimista, 2) if valor_futuro_otimista > 0 else 0.0,
@@ -1074,7 +1303,8 @@ class CurvasRepository:
         })
 
         auditoria_historico = {
-            "modo_calculo": "curva_salva_usado_com_offset" if idade_entrada_meses > 0 else "curva_salva_zero_km",
+            **metadados_similaridade,
+            "modo_calculo": "curva_salva_similaridade_usado_com_offset" if metadados_similaridade and idade_entrada_meses > 0 else ("curva_salva_similaridade_zero_km" if metadados_similaridade else ("curva_salva_usado_com_offset" if idade_entrada_meses > 0 else "curva_salva_zero_km")),
             "idade_entrada_meses": idade_entrada_meses,
             "idade_entrada_anos": round(idade_entrada_anos, 4),
             "data_base_fipe": data_base_fipe,
@@ -1097,7 +1327,12 @@ class CurvasRepository:
 
         return {
             "tipo": "combustao",
-            "tipo_match": tipo_match,
+            "tipo_match": "similaridade_manual" if metadados_similaridade else tipo_match,
+            "tipo_curva_aplicada": "similaridade" if metadados_similaridade else "propria",
+            "curva_propria": False if metadados_similaridade else True,
+            "curva_por_similaridade": bool(metadados_similaridade),
+            "similaridade_curva": bool(metadados_similaridade),
+            **metadados_similaridade,
             "curva": curva_aplicada,
             "valor_atual": round(valor_atual, 2),
             "valor_futuro": round(valor_futuro, 2),
@@ -1140,7 +1375,7 @@ class CurvasRepository:
             "auditoria_historico": auditoria_historico,
         }
 
-    def _montar_resultado_eletrico(self, curva: dict[str, Any], veiculo: VeiculoSelecionado, tipo_match: str) -> dict[str, Any]:
+    def _montar_resultado_eletrico(self, curva: dict[str, Any], veiculo: VeiculoSelecionado, tipo_match: str, similaridade_info: dict[str, Any] | None = None) -> dict[str, Any]:
         horizonte = veiculo.horizonte_anos
         valor_atual = veiculo.valor_atual or parse_float_seguro(curva.get("valor_fipe_atual"), 0.0)
         valor_futuro = parse_float_seguro(curva.get("valor_futuro_base"), 0.0)
@@ -1181,11 +1416,49 @@ class CurvasRepository:
             or curva.get("relatorio_textual")
             or ""
         ).strip()
+        metadados_similaridade = dict(similaridade_info or {})
+        origem_curva = str(curva.get("origem_curva", "curva EV salva") or "curva EV salva")
+        if metadados_similaridade:
+            modelo_ref = metadados_similaridade.get("modelo_referencia_similaridade") or metadados_similaridade.get("modelo_referencia") or "modelo referência"
+            origem_curva = f"Curva herdada por similaridade manual do modelo {modelo_ref}"
+            bloco = [
+                "RELATÓRIO TÉCNICO DE AUDITORIA DA DEPRECIAÇÃO",
+                "",
+                "1. HERANÇA POR SIMILARIDADE",
+                "Tipo de curva aplicada: curva herdada por similaridade",
+                f"Modelo selecionado pelo usuário: {metadados_similaridade.get('modelo_selecionado') or f'{veiculo.marca} {veiculo.modelo}'.strip() or '-'}",
+                f"Modelo referência da curva: {modelo_ref or '-'}",
+                f"Origem do vínculo: {metadados_similaridade.get('origem_similaridade') or '-'}",
+                f"Chave da curva referência: {metadados_similaridade.get('chave_curva_referencia') or '-'}",
+                "Observação: o valor FIPE inicial permanece sendo o do veículo selecionado; somente a função/taxa de depreciação é herdada do modelo referência.",
+            ]
+            if relatorio_tecnico:
+                bloco.extend(["", "2. RELATÓRIO TÉCNICO ORIGINAL EXPORTADO COM A CURVA", relatorio_tecnico])
+            relatorio_tecnico = "\n".join(bloco).strip()
+
+        curva_aplicada = dict(curva)
+        curva_aplicada.update({
+            **metadados_similaridade,
+            "tipo_curva_aplicada": "similaridade" if metadados_similaridade else "propria",
+            "curva_propria": False if metadados_similaridade else True,
+            "curva_por_similaridade": bool(metadados_similaridade),
+            "valor_fipe_atual": round(valor_atual, 2),
+            "valor_futuro_base": round(valor_futuro, 2),
+            "valor_futuro_otimista": round(valor_otimista, 2) if valor_otimista > 0 else 0.0,
+            "valor_futuro_pessimista": round(valor_pessimista, 2) if valor_pessimista > 0 else 0.0,
+            "horizonte_relatorio_anos": horizonte,
+            "horizonte_meses": horizonte_meses,
+        })
 
         return {
             "tipo": "eletrico",
-            "tipo_match": tipo_match,
-            "curva": curva,
+            "tipo_match": "similaridade_manual" if metadados_similaridade else tipo_match,
+            "tipo_curva_aplicada": "similaridade" if metadados_similaridade else "propria",
+            "curva_propria": False if metadados_similaridade else True,
+            "curva_por_similaridade": bool(metadados_similaridade),
+            "similaridade_curva": bool(metadados_similaridade),
+            **metadados_similaridade,
+            "curva": curva_aplicada,
             "valor_atual": round(valor_atual, 2),
             "valor_futuro": round(valor_futuro, 2),
             "valor_futuro_base": round(valor_futuro, 2),
@@ -1215,9 +1488,10 @@ class CurvasRepository:
             "confianca": classificar_confianca_eletrico(curva.get("confianca_ev", ""), pontos, janela),
             "pontos_historicos": pontos,
             "janela_historica_meses": janela,
-            "origem_curva": str(curva.get("origem_curva", "curva EV salva") or "curva EV salva"),
+            "origem_curva": origem_curva,
             "auditoria_historico": {
-                "modo_calculo": "curva_ev_salva_taxa_anual_equivalente",
+                **metadados_similaridade,
+                "modo_calculo": "curva_ev_salva_por_similaridade_taxa_anual_equivalente" if metadados_similaridade else "curva_ev_salva_taxa_anual_equivalente",
                 "horizonte_meses": horizonte_meses,
                 "inicio_curva_meses": 0,
                 "fim_curva_meses": horizonte_meses,

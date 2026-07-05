@@ -51,3 +51,7 @@ def bootstrap_persistent_storage(app: Flask) -> None:
     pendencias = persistent_dir / "pendencias_curvas.json"
     if not pendencias.exists():
         pendencias.write_text("[]", encoding="utf-8")
+
+    vinculos = persistent_dir / "vinculos_similaridade_curvas.json"
+    if not vinculos.exists():
+        vinculos.write_text("[]", encoding="utf-8")

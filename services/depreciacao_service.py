@@ -66,7 +66,9 @@ class DepreciacaoService:
             ).to_dict()
 
         mensagem = "Curva salva encontrada e carregada com sucesso."
-        if tipo == "eletrico":
+        if resultado.get("curva_por_similaridade"):
+            mensagem = "Curva por similaridade encontrada e carregada com sucesso."
+        elif tipo == "eletrico":
             mensagem = "Curva EV salva encontrada e carregada com sucesso."
         elif tipo == "combustao":
             mensagem = "Curva de combustão salva encontrada e carregada com sucesso."
@@ -94,6 +96,13 @@ class DepreciacaoService:
                 "tipo_utilizado": tipo,
                 "tipo_label": tipo_label,
                 "tipo_match": resultado.get("tipo_match"),
+                "tipo_curva_aplicada": resultado.get("tipo_curva_aplicada"),
+                "curva_propria": resultado.get("curva_propria"),
+                "curva_por_similaridade": resultado.get("curva_por_similaridade"),
+                "similaridade_curva": resultado.get("similaridade_curva"),
+                "modelo_referencia_similaridade": resultado.get("modelo_referencia_similaridade"),
+                "chave_curva_referencia": resultado.get("chave_curva_referencia"),
+                "origem_similaridade": resultado.get("origem_similaridade"),
                 "origem_curva": resultado.get("origem_curva"),
                 "confianca": resultado.get("confianca"),
                 "pontos_historicos": resultado.get("pontos_historicos"),
@@ -151,6 +160,17 @@ class DepreciacaoService:
             "projecao_mensal",
             "auditoria_historico",
             "relatorio_tecnico",
+            "tipo_curva_aplicada",
+            "curva_propria",
+            "curva_por_similaridade",
+            "similaridade_curva",
+            "modelo_referencia_similaridade",
+            "modelo_referencia",
+            "modelo_referencia_id",
+            "chave_curva_referencia",
+            "origem_similaridade",
+            "similaridade_status",
+            "modelo_selecionado",
         )
         for campo in campos_extras_resultado:
             valor = resultado.get(campo)
@@ -410,44 +430,99 @@ class DepreciacaoService:
 
 
     def marcadores_curvas_salvas(self) -> dict[str, Any]:
-        """Retorna uma lista leve para marcar modelos com curva pronta na interface.
+        """Retorna marcadores leves de curva própria e similaridade manual.
 
-        Este endpoint não carrega históricos FIPE nem famílias. Ele lê apenas os
-        CSVs de curvas já prontas, para que os checks dos selects sejam
-        atualizados em segundo plano sem atrasar a escolha de marca/modelo.
+        O endpoint não carrega históricos FIPE. Ele lê as curvas oficiais salvas
+        e os vínculos explícitos enviados pelo Painel Local, mantendo três
+        estados na interface: curva própria, curva por similaridade e sem curva.
         """
         curvas_combustao = self.curvas._ler_csv(self.curvas._arquivo_curvas_combustao())
         curvas_eletrico = self.curvas._ler_csv(self.curvas._arquivo_curvas_eletrico())
 
         modelos: list[dict[str, Any]] = []
+        chaves_proprias: set[tuple[str, str, str, str]] = set()
 
-        def adicionar(row: dict[str, Any], tipo: str) -> None:
+        def chave_modelo(tipo: str, codigo_marca: str, codigo_modelo: str, marca: str, modelo: str) -> tuple[str, str, str, str]:
+            if codigo_marca or codigo_modelo:
+                return (tipo, str(codigo_marca or "").strip(), str(codigo_modelo or "").strip(), "")
+            return (tipo, "", "", f"{normalizar_texto(marca)}|{normalizar_texto(modelo)}")
+
+        def adicionar_propria(row: dict[str, Any], tipo: str) -> None:
             resumo = self._resumir_curva(row, tipo)
             codigo_modelo = str(self._primeiro_valor(row, ["modelo_id", "codigo_modelo", "model_id"], "")).strip()
             codigo_marca = str(self._primeiro_valor(row, ["marca_id", "codigo_marca", "brand_id"], "")).strip()
             titulo = str(resumo.get("titulo") or "").strip()
             marca = str(resumo.get("marca") or "").strip()
             modelo = str(resumo.get("modelo") or "").strip()
-            if not (titulo or modelo or resumo.get("codigo_fipe")):
+            codigo_fipe = str(resumo.get("codigo_fipe") or "").strip()
+            if not (titulo or modelo or codigo_fipe):
                 return
+            chaves_proprias.add(chave_modelo(tipo, codigo_marca, codigo_modelo, marca, modelo))
             modelos.append({
                 "tipo": tipo,
+                "tipo_curva": "propria",
+                "curva_propria": True,
+                "curva_por_similaridade": False,
                 "titulo": titulo,
                 "marca": marca,
                 "modelo": modelo,
-                "codigo_fipe": str(resumo.get("codigo_fipe") or "").strip(),
+                "codigo_fipe": codigo_fipe,
                 "codigo_marca": codigo_marca,
                 "codigo_modelo": codigo_modelo,
+                "chave_curva": str(self._primeiro_valor(row, ["chave_curva", "curve_id"], "")).strip(),
             })
 
         for row in curvas_combustao:
-            adicionar(row, "combustao")
+            adicionar_propria(row, "combustao")
         for row in curvas_eletrico:
-            adicionar(row, "eletrico")
+            adicionar_propria(row, "eletrico")
+
+        curvas_por_tipo = {
+            "combustao": curvas_combustao,
+            "eletrico": curvas_eletrico,
+        }
+        similares_adicionados = 0
+        for vinculo in self.curvas.listar_vinculos_similaridade():
+            if not self.curvas._vinculo_eh_similaridade_aplicavel(vinculo):
+                continue
+            tipo = str(vinculo.get("tipo") or "combustao").strip().lower()
+            if tipo not in curvas_por_tipo:
+                tipo = "combustao"
+            marca = str(vinculo.get("marca") or "").strip()
+            modelo = str(vinculo.get("modelo") or "").strip()
+            codigo_marca = str(vinculo.get("marca_id") or vinculo.get("codigo_marca") or "").strip()
+            codigo_modelo = str(vinculo.get("modelo_id") or vinculo.get("codigo_modelo") or "").strip()
+            # Curva própria vence; não rebaixa um modelo próprio para similaridade.
+            if chave_modelo(tipo, codigo_marca, codigo_modelo, marca, modelo) in chaves_proprias:
+                continue
+            curva_ref = self.curvas.buscar_curva_referencia_por_vinculo(vinculo, curvas_por_tipo.get(tipo) or [])
+            if not curva_ref:
+                continue
+            titulo = f"{marca} {modelo}".strip() or modelo
+            modelos.append({
+                "tipo": tipo,
+                "tipo_curva": "similaridade",
+                "curva_propria": False,
+                "curva_por_similaridade": True,
+                "similaridade_curva": True,
+                "titulo": titulo,
+                "marca": marca,
+                "modelo": modelo,
+                "codigo_fipe": str(vinculo.get("codigo_fipe") or "").strip(),
+                "codigo_marca": codigo_marca,
+                "codigo_modelo": codigo_modelo,
+                "modelo_referencia": str(vinculo.get("modelo_referencia") or curva_ref.get("modelo") or curva_ref.get("titulo") or "").strip(),
+                "modelo_referencia_id": str(vinculo.get("modelo_referencia_id") or curva_ref.get("modelo_id") or "").strip(),
+                "chave_curva_referencia": str(vinculo.get("chave_curva_referencia") or self.curvas._chave_curva_linha(curva_ref) or "").strip(),
+                "origem_similaridade": str(vinculo.get("origem_similaridade") or "painel_local_similaridade").strip(),
+            })
+            similares_adicionados += 1
 
         return {
             "ok": True,
             "total": len(modelos),
+            "total_proprias": len(modelos) - similares_adicionados,
+            "total_similaridade": similares_adicionados,
             "gerado_em": datetime.now().isoformat(timespec="seconds"),
             "modelos": modelos,
         }
@@ -1560,6 +1635,19 @@ class DepreciacaoService:
             "modelo",
             "ano_modelo",
             "codigo_fipe",
+            "chave_curva",
+            "curve_id",
+            "tipo_curva_aplicada",
+            "curva_propria",
+            "curva_por_similaridade",
+            "similaridade_curva",
+            "modelo_referencia_similaridade",
+            "modelo_referencia",
+            "modelo_referencia_id",
+            "chave_curva_referencia",
+            "origem_similaridade",
+            "similaridade_status",
+            "modelo_selecionado",
             "family_id",
             "family_nome",
             "modelo_base_curva",

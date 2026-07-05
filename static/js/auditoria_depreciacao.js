@@ -106,6 +106,7 @@
     const detalhes = d.detalhes || {};
     const curva = detalhes.curva || {};
     const veiculo = detalhes.veiculo || {};
+    const auditoria = d.auditoria_historico || detalhes.auditoria_historico || {};
     const bruto = parseReportText(d);
     const finalProj = getFinalProjection(d);
     const horizonte = Math.max(1, firstNum(d.horizonte_anos, d.horizonte_relatorio_anos, detalhes.horizonte_anos, 5));
@@ -120,7 +121,23 @@
     const ia = firstNum(d.taxa_anual_efetiva_percentual, d.taxa_anual_percentual, taxaAnual(vi, vfBase, horizonte) * 100);
     const ref = firstNum(d.taxa_anual_referencia_percentual, detalhes.taxa_anual_referencia_percentual, curva.taxa_anual_referencia_percentual, curva.depreciacao_media_anual_principal_percentual, curva.depreciacao_media_anual_percentual, extractText(bruto, /Taxa anual equivalente de referência(?: da curva)?:\s*([0-9,.]+)/i));
     const tm = firstNum(d.taxa_mensal_hibrida_percentual, detalhes.taxa_mensal_hibrida_percentual, curva.taxa_mensal_hibrida_percentual, curva.taxa_mensal_percentual, extractText(bruto, /Taxa mensal híbrida base(?: da curva)?:\s*([0-9,.]+)/i));
+    const modeloReferenciaSimilaridade = firstText(
+      d.modelo_referencia_similaridade,
+      detalhes.modelo_referencia_similaridade,
+      auditoria.modelo_referencia_similaridade,
+      curva.modelo_referencia_similaridade,
+      d.modelo_referencia,
+      detalhes.modelo_referencia,
+      auditoria.modelo_referencia,
+      curva.modelo_referencia,
+      extractText(bruto, /Modelo referência da curva:\s*([^\n\r]+)/i)
+    );
+    const curvaPorSimilaridade = Boolean(
+      d.curva_por_similaridade || detalhes.curva_por_similaridade || auditoria.curva_por_similaridade || curva.curva_por_similaridade ||
+      String(d.tipo_curva_aplicada || detalhes.tipo_curva_aplicada || curva.tipo_curva_aplicada || "").toLowerCase() === "similaridade"
+    );
     const modeloBase = firstText(
+      curvaPorSimilaridade ? modeloReferenciaSimilaridade : "",
       curva.modelo_base_curva,
       detalhes.modelo_base_curva,
       extractText(bruto, /Modelo base usado como referência:\s*([^\n\r]+)/i),
@@ -134,6 +151,9 @@
     const idadeMeses = firstNum(d.idade_entrada_meses, detalhes.idade_entrada_meses, 0);
     const codigoFipe = firstText(veiculo.codigo_fipe, d.codigo_fipe, detalhes.codigo_fipe, curva.codigo_fipe, extractText(bruto, /Código FIPE:\s*([^\n\r]+)/i));
     const refFipe = firstText(d.data_base_fipe, detalhes.data_base_fipe, veiculo.referencia_fipe, veiculo.referencia, extractText(bruto, /Referência\/Data-base FIPE:\s*([^\n\r]+)/i), extractText(bruto, /Data-base da análise:\s*([^\n\r]+)/i));
+    const origemSimilaridade = firstText(d.origem_similaridade, detalhes.origem_similaridade, auditoria.origem_similaridade, curva.origem_similaridade, extractText(bruto, /Origem do vínculo:\s*([^\n\r]+)/i));
+    const chaveCurvaReferencia = firstText(d.chave_curva_referencia, detalhes.chave_curva_referencia, auditoria.chave_curva_referencia, curva.chave_curva_referencia, extractText(bruto, /Chave da curva referência:\s*([^\n\r]+)/i));
+    const tipoCurvaAplicada = curvaPorSimilaridade ? "Curva herdada por similaridade" : "Curva própria";
     return {
       data: d,
       veiculo: marcaModelo || "veículo selecionado",
@@ -152,6 +172,11 @@
       meses,
       idadeMeses,
       modeloBase,
+      curvaPorSimilaridade,
+      tipoCurvaAplicada,
+      modeloReferenciaSimilaridade,
+      origemSimilaridade,
+      chaveCurvaReferencia,
       anoBase,
       dataZero,
       pontos,
@@ -329,6 +354,12 @@
       `veículo                     = ${info.veiculo}`,
       `código FIPE                 = ${info.codigoFipe || "-"}`,
       `referência FIPE             = ${info.refFipe || "-"}`,
+      `tipo_curva                  = ${info.tipoCurvaAplicada}`,
+      ...(info.curvaPorSimilaridade ? [
+        `modelo_referência_herdado  = ${info.modeloReferenciaSimilaridade || info.modeloBase || "-"}`,
+        `origem_similaridade        = ${info.origemSimilaridade || "-"}`,
+        `chave_curva_referência     = ${info.chaveCurvaReferencia || "-"}`
+      ] : []),
       `VI                          = ${money(info.vi)}`,
       `VF_base                     = ${money(info.vfBase)}`,
       `VF_otimista                 = ${money(info.vfOpt)}`,
@@ -343,6 +374,7 @@
       `horizonte_h                 = ${formatYears(info.horizonte)}`,
       `horizonte_M                 = ${memory.meses} meses`,
       `idade_entrada_I0            = ${Math.round(info.idadeMeses || 0)} meses`,
+      `tipo_curva_aplicada         = ${info.tipoCurvaAplicada}`,
       `modelo_referência_curva     = ${info.modeloBase || "-"}`,
       `coorte_ano_base             = ${info.anoBase || "-"}`,
       `data_zero_km_base           = ${info.dataZero || "-"}`,
@@ -398,6 +430,7 @@
       `A curva de projeção é construída por pares ordenados (m, V_m).`,
       `A tabela mês a mês permite reconstituir o valor apresentado no resultado e validar a transição entre VI e VF.`,
       `Para veículos usados, a idade inicial I0 desloca a janela de aplicação da curva, evitando tratar o veículo usado como zero km.`,
+      ...(info.curvaPorSimilaridade ? [`Neste caso, a curva é herdada por similaridade: o valor FIPE inicial é do veículo selecionado e a função/taxa de depreciação vem do modelo referência informado na auditoria.`] : []),
       `O resultado é uma estimativa estatística baseada em FIPE, histórico e curva calibrada; não substitui avaliação comercial individual.`
     ].join("\n");
   }
