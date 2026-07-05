@@ -24,6 +24,15 @@
       .trim();
   }
 
+  function normalizarChaveMarcador(texto) {
+    return String(texto || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim();
+  }
+
   function limparMarcadorCurva(texto) {
     return String(texto || "").replace(/^\s*[✓✔≈]\s*/u, "").trim();
   }
@@ -59,14 +68,32 @@
     return option?.dataset?.varrida === "0" || cls.includes("marca-pendente-varredura") || option?.dataset?.modeloNovo === "1";
   }
 
+  function marcadorGlobalOption(option) {
+    if (!option || !option.value) return null;
+    const porCodigo = window.PLUGVE_MARCADORES_CURVAS_CODIGO;
+    const codigo = String(option.value || "").trim();
+    if (codigo && porCodigo && typeof porCodigo.has === "function" && porCodigo.has(codigo)) {
+      return porCodigo.get(codigo);
+    }
+    const porNome = window.PLUGVE_MARCADORES_CURVAS;
+    const nome = normalizarChaveMarcador(textoOpcao(option));
+    if (nome && porNome && typeof porNome.has === "function" && porNome.has(nome)) {
+      return porNome.get(nome);
+    }
+    return null;
+  }
+
   function optionTemCurvaSalva(option) {
     if (!option || !option.value) return false;
-    return option.dataset.curvaSalva === "1" || /^\s*[✓✔≈]\s*/u.test(option.textContent || "");
+    return option.dataset.curvaSalva === "1" || Boolean(marcadorGlobalOption(option)) || /^\s*[✓✔≈]\s*/u.test(option.textContent || "");
   }
 
   function tipoCurvaOption(option) {
     const tipo = String(option?.dataset?.tipoCurva || "").toLowerCase();
     if (tipo === "similaridade") return "similaridade";
+    const marcador = marcadorGlobalOption(option);
+    const tipoMarcador = String(marcador?.tipo_curva || marcador?.tipo_curva_aplicada || (marcador?.curva_por_similaridade ? "similaridade" : "")).toLowerCase();
+    if (tipoMarcador === "similaridade") return "similaridade";
     return optionTemCurvaSalva(option) ? "propria" : "";
   }
 
@@ -256,6 +283,10 @@
 
     function abrir() {
       if (select.disabled) return;
+      // Reaplica os marcadores no momento da abertura. Isso evita que a página
+      // Depreciação mostre a lista antiga quando os vínculos de similaridade
+      // chegaram depois do carregamento inicial dos modelos FIPE.
+      try { window.aplicarChecksModelosFipe?.(); } catch (e) {}
       if (instanciaAberta && instanciaAberta !== inst) fecharInstancia(instanciaAberta);
       const jaAberta = wrapper.classList.contains("open");
       if (jaAberta) {

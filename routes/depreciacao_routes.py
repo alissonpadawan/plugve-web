@@ -59,7 +59,12 @@ def painel():
 def marcadores_curvas():
     try:
         resp = jsonify(depreciacao_service.marcadores_curvas_salvas())
-        resp.headers["Cache-Control"] = "public, max-age=300"
+        # V35: os marcadores dependem de vínculos de similaridade enviados pelo
+        # Painel Local. Não devem ficar presos em cache HTTP/CDN antigo, porque
+        # isso faz a página Depreciação exibir só curvas próprias.
+        resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        resp.headers["Pragma"] = "no-cache"
+        resp.headers["Expires"] = "0"
         return resp
     except Exception as exc:
         return jsonify({"ok": False, "erro": str(exc), "modelos": []}), 200

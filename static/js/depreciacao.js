@@ -7,7 +7,7 @@ let marcadoresCurvasPorNome = new Map();
 let marcadoresCurvasPorCodigo = new Map();
 let marcadoresCurvasCarregados = false;
 let carregamentoMarcadoresCurvasIniciado = false;
-const MARCADORES_CURVAS_CACHE_KEY = "curve:depreciacao:marcadores:v35_dep_visual_sem_check_v2";
+const MARCADORES_CURVAS_CACHE_KEY = "curve:depreciacao:marcadores:v35_dep_visual_sem_check_v3";
 const MARCADORES_CURVAS_CACHE_TTL = 30 * 60 * 1000;
 let diagnosticoV1917AutoAtivo = false;
 let diagnosticoV1917Ciclos = 0;
@@ -1262,6 +1262,7 @@ function registrarModelosComCurva(lista) {
   marcadoresCurvasCarregados = true;
   window.PLUGVE_MODELOS_COM_CURVA = modelosComCurva;
   window.PLUGVE_MARCADORES_CURVAS = marcadoresCurvasPorNome;
+  window.PLUGVE_MARCADORES_CURVAS_CODIGO = marcadoresCurvasPorCodigo;
   if (typeof window.aplicarChecksModelosFipe === "function") {
     window.aplicarChecksModelosFipe();
     setTimeout(() => window.aplicarChecksModelosFipe?.(), 80);
@@ -1283,7 +1284,19 @@ function modeloTemCurva(textoModelo, codigoModelo = "") {
 }
 
 
+function limparCachesMarcadoresCurvasAntigos() {
+  try {
+    const prefixo = "curve:depreciacao:marcadores:";
+    Object.keys(localStorage || {}).forEach((chave) => {
+      if (chave.startsWith(prefixo) && chave !== MARCADORES_CURVAS_CACHE_KEY) {
+        localStorage.removeItem(chave);
+      }
+    });
+  } catch (e) {}
+}
+
 function lerCacheMarcadoresCurvas() {
+  limparCachesMarcadoresCurvasAntigos();
   try {
     const bruto = localStorage.getItem(MARCADORES_CURVAS_CACHE_KEY);
     if (!bruto) return null;
@@ -1316,7 +1329,7 @@ function carregarMarcadoresCurvasSalvas() {
   if (cache) aplicarMarcadoresCurvasData(cache);
   if (carregamentoMarcadoresCurvasIniciado) return;
   carregamentoMarcadoresCurvasIniciado = true;
-  fetch("/api/depreciacao/marcadores_curvas?v=20260705_dep_visual_sem_check_v2", { cache: "no-store", headers: { Accept: "application/json", "Cache-Control": "no-cache" } })
+  fetch("/api/depreciacao/marcadores_curvas?v=20260705_dep_visual_sem_check_v3", { cache: "no-store", headers: { Accept: "application/json", "Cache-Control": "no-cache", "Pragma": "no-cache" } })
     .then(resp => resp.ok ? resp.json() : {})
     .then(data => {
       if (!data || data.ok === false) return;
