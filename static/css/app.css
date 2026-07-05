@@ -3349,6 +3349,12 @@ textarea { resize: vertical; }
   font-weight: 850;
 }
 
+/* V35 - marcador de curva também no select nativo da página Depreciação. */
+select option.option-saved-curve {
+  color: #047857;
+  font-weight: 800;
+}
+
 .fipe-combobox-curve-check {
   flex: 0 0 auto;
   width: 1rem;

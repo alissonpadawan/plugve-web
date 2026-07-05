@@ -7,7 +7,7 @@ let marcadoresCurvasPorNome = new Map();
 let marcadoresCurvasPorCodigo = new Map();
 let marcadoresCurvasCarregados = false;
 let carregamentoMarcadoresCurvasIniciado = false;
-const MARCADORES_CURVAS_CACHE_KEY = "curve:depreciacao:marcadores:v35_dep_visual_sem_check_v3";
+const MARCADORES_CURVAS_CACHE_KEY = "curve:depreciacao:marcadores:v35_dep_visual_verde_sem_check_v4";
 const MARCADORES_CURVAS_CACHE_TTL = 30 * 60 * 1000;
 let diagnosticoV1917AutoAtivo = false;
 let diagnosticoV1917Ciclos = 0;
@@ -1329,7 +1329,7 @@ function carregarMarcadoresCurvasSalvas() {
   if (cache) aplicarMarcadoresCurvasData(cache);
   if (carregamentoMarcadoresCurvasIniciado) return;
   carregamentoMarcadoresCurvasIniciado = true;
-  fetch("/api/depreciacao/marcadores_curvas?v=20260705_dep_visual_sem_check_v3", { cache: "no-store", headers: { Accept: "application/json", "Cache-Control": "no-cache", "Pragma": "no-cache" } })
+  fetch("/api/depreciacao/marcadores_curvas?v=20260705_dep_visual_verde_sem_check_v4", { cache: "no-store", headers: { Accept: "application/json", "Cache-Control": "no-cache", "Pragma": "no-cache" } })
     .then(resp => resp.ok ? resp.json() : {})
     .then(data => {
       if (!data || data.ok === false) return;
@@ -2858,7 +2858,24 @@ function aplicarChecksModelosFipe() {
     opt.dataset.modeloReferencia = marcador?.modelo_referencia || marcador?.modelo_referencia_similaridade || "";
     opt.dataset.chaveCurvaReferencia = marcador?.chave_curva_referencia || "";
     opt.textContent = `${simbolo ? `${simbolo} ` : ""}${nomeOriginal}`;
-    if (temCurva && opt.dataset.temZeroKm === "1") opt.style.fontWeight = "800";
+
+    // V35: na página Depreciação alguns navegadores ainda mostram o <select>
+    // nativo em vez do combobox pesquisável. Por isso o estado visual também
+    // precisa ficar gravado no próprio <option>, e não apenas no combobox.
+    // Curva própria: verde + check. Similaridade: verde sem check.
+    if (temCurva) {
+      opt.classList.add("option-saved-curve");
+      opt.style.color = "#047857";
+      opt.style.fontWeight = opt.dataset.temZeroKm === "1" ? "900" : "800";
+      opt.title = tipoCurva === "similaridade" && opt.dataset.modeloReferencia
+        ? `${nomeOriginal} — curva herdada de ${opt.dataset.modeloReferencia}`
+        : `${nomeOriginal} — curva própria salva`;
+    } else {
+      opt.classList.remove("option-saved-curve");
+      opt.style.color = "";
+      opt.style.fontWeight = opt.dataset.temZeroKm === "1" ? "800" : "";
+      opt.title = "";
+    }
   });
   if (typeof window.atualizarComboboxesFipeCurVE === "function") window.atualizarComboboxesFipeCurVE();
 }

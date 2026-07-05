@@ -52,15 +52,15 @@
       <div id="fipe_search_area" class="grid three consulta-row">
         <div class="field">
           <label for="fipe_marca">Marca</label>
-          <select id="fipe_marca"></select>
+          <select id="fipe_marca" data-fipe-combobox="1"></select>
         </div>
         <div class="field">
           <label for="fipe_modelo">Modelo</label>
-          <select id="fipe_modelo"></select>
+          <select id="fipe_modelo" data-fipe-combobox="1"></select>
         </div>
         <div class="field">
           <label for="fipe_ano">Ano/Combustível</label>
-          <select id="fipe_ano"></select>
+          <select id="fipe_ano" data-fipe-combobox="1"></select>
         </div>
       </div>
 
@@ -151,6 +151,6 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/fipe.js') }}?v=20260705_v35_dep_visual_sem_check_v3"></script>
-<script src="{{ url_for('static', filename='js/depreciacao.js') }}?v=20260705_v35_dep_visual_sem_check_v3"></script>
+<script src="{{ url_for('static', filename='js/fipe.js') }}?v=20260705_v35_dep_visual_verde_sem_check_v4"></script>
+<script src="{{ url_for('static', filename='js/depreciacao.js') }}?v=20260705_v35_dep_visual_verde_sem_check_v4"></script>
 {% endblock %}

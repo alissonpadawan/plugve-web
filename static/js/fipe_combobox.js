@@ -364,7 +364,7 @@
     if (!instanciaAberta.wrapper.contains(ev.target)) fecharAberta();
   });
 
-  document.addEventListener("DOMContentLoaded", () => {
+  function inicializarComboboxesFipeCurVE() {
     aplicarComboboxes(document);
     const obs = new MutationObserver((mutations) => {
       for (const mutation of mutations) {
@@ -375,14 +375,24 @@
         });
       }
     });
-    obs.observe(document.body, { childList: true, subtree: true });
-  });
+    if (document.body) obs.observe(document.body, { childList: true, subtree: true });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", inicializarComboboxesFipeCurVE);
+  } else {
+    inicializarComboboxesFipeCurVE();
+  }
 
   window.atualizarComboboxesFipeCurVE = function () {
     aplicarComboboxes(document);
     document.querySelectorAll(SELECTOR).forEach((select) => {
       const inst = instancias.get(select);
-      if (inst) atualizarBotao(inst);
+      if (!inst) return;
+      atualizarBotao(inst);
+      if (inst.wrapper.classList.contains("open")) {
+        inst.renderizarLista(inst.search.value || "");
+      }
     });
   };
 })();
