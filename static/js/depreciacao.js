@@ -1240,7 +1240,7 @@ function registrarModelosComCurva(lista) {
     const marcador = {
       ...item,
       tipo_curva: tipoCurva === "similaridade" ? "similaridade" : "propria",
-      simbolo: tipoCurva === "similaridade" ? "≈" : "✓",
+      simbolo: tipoCurva === "similaridade" ? "" : "✓",
     };
     const modelo = item.modelo || item.titulo || "";
     const titulo = item.titulo || "";
@@ -2811,7 +2811,7 @@ function aplicarChecksModelosFipe() {
     const marcador = obterMarcadorCurva(nomeOriginal, opt.value);
     const temCurva = Boolean(marcador);
     const tipoCurva = marcador?.tipo_curva === "similaridade" ? "similaridade" : (temCurva ? "propria" : "");
-    const simbolo = tipoCurva === "similaridade" ? "≈" : (temCurva ? "✓" : "");
+    const simbolo = tipoCurva === "similaridade" ? "" : (temCurva ? "✓" : "");
     opt.dataset.curvaSalva = temCurva ? "1" : "0";
     opt.dataset.tipoCurva = tipoCurva;
     opt.dataset.modeloReferencia = marcador?.modelo_referencia || marcador?.modelo_referencia_similaridade || "";

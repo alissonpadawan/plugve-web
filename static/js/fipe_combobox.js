@@ -72,7 +72,7 @@
 
   function simboloCurvaOption(option) {
     const tipo = tipoCurvaOption(option);
-    if (tipo === "similaridade") return "≈";
+    if (tipo === "similaridade") return "";
     return tipo === "propria" ? "✓" : "";
   }
 
@@ -107,10 +107,10 @@
       ? `${textoOpcao(option)} — curva herdada de ${option.dataset.modeloReferencia}`
       : textoOpcao(option));
 
-    if (optionTemCurvaSalva(option)) {
+    if (optionTemCurvaSalva(option) && simboloCurva) {
       const marker = document.createElement("span");
       marker.className = "fipe-combobox-curve-check";
-      marker.textContent = simboloCurva || "✓";
+      marker.textContent = simboloCurva;
       marker.setAttribute("aria-hidden", "true");
       item.appendChild(marker);
     }
