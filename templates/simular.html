@@ -570,6 +570,18 @@
     .plugve-pbev-status{font-size:.72rem;color:#166534;font-weight:700;margin-top:.32rem;line-height:1.35}
     .plugve-pbev-status.plugve-pbev-status-warn{color:#92400e}
     .plugve-pbev-status.hidden{display:none!important}
+    .plugve-pbev-debug-btn{margin-top:.32rem;display:inline-flex;align-items:center;gap:.35rem;border:1px solid #cbd5e1;background:#f8fafc;color:#334155;border-radius:999px;padding:.28rem .58rem;font-size:.68rem;font-weight:900;line-height:1;cursor:pointer;box-shadow:0 4px 10px rgba(15,23,42,.06)}
+    .plugve-pbev-debug-btn:hover{background:#eef2ff;border-color:#93c5fd;color:#1d4ed8}
+    .plugve-pbev-debug-btn.hidden{display:none!important}
+    .plugve-pbev-debug-modal{position:fixed;inset:0;z-index:9999;background:rgba(2,6,23,.68);display:flex;align-items:center;justify-content:center;padding:1rem}
+    .plugve-pbev-debug-modal.hidden{display:none!important}
+    .plugve-pbev-debug-panel{width:min(980px,96vw);max-height:88vh;background:#020617;color:#d1fae5;border:1px solid rgba(148,163,184,.45);border-radius:1rem;box-shadow:0 30px 90px rgba(0,0,0,.45);overflow:hidden;display:flex;flex-direction:column}
+    .plugve-pbev-debug-head{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.9rem 1rem;border-bottom:1px solid rgba(148,163,184,.35);background:#0f172a}
+    .plugve-pbev-debug-head strong{display:block;font-size:.92rem;color:#f8fafc}
+    .plugve-pbev-debug-head small{display:block;font-size:.68rem;color:#94a3b8;margin-top:.12rem}
+    .plugve-pbev-debug-close{border:1px solid rgba(148,163,184,.45);background:#111827;color:#f8fafc;border-radius:.65rem;padding:.38rem .65rem;font-size:.75rem;font-weight:900;cursor:pointer}
+    .plugve-pbev-debug-body{padding:1rem;overflow:auto;background:#020617}
+    .plugve-pbev-debug-terminal{white-space:pre-wrap;word-break:break-word;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;font-size:.75rem;line-height:1.5;margin:0;color:#bbf7d0}
     .plugve-consumo-resumo{font-size:.72rem;color:#166534;font-weight:800;margin-top:.32rem}
     .plugve-consumo-resumo.hidden{display:none!important}
 
@@ -3454,8 +3466,102 @@
       return document.getElementById("consumo_atual");
     }
 
+    const PBEV_DEBUG_TCO = { atual: null, ve: null, icev: null };
+
     function pbevStatusPorPrefixoTCO(prefixo) {
       return document.getElementById(`pbev_status_${prefixo}`);
+    }
+
+    function pbevBotaoDebugPorPrefixoTCO(prefixo) {
+      let btn = document.getElementById(`pbev_debug_btn_${prefixo}`);
+      if (btn) return btn;
+      const status = pbevStatusPorPrefixoTCO(prefixo);
+      if (!status || !status.parentElement) return null;
+      btn = document.createElement("button");
+      btn.type = "button";
+      btn.id = `pbev_debug_btn_${prefixo}`;
+      btn.className = "plugve-pbev-debug-btn hidden";
+      btn.textContent = "PBEV: ver análise";
+      btn.dataset.pbevDebugPrefix = prefixo;
+      btn.addEventListener("click", function () {
+        pbevAbrirModalDebugTCO(prefixo);
+      });
+      status.insertAdjacentElement("afterend", btn);
+      return btn;
+    }
+
+    function pbevGarantirModalDebugTCO() {
+      let modal = document.getElementById("modal_pbev_debug_tco");
+      if (modal) return modal;
+      modal = document.createElement("div");
+      modal.id = "modal_pbev_debug_tco";
+      modal.className = "plugve-pbev-debug-modal hidden";
+      modal.innerHTML = `
+        <div class="plugve-pbev-debug-panel" role="dialog" aria-modal="true" aria-labelledby="pbev_debug_titulo_tco">
+          <div class="plugve-pbev-debug-head">
+            <div>
+              <strong id="pbev_debug_titulo_tco">Diagnóstico PBEV/Inmetro</strong>
+              <small id="pbev_debug_subtitulo_tco">Auditoria provisória do matching FIPE × PBEV</small>
+            </div>
+            <button type="button" id="btn_fechar_pbev_debug_tco" class="plugve-pbev-debug-close">Fechar</button>
+          </div>
+          <div class="plugve-pbev-debug-body">
+            <pre id="pbev_debug_terminal_tco" class="plugve-pbev-debug-terminal"></pre>
+          </div>
+        </div>`;
+      document.body.appendChild(modal);
+      modal.addEventListener("click", function (ev) {
+        if (ev.target === modal) pbevFecharModalDebugTCO();
+      });
+      modal.querySelector("#btn_fechar_pbev_debug_tco")?.addEventListener("click", pbevFecharModalDebugTCO);
+      document.addEventListener("keydown", function (ev) {
+        if (ev.key === "Escape" && !modal.classList.contains("hidden")) pbevFecharModalDebugTCO();
+      });
+      return modal;
+    }
+
+    function pbevTextoDebugFallbackTCO(dados) {
+      try {
+        return JSON.stringify(dados || {}, null, 2);
+      } catch (e) {
+        return "Diagnóstico indisponível para serialização.";
+      }
+    }
+
+    function pbevAbrirModalDebugTCO(prefixo) {
+      const dados = PBEV_DEBUG_TCO[prefixo];
+      const modal = pbevGarantirModalDebugTCO();
+      const terminal = modal.querySelector("#pbev_debug_terminal_tco");
+      const subtitulo = modal.querySelector("#pbev_debug_subtitulo_tco");
+      const nomeBloco = prefixo === "ve" ? "Veículo elétrico/PHEV" : (prefixo === "icev" ? "Veículo combustão/híbrido" : "Carro atual");
+      if (subtitulo) subtitulo.textContent = `${nomeBloco} — auditoria provisória do matching FIPE × PBEV`;
+      if (terminal) {
+        terminal.textContent = dados?.diagnostico_terminal || pbevTextoDebugFallbackTCO(dados) || "Nenhuma consulta PBEV registrada para este veículo.";
+      }
+      modal.classList.remove("hidden");
+    }
+
+    function pbevFecharModalDebugTCO() {
+      document.getElementById("modal_pbev_debug_tco")?.classList.add("hidden");
+    }
+
+    function pbevAtualizarBotaoDebugTCO(prefixo, dados) {
+      PBEV_DEBUG_TCO[prefixo] = dados || null;
+      const btn = pbevBotaoDebugPorPrefixoTCO(prefixo);
+      if (!btn) return;
+      if (!dados) {
+        btn.classList.add("hidden");
+        return;
+      }
+      const nivel = dados?.nivel_match || "sem_match";
+      const score = dados?.score ?? 0;
+      btn.textContent = `PBEV: ver análise (${nivel}${score ? " " + score : ""})`;
+      btn.classList.remove("hidden");
+    }
+
+    function pbevInicializarBotoesDebugTCO() {
+      ["atual", "ve", "icev"].forEach(prefixo => pbevBotaoDebugPorPrefixoTCO(prefixo));
+      pbevGarantirModalDebugTCO();
     }
 
     function pbevSetHiddenTCO(prefixo, campo, valor) {
@@ -3489,6 +3595,7 @@
       }
       ["origem_consumo", "nivel_match", "score", "ano_tabela", "id_pbev", "modelo_usado", "criterio_consumo"].forEach(c => pbevSetHiddenTCO(prefixo, c, ""));
       pbevSetHiddenTCO(prefixo, "editado_usuario", "0");
+      pbevAtualizarBotaoDebugTCO(prefixo, null);
     }
 
     function pbevSetStatusConsumoTCO(prefixo, texto, tipo = "ok") {
@@ -3668,14 +3775,24 @@
           body: JSON.stringify(payload),
         });
         const dados = await resp.json();
+        pbevAtualizarBotaoDebugTCO(prefixo, dados);
         if (!resp.ok) throw new Error(dados?.erro || "Erro ao consultar PBEV.");
         pbevAplicarSugestaoConsumoTCO(prefixo, dados, contexto);
       } catch (e) {
         console.warn("Sugestão PBEV indisponível; consumo manual mantido.", e);
+        pbevAtualizarBotaoDebugTCO(prefixo, {
+          encontrou: false,
+          nivel_match: "erro",
+          score: 0,
+          autopreencher: false,
+          motivo: e?.message || "Erro ao consultar PBEV.",
+          diagnostico_terminal: `=== DIAGNÓSTICO PBEV / INMETRO ===\nErro ao consultar a API PBEV.\n\nPrefixo: ${prefixo}\nMotivo: ${e?.message || e}`
+        });
       }
     }
 
     function inicializarEventosPbevConsumoTCO() {
+      pbevInicializarBotoesDebugTCO();
       ["atual", "ve", "icev"].forEach(prefixo => {
         const campo = pbevCampoConsumoPorPrefixoTCO(prefixo);
         campo?.addEventListener("input", function () {

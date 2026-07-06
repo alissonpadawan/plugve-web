@@ -760,13 +760,199 @@ class PbevService:
         return False
 
     # ------------------------------------------------------------------
+    # Diagnóstico/debug provisório V38.2
+    # ------------------------------------------------------------------
+    @staticmethod
+    def _resumo_sugestao_debug(sugestao: dict[str, Any] | None) -> dict[str, Any]:
+        if not sugestao:
+            return {}
+        chaves = (
+            "tipo",
+            "criterio_campo_unico",
+            "consumo_eletrico_kwh_km",
+            "eficiencia_eletrica_km_kwh",
+            "consumo_energetico_mj_km",
+            "autonomia_eletrica_km",
+            "gasolina_cidade_km_l",
+            "gasolina_estrada_km_l",
+            "etanol_cidade_km_l",
+            "etanol_estrada_km_l",
+            "diesel_cidade_km_l",
+            "diesel_estrada_km_l",
+            "gasolina_diesel_cidade_km_l",
+            "gasolina_diesel_estrada_km_l",
+            "fonte_derivacao_eletrica",
+            "nao_usar_km_l_equivalente",
+            "nao_inferir_percentual_eletrico",
+        )
+        return {k: sugestao.get(k) for k in chaves if sugestao.get(k) not in (None, "", [])}
+
+    def _debug_candidato_item(self, item: dict[str, Any], posicao: int) -> dict[str, Any]:
+        avaliacao = item.get("avaliacao") or {}
+        registro = item.get("registro") or {}
+        sugestao = item.get("sugestao")
+        return {
+            "posicao": posicao,
+            "score": round(float(item.get("score") or avaliacao.get("score_bruto") or avaliacao.get("score") or 0), 2),
+            "score_publico": round(float(item.get("score_publico") or avaliacao.get("score") or 0), 2),
+            "tem_sugestao_consumo": bool(sugestao),
+            "flags_ok": bool(avaliacao.get("ok_flags")),
+            "fuel_ok": bool(avaliacao.get("fuel_ok")),
+            "modelo_score": avaliacao.get("modelo_score"),
+            "ano_req": avaliacao.get("ano_req"),
+            "ano_pbev": avaliacao.get("ano_cand"),
+            "ano_diff": avaliacao.get("ano_diff"),
+            "ano_relacao": avaliacao.get("ano_relacao"),
+            "ano_compativel_fipe_pbev": bool(avaliacao.get("ano_compativel_fipe_pbev")),
+            "zero_km_contexto": bool(avaliacao.get("zero_km_contexto")),
+            "identidade_tecnica_forte": bool(avaliacao.get("identidade_tecnica_forte")),
+            "combustivel_detectado_fipe": avaliacao.get("req_fuel"),
+            "motivos": list(avaliacao.get("motivos") or []),
+            "penalidades": list(avaliacao.get("penalidades") or []),
+            "bloqueios_flags": list(avaliacao.get("bloqueios_flags") or []),
+            "candidato": self._candidato_publico(registro),
+            "sugestao_consumo": self._resumo_sugestao_debug(sugestao),
+        }
+
+    @staticmethod
+    def _fmt_debug_val(valor: Any) -> str:
+        if valor is None or valor == "":
+            return "-"
+        if isinstance(valor, bool):
+            return "sim" if valor else "não"
+        if isinstance(valor, float):
+            return str(round(valor, 6)).replace(".", ",")
+        return str(valor)
+
+    def _montar_terminal_debug(self, debug: dict[str, Any], resposta: dict[str, Any] | None = None) -> str:
+        resposta = resposta or {}
+        linhas: list[str] = []
+        add = linhas.append
+        add("=== DIAGNÓSTICO PBEV / INMETRO — V38.2 ===")
+        add("Ferramenta provisória para calibrar o matching FIPE × PBEV.")
+        add("")
+
+        entrada = debug.get("entrada_fipe") or {}
+        add("[1] Dados recebidos da FIPE/Simular")
+        for chave in ("prefixo", "marca", "modelo", "texto_modelo", "ano", "texto_ano", "ano_codigo", "combustivel", "tipo_veiculo", "codigo_fipe"):
+            add(f"- {chave}: {self._fmt_debug_val(entrada.get(chave))}")
+        add("")
+
+        normalizacao = debug.get("normalizacao") or {}
+        add("[2] Normalização usada na busca")
+        add(f"- marca_key: {self._fmt_debug_val(normalizacao.get('marca_key'))}")
+        add(f"- combustível/propulsão detectado: {self._fmt_debug_val(normalizacao.get('combustivel_detectado'))}")
+        add(f"- texto normalizado: {self._fmt_debug_val(normalizacao.get('texto_normalizado'))}")
+        tokens = normalizacao.get("tokens_modelo") or []
+        add(f"- tokens do modelo: {', '.join(tokens[:40]) if tokens else '-'}")
+        add("")
+
+        filtros = debug.get("filtros") or {}
+        add("[3] Filtros e contagens")
+        for chave in (
+            "registros_base",
+            "marcas_indexadas",
+            "registros_marca",
+            "registros_avaliados_marca",
+            "com_sugestao_consumo",
+            "sem_sugestao_consumo",
+            "descartados_score_baixo",
+            "candidatos_considerados",
+            "candidatos_utilizaveis",
+            "candidatos_bloqueados_flags",
+        ):
+            add(f"- {chave}: {self._fmt_debug_val(filtros.get(chave))}")
+        add("")
+
+        candidatos = debug.get("candidatos_top") or []
+        add("[4] Principais candidatos avaliados")
+        if not candidatos:
+            add("- Nenhum candidato com consumo útil entrou na lista de análise.")
+        else:
+            for cand in candidatos[:12]:
+                cpub = cand.get("candidato") or {}
+                nome = " ".join(str(cpub.get(k) or "") for k in ("marca", "modelo", "versao", "motor", "transmissao")).strip()
+                add(f"{cand.get('posicao')}) {nome or '(sem identificação)'}")
+                add(f"   Ano PBEV: {self._fmt_debug_val(cpub.get('ano_tabela') or cand.get('ano_pbev'))} | Score: {self._fmt_debug_val(cand.get('score'))} | Score público: {self._fmt_debug_val(cand.get('score_publico'))}")
+                add(f"   Status: {self._fmt_debug_val(cpub.get('status_registro'))} | Flags OK: {self._fmt_debug_val(cand.get('flags_ok'))} | Sugestão consumo: {self._fmt_debug_val(cand.get('tem_sugestao_consumo'))}")
+                add(f"   Ano relação: {self._fmt_debug_val(cand.get('ano_relacao'))} | Diferença ano: {self._fmt_debug_val(cand.get('ano_diff'))} | Identidade técnica forte: {self._fmt_debug_val(cand.get('identidade_tecnica_forte'))}")
+                motivos = cand.get("motivos") or []
+                penalidades = cand.get("penalidades") or []
+                bloqueios = cand.get("bloqueios_flags") or []
+                if motivos:
+                    add("   + " + " | ".join(str(m) for m in motivos[:8]))
+                if penalidades:
+                    add("   - " + " | ".join(str(p) for p in penalidades[:8]))
+                if bloqueios:
+                    add("   ! bloqueios: " + " | ".join(str(b) for b in bloqueios[:8]))
+                sug = cand.get("sugestao_consumo") or {}
+                if sug:
+                    valores = []
+                    for k, v in sug.items():
+                        if k in {"observacao"}:
+                            continue
+                        valores.append(f"{k}={self._fmt_debug_val(v)}")
+                    add("   Consumo/eficiência: " + ("; ".join(valores[:12]) if valores else "-"))
+                add("")
+
+        add("[5] Decisão final")
+        add(f"- encontrou: {self._fmt_debug_val(resposta.get('encontrou'))}")
+        add(f"- nível: {self._fmt_debug_val(resposta.get('nivel_match'))}")
+        add(f"- autopreencher: {self._fmt_debug_val(resposta.get('autopreencher'))}")
+        add(f"- score exibido: {self._fmt_debug_val(resposta.get('score'))}")
+        if resposta.get("score_bruto") not in (None, ""):
+            add(f"- score bruto: {self._fmt_debug_val(resposta.get('score_bruto'))}")
+        add(f"- motivo: {self._fmt_debug_val(resposta.get('motivo'))}")
+        diag_final = resposta.get("diagnostico") or {}
+        for chave in ("dominante", "ambiguidade_proxima", "diferenca_para_segundo", "score_segundo_candidato", "ano_relacao", "ano_compativel_fipe_pbev", "zero_km_contexto", "identidade_tecnica_forte", "modelo_score"):
+            if chave in diag_final:
+                add(f"- {chave}: {self._fmt_debug_val(diag_final.get(chave))}")
+        add("")
+
+        add("[6] Ação aplicada na Simular")
+        if resposta.get("autopreencher") and resposta.get("nivel_match") == "alto":
+            add("- A interface deve aplicar a sugestão nos campos de consumo editáveis.")
+        else:
+            add("- Nenhum valor deve ser colocado automaticamente. O consumo fica manual.")
+        add("- Esta janela é provisória de auditoria do matching; não altera TCO, depreciação ou painel local.")
+        return "\n".join(linhas)
+
+    # ------------------------------------------------------------------
     # API principal
     # ------------------------------------------------------------------
     def sugerir_consumo(self, consulta: dict[str, Any]) -> dict[str, Any]:
+        entrada_debug = {
+            "prefixo": consulta.get("prefixo"),
+            "marca": consulta.get("marca"),
+            "modelo": consulta.get("modelo"),
+            "texto_modelo": consulta.get("texto_modelo"),
+            "ano": consulta.get("ano"),
+            "texto_ano": consulta.get("texto_ano"),
+            "ano_codigo": consulta.get("ano_codigo"),
+            "combustivel": consulta.get("combustivel"),
+            "tipo_veiculo": consulta.get("tipo_veiculo"),
+            "codigo_fipe": consulta.get("codigo_fipe"),
+            "codigo_marca": consulta.get("codigo_marca") or consulta.get("marca_id"),
+            "codigo_modelo": consulta.get("codigo_modelo") or consulta.get("modelo_id"),
+        }
+        texto_normalizado = self.normalizar_texto(self._texto_consulta(consulta))
+        marca_key = self._marca_key(consulta.get("marca"))
+        debug: dict[str, Any] = {
+            "entrada_fipe": entrada_debug,
+            "normalizacao": {
+                "marca_key": marca_key,
+                "combustivel_detectado": self._detectar_combustivel_consulta(consulta),
+                "texto_normalizado": texto_normalizado,
+                "tokens_modelo": sorted(self._tokens(" ".join(str(consulta.get(k) or "") for k in ("modelo", "texto_modelo"))))[:80],
+            },
+            "filtros": {},
+            "candidatos_top": [],
+        }
+
         try:
             cache = self.carregar_base_pbev()
         except Exception as exc:
-            return {
+            resposta = {
                 "encontrou": False,
                 "nivel_match": "sem_match",
                 "score": 0,
@@ -776,11 +962,20 @@ class PbevService:
                 "sugestoes_consumo": {},
                 "candidato": None,
                 "flags": {},
+                "diagnostico": {},
             }
+            debug["filtros"] = {"registros_base": 0, "marcas_indexadas": 0, "registros_marca": 0}
+            resposta["debug"] = debug
+            resposta["diagnostico_terminal"] = self._montar_terminal_debug(debug, resposta)
+            return resposta
 
-        marca_key = self._marca_key(consulta.get("marca"))
+        debug["filtros"].update({
+            "registros_base": len(cache.registros),
+            "marcas_indexadas": len(cache.indice_marca),
+        })
+
         if not marca_key:
-            return {
+            resposta = {
                 "encontrou": False,
                 "nivel_match": "sem_match",
                 "score": 0,
@@ -790,19 +985,24 @@ class PbevService:
                 "sugestoes_consumo": {},
                 "candidato": None,
                 "flags": {},
+                "diagnostico": {},
             }
+            debug["filtros"].update({"registros_marca": 0, "registros_avaliados_marca": 0})
+            resposta["debug"] = debug
+            resposta["diagnostico_terminal"] = self._montar_terminal_debug(debug, resposta)
+            return resposta
 
         registros_marca = cache.indice_marca.get(marca_key, [])
         candidatos: list[dict[str, Any]] = []
         candidatos_bloqueados = 0
+        debug_items: list[dict[str, Any]] = []
+        sem_sugestao_consumo = 0
+        com_sugestao_consumo = 0
+        descartados_score_baixo = 0
 
         for registro in registros_marca:
             avaliacao = self.calcular_score_match(registro, consulta)
-            if avaliacao["score"] < 35 and not avaliacao.get("bloqueios_flags"):
-                continue
             sugestao = self.montar_sugestao_consumo(registro)
-            if not sugestao:
-                continue
             item = {
                 "registro": registro,
                 "score": float(avaliacao.get("score_bruto", avaliacao["score"])),
@@ -810,6 +1010,18 @@ class PbevService:
                 "avaliacao": avaliacao,
                 "sugestao": sugestao,
             }
+            # Guarda candidatos com algum sinal mínimo para o terminal, inclusive bloqueados/sem consumo.
+            if avaliacao["score"] >= 25 or avaliacao.get("bloqueios_flags") or sugestao:
+                debug_items.append(item)
+            if not sugestao:
+                sem_sugestao_consumo += 1
+            else:
+                com_sugestao_consumo += 1
+            if avaliacao["score"] < 35 and not avaliacao.get("bloqueios_flags"):
+                descartados_score_baixo += 1
+                continue
+            if not sugestao:
+                continue
             if not avaliacao.get("ok_flags"):
                 candidatos_bloqueados += 1
             candidatos.append(item)
@@ -825,13 +1037,26 @@ class PbevService:
             )
 
         candidatos.sort(key=_ordem_candidato, reverse=True)
+        debug_items.sort(key=_ordem_candidato, reverse=True)
         utilizaveis = [c for c in candidatos if c["avaliacao"].get("ok_flags")]
+
+        debug["filtros"].update({
+            "registros_marca": len(registros_marca),
+            "registros_avaliados_marca": len(registros_marca),
+            "com_sugestao_consumo": com_sugestao_consumo,
+            "sem_sugestao_consumo": sem_sugestao_consumo,
+            "descartados_score_baixo": descartados_score_baixo,
+            "candidatos_considerados": len(candidatos),
+            "candidatos_utilizaveis": len(utilizaveis),
+            "candidatos_bloqueados_flags": candidatos_bloqueados,
+        })
+        debug["candidatos_top"] = [self._debug_candidato_item(item, idx + 1) for idx, item in enumerate(debug_items[:12])]
 
         if not utilizaveis:
             motivo = "Nenhum candidato PBEV confiável encontrado."
             if candidatos_bloqueados:
                 motivo += f" {candidatos_bloqueados} candidato(s) foram bloqueados por status/flags."
-            return {
+            resposta = {
                 "encontrou": False,
                 "nivel_match": "sem_match",
                 "score": 0,
@@ -843,6 +1068,9 @@ class PbevService:
                 "flags": {},
                 "diagnostico": {"candidatos_bloqueados": candidatos_bloqueados, "total_candidatos_marca": len(registros_marca)},
             }
+            resposta["debug"] = debug
+            resposta["diagnostico_terminal"] = self._montar_terminal_debug(debug, resposta)
+            return resposta
 
         top = utilizaveis[0]
         segundo_score = utilizaveis[1]["score"] if len(utilizaveis) > 1 else None
@@ -855,10 +1083,8 @@ class PbevService:
         if not dominante and avaliacao_top.get("ano_exato"):
             proximos_mesmo_ano = [c for c in candidatos_proximos if (c.get("avaliacao") or {}).get("ano_exato")]
             if not proximos_mesmo_ano:
-                # Ano exato desempata candidatos equivalentes de anos adjacentes.
                 dominante = True
             elif not ambiguidade_proxima:
-                # Candidatos próximos têm a mesma assinatura técnica ou o mesmo consumo.
                 dominante = True
 
         if (
@@ -867,8 +1093,6 @@ class PbevService:
             and avaliacao_top.get("ano_compativel_fipe_pbev")
             and not ambiguidade_proxima
         ):
-            # FIPE usa ano-modelo/zero km; PBEV usa ano da tabela.
-            # Se a identidade técnica é a mesma, anos próximos/anteriores não bloqueiam.
             dominante = True
 
         score_top = float(top["score"])
@@ -895,15 +1119,14 @@ class PbevService:
             nivel = "sem_match"
             autopreencher = False
 
-        # O score bruto pode passar de 100 por acumular evidências técnicas,
-        # mas o score exibido deve acompanhar o nível operacional de confiança.
-        score_exibido = score_publico_top
         if nivel == "medio":
-            score_exibido = min(score_exibido, 89.0)
+            score_retorno = min(score_publico_top, 89.0)
         elif nivel == "baixo":
-            score_exibido = min(score_exibido, 69.0)
+            score_retorno = min(score_publico_top, 69.0)
         elif nivel == "sem_match":
-            score_exibido = 0.0
+            score_retorno = 0.0
+        else:
+            score_retorno = score_publico_top
 
         motivos = list(avaliacao_top.get("motivos") or [])
         penalidades = list(avaliacao_top.get("penalidades") or [])
@@ -912,18 +1135,8 @@ class PbevService:
         if nivel != "alto" and not penalidades:
             penalidades.append("score insuficiente para autofill automático")
 
-        # O score público acompanha a decisão operacional. Assim, um candidato bom,
-        # mas bloqueado por ano/dominância, não aparece como “100” em match médio.
-        score_retorno = score_publico_top
-        if nivel == "medio":
-            score_retorno = min(score_retorno, 89.0)
-        elif nivel == "baixo":
-            score_retorno = min(score_retorno, 69.0)
-        elif nivel == "sem_match":
-            score_retorno = 0.0
-
         motivo_txt = "; ".join(motivos + penalidades) or "Matching PBEV avaliado."
-        return {
+        resposta = {
             "encontrou": nivel != "sem_match",
             "nivel_match": nivel,
             "score": round(score_retorno, 2),
@@ -954,3 +1167,6 @@ class PbevService:
             },
             "valor_autopreenchido": autopreencher,
         }
+        resposta["debug"] = debug
+        resposta["diagnostico_terminal"] = self._montar_terminal_debug(debug, resposta)
+        return resposta
