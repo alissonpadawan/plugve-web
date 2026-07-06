@@ -371,16 +371,39 @@ class PbevService:
             ano_cand = 0
         ano_exato = False
         ano_diff = 999
+        zero_km_contexto = False
+        ano_compativel_fipe_pbev = False
+        ano_relacao = "indefinido"
+        texto_ano_consulta = self.normalizar_texto(consulta.get("texto_ano") or consulta.get("ano_codigo") or "")
+        if "ZERO" in texto_ano_consulta or "32000" in str(consulta.get("ano_codigo") or ""):
+            zero_km_contexto = True
+
         if ano_req and ano_cand:
             diff = abs(ano_req - ano_cand)
             ano_diff = diff
             if diff == 0:
                 score += 10
                 ano_exato = True
+                ano_compativel_fipe_pbev = True
+                ano_relacao = "exato"
                 motivos.append("ano PBEV igual ao ano-modelo FIPE")
             elif diff == 1:
-                score += 4
-                motivos.append("ano PBEV próximo ao ano-modelo FIPE")
+                score += 7
+                ano_compativel_fipe_pbev = True
+                ano_relacao = "adjacente"
+                motivos.append("ano PBEV adjacente ao ano-modelo FIPE")
+            elif zero_km_contexto and ano_cand < ano_req and diff <= 3:
+                # FIPE trabalha com ano-modelo/zero km antecipado; PBEV usa ano da tabela.
+                # O ano não deve bloquear autofill quando a identidade técnica bate forte.
+                score += 2
+                ano_compativel_fipe_pbev = True
+                ano_relacao = "zero_km_tabela_anterior"
+                motivos.append("ano PBEV anterior aceito para zero km/ano-modelo")
+            elif zero_km_contexto and ano_cand > ano_req and diff <= 1:
+                score += 2
+                ano_compativel_fipe_pbev = True
+                ano_relacao = "zero_km_tabela_posterior"
+                motivos.append("ano PBEV posterior próximo aceito para ano-modelo")
             else:
                 score -= min(20, diff * 5)
                 penalidades.append(f"ano distante ({ano_req} x {ano_cand})")
@@ -513,6 +536,23 @@ class PbevService:
             score -= 100
             penalidades.extend(bloqueios)
 
+        penalidades_tecnicas = [
+            p for p in penalidades
+            if not p.startswith("ano distante") and p != "ano FIPE ausente para score"
+        ]
+        identidade_tecnica_forte = (
+            fuel_ok
+            and ok_flags
+            and modelo_score >= 30
+            and not penalidades_tecnicas
+            and (
+                not motor_q or not motor_c or motor_q == motor_c
+            )
+            and (
+                not trans_q or not trans_c or trans_q == trans_c or {trans_q, trans_c} <= {"AUTO", "CVT"}
+            )
+        )
+
         score_bruto = max(0.0, round(score, 2))
         score_publico = min(100.0, score_bruto)
         return {
@@ -523,10 +563,17 @@ class PbevService:
             "fuel_ok": fuel_ok,
             "ano_exato": ano_exato,
             "ano_diff": ano_diff,
+            "ano_req": ano_req,
+            "ano_cand": ano_cand,
+            "ano_relacao": ano_relacao,
+            "zero_km_contexto": zero_km_contexto,
+            "ano_compativel_fipe_pbev": ano_compativel_fipe_pbev,
             "modelo_score": round(modelo_score, 2),
             "req_fuel": req_fuel,
             "ok_flags": ok_flags,
             "bloqueios_flags": bloqueios,
+            "identidade_tecnica_forte": identidade_tecnica_forte,
+            "penalidades_tecnicas": penalidades_tecnicas,
         }
 
     # ------------------------------------------------------------------
@@ -663,6 +710,55 @@ class PbevService:
                 assinatura.append(valor or None)
         return tuple(assinatura)
 
+    @classmethod
+    def _assinatura_tecnica_registro(cls, registro: dict[str, Any]) -> tuple[Any, ...]:
+        """Assinatura técnica para desempatar anos PBEV adjacentes/anteriores.
+
+        Mantém versão, motor, válvulas, câmbio, combustível e propulsão.
+        Não inclui ano_tabela, porque FIPE usa ano-modelo/zero km e PBEV usa ano da tabela.
+        """
+        modelo_norm = cls.normalizar_texto(registro.get("modelo_normalizado") or registro.get("modelo"))
+        modelo_tokens = cls._tokens(modelo_norm)
+        modelo_core = {t for t in modelo_tokens if t not in SOFT_BODY_TOKENS}
+        if not modelo_core:
+            modelo_core = modelo_tokens
+        versao_norm = cls.normalizar_texto(registro.get("versao_normalizada") or registro.get("versao_corrigida") or registro.get("versao"))
+        motor_norm = cls.normalizar_texto(registro.get("motor_normalizado") or registro.get("motor_corrigido") or registro.get("motor"))
+        trans_norm = cls.normalizar_texto(registro.get("transmissao_normalizada") or registro.get("transmissao"))
+        comb_norm = cls.normalizar_texto(registro.get("combustivel_normalizado") or registro.get("combustivel"))
+        prop_norm = cls.normalizar_texto(registro.get("tipo_propulsao_normalizado") or registro.get("tipo_propulsao"))
+        return (
+            cls._marca_key(registro.get("marca_normalizada") or registro.get("marca")),
+            tuple(sorted(modelo_core)),
+            tuple(sorted(cls._version_tokens(versao_norm, modelo_core) & TRIM_TOKENS_IMPORTANTES)),
+            cls._displacement_signature(motor_norm, versao_norm),
+            cls._valvulas_signature(motor_norm, versao_norm),
+            cls._transmissao_signature(trans_norm, versao_norm),
+            comb_norm.replace(" ", "_"),
+            prop_norm.replace(" ", "_"),
+        )
+
+    def _candidatos_proximos_bloqueiam_autofill(self, top: dict[str, Any], proximos: list[dict[str, Any]]) -> bool:
+        """Retorna True quando há candidato próximo realmente ambíguo.
+
+        Candidatos de anos diferentes com a mesma assinatura técnica não devem bloquear
+        autofill: neste caso o sistema usa o registro PBEV mais recente/mais próximo.
+        Candidatos com consumo idêntico também não bloqueiam, pois o valor aplicado ao TCO
+        seria o mesmo.
+        """
+        if not proximos:
+            return False
+        top_sig = self._assinatura_tecnica_registro(top.get("registro") or {})
+        top_sug = self._assinatura_sugestao(top.get("sugestao"))
+        for cand in proximos:
+            cand_sig = self._assinatura_tecnica_registro(cand.get("registro") or {})
+            if cand_sig == top_sig:
+                continue
+            if top_sug and self._assinatura_sugestao(cand.get("sugestao")) == top_sug:
+                continue
+            return True
+        return False
+
     # ------------------------------------------------------------------
     # API principal
     # ------------------------------------------------------------------
@@ -754,23 +850,34 @@ class PbevService:
         avaliacao_top = top["avaliacao"]
         candidatos_proximos = [c for c in utilizaveis[1:] if top["score"] - c["score"] < 8]
         dominante = segundo_score is None or (diferenca is not None and diferenca >= 8)
+        ambiguidade_proxima = self._candidatos_proximos_bloqueiam_autofill(top, candidatos_proximos)
+
         if not dominante and avaliacao_top.get("ano_exato"):
             proximos_mesmo_ano = [c for c in candidatos_proximos if (c.get("avaliacao") or {}).get("ano_exato")]
             if not proximos_mesmo_ano:
                 # Ano exato desempata candidatos equivalentes de anos adjacentes.
                 dominante = True
-            else:
-                assinatura_top = self._assinatura_sugestao(top.get("sugestao"))
-                if assinatura_top and all(self._assinatura_sugestao(c.get("sugestao")) == assinatura_top for c in proximos_mesmo_ano):
-                    # Versões do mesmo ano com o mesmo valor de consumo são seguras para preencher o campo.
-                    dominante = True
+            elif not ambiguidade_proxima:
+                # Candidatos próximos têm a mesma assinatura técnica ou o mesmo consumo.
+                dominante = True
+
+        if (
+            not dominante
+            and avaliacao_top.get("identidade_tecnica_forte")
+            and avaliacao_top.get("ano_compativel_fipe_pbev")
+            and not ambiguidade_proxima
+        ):
+            # FIPE usa ano-modelo/zero km; PBEV usa ano da tabela.
+            # Se a identidade técnica é a mesma, anos próximos/anteriores não bloqueiam.
+            dominante = True
 
         score_top = float(top["score"])
         score_publico_top = float(top.get("score_publico", min(100.0, score_top)))
         high_conditions = (
-            score_top >= 100
+            score_top >= 95
             and avaliacao_top.get("fuel_ok")
-            and avaliacao_top.get("ano_exato")
+            and avaliacao_top.get("ano_compativel_fipe_pbev")
+            and avaliacao_top.get("identidade_tecnica_forte")
             and float(avaliacao_top.get("modelo_score") or 0) >= 30
             and dominante
         )
@@ -801,7 +908,7 @@ class PbevService:
         motivos = list(avaliacao_top.get("motivos") or [])
         penalidades = list(avaliacao_top.get("penalidades") or [])
         if not dominante:
-            penalidades.append("há outro candidato PBEV próximo; autofill bloqueado por conservadorismo")
+            penalidades.append("há outro candidato PBEV próximo tecnicamente ambíguo; autofill bloqueado")
         if nivel != "alto" and not penalidades:
             penalidades.append("score insuficiente para autofill automático")
 
@@ -837,6 +944,11 @@ class PbevService:
                 "candidatos_bloqueados": candidatos_bloqueados,
                 "ano_exato": bool(avaliacao_top.get("ano_exato")),
                 "ano_diff": avaliacao_top.get("ano_diff"),
+                "ano_relacao": avaliacao_top.get("ano_relacao"),
+                "ano_compativel_fipe_pbev": bool(avaliacao_top.get("ano_compativel_fipe_pbev")),
+                "zero_km_contexto": bool(avaliacao_top.get("zero_km_contexto")),
+                "identidade_tecnica_forte": bool(avaliacao_top.get("identidade_tecnica_forte")),
+                "ambiguidade_proxima": bool(ambiguidade_proxima),
                 "modelo_score": avaliacao_top.get("modelo_score"),
                 "combustivel_detectado_fipe": avaliacao_top.get("req_fuel"),
             },

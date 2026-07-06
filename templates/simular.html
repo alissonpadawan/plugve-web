@@ -3529,10 +3529,9 @@
     }
 
     function pbevMensagemAplicadaTCO(prefixo, dados, detalhe) {
-      const score = dados?.score !== undefined ? `match alto ${dados.score}` : "match alto";
       const ano = dados?.candidato?.ano_tabela || dados?.ano_tabela_pbev || "";
-      const anoTxt = ano ? `, tabela ${ano}` : "";
-      return `Inmetro/PBEV — ${score}${anoTxt}. ${detalhe} Você pode editar conforme seu uso real.`;
+      const anoTxt = ano ? ` Tabela ${ano}.` : "";
+      return `Consumo sugerido pelo Inmetro/PBEV.${anoTxt} Editável pelo usuário.`;
     }
 
     function pbevMarcarConsumoEditadoUsuarioTCO(prefixo) {
@@ -3632,10 +3631,8 @@
       if (!pbevSelecaoAindaAtualTCO(prefixo, contexto)) return;
       const nivel = String(dados?.nivel_match || "sem_match");
       if (nivel !== "alto" || dados?.autopreencher !== true) {
-        if (nivel === "medio") {
-          pbevRegistrarAuditoriaTCO(prefixo, dados);
-          pbevSetStatusConsumoTCO(prefixo, "Inmetro/PBEV encontrou match médio; consumo manual mantido por segurança.", "warn");
-        }
+        // Sem poluir a tela: match médio/baixo continua manual e sem aviso visível.
+        // A interface só destaca a PBEV quando algum consumo foi realmente aplicado.
         return;
       }
       const sugestao = dados?.sugestoes_consumo || {};
