@@ -2817,6 +2817,18 @@
       return String(codigoAno || "").startsWith("32000");
     }
 
+    function anoFipePermitidoRecortePlugVE(codigoAno, textoAno) {
+      // Regra metodológica da Simulação: permitir Zero km e anos-modelo de 2012 em diante.
+      // A Consulta FIPE pública usa rotas próprias e não aplica este recorte.
+      if (codigoAnoFipeZeroKm(codigoAno)) return true;
+      const bruto = `${codigoAno || ""} ${textoAno || ""}`;
+      const candidatos = Array.from(String(bruto).matchAll(/\b(19\d{2}|20\d{2}|32000)\b/g))
+        .map(m => parseInt(m[1], 10))
+        .filter(n => Number.isFinite(n) && n !== 32000);
+      if (!candidatos.length) return false;
+      return Math.max(...candidatos) >= 2012;
+    }
+
     function anoModeloParaCalculo(codigoAno, anoModeloFipe) {
       if (codigoAnoFipeZeroKm(codigoAno)) return new Date().getFullYear();
       const n = parseInt(anoModeloFipe, 10);
@@ -3353,6 +3365,7 @@
         const nomeModeloSelecionado = modeloEl.options[modeloEl.selectedIndex]?.text || "";
         const nomeMarcaSelecionada = marcaEl.options[marcaEl.selectedIndex]?.text || "";
         anos.forEach(a => {
+          if (!anoFipePermitidoRecortePlugVE(a.codigo, a.nome)) return;
           const tipoAno = classificarTipoVeiculoTCO(nomeModeloSelecionado, a.nome, a.codigo, nomeMarcaSelecionada, prefixoDestino);
           if (!tipoPermitidoNoBloco(prefixoDestino, tipoAno)) return;
           const opt = document.createElement("option");
@@ -6323,6 +6336,7 @@
           const nomeModeloSelecionado = modeloEl.options[modeloEl.selectedIndex]?.dataset?.nome || modeloEl.options[modeloEl.selectedIndex]?.text || "";
           const nomeMarcaSelecionada = marcaEl.options[marcaEl.selectedIndex]?.text || "";
           (Array.isArray(anos) ? anos : []).forEach(a => {
+            if (!anoFipePermitidoRecortePlugVE(a.codigo, a.nome)) return;
             const tipoAno = classificarTipoVeiculoTCO(nomeModeloSelecionado, a.nome, a.codigo, nomeMarcaSelecionada, prefixoDestino);
             if (!tipoPermitidoNoBloco(prefixoDestino, tipoAno)) return;
             const opt = document.createElement("option");
