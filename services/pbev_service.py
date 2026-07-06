@@ -45,6 +45,9 @@ GENERIC_TOKENS = {
 HARD_BODY_TOKENS = {"CROSS", "PICKUP", "PICAPE", "CABINE", "CAB", "SW", "WAGON", "TOURING", "VAN", "MINIVAN"}
 # HATCH/SEDAN ajudam, mas a FIPE frequentemente usa apenas 4P/5P ou omite a carroceria.
 SOFT_BODY_TOKENS = {"HATCH", "HATCHBACK", "SEDAN", "SEDA", "SED", "SPORTBACK"}
+# Em algumas marcas, estes termos são parte da família comercial, não mero acabamento.
+# Evita confundir, por exemplo, BYD Dolphin Mini com Dolphin, Song Plus com Song Pro.
+FAMILY_DESCRIPTOR_TOKENS = {"MINI", "PLUS", "PRO"}
 VERSION_STOP_TOKENS = FUEL_TOKENS | TRANS_TOKENS | ENGINE_TOKENS | GENERIC_TOKENS | SOFT_BODY_TOKENS | {
     "4P", "5P", "2P", "3P", "1P", "6P", "7L", "L", "V", "VALVE", "VALVES",
 }
@@ -454,6 +457,18 @@ class PbevService:
             score -= 30
             penalidades.append("descritor forte da FIPE ausente no PBEV: " + ", ".join(sorted(hard_query - set(cand_all_norm.split()))))
 
+        cand_all_tokens = set(cand_all_norm.split())
+        family_query = query_all_tokens & FAMILY_DESCRIPTOR_TOKENS
+        family_cand = cand_all_tokens & FAMILY_DESCRIPTOR_TOKENS
+        missing_family = family_query - family_cand
+        extra_family = family_cand - query_all_tokens
+        if missing_family:
+            score -= 22 * len(missing_family)
+            penalidades.append("descritor de família da FIPE ausente no PBEV: " + ", ".join(sorted(missing_family)))
+        if extra_family:
+            score -= 10 * len(extra_family)
+            penalidades.append("descritor de família do PBEV ausente na FIPE: " + ", ".join(sorted(extra_family)))
+
         # HATCH x SEDAN ajuda, mas não bloqueia quando a FIPE só traz 4P/5P.
         soft_cand = cand_model_tokens & SOFT_BODY_TOKENS
         soft_query = query_all_tokens & SOFT_BODY_TOKENS
@@ -553,6 +568,30 @@ class PbevService:
             )
         )
 
+        # Para consumo, acabamento diferente nem sempre invalida o dado.
+        # Ex.: Corolla Cross XRV x XRX têm o mesmo conjunto técnico e o mesmo consumo PBEV.
+        # A versão/acabamento continua aparecendo no diagnóstico, mas não deve bloquear sozinha
+        # quando marca, família, motor, câmbio, combustível e propulsão estão consistentes.
+        penalidades_bloqueantes_consumo = []
+        for penalidade in penalidades_tecnicas:
+            p_norm = self.normalizar_texto(penalidade)
+            if p_norm == "ACABAMENTO DIVERGENTE":
+                continue
+            penalidades_bloqueantes_consumo.append(penalidade)
+
+        tecnica_suficiente_para_consumo = (
+            fuel_ok
+            and ok_flags
+            and modelo_score >= 30
+            and not penalidades_bloqueantes_consumo
+            and (
+                not motor_q or not motor_c or motor_q == motor_c
+            )
+            and (
+                not trans_q or not trans_c or trans_q == trans_c or {trans_q, trans_c} <= {"AUTO", "CVT"}
+            )
+        )
+
         score_bruto = max(0.0, round(score, 2))
         score_publico = min(100.0, score_bruto)
         return {
@@ -573,6 +612,8 @@ class PbevService:
             "ok_flags": ok_flags,
             "bloqueios_flags": bloqueios,
             "identidade_tecnica_forte": identidade_tecnica_forte,
+            "tecnica_suficiente_para_consumo": tecnica_suficiente_para_consumo,
+            "penalidades_bloqueantes_consumo": penalidades_bloqueantes_consumo,
             "penalidades_tecnicas": penalidades_tecnicas,
         }
 
@@ -741,10 +782,10 @@ class PbevService:
     def _candidatos_proximos_bloqueiam_autofill(self, top: dict[str, Any], proximos: list[dict[str, Any]]) -> bool:
         """Retorna True quando há candidato próximo realmente ambíguo.
 
-        Candidatos de anos diferentes com a mesma assinatura técnica não devem bloquear
-        autofill: neste caso o sistema usa o registro PBEV mais recente/mais próximo.
-        Candidatos com consumo idêntico também não bloqueiam, pois o valor aplicado ao TCO
-        seria o mesmo.
+        A regra é conservadora, mas não burra: se versões próximas têm a mesma
+        assinatura técnica ou o mesmo consumo aplicável ao campo da CurVE, não há motivo
+        para bloquear o autofill. Isso cobre casos como Corolla Cross XRV/XRX no mesmo
+        ano PBEV, em que a FIPE usa outro acabamento, mas o consumo é idêntico.
         """
         if not proximos:
             return False
@@ -754,13 +795,23 @@ class PbevService:
             cand_sig = self._assinatura_tecnica_registro(cand.get("registro") or {})
             if cand_sig == top_sig:
                 continue
-            if top_sug and self._assinatura_sugestao(cand.get("sugestao")) == top_sug:
+            cand_sug = self._assinatura_sugestao(cand.get("sugestao"))
+            if top_sug and cand_sug == top_sug:
                 continue
             return True
         return False
 
+    def _candidatos_equivalentes_por_consumo(self, top: dict[str, Any], proximos: list[dict[str, Any]]) -> bool:
+        """Indica se todos os próximos relevantes entregam o mesmo consumo aplicável."""
+        if not proximos:
+            return False
+        top_sug = self._assinatura_sugestao(top.get("sugestao"))
+        if not top_sug:
+            return False
+        return all(self._assinatura_sugestao(c.get("sugestao")) == top_sug for c in proximos)
+
     # ------------------------------------------------------------------
-    # Diagnóstico/debug provisório V38.2
+    # Diagnóstico/debug provisório V38.3
     # ------------------------------------------------------------------
     @staticmethod
     def _resumo_sugestao_debug(sugestao: dict[str, Any] | None) -> dict[str, Any]:
@@ -806,6 +857,7 @@ class PbevService:
             "ano_compativel_fipe_pbev": bool(avaliacao.get("ano_compativel_fipe_pbev")),
             "zero_km_contexto": bool(avaliacao.get("zero_km_contexto")),
             "identidade_tecnica_forte": bool(avaliacao.get("identidade_tecnica_forte")),
+            "tecnica_suficiente_para_consumo": bool(avaliacao.get("tecnica_suficiente_para_consumo")),
             "combustivel_detectado_fipe": avaliacao.get("req_fuel"),
             "motivos": list(avaliacao.get("motivos") or []),
             "penalidades": list(avaliacao.get("penalidades") or []),
@@ -828,7 +880,7 @@ class PbevService:
         resposta = resposta or {}
         linhas: list[str] = []
         add = linhas.append
-        add("=== DIAGNÓSTICO PBEV / INMETRO — V38.2 ===")
+        add("=== DIAGNÓSTICO PBEV / INMETRO — V38.3 ===")
         add("Ferramenta provisória para calibrar o matching FIPE × PBEV.")
         add("")
 
@@ -876,6 +928,7 @@ class PbevService:
                 add(f"   Ano PBEV: {self._fmt_debug_val(cpub.get('ano_tabela') or cand.get('ano_pbev'))} | Score: {self._fmt_debug_val(cand.get('score'))} | Score público: {self._fmt_debug_val(cand.get('score_publico'))}")
                 add(f"   Status: {self._fmt_debug_val(cpub.get('status_registro'))} | Flags OK: {self._fmt_debug_val(cand.get('flags_ok'))} | Sugestão consumo: {self._fmt_debug_val(cand.get('tem_sugestao_consumo'))}")
                 add(f"   Ano relação: {self._fmt_debug_val(cand.get('ano_relacao'))} | Diferença ano: {self._fmt_debug_val(cand.get('ano_diff'))} | Identidade técnica forte: {self._fmt_debug_val(cand.get('identidade_tecnica_forte'))}")
+                add(f"   Técnica suficiente para consumo: {self._fmt_debug_val(cand.get('tecnica_suficiente_para_consumo'))}")
                 motivos = cand.get("motivos") or []
                 penalidades = cand.get("penalidades") or []
                 bloqueios = cand.get("bloqueios_flags") or []
@@ -904,7 +957,7 @@ class PbevService:
             add(f"- score bruto: {self._fmt_debug_val(resposta.get('score_bruto'))}")
         add(f"- motivo: {self._fmt_debug_val(resposta.get('motivo'))}")
         diag_final = resposta.get("diagnostico") or {}
-        for chave in ("dominante", "ambiguidade_proxima", "diferenca_para_segundo", "score_segundo_candidato", "ano_relacao", "ano_compativel_fipe_pbev", "zero_km_contexto", "identidade_tecnica_forte", "modelo_score"):
+        for chave in ("dominante", "ambiguidade_proxima", "ambiguidade_resolvida_por_consumo", "diferenca_para_segundo", "score_segundo_candidato", "ano_relacao", "ano_compativel_fipe_pbev", "zero_km_contexto", "identidade_tecnica_forte", "tecnica_suficiente_para_consumo", "modelo_score"):
             if chave in diag_final:
                 add(f"- {chave}: {self._fmt_debug_val(diag_final.get(chave))}")
         add("")
@@ -1078,10 +1131,16 @@ class PbevService:
         avaliacao_top = top["avaliacao"]
         candidatos_proximos = [c for c in utilizaveis[1:] if top["score"] - c["score"] < 8]
         dominante = segundo_score is None or (diferenca is not None and diferenca >= 8)
-        ambiguidade_proxima = self._candidatos_proximos_bloqueiam_autofill(top, candidatos_proximos)
+
+        # Se o melhor candidato é do ano exato, candidatos adjacentes não devem bloquear
+        # quando existe grupo do mesmo ano para comparação. Ex.: Corolla Cross 2022 XRV/XRX
+        # empata no mesmo ano e no mesmo consumo; 2021/2023 não devem travar a escolha 2022.
+        proximos_mesmo_ano = [c for c in candidatos_proximos if (c.get("avaliacao") or {}).get("ano_exato")]
+        proximos_relevantes_ambiguidade = proximos_mesmo_ano if avaliacao_top.get("ano_exato") and proximos_mesmo_ano else candidatos_proximos
+        ambiguidade_proxima = self._candidatos_proximos_bloqueiam_autofill(top, proximos_relevantes_ambiguidade)
+        ambiguidade_resolvida_por_consumo = self._candidatos_equivalentes_por_consumo(top, proximos_relevantes_ambiguidade)
 
         if not dominante and avaliacao_top.get("ano_exato"):
-            proximos_mesmo_ano = [c for c in candidatos_proximos if (c.get("avaliacao") or {}).get("ano_exato")]
             if not proximos_mesmo_ano:
                 dominante = True
             elif not ambiguidade_proxima:
@@ -1089,7 +1148,7 @@ class PbevService:
 
         if (
             not dominante
-            and avaliacao_top.get("identidade_tecnica_forte")
+            and avaliacao_top.get("tecnica_suficiente_para_consumo")
             and avaliacao_top.get("ano_compativel_fipe_pbev")
             and not ambiguidade_proxima
         ):
@@ -1101,7 +1160,7 @@ class PbevService:
             score_top >= 95
             and avaliacao_top.get("fuel_ok")
             and avaliacao_top.get("ano_compativel_fipe_pbev")
-            and avaliacao_top.get("identidade_tecnica_forte")
+            and avaliacao_top.get("tecnica_suficiente_para_consumo")
             and float(avaliacao_top.get("modelo_score") or 0) >= 30
             and dominante
         )
@@ -1130,6 +1189,8 @@ class PbevService:
 
         motivos = list(avaliacao_top.get("motivos") or [])
         penalidades = list(avaliacao_top.get("penalidades") or [])
+        if ambiguidade_resolvida_por_consumo:
+            motivos.append("candidatos próximos têm o mesmo consumo aplicável; ambiguidade não bloqueia")
         if not dominante:
             penalidades.append("há outro candidato PBEV próximo tecnicamente ambíguo; autofill bloqueado")
         if nivel != "alto" and not penalidades:
@@ -1161,7 +1222,9 @@ class PbevService:
                 "ano_compativel_fipe_pbev": bool(avaliacao_top.get("ano_compativel_fipe_pbev")),
                 "zero_km_contexto": bool(avaliacao_top.get("zero_km_contexto")),
                 "identidade_tecnica_forte": bool(avaliacao_top.get("identidade_tecnica_forte")),
+                "tecnica_suficiente_para_consumo": bool(avaliacao_top.get("tecnica_suficiente_para_consumo")),
                 "ambiguidade_proxima": bool(ambiguidade_proxima),
+                "ambiguidade_resolvida_por_consumo": bool(ambiguidade_resolvida_por_consumo),
                 "modelo_score": avaliacao_top.get("modelo_score"),
                 "combustivel_detectado_fipe": avaliacao_top.get("req_fuel"),
             },
