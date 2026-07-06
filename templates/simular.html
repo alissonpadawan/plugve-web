@@ -3542,6 +3542,7 @@
     function pbevAtivarComprovacaoTCO(prefixo, dados) {
       if (!dados || dados?.autopreencher !== true || dados?.nivel_match !== "alto") return;
       PBEV_DEBUG_TCO[prefixo] = dados;
+      pbevOcultarBotaoDebugTCO(prefixo);
       pbevRenderizarSeloComprovacaoTCO(prefixo, dados);
       const campo = pbevCampoConsumoPorPrefixoTCO(prefixo);
       if (campo && (campo.readOnly || campo.dataset.flexConfigurado === "1" || campo.dataset.phevConfigurado === "1")) {
@@ -3638,11 +3639,23 @@
       document.getElementById("modal_pbev_debug_tco")?.classList.add("hidden");
     }
 
-    function pbevAtualizarBotaoDebugTCO(prefixo, dados) {
+    function pbevOcultarBotaoDebugTCO(prefixo) {
+      const btn = pbevBotaoDebugPorPrefixoTCO(prefixo);
+      if (btn) btn.classList.add("hidden");
+    }
+
+    function pbevAtualizarBotaoDebugTCO(prefixo, dados, forcarVisivel = false) {
       PBEV_DEBUG_TCO[prefixo] = dados || null;
       const btn = pbevBotaoDebugPorPrefixoTCO(prefixo);
       if (!btn) return;
-      if (!dados || !pbevDebugVisivelTCO()) {
+      if (!dados) {
+        btn.classList.add("hidden");
+        return;
+      }
+      const aplicadoAutomaticamente = dados?.autopreencher === true && String(dados?.nivel_match || "") === "alto";
+      // Regra provisória de calibração: se não houve consumo aplicado, deixa o botão de análise visível.
+      // Quando o consumo é aplicado, quem aparece é o selo do Inmetro/comprovação.
+      if (aplicadoAutomaticamente && !forcarVisivel) {
         btn.classList.add("hidden");
         return;
       }
@@ -3834,8 +3847,8 @@
       if (!pbevSelecaoAindaAtualTCO(prefixo, contexto)) return;
       const nivel = String(dados?.nivel_match || "sem_match");
       if (nivel !== "alto" || dados?.autopreencher !== true) {
-        // Sem poluir a tela: match médio/baixo continua manual e sem aviso visível.
-        // A interface só destaca a PBEV quando algum consumo foi realmente aplicado.
+        // Se não aplicou valor, deixa o botão de auditoria visível para calibração do matching.
+        pbevAtualizarBotaoDebugTCO(prefixo, dados, true);
         return;
       }
       const sugestao = dados?.sugestoes_consumo || {};
@@ -3855,8 +3868,12 @@
         aplicado = pbevAplicarCampoSimplesTCO(prefixo, sugestao.etanol_cidade_km_l, dados, "consumo urbano etanol aplicado como referência inicial.");
       }
       if (aplicado) {
+        pbevOcultarBotaoDebugTCO(prefixo);
         if (typeof capturarEstadoFormularioTCO === "function") capturarEstadoFormularioTCO();
         if (typeof window.atualizarDetalhesProgressivosPlugVE === "function") window.atualizarDetalhesProgressivosPlugVE();
+      } else {
+        // Match alto, mas nenhum campo recebeu valor: manter o botão para investigar o bloqueio.
+        pbevAtualizarBotaoDebugTCO(prefixo, dados, true);
       }
     }
 
