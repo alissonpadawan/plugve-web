@@ -1336,6 +1336,19 @@ class PbevService:
         score_top = float(top["score"])
         score_publico_top = float(top.get("score_publico", min(100.0, score_top)))
         limiar_match_alto = 88 if avaliacao_top.get("req_fuel") in {"ELETRICO", "PLUG_IN"} else 95
+        # Alguns elétricos aparecem na FIPE em nível mais genérico do que na PBEV.
+        # Ex.: FIPE "TAN EV 4x4" x PBEV "TAN AWD GS 700EV".
+        # Nesses casos, acabamento/versão não deve impedir o autofill quando a família,
+        # ano, propulsão e consumo elétrico estão tecnicamente consistentes.
+        eletrico_generico_confiavel = (
+            avaliacao_top.get("req_fuel") in {"ELETRICO", "PLUG_IN"}
+            and score_top >= 76
+            and avaliacao_top.get("fuel_ok")
+            and avaliacao_top.get("ano_compativel_fipe_pbev")
+            and avaliacao_top.get("tecnica_suficiente_para_consumo")
+            and float(avaliacao_top.get("modelo_score") or 0) >= 30
+            and dominante
+        )
         high_conditions = (
             score_top >= limiar_match_alto
             and avaliacao_top.get("fuel_ok")
@@ -1343,7 +1356,7 @@ class PbevService:
             and avaliacao_top.get("tecnica_suficiente_para_consumo")
             and float(avaliacao_top.get("modelo_score") or 0) >= 30
             and dominante
-        )
+        ) or eletrico_generico_confiavel
 
         if high_conditions:
             nivel = "alto"
@@ -1373,6 +1386,8 @@ class PbevService:
             motivos.append("candidatos próximos têm o mesmo consumo aplicável; ambiguidade não bloqueia")
         if ambiguidade_resolvida_por_criterio_conservador:
             motivos.append("candidatos próximos da mesma família resolvidos por critério conservador de consumo")
+        if 'eletrico_generico_confiavel' in locals() and eletrico_generico_confiavel and high_conditions:
+            motivos.append("elétrico/PHEV genérico compatível; acabamento não bloqueia consumo")
         if not dominante:
             penalidades.append("há outro candidato PBEV próximo tecnicamente ambíguo; autofill bloqueado")
         if nivel != "alto" and not penalidades:

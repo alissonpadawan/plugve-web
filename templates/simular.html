@@ -577,6 +577,10 @@
     .plugve-pbev-proof-btn-main{display:inline-flex;align-items:center;justify-content:center;width:1.9rem;height:1.9rem;border:1px solid #dbe3ea;background:#fff;border-radius:.6rem;padding:.18rem;cursor:pointer;box-shadow:0 3px 10px rgba(15,23,42,.06);transition:transform .15s ease,border-color .15s ease,box-shadow .15s ease}
     .plugve-pbev-proof-btn-main:hover{border-color:#94a3b8;box-shadow:0 8px 18px rgba(15,23,42,.10);transform:translateY(-1px)}
     .plugve-pbev-proof-btn-main img{display:block;max-width:1.15rem;max-height:1.15rem;object-fit:contain}
+    .plugve-pbev-card-proof{display:flex;align-items:center;margin-left:auto}
+    .plugve-pbev-card-proof.hidden{display:none!important}
+    .plugve-pbev-card-proof .plugve-pbev-proof-btn-main{width:1.75rem;height:1.75rem;border-color:#e2e8f0;background:rgba(255,255,255,.92)}
+    .plugve-pbev-card-proof .plugve-pbev-proof-btn-main img{max-width:1.05rem;max-height:1.05rem}
     .plugve-pbev-clickable{cursor:pointer!important;box-shadow:none!important}
     .plugve-pbev-clickable:hover{border-color:#94a3b8!important;background:#fff!important}
     .plugve-pbev-debug-btn{margin-top:.32rem;display:inline-flex;align-items:center;gap:.35rem;border:1px solid #cbd5e1;background:#f8fafc;color:#334155;border-radius:999px;padding:.28rem .58rem;font-size:.68rem;font-weight:900;line-height:1;cursor:pointer;box-shadow:0 4px 10px rgba(15,23,42,.06)}
@@ -1357,6 +1361,7 @@
                   </div>
                   <strong id="fuel_compact_preco" class="plugve-fuel-compact-price"></strong>
                   <input type="text" id="fuel_single_preco_input" class="plugve-fuel-single-input" value="5,800" inputmode="decimal" aria-label="Preço do combustível em reais por litro">
+                  <span id="pbev_status_fuel_card" class="plugve-pbev-card-proof hidden"></span>
                 </div>
                 <div id="fuel_compact_bar" class="plugve-fuel-mini-bar" aria-hidden="true">
                   <div id="fuel_bar_etanol" class="plugve-fuel-mini-etanol" style="width:0%"></div>
@@ -1385,6 +1390,7 @@
                       <small>Clique para ajustar energia x combustível</small>
                     </div>
                   </div>
+                  <span id="pbev_status_phev_card" class="plugve-pbev-card-proof hidden"></span>
                 </div>
                 <div class="plugve-phev-mini-bar" aria-hidden="true">
                   <div id="phev_bar_eletrico" class="plugve-phev-mini-electric" style="width:100%"></div>
@@ -3486,6 +3492,19 @@
       return document.getElementById(`pbev_status_select_${prefixo}`);
     }
 
+    function pbevStatusPerfilPorPrefixoTCO(prefixo) {
+      if (prefixo === "ve") return document.getElementById("pbev_status_phev_card");
+      if (prefixo === "icev" || prefixo === "atual") return document.getElementById("pbev_status_fuel_card");
+      return null;
+    }
+
+    function pbevSlotsComprovacaoTCO(prefixo) {
+      const slots = [pbevStatusPorPrefixoTCO(prefixo), pbevStatusSelecaoPorPrefixoTCO(prefixo)];
+      const perfil = pbevStatusPerfilPorPrefixoTCO(prefixo);
+      if (perfil) slots.push(perfil);
+      return slots.filter(Boolean);
+    }
+
     function pbevDebugVisivelTCO() {
       try {
         return window.CURVE_PBEV_DEBUG === true || localStorage.getItem("curve_pbev_debug") === "1";
@@ -3541,7 +3560,7 @@
 
     function pbevRenderizarSeloComprovacaoTCO(prefixo, dados) {
       if (!dados || dados?.autopreencher !== true || dados?.nivel_match !== "alto") return;
-      const slots = [pbevStatusPorPrefixoTCO(prefixo), pbevStatusSelecaoPorPrefixoTCO(prefixo)].filter(Boolean);
+      const slots = pbevSlotsComprovacaoTCO(prefixo);
       slots.forEach(status => {
         status.innerHTML = `<button type="button" class="plugve-pbev-proof-btn-main" title="Ver dados de consumo considerados e fonte oficial Inmetro/PBEV" aria-label="Ver comprovação Inmetro/PBEV"><img src="${PBEV_INMETRO_LOGO_URL}" alt="Inmetro"></button>`;
         status.classList.remove("hidden");
@@ -3575,7 +3594,7 @@
         campo.removeAttribute("title");
         campo.onclick = null;
       }
-      [pbevStatusPorPrefixoTCO(prefixo), pbevStatusSelecaoPorPrefixoTCO(prefixo)].filter(Boolean).forEach(status => {
+      pbevSlotsComprovacaoTCO(prefixo).forEach(status => {
         status.innerHTML = "";
         status.classList.add("hidden");
       });
@@ -3709,7 +3728,7 @@
         delete campo.dataset.pbevAplicando;
       }
       pbevDesativarComprovacaoTCO(prefixo);
-      [pbevStatusPorPrefixoTCO(prefixo), pbevStatusSelecaoPorPrefixoTCO(prefixo)].filter(Boolean).forEach(status => {
+      pbevSlotsComprovacaoTCO(prefixo).forEach(status => {
         status.innerHTML = "";
         status.classList.add("hidden");
         status.classList.remove("plugve-pbev-status-warn");
@@ -4607,6 +4626,10 @@
         if (compactLeft) compactLeft.textContent = textoResumoPrecoFlexTCO("etanol", etanolPct, precoEta);
         if (compactRight) compactRight.textContent = textoResumoPrecoFlexTCO("gasolina", gasolinaPct, precoGas);
         setStatusCombustivelTCO("", false);
+        if ((PBEV_DEBUG_TCO.icev?.autopreencher === true && PBEV_DEBUG_TCO.icev?.nivel_match === "alto") || (PBEV_DEBUG_TCO.atual?.autopreencher === true && PBEV_DEBUG_TCO.atual?.nivel_match === "alto")) {
+          const pref = PBEV_DEBUG_TCO.icev?.autopreencher === true ? "icev" : "atual";
+          pbevRenderizarSeloComprovacaoTCO(pref, PBEV_DEBUG_TCO[pref]);
+        }
         return;
       }
 
@@ -4641,6 +4664,10 @@
         if (compactRight) compactRight.textContent = formatarPrecoLitroTCO(precoFinal);
       }
       setStatusCombustivelTCO("", false);
+      if ((PBEV_DEBUG_TCO.icev?.autopreencher === true && PBEV_DEBUG_TCO.icev?.nivel_match === "alto") || (PBEV_DEBUG_TCO.atual?.autopreencher === true && PBEV_DEBUG_TCO.atual?.nivel_match === "alto")) {
+        const pref = PBEV_DEBUG_TCO.icev?.autopreencher === true ? "icev" : "atual";
+        pbevRenderizarSeloComprovacaoTCO(pref, PBEV_DEBUG_TCO[pref]);
+      }
     }
 
     function abrirModalCombustivelTCO() {
@@ -4979,6 +5006,9 @@
       if (barComb) barComb.style.width = `${combustPct}%`;
       if (left) left.textContent = `${eletricoPct}% elétrico`;
       if (right) right.textContent = `${combustPct}% combustível`;
+      if (PBEV_DEBUG_TCO.ve?.autopreencher === true && PBEV_DEBUG_TCO.ve?.nivel_match === "alto") {
+        pbevRenderizarSeloComprovacaoTCO("ve", PBEV_DEBUG_TCO.ve);
+      }
     }
 
     function abrirModalPhevTCO() {
