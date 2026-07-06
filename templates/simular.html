@@ -581,6 +581,12 @@
     .plugve-pbev-card-proof.hidden{display:none!important}
     .plugve-pbev-card-proof .plugve-pbev-proof-btn-main{width:1.75rem;height:1.75rem;border-color:#e2e8f0;background:rgba(255,255,255,.92)}
     .plugve-pbev-card-proof .plugve-pbev-proof-btn-main img{max-width:1.05rem;max-height:1.05rem}
+    .plugve-pbev-inline-field{position:relative}
+    .plugve-pbev-inline-field input{padding-right:2.35rem}
+    .plugve-pbev-inline-status{position:absolute;right:.35rem;top:50%;transform:translateY(-50%);display:flex;align-items:center;justify-content:center;z-index:2}
+    .plugve-pbev-inline-status.hidden{display:none!important}
+    .plugve-pbev-inline-status .plugve-pbev-proof-btn-main{width:1.7rem;height:1.7rem;border-color:#dbe3ea;background:#fff;padding:.16rem}
+    .plugve-pbev-inline-status .plugve-pbev-proof-btn-main img{max-width:1rem;max-height:1rem}
     .plugve-pbev-clickable{cursor:pointer!important;box-shadow:none!important}
     .plugve-pbev-clickable:hover{border-color:#94a3b8!important;background:#fff!important}
     .plugve-pbev-debug-btn{margin-top:.32rem;display:inline-flex;align-items:center;gap:.35rem;border:1px solid #cbd5e1;background:#f8fafc;color:#334155;border-radius:999px;padding:.28rem .58rem;font-size:.68rem;font-weight:900;line-height:1;cursor:pointer;box-shadow:0 4px 10px rgba(15,23,42,.06)}
@@ -1361,7 +1367,7 @@
                   </div>
                   <strong id="fuel_compact_preco" class="plugve-fuel-compact-price"></strong>
                   <input type="text" id="fuel_single_preco_input" class="plugve-fuel-single-input" value="5,800" inputmode="decimal" aria-label="Preço do combustível em reais por litro">
-                  <span id="pbev_status_fuel_card" class="plugve-pbev-card-proof hidden"></span>
+                  
                 </div>
                 <div id="fuel_compact_bar" class="plugve-fuel-mini-bar" aria-hidden="true">
                   <div id="fuel_bar_etanol" class="plugve-fuel-mini-etanol" style="width:0%"></div>
@@ -1390,7 +1396,7 @@
                       <small>Clique para ajustar energia x combustível</small>
                     </div>
                   </div>
-                  <span id="pbev_status_phev_card" class="plugve-pbev-card-proof hidden"></span>
+                  
                 </div>
                 <div class="plugve-phev-mini-bar" aria-hidden="true">
                   <div id="phev_bar_eletrico" class="plugve-phev-mini-electric" style="width:100%"></div>
@@ -1515,7 +1521,10 @@
                   <input type="text" id="fuel_modal_preco_etanol" inputmode="decimal" placeholder="ex: 4,48">
                 </div>
                 <label for="fuel_modal_consumo_etanol">Consumo (km/L)</label>
-                <input type="text" id="fuel_modal_consumo_etanol" inputmode="decimal" placeholder="ex: 7,5">
+                <div class="plugve-pbev-inline-field">
+                  <input type="text" id="fuel_modal_consumo_etanol" inputmode="decimal" placeholder="ex: 7,5">
+                  <span id="pbev_status_modal_fuel_etanol" class="plugve-pbev-inline-status hidden"></span>
+                </div>
               </div>
               <div id="fuel_box_gasolina" class="plugve-fuel-pill">
                 <span>⛽ Gasolina</span>
@@ -1525,7 +1534,10 @@
                   <input type="text" id="fuel_modal_preco_gasolina" inputmode="decimal" placeholder="ex: 6,87">
                 </div>
                 <label for="fuel_modal_consumo_gasolina">Consumo (km/L)</label>
-                <input type="text" id="fuel_modal_consumo_gasolina" inputmode="decimal" placeholder="ex: 11,0">
+                <div class="plugve-pbev-inline-field">
+                  <input type="text" id="fuel_modal_consumo_gasolina" inputmode="decimal" placeholder="ex: 11,0">
+                  <span id="pbev_status_modal_fuel_gasolina" class="plugve-pbev-inline-status hidden"></span>
+                </div>
               </div>
             </div>
 
@@ -1583,7 +1595,10 @@
               <div id="phev_box_eletrico" class="plugve-fuel-pill">
                 <span>⚡ Elétrico</span>
                 <label for="phev_modal_consumo_eletrico">Consumo (kWh/km)</label>
-                <input type="text" id="phev_modal_consumo_eletrico" inputmode="decimal" placeholder="ex: 0,18">
+                <div class="plugve-pbev-inline-field">
+                  <input type="text" id="phev_modal_consumo_eletrico" inputmode="decimal" placeholder="ex: 0,18">
+                  <span id="pbev_status_modal_phev_eletrico" class="plugve-pbev-inline-status hidden"></span>
+                </div>
               </div>
               <div id="phev_box_combustivel" class="plugve-fuel-pill">
                 <span>⛽ Combustível</span>
@@ -1593,7 +1608,10 @@
                   <input type="text" id="phev_modal_preco_combustivel" inputmode="decimal" placeholder="ex: 6,87">
                 </div>
                 <label for="phev_modal_consumo_combustivel">Consumo (km/L)</label>
-                <input type="text" id="phev_modal_consumo_combustivel" inputmode="decimal" placeholder="ex: 13,0">
+                <div class="plugve-pbev-inline-field">
+                  <input type="text" id="phev_modal_consumo_combustivel" inputmode="decimal" placeholder="ex: 13,0">
+                  <span id="pbev_status_modal_phev_combustivel" class="plugve-pbev-inline-status hidden"></span>
+                </div>
               </div>
             </div>
 
@@ -3489,19 +3507,42 @@
     }
 
     function pbevStatusSelecaoPorPrefixoTCO(prefixo) {
-      return document.getElementById(`pbev_status_select_${prefixo}`);
-    }
-
-    function pbevStatusPerfilPorPrefixoTCO(prefixo) {
-      if (prefixo === "ve") return document.getElementById("pbev_status_phev_card");
-      if (prefixo === "icev" || prefixo === "atual") return document.getElementById("pbev_status_fuel_card");
       return null;
     }
 
-    function pbevSlotsComprovacaoTCO(prefixo) {
-      const slots = [pbevStatusPorPrefixoTCO(prefixo), pbevStatusSelecaoPorPrefixoTCO(prefixo)];
-      const perfil = pbevStatusPerfilPorPrefixoTCO(prefixo);
-      if (perfil) slots.push(perfil);
+    function pbevStatusPerfilPorPrefixoTCO(prefixo, dados) {
+      const sug = dados?.sugestoes_consumo || {};
+      if (prefixo === "ve") {
+        const slots = [];
+        if (sug.consumo_eletrico_kwh_km || sug.consumo_eletrico_kwh_km_derivado || sug.consumo_eletrico) {
+          const s1 = document.getElementById("pbev_status_modal_phev_eletrico");
+          if (s1) slots.push(s1);
+        }
+        if (sug.consumo_combustivel_km_l || sug.gasolina_km_l || sug.combustivel_km_l) {
+          const s2 = document.getElementById("pbev_status_modal_phev_combustivel");
+          if (s2) slots.push(s2);
+        }
+        return slots;
+      }
+      if (prefixo === "icev" || prefixo === "atual") {
+        const slots = [];
+        if (sug.etanol_km_l || sug.etanol_cidade_km_l || sug.etanol_estrada_km_l) {
+          const s1 = document.getElementById("pbev_status_modal_fuel_etanol");
+          if (s1) slots.push(s1);
+        }
+        if (sug.gasolina_km_l || sug.gasolina_cidade_km_l || sug.gasolina_estrada_km_l) {
+          const s2 = document.getElementById("pbev_status_modal_fuel_gasolina");
+          if (s2) slots.push(s2);
+        }
+        return slots;
+      }
+      return [];
+    }
+
+    function pbevSlotsComprovacaoTCO(prefixo, dados) {
+      const slots = [pbevStatusPorPrefixoTCO(prefixo)];
+      const perfil = pbevStatusPerfilPorPrefixoTCO(prefixo, dados);
+      if (Array.isArray(perfil)) slots.push(...perfil);
       return slots.filter(Boolean);
     }
 
@@ -3560,7 +3601,7 @@
 
     function pbevRenderizarSeloComprovacaoTCO(prefixo, dados) {
       if (!dados || dados?.autopreencher !== true || dados?.nivel_match !== "alto") return;
-      const slots = pbevSlotsComprovacaoTCO(prefixo);
+      const slots = pbevSlotsComprovacaoTCO(prefixo, dados);
       slots.forEach(status => {
         status.innerHTML = `<button type="button" class="plugve-pbev-proof-btn-main" title="Ver dados de consumo considerados e fonte oficial Inmetro/PBEV" aria-label="Ver comprovação Inmetro/PBEV"><img src="${PBEV_INMETRO_LOGO_URL}" alt="Inmetro"></button>`;
         status.classList.remove("hidden");
@@ -3594,7 +3635,11 @@
         campo.removeAttribute("title");
         campo.onclick = null;
       }
-      pbevSlotsComprovacaoTCO(prefixo).forEach(status => {
+      pbevSlotsComprovacaoTCO(prefixo, PBEV_DEBUG_TCO[prefixo] || {}).forEach(status => {
+        status.innerHTML = "";
+        status.classList.add("hidden");
+      });
+      [document.getElementById(`pbev_status_select_${prefixo}`), document.getElementById(prefixo === "ve" ? "pbev_status_phev_card" : "pbev_status_fuel_card")].filter(Boolean).forEach(status => {
         status.innerHTML = "";
         status.classList.add("hidden");
       });
@@ -3728,7 +3773,7 @@
         delete campo.dataset.pbevAplicando;
       }
       pbevDesativarComprovacaoTCO(prefixo);
-      pbevSlotsComprovacaoTCO(prefixo).forEach(status => {
+      pbevSlotsComprovacaoTCO(prefixo, PBEV_DEBUG_TCO[prefixo] || {}).forEach(status => {
         status.innerHTML = "";
         status.classList.add("hidden");
         status.classList.remove("plugve-pbev-status-warn");
