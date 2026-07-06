@@ -130,6 +130,34 @@ class PbevService:
         if not bruto:
             return set()
         tokens = {t for t in bruto.split() if t}
+
+        # Expansões conservadoras para nomenclaturas FIPE x PBEV.
+        # Não substituem o token original; apenas adicionam aliases úteis para o score.
+        extras: set[str] = set()
+        for token in list(tokens):
+            # Peugeot e-2008/e2008/e 2008, e-208/e208/e 208 etc.
+            # O número do modelo passa a ser descritor forte e evita confundir 2008 com 208.
+            m = re.fullmatch(r"([A-Z]+)(\d{2,5})([A-Z]*)", token)
+            if m:
+                prefixo, numero, sufixo = m.groups()
+                if numero:
+                    extras.add(numero)
+                if prefixo and numero:
+                    extras.add(f"{prefixo}{numero}")
+                if sufixo:
+                    extras.add(sufixo)
+
+            # Ferrari: a FIPE pode vir com erro de grafia; PBEV usa 12CILINDRI.
+            if "CILINRDRI" in token:
+                extras.add(token.replace("CILINRDRI", "CILINDRI"))
+
+            # PBEV abrevia Spider como SPI em alguns registros.
+            if token == "SPI":
+                extras.add("SPIDER")
+            elif token == "SPIDER":
+                extras.add("SPI")
+
+        tokens |= extras
         if remover_genericos:
             tokens = {t for t in tokens if t not in GENERIC_TOKENS}
         return tokens
@@ -367,7 +395,7 @@ class PbevService:
         for token in tokens:
             if token in modelo_core_tokens or token in VERSION_STOP_TOKENS:
                 continue
-            if re.fullmatch(r"20\d{2}", token):
+            if re.fullmatch(r"20\d{2}", token) and token != "2008":
                 continue
             if re.fullmatch(r"[0-9]", token):
                 continue
@@ -389,7 +417,7 @@ class PbevService:
         for token in tokens:
             if token in SOFT_BODY_TOKENS or token in FUEL_TOKENS or token in TRANS_TOKENS or token in ENGINE_TOKENS or token in GENERIC_TOKENS:
                 continue
-            if re.fullmatch(r"20\d{2}", token):
+            if re.fullmatch(r"20\d{2}", token) and token != "2008":
                 continue
             if re.fullmatch(r"[0-9]", token):
                 continue
@@ -489,6 +517,32 @@ class PbevService:
             modelo_score += 4
         elif sim >= 0.74:
             modelo_score += 2
+
+        # Modelos numéricos/alfanuméricos exigem cuidado:
+        # Peugeot e-2008/e2008/e 2008 não pode empatar com e-208.
+        def _numeros_modelo(tokens: set[str]) -> set[str]:
+            nums: set[str] = set()
+            for tk in tokens:
+                if re.fullmatch(r"\d{2,5}", tk):
+                    nums.add(tk)
+                m_num = re.fullmatch(r"[A-Z]+(\d{2,5})(?:[A-Z]+)?", tk)
+                if m_num:
+                    nums.add(m_num.group(1))
+            return nums
+
+        cand_nums_modelo = _numeros_modelo(cand_model_tokens | cand_model_core)
+        query_nums_modelo = _numeros_modelo(query_all_tokens)
+        if cand_nums_modelo and query_nums_modelo:
+            if cand_nums_modelo & query_nums_modelo:
+                modelo_score = max(modelo_score, 32)
+                motivos.append("número/modelo compatível")
+            else:
+                score -= 28
+                penalidades.append(
+                    "número/modelo divergente (" +
+                    ",".join(sorted(cand_nums_modelo)) + " x " +
+                    ",".join(sorted(query_nums_modelo)) + ")"
+                )
 
         # CROSS/PICKUP/etc. ausentes costumam indicar família diferente.
         hard_cand = cand_model_tokens & HARD_BODY_TOKENS

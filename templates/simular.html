@@ -1542,7 +1542,7 @@
             </div>
 
             <div class="plugve-fuel-slider-wrap">
-              <input type="range" id="fuel_mix_slider" class="plugve-fuel-slider" min="0" max="100" step="1" value="0" aria-label="Percentual de etanol no abastecimento">
+              <input type="range" id="fuel_mix_slider" class="plugve-fuel-slider" min="0" max="100" step="5" value="0" aria-label="Percentual de etanol no abastecimento">
               <div class="plugve-fuel-percent-row">
                 <span id="fuel_pct_etanol">0% etanol</span>
                 <span id="fuel_pct_gasolina">100% gasolina</span>
@@ -1616,7 +1616,7 @@
             </div>
 
             <div class="plugve-fuel-slider-wrap">
-              <input type="range" id="phev_mix_slider" class="plugve-phev-slider" min="0" max="100" step="1" value="100" aria-label="Percentual de uso elétrico no híbrido plug-in">
+              <input type="range" id="phev_mix_slider" class="plugve-phev-slider" min="0" max="100" step="5" value="100" aria-label="Percentual de uso elétrico no híbrido plug-in">
               <div class="plugve-phev-percent-row">
                 <span id="phev_pct_eletrico">100% elétrico</span>
                 <span id="phev_pct_combustivel">0% combustível</span>
@@ -3518,7 +3518,12 @@
           const s1 = document.getElementById("pbev_status_modal_phev_eletrico");
           if (s1) slots.push(s1);
         }
-        if (sug.consumo_combustivel_km_l || sug.gasolina_km_l || sug.combustivel_km_l) {
+        if (
+          sug.consumo_combustivel_km_l || sug.gasolina_km_l || sug.combustivel_km_l ||
+          sug.gasolina_diesel_cidade_km_l || sug.gasolina_diesel_estrada_km_l ||
+          sug.gasolina_cidade_km_l || sug.gasolina_estrada_km_l ||
+          sug.diesel_cidade_km_l || sug.diesel_estrada_km_l
+        ) {
           const s2 = document.getElementById("pbev_status_modal_phev_combustivel");
           if (s2) slots.push(s2);
         }
