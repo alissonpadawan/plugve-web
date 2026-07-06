@@ -565,15 +565,20 @@
     .plugve-fuel-percent-row span:last-child{color:#991b1b}
     .plugve-fuel-modal-actions{display:flex;align-items:center;justify-content:flex-end;gap:.75rem;flex-wrap:wrap;margin-top:1rem}
     .plugve-fuel-save-disabled{background:#d1d5db!important;color:#64748b!important;cursor:not-allowed!important;box-shadow:none!important}
-    .plugve-consumo-configurado{background:#f0fdf4!important;border-color:#86efac!important;color:#166534!important;font-weight:700}
-    .plugve-consumo-pbev{background:#f9fffb!important;border-color:#86efac!important}
+    .plugve-consumo-configurado{background:#fff!important;border-color:#d1d5db!important;color:#0f172a!important;font-weight:700}
+    .plugve-consumo-pbev{background:#fff!important;border-color:#d1d5db!important;color:#0f172a!important}
+    .plugve-pbev-field-wrap{position:relative}
+    .plugve-pbev-field-input{padding-right:2.55rem}
     .plugve-pbev-status{display:flex;align-items:center;gap:.35rem;margin-top:.34rem;line-height:1}
     .plugve-pbev-status.hidden{display:none!important}
-    .plugve-pbev-proof-btn-main{display:inline-flex;align-items:center;justify-content:center;width:3.35rem;height:1.36rem;border:1px solid #d1fae5;background:#fff;border-radius:999px;padding:.12rem .32rem;cursor:pointer;box-shadow:0 6px 14px rgba(15,23,42,.07);transition:transform .15s ease,border-color .15s ease,box-shadow .15s ease}
-    .plugve-pbev-proof-btn-main:hover{border-color:#22c55e;box-shadow:0 10px 22px rgba(22,163,74,.15);transform:translateY(-1px)}
-    .plugve-pbev-proof-btn-main img{display:block;max-width:2.5rem;max-height:.9rem;object-fit:contain}
-    .plugve-pbev-clickable{cursor:pointer!important;box-shadow:0 0 0 1px rgba(22,163,74,.12),0 10px 22px rgba(22,163,74,.08)!important}
-    .plugve-pbev-clickable:hover{border-color:#22c55e!important;background:#f0fdf4!important}
+    .plugve-pbev-field-wrap>.plugve-pbev-status{position:absolute;right:.45rem;top:1.95rem;margin-top:0;z-index:2}
+    .plugve-pbev-select-slot{display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin-bottom:.5rem}
+    .plugve-pbev-select-slot .plugve-pbev-status{margin-top:0;flex-shrink:0}
+    .plugve-pbev-proof-btn-main{display:inline-flex;align-items:center;justify-content:center;width:1.9rem;height:1.9rem;border:1px solid #dbe3ea;background:#fff;border-radius:.6rem;padding:.18rem;cursor:pointer;box-shadow:0 3px 10px rgba(15,23,42,.06);transition:transform .15s ease,border-color .15s ease,box-shadow .15s ease}
+    .plugve-pbev-proof-btn-main:hover{border-color:#94a3b8;box-shadow:0 8px 18px rgba(15,23,42,.10);transform:translateY(-1px)}
+    .plugve-pbev-proof-btn-main img{display:block;max-width:1.15rem;max-height:1.15rem;object-fit:contain}
+    .plugve-pbev-clickable{cursor:pointer!important;box-shadow:none!important}
+    .plugve-pbev-clickable:hover{border-color:#94a3b8!important;background:#fff!important}
     .plugve-pbev-debug-btn{margin-top:.32rem;display:inline-flex;align-items:center;gap:.35rem;border:1px solid #cbd5e1;background:#f8fafc;color:#334155;border-radius:999px;padding:.28rem .58rem;font-size:.68rem;font-weight:900;line-height:1;cursor:pointer;box-shadow:0 4px 10px rgba(15,23,42,.06)}
     .plugve-pbev-debug-btn:hover{background:#eef2ff;border-color:#93c5fd;color:#1d4ed8}
     .plugve-pbev-debug-btn.hidden{display:none!important}
@@ -586,7 +591,7 @@
     .plugve-pbev-debug-close{border:1px solid rgba(148,163,184,.45);background:#111827;color:#f8fafc;border-radius:.65rem;padding:.38rem .65rem;font-size:.75rem;font-weight:900;cursor:pointer}
     .plugve-pbev-debug-body{padding:1rem;overflow:auto;background:#020617}
     .plugve-pbev-debug-terminal{white-space:pre-wrap;word-break:break-word;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;font-size:.75rem;line-height:1.5;margin:0;color:#bbf7d0}
-    .plugve-consumo-resumo{font-size:.72rem;color:#166534;font-weight:800;margin-top:.32rem}
+    .plugve-consumo-resumo{font-size:.72rem;color:#334155;font-weight:700;margin-top:.32rem}
     .plugve-consumo-resumo.hidden{display:none!important}
 
     .plugve-phev-card{margin-top:.25rem;border:1px solid #bfdbfe;border-radius:1rem;background:linear-gradient(135deg,#eff6ff 0%,#fff7ed 100%);box-shadow:0 10px 24px rgba(15,23,42,.05);padding:.85rem;cursor:pointer;transition:border-color .18s ease,box-shadow .18s ease,transform .18s ease}
@@ -607,7 +612,7 @@
     .plugve-phev-percent-row span:first-child{color:#1d4ed8}
     .plugve-phev-percent-row span:last-child{color:#991b1b}
     .plugve-phev-save-disabled{background:#d1d5db!important;color:#64748b!important;cursor:not-allowed!important;box-shadow:none!important}
-    .plugve-phev-resumo{font-size:.72rem;color:#1d4ed8;font-weight:800;margin-top:.32rem}
+    .plugve-phev-resumo{font-size:.72rem;color:#334155;font-weight:700;margin-top:.32rem}
     .plugve-phev-resumo.hidden{display:none!important}
     .plugve-energy-card{cursor:default;background:linear-gradient(135deg,#eff6ff 0%,#ffffff 74%);border-color:#bfdbfe}
     .plugve-energy-card:hover{border-color:#60a5fa;box-shadow:0 16px 36px rgba(15,23,42,.10);transform:none}
@@ -965,7 +970,7 @@
 
           <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div class="border rounded-lg p-4">
-              <h3 class="font-semibold text-base mb-3 text-gray-700">Busca FIPE - carro atual</h3>
+              <div class="plugve-pbev-select-slot"><h3 class="font-semibold text-base text-gray-700">Busca FIPE - carro atual</h3><p id="pbev_status_select_atual" class="plugve-pbev-status hidden"></p></div>
 
               <div class="space-y-2">
                 <div>
@@ -1023,9 +1028,9 @@
                   </div>
                 </div>
 
-                <div>
+                <div class="plugve-pbev-field-wrap">
                   <label class="block text-sm font-medium">Consumo atual (km/L)</label>
-                  <input type="text" name="consumo_atual" id="consumo_atual" class="mt-1 p-2 border rounded w-full" placeholder="ex: 12,5">
+                  <input type="text" name="consumo_atual" id="consumo_atual" class="mt-1 p-2 border rounded w-full plugve-pbev-field-input" placeholder="ex: 12,5">
                   <p id="consumo_atual_resumo_flex" class="plugve-consumo-resumo hidden"></p>
                   <p id="pbev_status_atual" class="plugve-pbev-status hidden"></p>
                 </div>
@@ -1073,7 +1078,7 @@
             <h2 id="titulo_ve" class="font-semibold text-lg mb-3 text-blue-700">Veículo Elétrico (VE)</h2>
 
             <div class="bg-blue-50 border border-blue-100 rounded-lg p-3 mb-4">
-              <p class="text-sm font-semibold mb-2">Busca FIPE - VE</p>
+              <div class="plugve-pbev-select-slot"><p class="text-sm font-semibold">Busca FIPE - VE</p><p id="pbev_status_select_ve" class="plugve-pbev-status hidden"></p></div>
               <div class="space-y-2">
                 <div>
                   <label class="block text-xs font-medium">Marca</label>
@@ -1133,9 +1138,9 @@
                 </div>
               </div>
 
-              <div>
+              <div class="plugve-pbev-field-wrap">
                 <label class="block text-sm font-medium">Consumo VE (kWh/km)</label>
-                <input type="text" name="consumo_ve" id="consumo_ve" class="mt-1 p-2 border rounded w-full" placeholder="ex: 0,15">
+                <input type="text" name="consumo_ve" id="consumo_ve" class="mt-1 p-2 border rounded w-full plugve-pbev-field-input" placeholder="ex: 0,15">
                 <p id="consumo_ve_resumo_phev" class="plugve-phev-resumo hidden"></p>
                 <p id="pbev_status_ve" class="plugve-pbev-status hidden"></p>
               </div>
@@ -1182,7 +1187,7 @@
             <h2 id="titulo_icev" class="font-semibold text-lg mb-3 text-gray-800">Veículo a Combustão (ICEV)</h2>
 
             <div class="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-4">
-              <p class="text-sm font-semibold mb-2">Busca FIPE - ICEV</p>
+              <div class="plugve-pbev-select-slot"><p class="text-sm font-semibold">Busca FIPE - ICEV</p><p id="pbev_status_select_icev" class="plugve-pbev-status hidden"></p></div>
               <div class="space-y-2">
                 <div>
                   <label class="block text-xs font-medium">Marca</label>
@@ -1241,9 +1246,9 @@
                 </div>
               </div>
 
-              <div>
+              <div class="plugve-pbev-field-wrap">
                 <label class="block text-sm font-medium">Consumo ICEV (km/L)</label>
-                <input type="text" name="consumo_icev" id="consumo_icev" class="mt-1 p-2 border rounded w-full" placeholder="ex: 13,5">
+                <input type="text" name="consumo_icev" id="consumo_icev" class="mt-1 p-2 border rounded w-full plugve-pbev-field-input" placeholder="ex: 13,5">
                 <p id="consumo_icev_resumo_flex" class="plugve-consumo-resumo hidden"></p>
                 <p id="pbev_status_icev" class="plugve-pbev-status hidden"></p>
               </div>
@@ -3477,6 +3482,10 @@
       return document.getElementById(`pbev_status_${prefixo}`);
     }
 
+    function pbevStatusSelecaoPorPrefixoTCO(prefixo) {
+      return document.getElementById(`pbev_status_select_${prefixo}`);
+    }
+
     function pbevDebugVisivelTCO() {
       try {
         return window.CURVE_PBEV_DEBUG === true || localStorage.getItem("curve_pbev_debug") === "1";
@@ -3531,12 +3540,14 @@
     }
 
     function pbevRenderizarSeloComprovacaoTCO(prefixo, dados) {
-      const status = pbevStatusPorPrefixoTCO(prefixo);
-      if (!status || !dados || dados?.autopreencher !== true || dados?.nivel_match !== "alto") return;
-      status.innerHTML = `<button type="button" class="plugve-pbev-proof-btn-main" title="Ver dados de consumo considerados e fonte oficial Inmetro/PBEV" aria-label="Ver comprovação Inmetro/PBEV"><img src="${PBEV_INMETRO_LOGO_URL}" alt="Inmetro"></button>`;
-      status.classList.remove("hidden");
-      const btn = status.querySelector("button");
-      if (btn) btn.onclick = function (ev) { ev.preventDefault(); pbevAbrirComprovacaoTCO(prefixo); };
+      if (!dados || dados?.autopreencher !== true || dados?.nivel_match !== "alto") return;
+      const slots = [pbevStatusPorPrefixoTCO(prefixo), pbevStatusSelecaoPorPrefixoTCO(prefixo)].filter(Boolean);
+      slots.forEach(status => {
+        status.innerHTML = `<button type="button" class="plugve-pbev-proof-btn-main" title="Ver dados de consumo considerados e fonte oficial Inmetro/PBEV" aria-label="Ver comprovação Inmetro/PBEV"><img src="${PBEV_INMETRO_LOGO_URL}" alt="Inmetro"></button>`;
+        status.classList.remove("hidden");
+        const btn = status.querySelector("button");
+        if (btn) btn.onclick = function (ev) { ev.preventDefault(); pbevAbrirComprovacaoTCO(prefixo); };
+      });
     }
 
     function pbevAtivarComprovacaoTCO(prefixo, dados) {
@@ -3564,6 +3575,10 @@
         campo.removeAttribute("title");
         campo.onclick = null;
       }
+      [pbevStatusPorPrefixoTCO(prefixo), pbevStatusSelecaoPorPrefixoTCO(prefixo)].filter(Boolean).forEach(status => {
+        status.innerHTML = "";
+        status.classList.add("hidden");
+      });
     }
 
     function pbevBotaoDebugPorPrefixoTCO(prefixo) {
@@ -3694,12 +3709,11 @@
         delete campo.dataset.pbevAplicando;
       }
       pbevDesativarComprovacaoTCO(prefixo);
-      const status = pbevStatusPorPrefixoTCO(prefixo);
-      if (status) {
+      [pbevStatusPorPrefixoTCO(prefixo), pbevStatusSelecaoPorPrefixoTCO(prefixo)].filter(Boolean).forEach(status => {
         status.innerHTML = "";
         status.classList.add("hidden");
         status.classList.remove("plugve-pbev-status-warn");
-      }
+      });
       ["origem_consumo", "nivel_match", "score", "ano_tabela", "id_pbev", "modelo_usado", "criterio_consumo"].forEach(c => pbevSetHiddenTCO(prefixo, c, ""));
       pbevSetHiddenTCO(prefixo, "editado_usuario", "0");
       pbevAtualizarBotaoDebugTCO(prefixo, null);
