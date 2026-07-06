@@ -375,6 +375,27 @@ class PbevService:
                 saida.add(token)
         return saida
 
+    @classmethod
+    def _modelo_core_tokens(cls, texto_modelo: Any) -> set[str]:
+        """Tokens de família/modelo para matching.
+
+        Remove combustível, transmissão e ruídos que às vezes aparecem no campo
+        ``modelo`` da PBEV. Isso evita penalizar casos como:
+        FIPE ``Hilux CD SRV 4x4 2.8 TDI Diesel Aut.`` x PBEV
+        ``HILUX DIESEL 4X4 AT SRV AT``.
+        """
+        tokens = cls._tokens(texto_modelo)
+        core: set[str] = set()
+        for token in tokens:
+            if token in SOFT_BODY_TOKENS or token in FUEL_TOKENS or token in TRANS_TOKENS or token in ENGINE_TOKENS or token in GENERIC_TOKENS:
+                continue
+            if re.fullmatch(r"20\d{2}", token):
+                continue
+            if re.fullmatch(r"[0-9]", token):
+                continue
+            core.add(token)
+        return core or tokens
+
     # ------------------------------------------------------------------
     # Score de matching
     # ------------------------------------------------------------------
@@ -449,9 +470,7 @@ class PbevService:
         cand_all_norm = self.normalizar_texto(f"{cand_model_norm} {cand_version_norm} {cand_motor_norm} {cand_trans_norm}")
 
         cand_model_tokens = self._tokens(cand_model_norm)
-        cand_model_core = {t for t in cand_model_tokens if t not in SOFT_BODY_TOKENS}
-        if not cand_model_core:
-            cand_model_core = set(cand_model_tokens)
+        cand_model_core = self._modelo_core_tokens(cand_model_norm)
         modelo_overlap = len(cand_model_core & query_all_tokens) / max(1, len(cand_model_core))
         modelo_score = 0.0
         if modelo_overlap >= 1.0:
@@ -802,9 +821,7 @@ class PbevService:
         """
         modelo_norm = cls.normalizar_texto(registro.get("modelo_normalizado") or registro.get("modelo"))
         modelo_tokens = cls._tokens(modelo_norm)
-        modelo_core = {t for t in modelo_tokens if t not in SOFT_BODY_TOKENS}
-        if not modelo_core:
-            modelo_core = modelo_tokens
+        modelo_core = cls._modelo_core_tokens(modelo_norm)
         versao_norm = cls.normalizar_texto(registro.get("versao_normalizada") or registro.get("versao_corrigida") or registro.get("versao"))
         motor_norm = cls.normalizar_texto(registro.get("motor_normalizado") or registro.get("motor_corrigido") or registro.get("motor"))
         trans_norm = cls.normalizar_texto(registro.get("transmissao_normalizada") or registro.get("transmissao"))
@@ -852,6 +869,116 @@ class PbevService:
             return False
         return all(self._assinatura_sugestao(c.get("sugestao")) == top_sug for c in proximos)
 
+    def _candidatos_tecnicos_para_conservador(self, top: dict[str, Any], proximos: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Grupo de candidatos próximos onde a divergência é versão/acabamento.
+
+        Usado quando a FIPE é mais genérica que a PBEV. Ex.: Dolphin Mini sem
+        versão na FIPE contra GS/GS 5/GL 5 na PBEV. O grupo só entra se todos
+        tiverem combustível/propulsão compatível, ano compatível, flags OK,
+        modelo/família forte e consumo útil.
+        """
+        grupo = [top] + list(proximos or [])
+        filtrado: list[dict[str, Any]] = []
+        tipos: set[str] = set()
+        modelos_core: set[tuple[str, ...]] = set()
+        for item in grupo:
+            av = item.get("avaliacao") or {}
+            sug = item.get("sugestao") or {}
+            reg = item.get("registro") or {}
+            if not sug or not av.get("ok_flags") or not av.get("fuel_ok") or not av.get("ano_compativel_fipe_pbev"):
+                continue
+            if float(av.get("modelo_score") or 0) < 30:
+                continue
+            if not av.get("tecnica_suficiente_para_consumo"):
+                continue
+            tipos.add(str(sug.get("tipo") or ""))
+            modelo_norm = self.normalizar_texto(reg.get("modelo_normalizado") or reg.get("modelo"))
+            modelos_core.add(tuple(sorted(self._modelo_core_tokens(modelo_norm))))
+            filtrado.append(item)
+        if len(filtrado) < 2 or len(tipos) != 1 or len(modelos_core) != 1:
+            return []
+        return filtrado
+
+    @staticmethod
+    def _min_num(valores: list[Any]) -> float | None:
+        nums = [float(v) for v in valores if isinstance(v, (int, float)) and float(v) > 0]
+        return min(nums) if nums else None
+
+    @staticmethod
+    def _max_num(valores: list[Any]) -> float | None:
+        nums = [float(v) for v in valores if isinstance(v, (int, float)) and float(v) > 0]
+        return max(nums) if nums else None
+
+    def _montar_sugestao_conservadora(self, candidatos: list[dict[str, Any]]) -> dict[str, Any] | None:
+        """Resolve versões próximas por pior caso de custo operacional.
+
+        Elétrico/PHEV: maior kWh/km.
+        Combustão/flex/diesel/híbrido: menor km/L.
+        """
+        if not candidatos:
+            return None
+        sugestoes = [c.get("sugestao") or {} for c in candidatos if c.get("sugestao")]
+        if not sugestoes:
+            return None
+        tipo = str(sugestoes[0].get("tipo") or "")
+        if any(str(s.get("tipo") or "") != tipo for s in sugestoes):
+            return None
+
+        conservadora = dict(sugestoes[0])
+        criterio_extra = (
+            "FIPE sem detalhar versão/acabamento; versões PBEV compatíveis avaliadas; "
+            "adotado valor conservador para o custo operacional."
+        )
+
+        if tipo == "eletrico":
+            maior = self._max_num([s.get("consumo_eletrico_kwh_km") for s in sugestoes])
+            if not maior:
+                return None
+            conservadora["consumo_eletrico_kwh_km"] = round(maior, 6)
+            # Recalcula eficiência coerente com o kWh/km escolhido quando possível.
+            conservadora["eficiencia_eletrica_km_kwh"] = round(1 / maior, 6) if maior else conservadora.get("eficiencia_eletrica_km_kwh")
+            criterio_extra = (
+                "FIPE sem detalhar versão/acabamento; versões elétricas PBEV compatíveis avaliadas; "
+                "adotado maior kWh/km por critério conservador."
+            )
+        elif tipo == "phev":
+            maior = self._max_num([s.get("consumo_eletrico_kwh_km") for s in sugestoes])
+            if maior:
+                conservadora["consumo_eletrico_kwh_km"] = round(maior, 6)
+                conservadora["eficiencia_eletrica_km_kwh"] = round(1 / maior, 6)
+            for campo in ("gasolina_diesel_cidade_km_l", "gasolina_diesel_estrada_km_l", "etanol_cidade_km_l", "etanol_estrada_km_l"):
+                menor = self._min_num([s.get(campo) for s in sugestoes])
+                if menor:
+                    conservadora[campo] = round(menor, 3)
+        elif tipo in {"diesel", "gasolina", "hibrido"}:
+            for campo in ("diesel_cidade_km_l", "diesel_estrada_km_l", "gasolina_cidade_km_l", "gasolina_estrada_km_l"):
+                menor = self._min_num([s.get(campo) for s in sugestoes])
+                if menor:
+                    conservadora[campo] = round(menor, 3)
+            criterio_extra = (
+                "FIPE sem detalhar versão/acabamento; versões PBEV compatíveis avaliadas; "
+                "adotado menor km/L por critério conservador."
+            )
+        elif tipo in {"flex", "hibrido_flex"}:
+            for campo in ("gasolina_cidade_km_l", "gasolina_estrada_km_l", "etanol_cidade_km_l", "etanol_estrada_km_l"):
+                menor = self._min_num([s.get(campo) for s in sugestoes])
+                if menor:
+                    conservadora[campo] = round(menor, 3)
+            criterio_extra = (
+                "FIPE sem detalhar versão/acabamento; versões PBEV compatíveis avaliadas; "
+                "adotado menor km/L por critério conservador."
+            )
+        else:
+            return None
+
+        conservadora["criterio_conservador_versoes_compativeis"] = True
+        conservadora["criterio_conservador_descricao"] = criterio_extra
+        conservadora["versoes_pbev_consideradas"] = [
+            " ".join(str((c.get("registro") or {}).get(k) or "") for k in ("modelo", "versao", "ano_tabela")).strip()
+            for c in candidatos[:8]
+        ]
+        return conservadora
+
     # ------------------------------------------------------------------
     # Diagnóstico/debug provisório V38.3
     # ------------------------------------------------------------------
@@ -877,6 +1004,9 @@ class PbevService:
             "fonte_derivacao_eletrica",
             "nao_usar_km_l_equivalente",
             "nao_inferir_percentual_eletrico",
+            "criterio_conservador_versoes_compativeis",
+            "criterio_conservador_descricao",
+            "versoes_pbev_consideradas",
         )
         return {k: sugestao.get(k) for k in chaves if sugestao.get(k) not in (None, "", [])}
 
@@ -922,7 +1052,7 @@ class PbevService:
         resposta = resposta or {}
         linhas: list[str] = []
         add = linhas.append
-        add("=== DIAGNÓSTICO PBEV / INMETRO — V38.4 ===")
+        add("=== DIAGNÓSTICO PBEV / INMETRO — V38.6 ===")
         add("Ferramenta provisória para calibrar o matching FIPE × PBEV.")
         add("")
 
@@ -999,7 +1129,7 @@ class PbevService:
             add(f"- score bruto: {self._fmt_debug_val(resposta.get('score_bruto'))}")
         add(f"- motivo: {self._fmt_debug_val(resposta.get('motivo'))}")
         diag_final = resposta.get("diagnostico") or {}
-        for chave in ("dominante", "ambiguidade_proxima", "ambiguidade_resolvida_por_consumo", "diferenca_para_segundo", "score_segundo_candidato", "ano_relacao", "ano_compativel_fipe_pbev", "zero_km_contexto", "identidade_tecnica_forte", "tecnica_suficiente_para_consumo", "modelo_score"):
+        for chave in ("dominante", "ambiguidade_proxima", "ambiguidade_resolvida_por_consumo", "ambiguidade_resolvida_por_criterio_conservador", "candidatos_conservador", "diferenca_para_segundo", "score_segundo_candidato", "ano_relacao", "ano_compativel_fipe_pbev", "zero_km_contexto", "identidade_tecnica_forte", "tecnica_suficiente_para_consumo", "modelo_score"):
             if chave in diag_final:
                 add(f"- {chave}: {self._fmt_debug_val(diag_final.get(chave))}")
         add("")
@@ -1181,6 +1311,13 @@ class PbevService:
         proximos_relevantes_ambiguidade = proximos_mesmo_ano if avaliacao_top.get("ano_exato") and proximos_mesmo_ano else candidatos_proximos
         ambiguidade_proxima = self._candidatos_proximos_bloqueiam_autofill(top, proximos_relevantes_ambiguidade)
         ambiguidade_resolvida_por_consumo = self._candidatos_equivalentes_por_consumo(top, proximos_relevantes_ambiguidade)
+        grupo_conservador = self._candidatos_tecnicos_para_conservador(top, proximos_relevantes_ambiguidade)
+        sugestao_conservadora = self._montar_sugestao_conservadora(grupo_conservador)
+        ambiguidade_resolvida_por_criterio_conservador = bool(ambiguidade_proxima and sugestao_conservadora)
+        if ambiguidade_resolvida_por_criterio_conservador:
+            top["sugestao"] = sugestao_conservadora
+            dominante = True
+            ambiguidade_proxima = False
 
         if not dominante and avaliacao_top.get("ano_exato"):
             if not proximos_mesmo_ano:
@@ -1198,8 +1335,9 @@ class PbevService:
 
         score_top = float(top["score"])
         score_publico_top = float(top.get("score_publico", min(100.0, score_top)))
+        limiar_match_alto = 88 if avaliacao_top.get("req_fuel") in {"ELETRICO", "PLUG_IN"} else 95
         high_conditions = (
-            score_top >= 95
+            score_top >= limiar_match_alto
             and avaliacao_top.get("fuel_ok")
             and avaliacao_top.get("ano_compativel_fipe_pbev")
             and avaliacao_top.get("tecnica_suficiente_para_consumo")
@@ -1233,6 +1371,8 @@ class PbevService:
         penalidades = list(avaliacao_top.get("penalidades") or [])
         if ambiguidade_resolvida_por_consumo:
             motivos.append("candidatos próximos têm o mesmo consumo aplicável; ambiguidade não bloqueia")
+        if ambiguidade_resolvida_por_criterio_conservador:
+            motivos.append("candidatos próximos da mesma família resolvidos por critério conservador de consumo")
         if not dominante:
             penalidades.append("há outro candidato PBEV próximo tecnicamente ambíguo; autofill bloqueado")
         if nivel != "alto" and not penalidades:
@@ -1268,6 +1408,8 @@ class PbevService:
                 "tecnica_suficiente_para_consumo": bool(avaliacao_top.get("tecnica_suficiente_para_consumo")),
                 "ambiguidade_proxima": bool(ambiguidade_proxima),
                 "ambiguidade_resolvida_por_consumo": bool(ambiguidade_resolvida_por_consumo),
+                "ambiguidade_resolvida_por_criterio_conservador": bool(ambiguidade_resolvida_por_criterio_conservador),
+                "candidatos_conservador": len(grupo_conservador),
                 "modelo_score": avaliacao_top.get("modelo_score"),
                 "combustivel_detectado_fipe": avaliacao_top.get("req_fuel"),
             },

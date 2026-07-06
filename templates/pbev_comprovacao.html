@@ -154,6 +154,10 @@
     addKv(regRoot, 'Combustível', cand.combustivel);
     addKv(regRoot, 'Propulsão', cand.tipo_propulsao);
     addKv(regRoot, 'Critério aplicado', sug.criterio_campo_unico || d.criterio_consumo || '-');
+    if (sug.criterio_conservador_descricao) addKv(regRoot, 'Critério conservador', sug.criterio_conservador_descricao);
+    if (Array.isArray(sug.versoes_pbev_consideradas) && sug.versoes_pbev_consideradas.length) {
+      addKv(regRoot, 'Versões PBEV consideradas', sug.versoes_pbev_consideradas.join(' | '));
+    }
     addKv(regRoot, 'Match CurVE', `${escapeText(d.nivel_match)}${d.score ? ' — score ' + d.score : ''}`);
 
     const fonteRoot = document.getElementById('pbevFonte');
