@@ -1,10 +1,14 @@
 from __future__ import annotations
 
-from flask import Blueprint, current_app, jsonify, request
+import json
+from urllib.parse import unquote_plus
+
+from flask import Blueprint, current_app, jsonify, render_template, request
 
 from services.pbev_service import PbevService
 
 pbev_bp = Blueprint("pbev", __name__)
+pbev_pages_bp = Blueprint("pbev_pages", __name__)
 pbev_service = PbevService()
 
 
@@ -45,6 +49,30 @@ def sugestao_consumo():
             "candidato": None,
             "flags": {},
         }), 200
+
+
+@pbev_pages_bp.route("/comprovacao", methods=["GET"])
+def comprovacao_pbev():
+    """Página de comprovação dos dados de consumo usados pela Simular.
+
+    Recebe um payload compacto gerado no navegador após a seleção FIPE/PBEV e
+    apresenta os valores considerados com link oficial da tabela Inmetro/PBEV.
+    """
+    dados_raw = request.args.get("dados") or ""
+    dados = {}
+    erro = ""
+    if dados_raw:
+        try:
+            dados = json.loads(unquote_plus(dados_raw))
+            if not isinstance(dados, dict):
+                dados = {}
+                erro = "Dados de comprovação inválidos."
+        except Exception:
+            dados = {}
+            erro = "Não foi possível ler os dados de comprovação enviados pela Simular."
+    else:
+        erro = "Nenhum dado PBEV foi informado para comprovação."
+    return render_template("pbev_comprovacao.html", dados=dados, erro=erro)
 
 
 @pbev_bp.route("/status", methods=["GET"])

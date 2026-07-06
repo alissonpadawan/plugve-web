@@ -11,7 +11,7 @@ from routes.fipe_routes import fipe_bp
 from routes.depreciacao_routes import depreciacao_bp
 from routes.tco_routes import tco_bp
 from routes.utility_routes import utility_bp
-from routes.pbev_routes import pbev_bp
+from routes.pbev_routes import pbev_bp, pbev_pages_bp
 from services.persistent_storage import bootstrap_persistent_storage
 
 
@@ -42,6 +42,7 @@ def create_app() -> Flask:
     app.register_blueprint(fipe_bp, url_prefix="/api/fipe")
     app.register_blueprint(depreciacao_bp, url_prefix="/api/depreciacao")
     app.register_blueprint(pbev_bp, url_prefix="/api/pbev")
+    app.register_blueprint(pbev_pages_bp, url_prefix="/pbev")
     # Rotas utilitárias usadas pelo Simulador TCO.
     # Registradas antes do TCO para garantir que /preco_energia e /preco_combustivel
     # usem a versão modular, mesmo que existam rotas antigas no módulo TCO.

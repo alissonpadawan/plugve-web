@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+
+{% block title %}Comprovação Inmetro/PBEV — CurVE{% endblock %}
+
+{% block content %}
+<style>
+  .pbev-proof-page{max-width:980px;margin:2rem auto;padding:0 1rem;color:#14232c}
+  .pbev-proof-card{background:#fff;border:1px solid #dbe7df;border-radius:1.25rem;box-shadow:0 18px 50px rgba(15,23,42,.08);overflow:hidden}
+  .pbev-proof-head{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:1.25rem 1.35rem;border-bottom:1px solid #e5e7eb;background:linear-gradient(135deg,#f0fdf4 0%,#fff 75%)}
+  .pbev-proof-brand{display:flex;align-items:center;gap:.9rem;min-width:0}
+  .pbev-proof-logo{width:64px;height:auto;display:block;object-fit:contain;background:#fff;border:1px solid #e5e7eb;border-radius:.65rem;padding:.3rem;box-shadow:0 8px 20px rgba(15,23,42,.08)}
+  .pbev-proof-title{font-size:1.25rem;font-weight:900;line-height:1.15;margin:0;color:#0f172a}
+  .pbev-proof-sub{font-size:.82rem;color:#64748b;margin:.25rem 0 0}
+  .pbev-proof-body{padding:1.25rem 1.35rem 1.45rem;display:grid;gap:1rem}
+  .pbev-proof-alert{border:1px solid #fed7aa;background:#fff7ed;color:#9a3412;border-radius:.85rem;padding:.85rem;font-size:.88rem;font-weight:700}
+  .pbev-proof-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem}
+  .pbev-proof-section{border:1px solid #e2e8f0;border-radius:1rem;background:#f8fafc;padding:1rem;min-width:0}
+  .pbev-proof-section h2{font-size:.85rem;letter-spacing:.02em;text-transform:uppercase;color:#0f766e;margin:0 0 .75rem;font-weight:900}
+  .pbev-proof-kv{display:grid;gap:.45rem}
+  .pbev-proof-kv div{display:grid;grid-template-columns:150px 1fr;gap:.75rem;font-size:.86rem;border-bottom:1px solid #e5e7eb;padding-bottom:.38rem}
+  .pbev-proof-kv div:last-child{border-bottom:0;padding-bottom:0}
+  .pbev-proof-kv dt{color:#64748b;font-weight:800}
+  .pbev-proof-kv dd{margin:0;color:#0f172a;font-weight:700;word-break:break-word}
+  .pbev-values{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem}
+  .pbev-value-box{border:1px solid #bbf7d0;background:#f0fdf4;border-radius:.9rem;padding:.85rem}
+  .pbev-value-box small{display:block;color:#166534;font-weight:900;text-transform:uppercase;font-size:.68rem;margin-bottom:.22rem}
+  .pbev-value-box strong{display:block;color:#14532d;font-size:1.05rem}
+  .pbev-proof-actions{display:flex;gap:.75rem;flex-wrap:wrap;align-items:center}
+  .pbev-proof-btn{display:inline-flex;align-items:center;justify-content:center;gap:.45rem;border-radius:.75rem;padding:.72rem 1rem;font-weight:900;text-decoration:none;border:1px solid #15803d;background:#16a34a;color:#fff;box-shadow:0 10px 24px rgba(22,163,74,.18)}
+  .pbev-proof-btn.secondary{background:#fff;color:#14532d;border-color:#bbf7d0;box-shadow:none}
+  .pbev-proof-note{font-size:.78rem;color:#64748b;line-height:1.55;margin:0}
+  .pbev-proof-debug{border:1px solid #cbd5e1;border-radius:1rem;overflow:hidden;background:#020617;color:#bbf7d0}
+  .pbev-proof-debug summary{cursor:pointer;list-style:none;padding:.8rem 1rem;background:#0f172a;color:#f8fafc;font-weight:900;font-size:.85rem}
+  .pbev-proof-debug summary::-webkit-details-marker{display:none}
+  .pbev-proof-debug pre{white-space:pre-wrap;word-break:break-word;margin:0;padding:1rem;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;font-size:.72rem;line-height:1.5;max-height:420px;overflow:auto}
+  @media(max-width:760px){.pbev-proof-grid,.pbev-values{grid-template-columns:1fr}.pbev-proof-head{align-items:flex-start;flex-direction:column}.pbev-proof-kv div{grid-template-columns:1fr;gap:.15rem}}
+</style>
+
+<div class="pbev-proof-page">
+  <article class="pbev-proof-card" id="pbevProofRoot">
+    <header class="pbev-proof-head">
+      <div class="pbev-proof-brand">
+        <img class="pbev-proof-logo" src="{{ url_for('static', filename='img/inmetro-logo.png') }}" alt="Inmetro">
+        <div>
+          <h1 class="pbev-proof-title">Comprovação dos dados de consumo</h1>
+          <p class="pbev-proof-sub">Origem declarada: Inmetro/PBEV — Programa Brasileiro de Etiquetagem Veicular.</p>
+        </div>
+      </div>
+    </header>
+
+    <div class="pbev-proof-body">
+      {% if erro %}
+        <div class="pbev-proof-alert">{{ erro }}</div>
+      {% endif %}
+
+      <section class="pbev-proof-section">
+        <h2>Valores considerados na CurVE</h2>
+        <div id="pbevValores" class="pbev-values"></div>
+      </section>
+
+      <div class="pbev-proof-grid">
+        <section class="pbev-proof-section">
+          <h2>Veículo selecionado na FIPE</h2>
+          <dl id="pbevFipe" class="pbev-proof-kv"></dl>
+        </section>
+
+        <section class="pbev-proof-section">
+          <h2>Registro associado na base PBEV</h2>
+          <dl id="pbevRegistro" class="pbev-proof-kv"></dl>
+        </section>
+      </div>
+
+      <section class="pbev-proof-section">
+        <h2>Fonte oficial</h2>
+        <dl id="pbevFonte" class="pbev-proof-kv"></dl>
+        <div class="pbev-proof-actions" style="margin-top:1rem">
+          <a id="pbevDownload" class="pbev-proof-btn" href="#" target="_blank" rel="noopener">Baixar tabela oficial</a>
+          <a id="pbevPortal" class="pbev-proof-btn secondary" href="#" target="_blank" rel="noopener">Abrir página oficial do Inmetro</a>
+        </div>
+      </section>
+
+      <p class="pbev-proof-note">Os valores de consumo são referências oficiais obtidas a partir da base PBEV/Inmetro saneada da CurVE. O consumo real pode variar conforme uso, trânsito, relevo, carga, manutenção, temperatura e estilo de condução.</p>
+
+      <details id="pbevDebugBox" class="pbev-proof-debug" style="display:none">
+        <summary>Auditoria técnica provisória do matching</summary>
+        <pre id="pbevDebugTerminal"></pre>
+      </details>
+    </div>
+  </article>
+</div>
+
+<script>
+  const PBEV_COMPROVACAO = {{ dados|tojson }};
+
+  function escapeText(v){ return (v === undefined || v === null || v === '') ? '-' : String(v); }
+  function fmtNum(v, casas=3){
+    const n = Number(v);
+    if (!Number.isFinite(n)) return null;
+    return n.toLocaleString('pt-BR', {minimumFractionDigits: casas, maximumFractionDigits: casas});
+  }
+  function addKv(root, label, value){
+    if (!root) return;
+    const row = document.createElement('div');
+    const dt = document.createElement('dt');
+    const dd = document.createElement('dd');
+    dt.textContent = label;
+    dd.textContent = escapeText(value);
+    row.appendChild(dt); row.appendChild(dd); root.appendChild(row);
+  }
+  function addValue(root, label, value, unit){
+    if (!root || value === undefined || value === null || value === '') return;
+    const n = Number(value);
+    const shown = Number.isFinite(n) ? n.toLocaleString('pt-BR', {minimumFractionDigits: unit === 'kWh/km' ? 3 : 2, maximumFractionDigits: unit === 'kWh/km' ? 3 : 2}) : String(value);
+    const box = document.createElement('div');
+    box.className = 'pbev-value-box';
+    box.innerHTML = `<small></small><strong></strong>`;
+    box.querySelector('small').textContent = label;
+    box.querySelector('strong').textContent = `${shown} ${unit || ''}`.trim();
+    root.appendChild(box);
+  }
+  function render(){
+    const d = PBEV_COMPROVACAO || {};
+    const fipe = d.fipe || {};
+    const cand = d.candidato || {};
+    const sug = d.sugestoes_consumo || {};
+    const fonte = d.fonte_oficial || {};
+    const valores = document.getElementById('pbevValores');
+    addValue(valores, 'Consumo elétrico', sug.consumo_eletrico_kwh_km, 'kWh/km');
+    addValue(valores, 'Eficiência elétrica', sug.eficiencia_eletrica_km_kwh, 'km/kWh');
+    addValue(valores, 'Consumo energético', sug.consumo_energetico_mj_km, 'MJ/km');
+    addValue(valores, 'Autonomia elétrica', sug.autonomia_eletrica_km, 'km');
+    addValue(valores, 'Gasolina — cidade', sug.gasolina_cidade_km_l || sug.gasolina_diesel_cidade_km_l, 'km/L');
+    addValue(valores, 'Gasolina — estrada', sug.gasolina_estrada_km_l || sug.gasolina_diesel_estrada_km_l, 'km/L');
+    addValue(valores, 'Etanol — cidade', sug.etanol_cidade_km_l, 'km/L');
+    addValue(valores, 'Etanol — estrada', sug.etanol_estrada_km_l, 'km/L');
+    addValue(valores, 'Diesel — cidade', sug.diesel_cidade_km_l, 'km/L');
+    addValue(valores, 'Diesel — estrada', sug.diesel_estrada_km_l, 'km/L');
+    if (valores && !valores.children.length) valores.innerHTML = '<p class="pbev-proof-note">Nenhum valor de consumo foi enviado para esta comprovação.</p>';
+
+    const fipeRoot = document.getElementById('pbevFipe');
+    addKv(fipeRoot, 'Marca', fipe.marca);
+    addKv(fipeRoot, 'Modelo', fipe.modelo || fipe.texto_modelo);
+    addKv(fipeRoot, 'Ano/combustível', fipe.texto_ano || fipe.ano);
+    addKv(fipeRoot, 'Código FIPE', fipe.codigo_fipe);
+    addKv(fipeRoot, 'Tipo detectado', fipe.tipo_veiculo);
+
+    const regRoot = document.getElementById('pbevRegistro');
+    addKv(regRoot, 'Ano da tabela', cand.ano_tabela || d.ano_tabela_pbev);
+    addKv(regRoot, 'Marca', cand.marca);
+    addKv(regRoot, 'Modelo', cand.modelo);
+    addKv(regRoot, 'Versão', cand.versao);
+    addKv(regRoot, 'Motor', cand.motor);
+    addKv(regRoot, 'Transmissão', cand.transmissao);
+    addKv(regRoot, 'Combustível', cand.combustivel);
+    addKv(regRoot, 'Propulsão', cand.tipo_propulsao);
+    addKv(regRoot, 'Critério aplicado', sug.criterio_campo_unico || d.criterio_consumo || '-');
+    addKv(regRoot, 'Match CurVE', `${escapeText(d.nivel_match)}${d.score ? ' — score ' + d.score : ''}`);
+
+    const fonteRoot = document.getElementById('pbevFonte');
+    addKv(fonteRoot, 'Origem', fonte.origem || 'Inmetro/PBEV');
+    addKv(fonteRoot, 'Tabela', fonte.rotulo || (cand.ano_tabela ? 'PBEV ' + cand.ano_tabela : 'PBEV'));
+    addKv(fonteRoot, 'Arquivo', fonte.arquivo);
+    addKv(fonteRoot, 'Ano', fonte.ano || cand.ano_tabela || d.ano_tabela_pbev);
+    const dl = document.getElementById('pbevDownload');
+    if (dl && fonte.url) dl.href = fonte.url; else if (dl) dl.style.display = 'none';
+    if (dl && (fonte.ano || cand.ano_tabela)) dl.textContent = `Baixar tabela oficial ${fonte.ano || cand.ano_tabela}`;
+    const portal = document.getElementById('pbevPortal');
+    if (portal && fonte.portal_url) portal.href = fonte.portal_url; else if (portal) portal.style.display = 'none';
+
+    if (d.debug_key) {
+      try {
+        const terminal = localStorage.getItem(d.debug_key);
+        if (terminal) {
+          document.getElementById('pbevDebugTerminal').textContent = terminal;
+          document.getElementById('pbevDebugBox').style.display = '';
+        }
+      } catch(e) {}
+    }
+  }
+  render();
+</script>
+{% endblock %}

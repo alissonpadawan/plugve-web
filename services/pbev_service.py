@@ -61,6 +61,30 @@ TRIM_TOKENS_IMPORTANTES = {
     "XDRIVE", "SDRIVE", "QUATTRO", "AWD", "FWD", "RWD", "4X4", "4X2",
 }
 
+PBEV_PORTAL_URL = (
+    "https://www.gov.br/inmetro/pt-br/assuntos/regulamentacao/avaliacao-da-conformidade/"
+    "programa-brasileiro-de-etiquetagem/tabelas-de-eficiencia-energetica/"
+    "veiculos-automotivos-pbe-veicular"
+)
+
+PBEV_FONTES_OFICIAIS = {
+    2012: {"rotulo": "Veículos leves 2012", "arquivo": "veiculos_leves_2012.pdf", "url": f"{PBEV_PORTAL_URL}/veiculos-leves-2012/%40%40download/file"},
+    2013: {"rotulo": "Veículos leves 2013", "arquivo": "veiculos_leves_2013.pdf", "url": f"{PBEV_PORTAL_URL}/veiculos-leves-2013/%40%40download/file"},
+    2014: {"rotulo": "Veículos leves 2014", "arquivo": "veiculos_leves_2014.pdf", "url": f"{PBEV_PORTAL_URL}/veiculos-leves-2014/%40%40download/file"},
+    2015: {"rotulo": "Veículos leves 2015", "arquivo": "veiculos_leves_2015.pdf", "url": f"{PBEV_PORTAL_URL}/veiculos-leves-2015/%40%40download/file"},
+    2016: {"rotulo": "Veículos leves 2016", "arquivo": "veiculos_leves_2016.pdf", "url": f"{PBEV_PORTAL_URL}/veiculos-leves-2016/%40%40download/file"},
+    2017: {"rotulo": "Veículos leves 2017", "arquivo": "veiculos_leves_2017.pdf", "url": f"{PBEV_PORTAL_URL}/veiculos-leves-2017/%40%40download/file"},
+    2018: {"rotulo": "Veículos leves 2018", "arquivo": "veiculos_leves_2018.pdf", "url": f"{PBEV_PORTAL_URL}/veiculos-leves-2018/%40%40download/file"},
+    2019: {"rotulo": "Veículos leves 2019", "arquivo": "veiculos_leves_2019.pdf", "url": f"{PBEV_PORTAL_URL}/veiculos-leves-2019/%40%40download/file"},
+    2020: {"rotulo": "Veículos leves 2020", "arquivo": "veiculos_leves_2020.pdf", "url": f"{PBEV_PORTAL_URL}/veiculos-leves-2020/%40%40download/file"},
+    2021: {"rotulo": "Veículos leves 2021", "arquivo": "pbe-veicular-2021.pdf", "url": f"{PBEV_PORTAL_URL}/veiculos-leves-2021/%40%40download/file"},
+    2022: {"rotulo": "Veículos leves 2022", "arquivo": "pbe-veicular-2022.pdf", "url": f"{PBEV_PORTAL_URL}/pbe-veicular-2022.pdf/%40%40download/file"},
+    2023: {"rotulo": "Veículos leves 2023", "arquivo": "PBEV 11.2023.pdf", "url": f"{PBEV_PORTAL_URL}/pbe-veicular-2023.pdf/%40%40download/file"},
+    2024: {"rotulo": "Veículos leves 2024 - 16º Ciclo", "arquivo": "Mascara PBEV 2024-4-OUT (7).pdf", "url": f"{PBEV_PORTAL_URL}/pbe-veicular-2024-1.pdf/%40%40download/file"},
+    2025: {"rotulo": "Veículos leves 2025 - 17º Ciclo", "arquivo": "MÁSCARA-PBEV-2025-24-NOV-2025.pdf", "url": f"{PBEV_PORTAL_URL}/mascara-pbev-2025-mar-11.pdf/%40%40download/file"},
+    2026: {"rotulo": "Veículos leves 2026 - 18º Ciclo", "arquivo": "Tabela PBEV 2026_3_JUN-1.pdf", "url": f"{PBEV_PORTAL_URL}/mascara-pbev-2026_19_jan-rev01.pdf/%40%40download/file"},
+}
+
 
 @dataclass(frozen=True)
 class _BasePbevCache:
@@ -731,6 +755,24 @@ class PbevService:
         return flags
 
     @staticmethod
+    def _fonte_oficial_por_ano(ano: Any) -> dict[str, Any]:
+        try:
+            ano_int = int(ano)
+        except Exception:
+            ano_int = 0
+        fonte = dict(PBEV_FONTES_OFICIAIS.get(ano_int) or {})
+        if not fonte:
+            fonte = {
+                "rotulo": "Página oficial do Inmetro/PBEV",
+                "arquivo": "Tabela PBEV",
+                "url": PBEV_PORTAL_URL,
+            }
+        fonte["ano"] = ano_int or None
+        fonte["portal_url"] = PBEV_PORTAL_URL
+        fonte["origem"] = "Inmetro/PBEV"
+        return fonte
+
+    @staticmethod
     def _assinatura_sugestao(sugestao: dict[str, Any] | None) -> tuple[Any, ...]:
         if not sugestao:
             return ()
@@ -880,7 +922,7 @@ class PbevService:
         resposta = resposta or {}
         linhas: list[str] = []
         add = linhas.append
-        add("=== DIAGNÓSTICO PBEV / INMETRO — V38.3 ===")
+        add("=== DIAGNÓSTICO PBEV / INMETRO — V38.4 ===")
         add("Ferramenta provisória para calibrar o matching FIPE × PBEV.")
         add("")
 
@@ -1209,6 +1251,7 @@ class PbevService:
             "candidato": self._candidato_publico(top["registro"]),
             "sugestoes_consumo": top["sugestao"],
             "flags": self._flags_publicas(top["registro"]),
+            "fonte_oficial": self._fonte_oficial_por_ano(top["registro"].get("ano_tabela")),
             "diagnostico": {
                 "score_segundo_candidato": round(segundo_score, 2) if segundo_score is not None else None,
                 "diferenca_para_segundo": round(diferenca, 2) if diferenca is not None else None,

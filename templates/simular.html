@@ -567,9 +567,13 @@
     .plugve-fuel-save-disabled{background:#d1d5db!important;color:#64748b!important;cursor:not-allowed!important;box-shadow:none!important}
     .plugve-consumo-configurado{background:#f0fdf4!important;border-color:#86efac!important;color:#166534!important;font-weight:700}
     .plugve-consumo-pbev{background:#f9fffb!important;border-color:#86efac!important}
-    .plugve-pbev-status{font-size:.72rem;color:#166534;font-weight:700;margin-top:.32rem;line-height:1.35}
-    .plugve-pbev-status.plugve-pbev-status-warn{color:#92400e}
+    .plugve-pbev-status{display:flex;align-items:center;gap:.35rem;margin-top:.34rem;line-height:1}
     .plugve-pbev-status.hidden{display:none!important}
+    .plugve-pbev-proof-btn-main{display:inline-flex;align-items:center;justify-content:center;width:3.35rem;height:1.36rem;border:1px solid #d1fae5;background:#fff;border-radius:999px;padding:.12rem .32rem;cursor:pointer;box-shadow:0 6px 14px rgba(15,23,42,.07);transition:transform .15s ease,border-color .15s ease,box-shadow .15s ease}
+    .plugve-pbev-proof-btn-main:hover{border-color:#22c55e;box-shadow:0 10px 22px rgba(22,163,74,.15);transform:translateY(-1px)}
+    .plugve-pbev-proof-btn-main img{display:block;max-width:2.5rem;max-height:.9rem;object-fit:contain}
+    .plugve-pbev-clickable{cursor:pointer!important;box-shadow:0 0 0 1px rgba(22,163,74,.12),0 10px 22px rgba(22,163,74,.08)!important}
+    .plugve-pbev-clickable:hover{border-color:#22c55e!important;background:#f0fdf4!important}
     .plugve-pbev-debug-btn{margin-top:.32rem;display:inline-flex;align-items:center;gap:.35rem;border:1px solid #cbd5e1;background:#f8fafc;color:#334155;border-radius:999px;padding:.28rem .58rem;font-size:.68rem;font-weight:900;line-height:1;cursor:pointer;box-shadow:0 4px 10px rgba(15,23,42,.06)}
     .plugve-pbev-debug-btn:hover{background:#eef2ff;border-color:#93c5fd;color:#1d4ed8}
     .plugve-pbev-debug-btn.hidden{display:none!important}
@@ -3467,9 +3471,98 @@
     }
 
     const PBEV_DEBUG_TCO = { atual: null, ve: null, icev: null };
+    const PBEV_INMETRO_LOGO_URL = "{{ url_for('static', filename='img/inmetro-logo.png') }}";
 
     function pbevStatusPorPrefixoTCO(prefixo) {
       return document.getElementById(`pbev_status_${prefixo}`);
+    }
+
+    function pbevDebugVisivelTCO() {
+      try {
+        return window.CURVE_PBEV_DEBUG === true || localStorage.getItem("curve_pbev_debug") === "1";
+      } catch (e) {
+        return window.CURVE_PBEV_DEBUG === true;
+      }
+    }
+
+    function pbevDadosComprovacaoTCO(prefixo, dados) {
+      const entrada = dados?.debug?.entrada_fipe || {};
+      const candidato = dados?.candidato || {};
+      const sugestao = dados?.sugestoes_consumo || {};
+      const fonte = dados?.fonte_oficial || {};
+      const payload = {
+        prefixo,
+        origem: dados?.origem || "Inmetro/PBEV",
+        nivel_match: dados?.nivel_match || "",
+        score: dados?.score ?? "",
+        ano_tabela_pbev: candidato.ano_tabela || dados?.ano_tabela_pbev || "",
+        criterio_consumo: sugestao.criterio_campo_unico || "",
+        fipe: {
+          marca: entrada.marca || "",
+          modelo: entrada.modelo || entrada.texto_modelo || "",
+          texto_modelo: entrada.texto_modelo || "",
+          ano: entrada.ano || "",
+          texto_ano: entrada.texto_ano || "",
+          ano_codigo: entrada.ano_codigo || "",
+          combustivel: entrada.combustivel || "",
+          tipo_veiculo: entrada.tipo_veiculo || "",
+          codigo_fipe: entrada.codigo_fipe || "",
+        },
+        candidato,
+        sugestoes_consumo: sugestao,
+        fonte_oficial: fonte,
+      };
+      try {
+        if (dados?.diagnostico_terminal) {
+          const debugKey = `curve_pbev_debug_${prefixo}_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
+          localStorage.setItem(debugKey, dados.diagnostico_terminal);
+          payload.debug_key = debugKey;
+        }
+      } catch (e) {}
+      return payload;
+    }
+
+    function pbevAbrirComprovacaoTCO(prefixo) {
+      const dados = PBEV_DEBUG_TCO[prefixo];
+      if (!dados || dados?.autopreencher !== true || dados?.nivel_match !== "alto") return;
+      const payload = pbevDadosComprovacaoTCO(prefixo, dados);
+      const url = `/pbev/comprovacao?dados=${encodeURIComponent(JSON.stringify(payload))}`;
+      window.open(url, "_blank", "noopener");
+    }
+
+    function pbevRenderizarSeloComprovacaoTCO(prefixo, dados) {
+      const status = pbevStatusPorPrefixoTCO(prefixo);
+      if (!status || !dados || dados?.autopreencher !== true || dados?.nivel_match !== "alto") return;
+      status.innerHTML = `<button type="button" class="plugve-pbev-proof-btn-main" title="Ver dados de consumo considerados e fonte oficial Inmetro/PBEV" aria-label="Ver comprovação Inmetro/PBEV"><img src="${PBEV_INMETRO_LOGO_URL}" alt="Inmetro"></button>`;
+      status.classList.remove("hidden");
+      const btn = status.querySelector("button");
+      if (btn) btn.onclick = function (ev) { ev.preventDefault(); pbevAbrirComprovacaoTCO(prefixo); };
+    }
+
+    function pbevAtivarComprovacaoTCO(prefixo, dados) {
+      if (!dados || dados?.autopreencher !== true || dados?.nivel_match !== "alto") return;
+      PBEV_DEBUG_TCO[prefixo] = dados;
+      pbevRenderizarSeloComprovacaoTCO(prefixo, dados);
+      const campo = pbevCampoConsumoPorPrefixoTCO(prefixo);
+      if (campo && (campo.readOnly || campo.dataset.flexConfigurado === "1" || campo.dataset.phevConfigurado === "1")) {
+        campo.classList.add("plugve-pbev-clickable");
+        campo.setAttribute("title", "Clique para ver os dados Inmetro/PBEV considerados");
+        campo.onclick = function (ev) {
+          if (campo.readOnly || campo.dataset.flexConfigurado === "1" || campo.dataset.phevConfigurado === "1") {
+            ev.preventDefault();
+            pbevAbrirComprovacaoTCO(prefixo);
+          }
+        };
+      }
+    }
+
+    function pbevDesativarComprovacaoTCO(prefixo) {
+      const campo = pbevCampoConsumoPorPrefixoTCO(prefixo);
+      if (campo) {
+        campo.classList.remove("plugve-pbev-clickable");
+        campo.removeAttribute("title");
+        campo.onclick = null;
+      }
     }
 
     function pbevBotaoDebugPorPrefixoTCO(prefixo) {
@@ -3549,7 +3642,7 @@
       PBEV_DEBUG_TCO[prefixo] = dados || null;
       const btn = pbevBotaoDebugPorPrefixoTCO(prefixo);
       if (!btn) return;
-      if (!dados) {
+      if (!dados || !pbevDebugVisivelTCO()) {
         btn.classList.add("hidden");
         return;
       }
@@ -3587,9 +3680,10 @@
         delete campo.dataset.pbevEditadoUsuario;
         delete campo.dataset.pbevAplicando;
       }
+      pbevDesativarComprovacaoTCO(prefixo);
       const status = pbevStatusPorPrefixoTCO(prefixo);
       if (status) {
-        status.textContent = "";
+        status.innerHTML = "";
         status.classList.add("hidden");
         status.classList.remove("plugve-pbev-status-warn");
       }
@@ -3599,11 +3693,13 @@
     }
 
     function pbevSetStatusConsumoTCO(prefixo, texto, tipo = "ok") {
+      // V38.4: não exibe frases técnicas na tela. A origem fica no selo Inmetro clicável.
       const status = pbevStatusPorPrefixoTCO(prefixo);
       if (!status) return;
-      status.textContent = texto || "";
-      status.classList.toggle("hidden", !texto);
-      status.classList.toggle("plugve-pbev-status-warn", tipo === "warn");
+      if (!texto) {
+        status.innerHTML = "";
+        status.classList.add("hidden");
+      }
     }
 
     function pbevChaveVeiculoAtualTCO(prefixo) {
@@ -3646,7 +3742,7 @@
       if (!campo || campo.dataset.pbevAplicando === "1" || campo.dataset.pbevAuto !== "1") return;
       campo.dataset.pbevEditadoUsuario = "1";
       pbevSetHiddenTCO(prefixo, "editado_usuario", "1");
-      pbevSetStatusConsumoTCO(prefixo, "Consumo sugerido pelo Inmetro/PBEV, editado pelo usuário.", "warn");
+      pbevAtivarComprovacaoTCO(prefixo, PBEV_DEBUG_TCO[prefixo]);
     }
 
     function pbevAplicarCampoSimplesTCO(prefixo, valor, dados, detalhe, formato = "combustao") {
@@ -3662,7 +3758,7 @@
       campo.dataset.pbevVehicleKey = pbevChaveVeiculoAtualTCO(prefixo);
       delete campo.dataset.pbevAplicando;
       pbevRegistrarAuditoriaTCO(prefixo, dados);
-      pbevSetStatusConsumoTCO(prefixo, pbevMensagemAplicadaTCO(prefixo, dados, detalhe));
+      pbevAtivarComprovacaoTCO(prefixo, dados);
       return true;
     }
 
@@ -3694,7 +3790,7 @@
         delete campo.dataset.pbevAplicando;
       }
       pbevRegistrarAuditoriaTCO(prefixo, dados);
-      pbevSetStatusConsumoTCO(prefixo, pbevMensagemAplicadaTCO(prefixo, dados, "Consumos urbanos gasolina/etanol sugeridos; confirme a proporção de uso no perfil Flex."));
+      pbevAtivarComprovacaoTCO(prefixo, dados);
       return true;
     }
 
@@ -3730,7 +3826,7 @@
       if (typeof prepararModalPhevTCO === "function") prepararModalPhevTCO();
       if (typeof renderizarCardPhevTCO === "function") renderizarCardPhevTCO();
       pbevRegistrarAuditoriaTCO(prefixo, dados);
-      pbevSetStatusConsumoTCO(prefixo, pbevMensagemAplicadaTCO(prefixo, dados, "Eficiência elétrica derivada de MJ/km e consumo combustível foram sugeridos; o percentual PHEV não foi inferido."));
+      pbevAtivarComprovacaoTCO(prefixo, dados);
       return true;
     }
 
@@ -3797,6 +3893,12 @@
         const campo = pbevCampoConsumoPorPrefixoTCO(prefixo);
         campo?.addEventListener("input", function () {
           pbevMarcarConsumoEditadoUsuarioTCO(prefixo);
+        });
+        campo?.addEventListener("keydown", function (ev) {
+          if ((ev.key === "Enter" || ev.key === " ") && this.dataset.pbevAuto === "1" && (this.readOnly || this.dataset.flexConfigurado === "1" || this.dataset.phevConfigurado === "1")) {
+            ev.preventDefault();
+            pbevAbrirComprovacaoTCO(prefixo);
+          }
         });
       });
       ["fuel_modal_consumo_etanol", "fuel_modal_consumo_gasolina"].forEach(id => {
@@ -4286,6 +4388,8 @@
       campo.readOnly = true;
       campo.dataset.flexConfigurado = "1";
       campo.classList.add("plugve-consumo-configurado");
+      const dadosPbev = PBEV_DEBUG_TCO[prefixo];
+      if (dadosPbev?.autopreencher === true && dadosPbev?.nivel_match === "alto") pbevAtivarComprovacaoTCO(prefixo, dadosPbev);
 
       resumo.textContent = "";
       resumo.classList.add("hidden");
@@ -4756,6 +4860,8 @@
       campo.readOnly = true;
       campo.dataset.phevConfigurado = "1";
       campo.classList.add("plugve-consumo-configurado");
+      const dadosPbev = PBEV_DEBUG_TCO.ve;
+      if (dadosPbev?.autopreencher === true && dadosPbev?.nivel_match === "alto") pbevAtivarComprovacaoTCO("ve", dadosPbev);
       resumo.textContent = "";
       resumo.classList.add("hidden");
     }
