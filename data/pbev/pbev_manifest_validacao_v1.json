@@ -1,0 +1,244 @@
+{
+  "versao_saneamento": "pbev_saneada_v1",
+  "data_geracao_utc": "2026-07-06T05:25:54.556409+00:00",
+  "base_original_preservada": true,
+  "sem_integracao_curve": true,
+  "sem_matching_fipe_pbev": true,
+  "sem_remocao_ou_deduplicacao_de_linhas": true,
+  "total_linhas_base_saneada": 11975,
+  "total_colunas_base_saneada": 88,
+  "nomes_colunas": [
+    "id_pbev_preliminar",
+    "ano_tabela",
+    "data_atualizacao_pdf",
+    "fonte_arquivo",
+    "pagina",
+    "tabela_extraida",
+    "linha_pdfplumber",
+    "status_extracao",
+    "categoria",
+    "marca",
+    "modelo",
+    "versao",
+    "motor",
+    "tipo_propulsao",
+    "transmissao",
+    "ar_condicionado",
+    "direcao_assistida",
+    "combustivel",
+    "nmog_nox_mg_km",
+    "co_mg_km",
+    "poluente_3_rotulo",
+    "poluente_3_valor",
+    "campo_emissoes_extra_rotulo",
+    "campo_emissoes_extra_valor",
+    "co2_fossil_etanol_g_km",
+    "co2_fossil_gasolina_diesel_g_km",
+    "co2e_fossil_vehp_g_km",
+    "etanol_cidade_km_l",
+    "etanol_estrada_km_l",
+    "gasolina_diesel_cidade_km_l",
+    "gasolina_diesel_estrada_km_l",
+    "eletrico_cidade_km_le",
+    "eletrico_estrada_km_le",
+    "consumo_energetico_mj_km",
+    "autonomia_eletrica_km",
+    "classificacao_pbe_relativa_categoria",
+    "classificacao_pbe_absoluta_geral",
+    "selo_conpet",
+    "flags_validacao",
+    "versao_original",
+    "motor_original",
+    "versao_corrigida",
+    "motor_corrigido",
+    "marca_normalizada",
+    "modelo_normalizado",
+    "versao_normalizada",
+    "motor_normalizado",
+    "transmissao_normalizada",
+    "combustivel_normalizado",
+    "tipo_propulsao_normalizado",
+    "categoria_normalizada",
+    "chave_tecnica_normalizada",
+    "grupo_duplicata_suspeita",
+    "nmog_nox_mg_km_num",
+    "co_mg_km_num",
+    "poluente_3_valor_num",
+    "campo_emissoes_extra_valor_num",
+    "co2_fossil_etanol_g_km_num",
+    "co2_fossil_gasolina_diesel_g_km_num",
+    "co2e_fossil_vehp_g_km_num",
+    "etanol_cidade_km_l_num",
+    "etanol_estrada_km_l_num",
+    "gasolina_diesel_cidade_km_l_num",
+    "gasolina_diesel_estrada_km_l_num",
+    "eletrico_cidade_km_le_num",
+    "eletrico_estrada_km_le_num",
+    "consumo_energetico_mj_km_num",
+    "autonomia_eletrica_km_num",
+    "consumo_eletrico_kwh_km_derivado",
+    "eficiencia_eletrica_km_kwh_derivada",
+    "fonte_derivacao_eletrica",
+    "status_registro",
+    "flag_revisao_manual",
+    "flag_bloquear_autofill",
+    "motivo_revisao",
+    "motivo_bloqueio_autofill",
+    "confianca_registro",
+    "flag_inversao_versao_motor",
+    "flag_outlier_consumo",
+    "flag_consumo_ausente",
+    "flag_token_cabecalho",
+    "flag_eletrico_em_campo_combustivel",
+    "flag_duplicata_suspeita",
+    "flag_combustivel_inconsistente",
+    "flag_classificacao_corrompida",
+    "tipo_correcao",
+    "motivo_correcao",
+    "confianca_correcao"
+  ],
+  "contagem_por_status": {
+    "OK": 10643,
+    "BLOQUEAR_AUTOFILL": 1332
+  },
+  "contagem_por_flag": {
+    "flag_revisao_manual": 1332,
+    "flag_bloquear_autofill": 1332,
+    "flag_inversao_versao_motor": 1517,
+    "flag_outlier_consumo": 3,
+    "flag_consumo_ausente": 14,
+    "flag_token_cabecalho": 11,
+    "flag_eletrico_em_campo_combustivel": 101,
+    "flag_duplicata_suspeita": 821,
+    "flag_combustivel_inconsistente": 27,
+    "flag_classificacao_corrompida": 9
+  },
+  "contagem_por_tipo_correcao": {
+    "sem_correcao": 10931,
+    "inversao_segura_heuristica": 1044
+  },
+  "contagem_por_ano": {
+    "2012": 205,
+    "2013": 448,
+    "2014": 599,
+    "2015": 692,
+    "2016": 1102,
+    "2017": 735,
+    "2018": 790,
+    "2019": 684,
+    "2020": 1034,
+    "2021": 1117,
+    "2022": 785,
+    "2023": 961,
+    "2024": 1046,
+    "2025": 893,
+    "2026": 884
+  },
+  "validacoes_consistencia": {
+    "csv_json_same_record_count": true,
+    "csv_json_same_fields": true,
+    "xlsx_base_saneada_generated_from_csv": true,
+    "xlsx_base_saneada_rows": 11975,
+    "xlsx_base_saneada_columns": 88,
+    "xlsx_sheets": [
+      "README",
+      "Base_Saneada",
+      "Resumo_Validacao",
+      "Dicionario_Dados",
+      "Flags_Qualidade",
+      "Registros_Revisao_Manual",
+      "Duplicidades_Suspeitas",
+      "Outliers",
+      "Metricas_por_Ano"
+    ]
+  },
+  "hashes_arquivos": {
+    "pbev_base_saneada_v1.xlsx": {
+      "sha256": "d8e436a86603a232211a4589ca1bfefdfba98e757a2e06d56a6ea8d926bc1d9c",
+      "bytes": 4591316
+    },
+    "pbev_base_saneada_v1.csv": {
+      "sha256": "4cdd7a82da0d36cb0d358edd3317baf3d525ec2d7e580b5dae792639747a5208",
+      "bytes": 7488661
+    },
+    "pbev_base_saneada_v1.json": {
+      "sha256": "60f8209eed63d21c6671a927f0a4356653ed939a05c4c926335b28dc2e3bd8eb",
+      "bytes": 40230139
+    },
+    "pbev_correcoes_2017_2018_versao_motor.csv": {
+      "sha256": "04662415f31a0feb0ecaad7fe2f55062083e2990455d6931e055e8bffe9d495c",
+      "bytes": 205892
+    },
+    "pbev_revisao_manual_2017_2018.csv": {
+      "sha256": "c11d6fe7e540c46b1bae730f1e75253b55e865a80d0d49f67d99ce7ab3b3cbc8",
+      "bytes": 120466
+    },
+    "pbev_registros_revisao_manual_v1.csv": {
+      "sha256": "4533712c804ee7be82c8198eaa86629f85cc31180e8b465b985914e905ee6663",
+      "bytes": 383597
+    },
+    "pbev_duplicidades_suspeitas_v1.csv": {
+      "sha256": "3a59222d4decfcc44d3f88b0310c94a88024205892874d75eb72c3d62cf78c00",
+      "bytes": 202358
+    },
+    "pbev_outliers_v1.csv": {
+      "sha256": "e694965410502a7a4d249b85d99b6a4534f3288cdec0b3b1a931768c9e531184",
+      "bytes": 8329
+    },
+    "metricas_saneamento_pbev_v1.json": {
+      "sha256": "58e0649cd91d6c2b071210caef271dc472a90d74cb640b9188e07d81b8c6389f",
+      "bytes": 6990
+    },
+    "relatorio_saneamento_pbev_v1.md": {
+      "sha256": "65f37ddbe62839ceb72a146b10529238c1709e60e709d5914d3d06e57157e99d",
+      "bytes": 6568
+    },
+    "relatorio_correcao_versao_motor_2017_2018.md": {
+      "sha256": "2b3d0df7a6045813eb24392fc17dc5396e639d48de8fb7496e968216f44721d6",
+      "bytes": 5876
+    },
+    "dicionario_dados_pbev_curve.md": {
+      "sha256": "7d8f4492dddc3600fbd06f22da4bad46b7b7ee8fb9e75821a27ac7019ddf8f85",
+      "bytes": 28058
+    },
+    "dicionario_dados_pbev_curve.csv": {
+      "sha256": "44630865551fda5d98b7a744d0316a307cc5599f6d1762b19d973d28a26a89bf",
+      "bytes": 30098
+    },
+    "guia_integracao_pbev_curve.md": {
+      "sha256": "26f36d3ea8bc73d8cfaa3e25a2d18e106b0a14ecf6cfe766d31c87c6a2f6d91d",
+      "bytes": 3615
+    },
+    "campos_criticos_e_flags_pbev.md": {
+      "sha256": "23d31c17ba4c61d98bc473f789d9fe161b8eaa2167a77d9e8b99865c28a4c815",
+      "bytes": 5943
+    },
+    "regras_matching_fipe_pbev.md": {
+      "sha256": "8c52f1f33c4a68e90f8fb993993963e7be72042b99773688748668d4024d9029",
+      "bytes": 3048
+    },
+    "resumo_executivo_pbev_curve.md": {
+      "sha256": "b6af8a4adf22367ab51a42062f900fd3674d6d0801b848d01edbe69e0f83989a",
+      "bytes": 2013
+    },
+    "README.md": {
+      "sha256": "dd1f4aa8387d69dab7b1e0a59f04608dca1cf43712ecaa4ea630a2fc0938b84a",
+      "bytes": 2222
+    },
+    "pbev_manifest_validacao_v1.json": {
+      "sha256": "46e5c03e62cf21d8be748a3eabc1b25eb6dc99b61df9d4568870ad3daa72cac4",
+      "bytes": 7497
+    },
+    "pacote_pbev_saneamento_v1_final.zip": {
+      "sha256": "03d3e912ba4a7b718244fc8bd03a57bc3c702158cd557403967a2dfcdcf9ad48",
+      "bytes": 6481466
+    }
+  },
+  "observacoes": [
+    "XLSX é arquivo visual/auditável para orientador e revisão humana.",
+    "CSV corresponde à aba Base_Saneada e é recomendado para processamento tabular.",
+    "JSON contém os mesmos registros e campos do CSV, com tipagem numérica/booleana onde aplicável para futura integração.",
+    "Campos originais versao e motor foram preservados; versao_corrigida/motor_corrigido foram adicionados.",
+    "Campos eletricos *_km_le permanecem em km/L equivalente; kWh/km e km/kWh derivados são documentados como derivados de MJ/km."
+  ]
+}

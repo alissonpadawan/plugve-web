@@ -20,6 +20,11 @@ class Config:
     ARQUIVO_FAMILIAS = DATA_DIR / "familias_fipe.xlsx"
     ARQUIVO_IPCA = DATA_DIR / "comum" / "inflacao_ipca.csv"
 
+    # Base PBEV/Inmetro saneada V1 usada apenas pelo site para sugerir consumo editável.
+    PBEV_DIR = DATA_DIR / "pbev"
+    ARQUIVO_PBEV_BASE = PBEV_DIR / "pbev_base_saneada_v1.json"
+    ARQUIVO_PBEV_MANIFEST = PBEV_DIR / "pbev_manifest_validacao_v1.json"
+
     # Bases versionadas no GitHub: usadas como semente inicial.
     ARQUIVO_CURVAS_COMBUSTAO_BASE = DATA_DIR / "combustao" / "curvas_depreciacao_v18.csv"
     ARQUIVO_CURVAS_ELETRICO_BASE = DATA_DIR / "eletrico" / "curvas_depreciacao_ev_v20.csv"

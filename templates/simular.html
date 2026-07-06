@@ -566,6 +566,10 @@
     .plugve-fuel-modal-actions{display:flex;align-items:center;justify-content:flex-end;gap:.75rem;flex-wrap:wrap;margin-top:1rem}
     .plugve-fuel-save-disabled{background:#d1d5db!important;color:#64748b!important;cursor:not-allowed!important;box-shadow:none!important}
     .plugve-consumo-configurado{background:#f0fdf4!important;border-color:#86efac!important;color:#166534!important;font-weight:700}
+    .plugve-consumo-pbev{background:#f9fffb!important;border-color:#86efac!important}
+    .plugve-pbev-status{font-size:.72rem;color:#166534;font-weight:700;margin-top:.32rem;line-height:1.35}
+    .plugve-pbev-status.plugve-pbev-status-warn{color:#92400e}
+    .plugve-pbev-status.hidden{display:none!important}
     .plugve-consumo-resumo{font-size:.72rem;color:#166534;font-weight:800;margin-top:.32rem}
     .plugve-consumo-resumo.hidden{display:none!important}
 
@@ -971,6 +975,15 @@
                 <input type="hidden" name="ano_modelo_atual" id="ano_modelo_atual">
                 <input type="hidden" name="combustivel_atual" id="combustivel_atual">
 
+                <input type="hidden" name="pbev_atual_origem_consumo" id="pbev_atual_origem_consumo">
+                <input type="hidden" name="pbev_atual_nivel_match" id="pbev_atual_nivel_match">
+                <input type="hidden" name="pbev_atual_score" id="pbev_atual_score">
+                <input type="hidden" name="pbev_atual_ano_tabela" id="pbev_atual_ano_tabela">
+                <input type="hidden" name="pbev_atual_id_pbev" id="pbev_atual_id_pbev">
+                <input type="hidden" name="pbev_atual_modelo_usado" id="pbev_atual_modelo_usado">
+                <input type="hidden" name="pbev_atual_criterio_consumo" id="pbev_atual_criterio_consumo">
+                <input type="hidden" name="pbev_atual_editado_usuario" id="pbev_atual_editado_usuario" value="0">
+
                 <div>
                   <label class="block text-sm font-medium">Preço atual do veículo (R$)</label>
                   <div class="plugve-price-finance-field">
@@ -998,6 +1011,7 @@
                   <label class="block text-sm font-medium">Consumo atual (km/L)</label>
                   <input type="text" name="consumo_atual" id="consumo_atual" class="mt-1 p-2 border rounded w-full" placeholder="ex: 12,5">
                   <p id="consumo_atual_resumo_flex" class="plugve-consumo-resumo hidden"></p>
+                  <p id="pbev_status_atual" class="plugve-pbev-status hidden"></p>
                 </div>
 
                 <div>
@@ -1071,6 +1085,15 @@
               <input type="hidden" name="combustivel_ve" id="combustivel_ve">
               <input type="hidden" name="tipo_veiculo_ve" id="tipo_veiculo_ve" value="">
 
+              <input type="hidden" name="pbev_ve_origem_consumo" id="pbev_ve_origem_consumo">
+              <input type="hidden" name="pbev_ve_nivel_match" id="pbev_ve_nivel_match">
+              <input type="hidden" name="pbev_ve_score" id="pbev_ve_score">
+              <input type="hidden" name="pbev_ve_ano_tabela" id="pbev_ve_ano_tabela">
+              <input type="hidden" name="pbev_ve_id_pbev" id="pbev_ve_id_pbev">
+              <input type="hidden" name="pbev_ve_modelo_usado" id="pbev_ve_modelo_usado">
+              <input type="hidden" name="pbev_ve_criterio_consumo" id="pbev_ve_criterio_consumo">
+              <input type="hidden" name="pbev_ve_editado_usuario" id="pbev_ve_editado_usuario" value="0">
+
               <div>
                 <label class="block text-sm font-medium">Preço do VE</label>
                 <div class="plugve-price-finance-field">
@@ -1098,6 +1121,7 @@
                 <label class="block text-sm font-medium">Consumo VE (kWh/km)</label>
                 <input type="text" name="consumo_ve" id="consumo_ve" class="mt-1 p-2 border rounded w-full" placeholder="ex: 0,15">
                 <p id="consumo_ve_resumo_phev" class="plugve-phev-resumo hidden"></p>
+                <p id="pbev_status_ve" class="plugve-pbev-status hidden"></p>
               </div>
 
               <div>
@@ -1169,6 +1193,15 @@
               <input type="hidden" name="ano_modelo_icev" id="ano_modelo_icev">
               <input type="hidden" name="combustivel_icev" id="combustivel_icev">
 
+              <input type="hidden" name="pbev_icev_origem_consumo" id="pbev_icev_origem_consumo">
+              <input type="hidden" name="pbev_icev_nivel_match" id="pbev_icev_nivel_match">
+              <input type="hidden" name="pbev_icev_score" id="pbev_icev_score">
+              <input type="hidden" name="pbev_icev_ano_tabela" id="pbev_icev_ano_tabela">
+              <input type="hidden" name="pbev_icev_id_pbev" id="pbev_icev_id_pbev">
+              <input type="hidden" name="pbev_icev_modelo_usado" id="pbev_icev_modelo_usado">
+              <input type="hidden" name="pbev_icev_criterio_consumo" id="pbev_icev_criterio_consumo">
+              <input type="hidden" name="pbev_icev_editado_usuario" id="pbev_icev_editado_usuario" value="0">
+
               <div>
                 <label class="block text-sm font-medium">Preço do ICEV</label>
                 <div class="plugve-price-finance-field">
@@ -1196,6 +1229,7 @@
                 <label class="block text-sm font-medium">Consumo ICEV (km/L)</label>
                 <input type="text" name="consumo_icev" id="consumo_icev" class="mt-1 p-2 border rounded w-full" placeholder="ex: 13,5">
                 <p id="consumo_icev_resumo_flex" class="plugve-consumo-resumo hidden"></p>
+                <p id="pbev_status_icev" class="plugve-pbev-status hidden"></p>
               </div>
 
               <div>
@@ -2961,6 +2995,8 @@
         delete consumo.dataset.phevConfigurado;
       }
 
+      pbevLimparEstadoConsumoTCO(prefixo);
+
       const status = statusDepreciacaoPorPrefixo(prefixo);
       if (status) status.textContent = "Aguardando seleção FIPE para buscar depreciação.";
       configurarBotaoDepreciacaoTCO(prefixo, false, null, "relatorio");
@@ -3408,6 +3444,260 @@
       return { bloqueado: false, nomeModelo, textoAnoOriginal, textoAnoTela, anoModeloStr, combustivelStr, marcaStr, tipoSelecionado };
     }
 
+
+    // =========================================================
+    // 6.3.1) PBEV/Inmetro — sugestão editável de consumo
+    // =========================================================
+    function pbevCampoConsumoPorPrefixoTCO(prefixo) {
+      if (prefixo === "ve") return document.getElementById("consumo_ve");
+      if (prefixo === "icev") return document.getElementById("consumo_icev");
+      return document.getElementById("consumo_atual");
+    }
+
+    function pbevStatusPorPrefixoTCO(prefixo) {
+      return document.getElementById(`pbev_status_${prefixo}`);
+    }
+
+    function pbevSetHiddenTCO(prefixo, campo, valor) {
+      const el = document.getElementById(`pbev_${prefixo}_${campo}`);
+      if (el) el.value = valor ?? "";
+    }
+
+    function pbevModeloCandidatoTextoTCO(candidato) {
+      if (!candidato) return "";
+      return [candidato.marca, candidato.modelo, candidato.versao, candidato.motor, candidato.transmissao]
+        .filter(Boolean)
+        .join(" ")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    function pbevLimparEstadoConsumoTCO(prefixo) {
+      const campo = pbevCampoConsumoPorPrefixoTCO(prefixo);
+      if (campo) {
+        campo.classList.remove("plugve-consumo-pbev");
+        delete campo.dataset.pbevAuto;
+        delete campo.dataset.pbevVehicleKey;
+        delete campo.dataset.pbevEditadoUsuario;
+        delete campo.dataset.pbevAplicando;
+      }
+      const status = pbevStatusPorPrefixoTCO(prefixo);
+      if (status) {
+        status.textContent = "";
+        status.classList.add("hidden");
+        status.classList.remove("plugve-pbev-status-warn");
+      }
+      ["origem_consumo", "nivel_match", "score", "ano_tabela", "id_pbev", "modelo_usado", "criterio_consumo"].forEach(c => pbevSetHiddenTCO(prefixo, c, ""));
+      pbevSetHiddenTCO(prefixo, "editado_usuario", "0");
+    }
+
+    function pbevSetStatusConsumoTCO(prefixo, texto, tipo = "ok") {
+      const status = pbevStatusPorPrefixoTCO(prefixo);
+      if (!status) return;
+      status.textContent = texto || "";
+      status.classList.toggle("hidden", !texto);
+      status.classList.toggle("plugve-pbev-status-warn", tipo === "warn");
+    }
+
+    function pbevChaveVeiculoAtualTCO(prefixo) {
+      const marca = document.getElementById(`${prefixo}_marca`)?.value || "";
+      const modelo = document.getElementById(`${prefixo}_modelo`)?.value || "";
+      const ano = document.getElementById(`${prefixo}_ano`)?.value || "";
+      return `${prefixo}|${marca}|${modelo}|${ano}`;
+    }
+
+    function pbevSelecaoAindaAtualTCO(prefixo, contexto) {
+      if (!contexto) return true;
+      return (
+        (document.getElementById(`${prefixo}_marca`)?.value || "") === String(contexto.codigo_marca || "") &&
+        (document.getElementById(`${prefixo}_modelo`)?.value || "") === String(contexto.codigo_modelo || "") &&
+        (document.getElementById(`${prefixo}_ano`)?.value || "") === String(contexto.codigo_ano || "")
+      );
+    }
+
+    function pbevRegistrarAuditoriaTCO(prefixo, dados) {
+      const candidato = dados?.candidato || {};
+      const sugestao = dados?.sugestoes_consumo || {};
+      pbevSetHiddenTCO(prefixo, "origem_consumo", dados?.origem || "Inmetro/PBEV");
+      pbevSetHiddenTCO(prefixo, "nivel_match", dados?.nivel_match || "");
+      pbevSetHiddenTCO(prefixo, "score", dados?.score ?? "");
+      pbevSetHiddenTCO(prefixo, "ano_tabela", candidato.ano_tabela || dados?.ano_tabela_pbev || "");
+      pbevSetHiddenTCO(prefixo, "id_pbev", candidato.id_pbev || "");
+      pbevSetHiddenTCO(prefixo, "modelo_usado", pbevModeloCandidatoTextoTCO(candidato));
+      pbevSetHiddenTCO(prefixo, "criterio_consumo", sugestao.criterio_campo_unico || "");
+      pbevSetHiddenTCO(prefixo, "editado_usuario", "0");
+    }
+
+    function pbevMensagemAplicadaTCO(prefixo, dados, detalhe) {
+      const score = dados?.score !== undefined ? `match alto ${dados.score}` : "match alto";
+      const ano = dados?.candidato?.ano_tabela || dados?.ano_tabela_pbev || "";
+      const anoTxt = ano ? `, tabela ${ano}` : "";
+      return `Inmetro/PBEV — ${score}${anoTxt}. ${detalhe} Você pode editar conforme seu uso real.`;
+    }
+
+    function pbevMarcarConsumoEditadoUsuarioTCO(prefixo) {
+      const campo = pbevCampoConsumoPorPrefixoTCO(prefixo);
+      if (!campo || campo.dataset.pbevAplicando === "1" || campo.dataset.pbevAuto !== "1") return;
+      campo.dataset.pbevEditadoUsuario = "1";
+      pbevSetHiddenTCO(prefixo, "editado_usuario", "1");
+      pbevSetStatusConsumoTCO(prefixo, "Consumo sugerido pelo Inmetro/PBEV, editado pelo usuário.", "warn");
+    }
+
+    function pbevAplicarCampoSimplesTCO(prefixo, valor, dados, detalhe, formato = "combustao") {
+      const campo = pbevCampoConsumoPorPrefixoTCO(prefixo);
+      const n = Number(valor || 0);
+      if (!campo || !Number.isFinite(n) || n <= 0) return false;
+      if (campo.dataset.pbevEditadoUsuario === "1") return false;
+      campo.dataset.pbevAplicando = "1";
+      campo.value = formato === "eletrico" ? formatarValorLitroInputTCO(n) : formatarConsumoInputTCO(n);
+      campo.readOnly = false;
+      campo.classList.add("plugve-consumo-pbev");
+      campo.dataset.pbevAuto = "1";
+      campo.dataset.pbevVehicleKey = pbevChaveVeiculoAtualTCO(prefixo);
+      delete campo.dataset.pbevAplicando;
+      pbevRegistrarAuditoriaTCO(prefixo, dados);
+      pbevSetStatusConsumoTCO(prefixo, pbevMensagemAplicadaTCO(prefixo, dados, detalhe));
+      return true;
+    }
+
+    function pbevAplicarFlexTCO(prefixo, sugestao, dados) {
+      if (prefixo !== "icev" && prefixo !== "atual") return false;
+      const gas = Number(sugestao.gasolina_cidade_km_l || sugestao.gasolina_diesel_cidade_km_l || 0);
+      const eta = Number(sugestao.etanol_cidade_km_l || 0);
+      if (!(gas > 0) && !(eta > 0)) return false;
+
+      modoCombustivelTCO = "flex";
+      setValorInputTCO("fuel_tipo_detectado", "flex");
+      setValorInputTCO("fuel_prefixo_configurado", prefixo);
+      setValorInputTCO("fuel_vehicle_key", chaveFlexAtualTCO(prefixo));
+      // Não inferir proporção etanol/gasolina. A PBEV preenche os consumos; o usuário confirma o perfil Flex.
+      setValorInputTCO("fuel_flex_configurado", "0");
+      if (gas > 0) setValorInputTCO("fuel_consumo_gasolina", formatarConsumoInputTCO(gas));
+      if (eta > 0) setValorInputTCO("fuel_consumo_etanol", formatarConsumoInputTCO(eta));
+      if (typeof prepararModalCombustivelTCO === "function") prepararModalCombustivelTCO();
+      renderizarCardCombustivelTCO();
+
+      const campo = pbevCampoConsumoPorPrefixoTCO(prefixo);
+      if (campo) {
+        campo.dataset.pbevAplicando = "1";
+        campo.value = formatarConsumoInputTCO(gas > 0 ? gas : eta);
+        campo.readOnly = false;
+        campo.classList.add("plugve-consumo-pbev");
+        campo.dataset.pbevAuto = "1";
+        campo.dataset.pbevVehicleKey = pbevChaveVeiculoAtualTCO(prefixo);
+        delete campo.dataset.pbevAplicando;
+      }
+      pbevRegistrarAuditoriaTCO(prefixo, dados);
+      pbevSetStatusConsumoTCO(prefixo, pbevMensagemAplicadaTCO(prefixo, dados, "Consumos urbanos gasolina/etanol sugeridos; confirme a proporção de uso no perfil Flex."));
+      return true;
+    }
+
+    function pbevAplicarPhevTCO(sugestao, dados) {
+      const prefixo = "ve";
+      const eletrico = Number(sugestao.consumo_eletrico_kwh_km || 0);
+      const combustivel = Number(sugestao.gasolina_diesel_cidade_km_l || sugestao.gasolina_cidade_km_l || 0);
+      if (!(eletrico > 0) && !(combustivel > 0)) return false;
+
+      setValorPhevTCO("phev_prefixo_configurado", "ve");
+      setValorPhevTCO("phev_vehicle_key", chavePhevAtualTCO());
+      // PHEV: não inferimos percentual elétrico/combustível nem marcamos o perfil como configurado.
+      // Os valores PBEV entram como sugestão inicial editável no campo e no card/modal PHEV.
+      if (!document.getElementById("phev_percent_eletrico")?.value) setValorPhevTCO("phev_percent_eletrico", "100");
+      if (eletrico > 0) setValorPhevTCO("phev_consumo_eletrico", formatarValorLitroInputTCO(eletrico));
+      if (combustivel > 0) setValorPhevTCO("phev_consumo_combustivel", formatarConsumoInputTCO(combustivel));
+      if (!document.getElementById("phev_preco_combustivel")?.value) {
+        setValorPhevTCO("phev_preco_combustivel", formatarValorLitroInputTCO(precoCombustivelPhevPadraoTCO() || 0));
+      }
+
+      const campo = pbevCampoConsumoPorPrefixoTCO(prefixo);
+      if (campo) {
+        if (eletrico > 0 && campo.dataset.pbevEditadoUsuario !== "1") {
+          campo.dataset.pbevAplicando = "1";
+          campo.value = formatarValorLitroInputTCO(eletrico);
+          delete campo.dataset.pbevAplicando;
+        }
+        campo.readOnly = false;
+        campo.classList.add("plugve-consumo-pbev");
+        campo.dataset.pbevAuto = "1";
+        campo.dataset.pbevVehicleKey = pbevChaveVeiculoAtualTCO(prefixo);
+      }
+      if (typeof prepararModalPhevTCO === "function") prepararModalPhevTCO();
+      if (typeof renderizarCardPhevTCO === "function") renderizarCardPhevTCO();
+      pbevRegistrarAuditoriaTCO(prefixo, dados);
+      pbevSetStatusConsumoTCO(prefixo, pbevMensagemAplicadaTCO(prefixo, dados, "Eficiência elétrica derivada de MJ/km e consumo combustível foram sugeridos; o percentual PHEV não foi inferido."));
+      return true;
+    }
+
+    function pbevAplicarSugestaoConsumoTCO(prefixo, dados, contexto) {
+      if (!pbevSelecaoAindaAtualTCO(prefixo, contexto)) return;
+      const nivel = String(dados?.nivel_match || "sem_match");
+      if (nivel !== "alto" || dados?.autopreencher !== true) {
+        if (nivel === "medio") {
+          pbevRegistrarAuditoriaTCO(prefixo, dados);
+          pbevSetStatusConsumoTCO(prefixo, "Inmetro/PBEV encontrou match médio; consumo manual mantido por segurança.", "warn");
+        }
+        return;
+      }
+      const sugestao = dados?.sugestoes_consumo || {};
+      const tipo = String(sugestao.tipo || "");
+      let aplicado = false;
+      if (tipo === "eletrico") {
+        aplicado = pbevAplicarCampoSimplesTCO(prefixo, sugestao.consumo_eletrico_kwh_km, dados, "kWh/km derivado de MJ/km aplicado como referência inicial.", "eletrico");
+      } else if (tipo === "phev") {
+        aplicado = prefixo === "ve" ? pbevAplicarPhevTCO(sugestao, dados) : false;
+      } else if (tipo === "flex" || tipo === "hibrido_flex") {
+        aplicado = pbevAplicarFlexTCO(prefixo, sugestao, dados);
+      } else if (tipo === "diesel") {
+        aplicado = pbevAplicarCampoSimplesTCO(prefixo, sugestao.diesel_cidade_km_l, dados, "consumo urbano diesel aplicado como referência inicial.");
+      } else if (tipo === "gasolina" || tipo === "hibrido") {
+        aplicado = pbevAplicarCampoSimplesTCO(prefixo, sugestao.gasolina_cidade_km_l, dados, "consumo urbano gasolina aplicado como referência inicial.");
+      } else if (tipo === "etanol") {
+        aplicado = pbevAplicarCampoSimplesTCO(prefixo, sugestao.etanol_cidade_km_l, dados, "consumo urbano etanol aplicado como referência inicial.");
+      }
+      if (aplicado) {
+        if (typeof capturarEstadoFormularioTCO === "function") capturarEstadoFormularioTCO();
+        if (typeof window.atualizarDetalhesProgressivosPlugVE === "function") window.atualizarDetalhesProgressivosPlugVE();
+      }
+    }
+
+    async function consultarSugestaoPbevConsumoTCO(prefixo, contexto) {
+      const campo = pbevCampoConsumoPorPrefixoTCO(prefixo);
+      if (campo?.dataset?.pbevEditadoUsuario === "1") return;
+      const payload = { ...(contexto || {}), prefixo };
+      try {
+        const resp = await fetch("/api/pbev/sugestao_consumo", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const dados = await resp.json();
+        if (!resp.ok) throw new Error(dados?.erro || "Erro ao consultar PBEV.");
+        pbevAplicarSugestaoConsumoTCO(prefixo, dados, contexto);
+      } catch (e) {
+        console.warn("Sugestão PBEV indisponível; consumo manual mantido.", e);
+      }
+    }
+
+    function inicializarEventosPbevConsumoTCO() {
+      ["atual", "ve", "icev"].forEach(prefixo => {
+        const campo = pbevCampoConsumoPorPrefixoTCO(prefixo);
+        campo?.addEventListener("input", function () {
+          pbevMarcarConsumoEditadoUsuarioTCO(prefixo);
+        });
+      });
+      ["fuel_modal_consumo_etanol", "fuel_modal_consumo_gasolina"].forEach(id => {
+        document.getElementById(id)?.addEventListener("input", function () {
+          const prefixo = document.getElementById("fuel_prefixo_configurado")?.value || prefixoCombustaoPreferencialTCO();
+          pbevMarcarConsumoEditadoUsuarioTCO(prefixo);
+        });
+      });
+      ["phev_modal_consumo_eletrico", "phev_modal_consumo_combustivel"].forEach(id => {
+        document.getElementById(id)?.addEventListener("input", function () {
+          pbevMarcarConsumoEditadoUsuarioTCO("ve");
+        });
+      });
+    }
+
     async function preencherPorFipe(prefixo) {
       const marcaSelect = document.getElementById(prefixo + "_marca");
       const modeloSelect = document.getElementById(prefixo + "_modelo");
@@ -3476,6 +3766,22 @@
         atualizarIpva(prefixo);
         atualizarInterfaceCombustivelPorVeiculo(prefixo, true);
         if (typeof atualizarInterfacePhevPorVeiculo === "function") atualizarInterfacePhevPorVeiculo(prefixo, true);
+        await consultarSugestaoPbevConsumoTCO(prefixo, {
+          marca: marcaStr,
+          modelo: nomeModelo,
+          texto_modelo: nomeCompleto,
+          ano: anoModeloStr,
+          combustivel: combustivelStr,
+          codigo_fipe: data.CodigoFipe || data.CodigoFIPE || data.Codigo || "",
+          codigo_marca: marca,
+          codigo_modelo: modelo,
+          codigo_ano: ano,
+          marca_id: marca,
+          modelo_id: modelo,
+          ano_codigo: ano,
+          texto_ano: textoAnoTela,
+          tipo_veiculo: tipoSelecionado
+        });
         if (typeof window.atualizarDetalhesProgressivosPlugVE === "function") window.atualizarDetalhesProgressivosPlugVE();
 
         const detalheDepreciacao = montarDetalheDepreciacaoTCO(prefixo, data, marcaSelect, modeloSelect, anoSelect, valor, nomeModelo, anoModeloStr, combustivelStr);
@@ -4843,6 +5149,7 @@
       carregarMarcas("ve_marca");
       carregarMarcas("icev_marca");
       carregarMarcas("atual_marca");
+      inicializarEventosPbevConsumoTCO();
 
       document.getElementById("ve_marca")?.addEventListener("change", function () {
         limparEstadoVeiculoSelecionadoTCO("ve");
