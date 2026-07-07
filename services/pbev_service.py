@@ -777,6 +777,7 @@ class PbevService:
                 "gasolina_estrada_km_l": round(gas_est, 3) if gas_est else None,
                 "etanol_cidade_km_l": round(eta_cid, 3) if eta_cid else None,
                 "etanol_estrada_km_l": round(eta_est, 3) if eta_est else None,
+                "consumo_energetico_mj_km": round(mj_km, 6) if mj_km else None,
             }
 
         if combustivel == "DIESEL":
@@ -787,6 +788,7 @@ class PbevService:
                 "tipo": "diesel",
                 "diesel_cidade_km_l": round(gas_cid, 3),
                 "diesel_estrada_km_l": round(gas_est, 3) if gas_est else None,
+                "consumo_energetico_mj_km": round(mj_km, 6) if mj_km else None,
             }
 
         if combustivel in {"GASOLINA", "ETANOL"} or prop in {"COMBUSTAO", "HIBRIDO"}:
@@ -798,12 +800,18 @@ class PbevService:
                 "tipo": "hibrido" if prop == "HIBRIDO" else chave,
                 f"{chave}_cidade_km_l": round(gas_cid, 3),
                 f"{chave}_estrada_km_l": round(gas_est, 3) if gas_est else None,
+                "consumo_energetico_mj_km": round(mj_km, 6) if mj_km else None,
             }
 
         return None
 
     @staticmethod
     def _candidato_publico(registro: dict[str, Any]) -> dict[str, Any]:
+        """Recorte público e rastreável do registro PBEV usado pela interface.
+
+        A Consulta Fipe+ usa estes campos como ficha técnica compacta. Não altera
+        matching, não inventa consumo e não expõe a linha bruta inteira da base.
+        """
         return {
             "id_pbev": registro.get("id_pbev_preliminar"),
             "ano_tabela": registro.get("ano_tabela"),
@@ -812,9 +820,28 @@ class PbevService:
             "versao": registro.get("versao_corrigida") or registro.get("versao"),
             "motor": registro.get("motor_corrigido") or registro.get("motor"),
             "transmissao": registro.get("transmissao"),
+            "transmissao_normalizada": registro.get("transmissao_normalizada"),
             "combustivel": registro.get("combustivel"),
+            "combustivel_normalizado": registro.get("combustivel_normalizado"),
             "tipo_propulsao": registro.get("tipo_propulsao"),
+            "tipo_propulsao_normalizado": registro.get("tipo_propulsao_normalizado"),
             "categoria": registro.get("categoria"),
+            "categoria_normalizada": registro.get("categoria_normalizada"),
+            "classificacao_pbe_absoluta_geral": registro.get("classificacao_pbe_absoluta_geral"),
+            "classificacao_pbe_relativa_categoria": registro.get("classificacao_pbe_relativa_categoria"),
+            "selo_conpet": registro.get("selo_conpet"),
+            "co2_fossil_gasolina_diesel_g_km": registro.get("co2_fossil_gasolina_diesel_g_km_num") or registro.get("co2_fossil_gasolina_diesel_g_km"),
+            "co2_fossil_etanol_g_km": registro.get("co2_fossil_etanol_g_km_num") or registro.get("co2_fossil_etanol_g_km"),
+            "co2e_fossil_vehp_g_km": registro.get("co2e_fossil_vehp_g_km_num") or registro.get("co2e_fossil_vehp_g_km"),
+            "consumo_energetico_mj_km": registro.get("consumo_energetico_mj_km_num") or registro.get("consumo_energetico_mj_km"),
+            "consumo_eletrico_kwh_km_derivado": registro.get("consumo_eletrico_kwh_km_derivado"),
+            "eficiencia_eletrica_km_kwh_derivada": registro.get("eficiencia_eletrica_km_kwh_derivada"),
+            "autonomia_eletrica_km": registro.get("autonomia_eletrica_km_num") or registro.get("autonomia_eletrica_km"),
+            "ar_condicionado": registro.get("ar_condicionado"),
+            "direcao_assistida": registro.get("direcao_assistida"),
+            "fonte_arquivo": registro.get("fonte_arquivo"),
+            "data_atualizacao_pdf": registro.get("data_atualizacao_pdf"),
+            "pagina": registro.get("pagina"),
             "confianca_registro": registro.get("confianca_registro"),
             "status_registro": registro.get("status_registro"),
             "chave_tecnica_normalizada": registro.get("chave_tecnica_normalizada"),
