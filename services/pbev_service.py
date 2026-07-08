@@ -391,16 +391,31 @@ class PbevService:
 
     @staticmethod
     def _combustivel_compativel(req: str, cand_comb: str, cand_prop: str) -> tuple[bool, int, str]:
-        req = (req or "").upper()
+        req = (req or "").upper().replace(" ", "_")
         cand_comb = (cand_comb or "").upper().replace(" ", "_")
         cand_prop = (cand_prop or "").upper().replace(" ", "_")
+
+        # Normalizações defensivas: a base PBEV pode representar plug-in/PHEV de
+        # formas diferentes. A decisão fica centralizada aqui para Simular e Fipe+.
+        cand_is_eletrico = cand_prop in {"ELETRICO", "ELÉTRICO", "BEV", "EV"}
+        cand_is_plugin = cand_prop in {
+            "PLUG_IN", "PLUGIN", "PHEV", "HIBRIDO_PLUG_IN", "HIBRIDO_PLUGIN",
+            "HYBRID_PLUG_IN", "HYBRID_PLUGIN", "RECARREGAVEL", "RECARREGÁVEL",
+        }
+        cand_is_hibrido_convencional = cand_prop in {"HIBRIDO", "HÍBRIDO", "HYBRID", "HEV", "MHEV"}
+
         if req == "ELETRICO":
-            return (cand_prop == "ELETRICO", 24 if cand_prop == "ELETRICO" else -80, "propulsão elétrica compatível" if cand_prop == "ELETRICO" else "propulsão não elétrica")
+            return (cand_is_eletrico, 24 if cand_is_eletrico else -80, "propulsão elétrica compatível" if cand_is_eletrico else "propulsão não elétrica")
         if req == "PLUG_IN":
-            return (cand_prop == "PLUG_IN", 24 if cand_prop == "PLUG_IN" else -75, "PHEV/plugin compatível" if cand_prop == "PLUG_IN" else "propulsão não plugin")
+            return (cand_is_plugin, 24 if cand_is_plugin else -75, "PHEV/plugin compatível" if cand_is_plugin else "propulsão não plugin")
         if req == "HIBRIDO":
-            if cand_prop == "HIBRIDO":
+            if cand_is_hibrido_convencional:
                 return True, 22, "híbrido convencional compatível"
+            if cand_is_plugin:
+                # A FIPE frequentemente classifica PHEV/DM/DM-i apenas como
+                # "Híbrido". Quando o restante da identidade técnica bater, a PBEV
+                # pode refinar o tipo real para híbrido plug-in sem virar incompatível.
+                return True, 22, "híbrido FIPE compatível com PHEV/plugin PBEV"
             return False, -45, "propulsão não híbrida"
         if req in {"FLEX", "DIESEL", "GASOLINA", "ETANOL"}:
             if cand_comb == req:
@@ -1043,6 +1058,9 @@ class PbevService:
             conservadora["consumo_eletrico_kwh_km"] = round(maior, 6)
             # Recalcula eficiência coerente com o kWh/km escolhido quando possível.
             conservadora["eficiencia_eletrica_km_kwh"] = round(1 / maior, 6) if maior else conservadora.get("eficiencia_eletrica_km_kwh")
+            maior_mj = self._max_num([s.get("consumo_energetico_mj_km") for s in sugestoes])
+            if maior_mj:
+                conservadora["consumo_energetico_mj_km"] = round(maior_mj, 6)
             criterio_extra = (
                 "FIPE sem detalhar versão/acabamento; versões elétricas PBEV compatíveis avaliadas; "
                 "adotado maior kWh/km por critério conservador."
@@ -1052,10 +1070,17 @@ class PbevService:
             if maior:
                 conservadora["consumo_eletrico_kwh_km"] = round(maior, 6)
                 conservadora["eficiencia_eletrica_km_kwh"] = round(1 / maior, 6)
+            maior_mj = self._max_num([s.get("consumo_energetico_mj_km") for s in sugestoes])
+            if maior_mj:
+                conservadora["consumo_energetico_mj_km"] = round(maior_mj, 6)
             for campo in ("gasolina_diesel_cidade_km_l", "gasolina_diesel_estrada_km_l", "etanol_cidade_km_l", "etanol_estrada_km_l"):
                 menor = self._min_num([s.get(campo) for s in sugestoes])
                 if menor:
                     conservadora[campo] = round(menor, 3)
+            criterio_extra = (
+                "FIPE sem detalhar versão/acabamento; versões PHEV da PBEV compatíveis avaliadas; "
+                "adotado maior kWh/km e menor km/L por critério conservador, sem inferir percentual elétrico/combustível."
+            )
         elif tipo in {"diesel", "gasolina", "hibrido"}:
             for campo in ("diesel_cidade_km_l", "diesel_estrada_km_l", "gasolina_cidade_km_l", "gasolina_estrada_km_l"):
                 menor = self._min_num([s.get(campo) for s in sugestoes])
