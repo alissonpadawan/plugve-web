@@ -75,7 +75,11 @@
   .ipva-output{display:none;margin-top:14px}
   .ipva-output.show{display:block}
   .ipva-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
-  .ipva-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}
+  .ipva-list-rows{margin-top:10px;border-top:1px solid #e2e8f0}
+  .ipva-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid #e2e8f0}
+  .ipva-row span{color:#64748b;font-size:.92rem;font-weight:700}
+  .ipva-row strong{color:#10202b;font-size:.98rem;font-weight:900}
+  .ipva-row.total span,.ipva-row.total strong{color:#10202b;font-weight:950}
   .modal-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   .modal-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;padding:14px 17px;border-top:1px solid #e2e8f0;background:#fff}
   .debug-modal{position:fixed;inset:0;background:rgba(15,23,42,.56);display:none;align-items:center;justify-content:center;padding:20px;z-index:9999}
@@ -86,7 +90,12 @@
   .debug-head small{display:block;color:#64748b;font-size:.76rem;font-weight:800;margin-top:2px}
   .debug-pre{margin:0;padding:16px;background:#020617;color:#bbf7d0;font-size:.74rem;line-height:1.48;white-space:pre-wrap;word-break:break-word;overflow:auto;max-height:540px}
   @media(max-width:980px){.plus-hero{align-items:flex-start;flex-direction:column}.plus-hero-badges{justify-content:flex-start}.plus-grid,.plus-enrichment{grid-template-columns:1fr}.plus-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
-  @media(max-width:620px){.fipe-plus-page{padding:0 0 32px}.fipe-type-row,.plus-kv,.revenda-form,.modal-form-grid,.ipva-list{grid-template-columns:1fr}.plus-metrics{grid-template-columns:1fr}.plus-card{padding:17px}.plus-hero{border-radius:22px}.fipe-btn{width:100%}}
+  #fipe_result_kv{display:block;margin-top:14px}
+  #fipe_result_kv .plus-kv-item{display:grid;grid-template-columns:150px 1fr;align-items:start;gap:10px;padding:8px 0;border:none;border-bottom:1px solid #dce7e1;border-radius:0;background:transparent}
+  #fipe_result_kv .plus-kv-item:last-child{border-bottom:none;padding-bottom:0}
+  #fipe_result_kv .plus-kv-item small{margin:0;color:#64748b;font-size:.72rem}
+  #fipe_result_kv .plus-kv-item strong{font-size:.95rem}
+  @media(max-width:620px){.fipe-plus-page{padding:0 0 32px}.fipe-type-row,.plus-kv,.revenda-form,.modal-form-grid{grid-template-columns:1fr}.plus-metrics{grid-template-columns:1fr}.plus-card{padding:17px}.plus-hero{border-radius:22px}.fipe-btn{width:100%}#fipe_result_kv .plus-kv-item{grid-template-columns:1fr}}
   @media print{body{background:#fff!important}.site-header,.navbar,.plus-hero-badges,.fipe-actions,#btn_estimar_revenda,#btn_abrir_ipva,.ipva-actions,.debug-modal{display:none!important}.fipe-plus-page{max-width:none;padding:0;color:#111827}.plus-hero,.plus-card,.fipe-result{box-shadow:none!important;border-color:#cbd5e1!important;background:#fff!important}.plus-grid,.plus-enrichment,.plus-enrichment.show{display:grid!important;grid-template-columns:1fr!important;gap:12px}.fipe-empty,.pbev-empty:empty{display:none!important}.fipe-result.show,.revenda-output.show{display:block!important}.pbev-logo-btn{display:none!important}.revenda-actions{display:none!important}}
 </style>
 
@@ -194,7 +203,7 @@
         </div>
         <div id="ipva_body" class="pbev-empty">Consulte o IPVA usando a localização e o valor FIPE atual.</div>
         <div class="ipva-actions">
-          <button type="button" id="btn_abrir_ipva" class="fipe-btn secondary">Consultar IPVA</button>
+          <button type="button" id="btn_abrir_ipva" class="fipe-btn">Consultar IPVA</button>
         </div>
       </section>
     </div>
@@ -586,11 +595,17 @@
   }
   function propulsaoLegivel(valor){
     const v = normalizar(valor).replace(/\s+/g,'_');
-    if (v === 'PLUG_IN' || v.includes('PHEV')) return 'Plug-in';
+    if (v === 'PLUG_IN' || v.includes('PHEV')) return 'Híbrido plug-in';
     if (v === 'ELETRICO' || v === 'ELETRICA') return 'Elétrico';
     if (v === 'HIBRIDO' || v === 'HIBRIDA') return 'Híbrido';
     if (v === 'COMBUSTAO') return 'Combustão';
     return valor || '';
+  }
+  function tipoHibridoLegivel(candidato, sugestao, propulsaoTexto){
+    const txt = normalizar(`${propulsaoTexto || ''} ${candidato?.tipo_propulsao || ''} ${sugestao?.tipo || ''} ${candidato?.versao || ''} ${candidato?.modelo || ''}`);
+    if (/PHEV|PLUG|DM I|DMI|\bDM\b/.test(txt)) return 'Plug-in (PHEV)';
+    if (/HIBRIDO|HYBRID|HEV|MHEV/.test(txt)) return 'Convencional (não plug-in)';
+    return '';
   }
   function marchasPorTransmissao(transmissao){
     const txt = normalizar(transmissao).replace(/\s+/g,'');
@@ -678,11 +693,13 @@
     const fonte = dados.fonte_oficial || {};
     const prop = propulsaoLegivel(c.tipo_propulsao || s.tipo);
     const combustivel = combustivelFichaPbev(c, s, veiculo, prop);
+    const tipoHibrido = tipoHibridoLegivel(c, s, prop);
     const transmissao = c.transmissao || '';
     const marchas = marchasPorTransmissao(transmissao);
     const gasDiesel = rotuloGasDiesel(c);
     const gasCidade = primeiroValor(s.gasolina_cidade_km_l, s.gasolina_diesel_cidade_km_l);
     const gasEstrada = primeiroValor(s.gasolina_estrada_km_l, s.gasolina_diesel_estrada_km_l);
+    const energiaDerivada = !isFilled(s.consumo_eletrico_kwh_km) && isFilled(s.consumo_energetico_mj_km) ? (Number(s.consumo_energetico_mj_km) / 3.6) : null;
     const metrics = [];
     if (isFilled(gasCidade)) metrics.push(metricHtml(`${gasDiesel} cidade`, fmtValorUnidade(gasCidade, 'km/L', 1)));
     if (isFilled(gasEstrada)) metrics.push(metricHtml(`${gasDiesel} estrada`, fmtValorUnidade(gasEstrada, 'km/L', 1)));
@@ -690,7 +707,7 @@
     if (isFilled(s.etanol_estrada_km_l)) metrics.push(metricHtml('Etanol estrada', fmtValorUnidade(s.etanol_estrada_km_l, 'km/L', 1)));
     if (isFilled(s.diesel_cidade_km_l)) metrics.push(metricHtml('Diesel cidade', fmtValorUnidade(s.diesel_cidade_km_l, 'km/L', 1)));
     if (isFilled(s.diesel_estrada_km_l)) metrics.push(metricHtml('Diesel estrada', fmtValorUnidade(s.diesel_estrada_km_l, 'km/L', 1)));
-    if (isFilled(s.consumo_eletrico_kwh_km)) metrics.push(metricHtml('Energia', fmtValorUnidade(s.consumo_eletrico_kwh_km, 'kWh/km', 3)));
+    if (isFilled(s.consumo_eletrico_kwh_km) || isFilled(energiaDerivada)) metrics.push(metricHtml('Energia', fmtValorUnidade(primeiroValor(s.consumo_eletrico_kwh_km, energiaDerivada), 'kWh/km', 3)));
     if (isFilled(s.eficiencia_eletrica_km_kwh)) metrics.push(metricHtml('Eficiência', fmtValorUnidade(s.eficiencia_eletrica_km_kwh, 'km/kWh', 2)));
     if (isFilled(s.autonomia_eletrica_km)) metrics.push(metricHtml('Autonomia', fmtValorUnidade(s.autonomia_eletrica_km, 'km', 0)));
     if (isFilled(s.consumo_energetico_mj_km)) metrics.push(metricHtml('Consumo energético', fmtValorUnidade(s.consumo_energetico_mj_km, 'MJ/km', 3)));
@@ -698,6 +715,7 @@
     const specs = [
       ['Propulsão', prop],
       ['Combustível', combustivel],
+      ['Tipo híbrido', tipoHibrido],
       ['Categoria', c.categoria],
       ['Transmissão', transmissao],
       ['Marchas', marchas],
@@ -1134,21 +1152,24 @@
     setBadge(ipvaBadge, 'calculado', '');
     ipvaSubtitle.textContent = resultado.municipio ? `${resultado.municipio}/${resultado.uf}` : resultado.uf;
     const total = resultado.linhas.reduce((acc, item) => acc + Number(item.ipva || 0), 0);
-    const cards = resultado.linhas.map(item => `
-      <div class="plus-kv-item">
-        <small>${esc(item.ano)}</small>
+    const rows = resultado.linhas.map(item => `
+      <div class="ipva-row">
+        <span>IPVA ${esc(item.ano)}</span>
         <strong>${esc(fmtMoeda(item.ipva))}</strong>
-        <small>Base ${esc(fmtMoeda(item.base))}</small>
       </div>
     `).join('');
+    const totalRow = resultado.linhas.length > 1 ? `
+      <div class="ipva-row total">
+        <span>Total do período</span>
+        <strong>${esc(fmtMoeda(total))}</strong>
+      </div>
+    ` : '';
     const nota = resultado.temRevenda
       ? 'Anos futuros usam a base de revenda estimada pela CurVE.'
       : 'Para projetar anos futuros, estime a revenda primeiro.';
     ipvaBody.className = '';
     ipvaBody.innerHTML = `
-      <p class="revenda-valor" style="font-size:1.65rem">${esc(fmtMoeda(total))}</p>
-      <p class="revenda-sub">${resultado.linhas.length > 1 ? 'IPVA estimado no período' : 'IPVA estimado no primeiro ano'}</p>
-      <div class="ipva-list">${cards}</div>
+      <div class="ipva-list-rows">${rows}${totalRow}</div>
       <p class="plus-note">${esc(nota)}</p>
     `;
     scrollSuave(document.getElementById('ipva_card'), 'center');
