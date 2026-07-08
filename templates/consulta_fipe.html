@@ -243,6 +243,9 @@
   function selectedText(sel){
     return sel && sel.selectedIndex >= 0 ? (sel.options[sel.selectedIndex]?.textContent || '').trim() : '';
   }
+  function codigoAnoFipeZeroKm(codigoAno){
+    return String(codigoAno || '').split('-', 1)[0] === '32000';
+  }
   function formatarAnoZeroKm(label){
     const texto = String(label || '');
     return texto.replace(/^\s*32000\b/i, 'Zero km');
@@ -250,6 +253,11 @@
   function textoAnoModelo(valor){
     const texto = String(valor ?? '').trim();
     return texto === '32000' ? 'Zero km' : (texto || '—');
+  }
+  function anoModeloParaMatchingPbev(codigoAno, anoModeloFipe){
+    if (codigoAnoFipeZeroKm(codigoAno)) return new Date().getFullYear();
+    const n = parseInt(anoModeloFipe, 10);
+    return Number.isFinite(n) && n > 1900 ? n : (anoModeloFipe || '');
   }
   function esc(valor){
     return String(valor ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -385,6 +393,8 @@
       texto_modelo: data.Modelo || selectedText(selects.modelo),
       ano_modelo: anoRaw,
       ano_modelo_raw: anoRaw,
+      ano_modelo_pbev: anoModeloParaMatchingPbev(anoCodigo, anoRaw),
+      zero_km: codigoAnoFipeZeroKm(anoCodigo),
       ano_modelo_label: textoAnoModelo(anoRaw),
       texto_ano: textoAno,
       combustivel: data.Combustivel || '',
@@ -520,7 +530,9 @@
       marca: veiculo.marca,
       modelo: veiculo.modelo,
       texto_modelo: veiculo.texto_modelo,
-      ano: veiculo.ano_modelo,
+      ano: veiculo.ano_modelo_pbev || veiculo.ano_modelo,
+      ano_modelo_fipe: veiculo.ano_modelo_raw,
+      zero_km: !!veiculo.zero_km,
       texto_ano: veiculo.texto_ano,
       ano_codigo: veiculo.codigo_ano,
       combustivel: veiculo.combustivel,

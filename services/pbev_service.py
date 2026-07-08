@@ -291,12 +291,34 @@ class PbevService:
     @staticmethod
     def _parse_ano(valor: Any) -> int | None:
         texto = str(valor or "")
-        # A FIPE usa 32000-x para zero km; na tela a CurVE passa o ano-modelo já resolvido.
+        # A FIPE usa 32000-x para zero km; esse código não é ano real.
         match = re.search(r"(20\d{2}|19\d{2})", texto)
         if not match:
             return None
         ano = int(match.group(1))
         return ano if 2010 <= ano <= 2035 else None
+
+    @classmethod
+    def _consulta_zero_km_contexto(cls, consulta: dict[str, Any]) -> bool:
+        """Detecta o código especial FIPE de zero km em qualquer tela.
+
+        A Simular costuma enviar o ano-modelo já resolvido, mas a Consulta Fipe+
+        pode receber ``32000-x`` diretamente da FIPE pública. A decisão precisa
+        ficar centralizada aqui para que todas as telas usem o mesmo matching.
+        """
+        if consulta.get("zero_km") is True or str(consulta.get("zero_km") or "").strip().lower() in {"1", "true", "sim", "s"}:
+            return True
+        bruto = " ".join(str(consulta.get(k) or "") for k in (
+            "ano", "ano_modelo", "ano_codigo", "codigo_ano", "texto_ano"
+        ))
+        return "32000" in bruto or "ZERO" in cls.normalizar_texto(bruto)
+
+    @staticmethod
+    def _ano_tabela_registro(registro: dict[str, Any]) -> int:
+        try:
+            return int(registro.get("ano_tabela") or registro.get("ano_tabela_pbev") or 0)
+        except Exception:
+            return 0
 
     @staticmethod
     def _ratio(a: str, b: str) -> float:
@@ -440,19 +462,14 @@ class PbevService:
         else:
             return {"score": 0.0, "motivos": ["marca incompatível"], "penalidades": [], "fuel_ok": False, "ano_exato": False, "modelo_score": 0.0}
 
-        ano_req = self._parse_ano(consulta.get("ano")) or self._parse_ano(consulta.get("texto_ano")) or self._parse_ano(consulta.get("ano_codigo"))
-        try:
-            ano_cand = int(registro.get("ano_tabela") or 0)
-        except Exception:
-            ano_cand = 0
+        ano_req = self._parse_ano(consulta.get("ano")) or self._parse_ano(consulta.get("texto_ano")) or self._parse_ano(consulta.get("ano_codigo")) or self._parse_ano(consulta.get("codigo_ano"))
+        ano_cand = self._ano_tabela_registro(registro)
         ano_exato = False
         ano_diff = 999
         zero_km_contexto = False
         ano_compativel_fipe_pbev = False
         ano_relacao = "indefinido"
-        texto_ano_consulta = self.normalizar_texto(consulta.get("texto_ano") or consulta.get("ano_codigo") or "")
-        if "ZERO" in texto_ano_consulta or "32000" in str(consulta.get("ano_codigo") or ""):
-            zero_km_contexto = True
+        zero_km_contexto = self._consulta_zero_km_contexto(consulta)
 
         if ano_req and ano_cand:
             diff = abs(ano_req - ano_cand)
@@ -483,6 +500,14 @@ class PbevService:
             else:
                 score -= min(20, diff * 5)
                 penalidades.append(f"ano distante ({ano_req} x {ano_cand})")
+        elif zero_km_contexto and ano_cand:
+            # Código FIPE 32000-x significa zero km, não ano ausente.
+            # O desempate final prioriza o maior ano PBEV tecnicamente compatível.
+            score += 10
+            ano_diff = 0
+            ano_compativel_fipe_pbev = True
+            ano_relacao = "zero_km_tabela_atual"
+            motivos.append("zero km FIPE: ano PBEV mais recente compatível priorizado")
         else:
             penalidades.append("ano FIPE ausente para score")
 
@@ -1332,11 +1357,17 @@ class PbevService:
                 candidatos_bloqueados += 1
             candidatos.append(item)
 
-        def _ordem_candidato(c: dict[str, Any]) -> tuple[float, int, int, float, int]:
+        def _ordem_candidato(c: dict[str, Any]) -> tuple[float, int, int, int, float, int]:
             avaliacao = c.get("avaliacao") or {}
+            ano_cand = int(avaliacao.get("ano_cand") or self._ano_tabela_registro(c.get("registro") or {}))
+            # Para FIPE zero km (32000-x), o empate entre anos PBEV não é ambiguidade
+            # metodológica: é a mesma série histórica. O escritório central PBEV deve
+            # priorizar o ano PBEV mais recente tecnicamente compatível.
+            ano_zero_km_preferido = ano_cand if avaliacao.get("zero_km_contexto") and avaliacao.get("ano_compativel_fipe_pbev") else 0
             return (
                 float(c.get("score") or 0),
                 1 if avaliacao.get("ano_exato") else 0,
+                ano_zero_km_preferido,
                 -int(avaliacao.get("ano_diff") if avaliacao.get("ano_diff") is not None else 999),
                 float(avaliacao.get("modelo_score") or 0),
                 1 if avaliacao.get("fuel_ok") else 0,
