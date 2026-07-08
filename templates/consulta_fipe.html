@@ -52,6 +52,7 @@
   .plus-result-actions.show{display:flex}
   .plus-enrichment{display:none;grid-template-columns:minmax(360px,.92fr) minmax(420px,1.08fr);gap:18px;margin-top:18px;align-items:start}
   .plus-enrichment.show{display:grid}
+  .plus-side-stack{display:flex;flex-direction:column;gap:18px;min-width:0}
   .plus-badge{display:inline-flex;align-items:center;gap:.35rem;border:1px solid #bbf7d0;background:#ecfdf5;color:#047857;border-radius:999px;padding:.32rem .58rem;font-size:.7rem;font-weight:950;white-space:nowrap}
   .plus-badge.warn{border-color:#fed7aa;background:#fff7ed;color:#9a3412}
   .plus-badge.neutral{border-color:#e2e8f0;background:#f8fafc;color:#475569}
@@ -71,6 +72,12 @@
   .revenda-valor{font-size:clamp(1.65rem,3vw,2.35rem);font-weight:950;letter-spacing:-.04em;color:#10202b;line-height:1;margin:0 0 6px}
   .revenda-sub{color:#64748b;font-size:.82rem;font-weight:800;margin:0 0 10px}
   .revenda-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  .ipva-output{display:none;margin-top:14px}
+  .ipva-output.show{display:block}
+  .ipva-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  .ipva-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}
+  .modal-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .modal-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;padding:14px 17px;border-top:1px solid #e2e8f0;background:#fff}
   .debug-modal{position:fixed;inset:0;background:rgba(15,23,42,.56);display:none;align-items:center;justify-content:center;padding:20px;z-index:9999}
   .debug-modal.show{display:flex}
   .debug-panel{width:min(880px,100%);max-height:min(680px,92vh);background:#fff;border-radius:22px;overflow:hidden;box-shadow:0 32px 80px rgba(0,0,0,.25);display:flex;flex-direction:column}
@@ -79,8 +86,8 @@
   .debug-head small{display:block;color:#64748b;font-size:.76rem;font-weight:800;margin-top:2px}
   .debug-pre{margin:0;padding:16px;background:#020617;color:#bbf7d0;font-size:.74rem;line-height:1.48;white-space:pre-wrap;word-break:break-word;overflow:auto;max-height:540px}
   @media(max-width:980px){.plus-hero{align-items:flex-start;flex-direction:column}.plus-hero-badges{justify-content:flex-start}.plus-grid,.plus-enrichment{grid-template-columns:1fr}.plus-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
-  @media(max-width:620px){.fipe-plus-page{padding:0 0 32px}.fipe-type-row,.plus-kv,.revenda-form{grid-template-columns:1fr}.plus-metrics{grid-template-columns:1fr}.plus-card{padding:17px}.plus-hero{border-radius:22px}.fipe-btn{width:100%}}
-  @media print{body{background:#fff!important}.site-header,.navbar,.plus-hero-badges,.fipe-actions,#btn_estimar_revenda,.debug-modal{display:none!important}.fipe-plus-page{max-width:none;padding:0;color:#111827}.plus-hero,.plus-card,.fipe-result{box-shadow:none!important;border-color:#cbd5e1!important;background:#fff!important}.plus-grid,.plus-enrichment,.plus-enrichment.show{display:grid!important;grid-template-columns:1fr!important;gap:12px}.fipe-empty,.pbev-empty:empty{display:none!important}.fipe-result.show,.revenda-output.show{display:block!important}.pbev-logo-btn{display:none!important}.revenda-actions{display:none!important}}
+  @media(max-width:620px){.fipe-plus-page{padding:0 0 32px}.fipe-type-row,.plus-kv,.revenda-form,.modal-form-grid,.ipva-list{grid-template-columns:1fr}.plus-metrics{grid-template-columns:1fr}.plus-card{padding:17px}.plus-hero{border-radius:22px}.fipe-btn{width:100%}}
+  @media print{body{background:#fff!important}.site-header,.navbar,.plus-hero-badges,.fipe-actions,#btn_estimar_revenda,#btn_abrir_ipva,.ipva-actions,.debug-modal{display:none!important}.fipe-plus-page{max-width:none;padding:0;color:#111827}.plus-hero,.plus-card,.fipe-result{box-shadow:none!important;border-color:#cbd5e1!important;background:#fff!important}.plus-grid,.plus-enrichment,.plus-enrichment.show{display:grid!important;grid-template-columns:1fr!important;gap:12px}.fipe-empty,.pbev-empty:empty{display:none!important}.fipe-result.show,.revenda-output.show{display:block!important}.pbev-logo-btn{display:none!important}.revenda-actions{display:none!important}}
 </style>
 
 <section class="fipe-plus-page">
@@ -157,24 +164,40 @@
       <div id="pbev_body" class="pbev-empty">Consulte um veículo para buscar ficha técnica PBEV.</div>
     </section>
 
-    <section class="plus-card" id="revenda_card" aria-label="Estimativa de revenda">
-      <div class="plus-card-head">
-        <div>
-          <h2>Revenda</h2>
-          <span class="plus-mini">curva publicada</span>
+    <div class="plus-side-stack">
+      <section class="plus-card" id="revenda_card" aria-label="Estimativa de revenda">
+        <div class="plus-card-head">
+          <div>
+            <h2>Revenda</h2>
+            <span class="plus-mini">curva publicada</span>
+          </div>
+          <span id="revenda_badge" class="plus-badge neutral">opcional</span>
         </div>
-        <span id="revenda_badge" class="plus-badge neutral">opcional</span>
-      </div>
-      <div class="fipe-field" style="margin-bottom:0">
-        <label for="fipe_plus_horizonte">Pretende ficar quantos anos?</label>
-        <div class="revenda-form">
-          <input id="fipe_plus_horizonte" type="number" min="1" max="20" step="1" value="5" inputmode="numeric">
-          <button type="button" id="btn_estimar_revenda" class="fipe-btn">Estimar</button>
+        <div class="fipe-field" style="margin-bottom:0">
+          <label for="fipe_plus_horizonte">Pretende ficar quantos anos?</label>
+          <div class="revenda-form">
+            <input id="fipe_plus_horizonte" type="number" min="1" max="20" step="1" value="5" inputmode="numeric">
+            <button type="button" id="btn_estimar_revenda" class="fipe-btn">Estimar</button>
+          </div>
         </div>
-      </div>
-      <div id="revenda_status" class="fipe-status" aria-live="polite"></div>
-      <div id="revenda_output" class="revenda-output"></div>
-    </section>
+        <div id="revenda_status" class="fipe-status" aria-live="polite"></div>
+        <div id="revenda_output" class="revenda-output"></div>
+      </section>
+
+      <section class="plus-card" id="ipva_card" aria-label="Consulta opcional de IPVA">
+        <div class="plus-card-head">
+          <div>
+            <h2>IPVA</h2>
+            <span class="plus-mini" id="ipva_subtitle">consulta opcional</span>
+          </div>
+          <span id="ipva_badge" class="plus-badge neutral">opcional</span>
+        </div>
+        <div id="ipva_body" class="pbev-empty">Consulte o IPVA usando a localização e o valor FIPE atual.</div>
+        <div class="ipva-actions">
+          <button type="button" id="btn_abrir_ipva" class="fipe-btn secondary">Consultar IPVA</button>
+        </div>
+      </section>
+    </div>
   </div>
 </section>
 
@@ -188,6 +211,38 @@
       <button type="button" id="btn_fechar_pbev_debug" class="fipe-btn ghost">Fechar</button>
     </div>
     <pre id="pbev_debug_text" class="debug-pre"></pre>
+  </div>
+</div>
+
+<div id="ipva_modal" class="debug-modal" aria-hidden="true">
+  <div class="debug-panel" role="dialog" aria-modal="true" aria-labelledby="ipva_modal_title">
+    <div class="debug-head">
+      <div>
+        <strong id="ipva_modal_title">Consultar IPVA</strong>
+        <small>Informe a localização para estimar o imposto anual.</small>
+      </div>
+      <button type="button" id="btn_fechar_ipva_modal" class="fipe-btn ghost">Fechar</button>
+    </div>
+    <div style="padding:16px 17px">
+      <div class="modal-form-grid">
+        <div class="fipe-field">
+          <label for="ipva_uf">Estado (UF)</label>
+          <select id="ipva_uf"><option value="">Selecione</option></select>
+        </div>
+        <div class="fipe-field">
+          <label for="ipva_municipio">Município</label>
+          <select id="ipva_municipio" disabled><option value="">Selecione a UF</option></select>
+        </div>
+      </div>
+      <div class="fipe-actions" style="margin-top:4px">
+        <button type="button" id="btn_ipva_geolocalizacao" class="fipe-btn ghost">Usar minha localização</button>
+      </div>
+      <div id="ipva_modal_status" class="fipe-status" aria-live="polite"></div>
+    </div>
+    <div class="modal-actions">
+      <button type="button" id="btn_cancelar_ipva" class="fipe-btn ghost">Cancelar</button>
+      <button type="button" id="btn_confirmar_ipva" class="fipe-btn">Calcular IPVA</button>
+    </div>
   </div>
 </div>
 {% endblock %}
@@ -214,6 +269,18 @@
   const revendaStatus = document.getElementById('revenda_status');
   const revendaOutput = document.getElementById('revenda_output');
   const revendaBadge = document.getElementById('revenda_badge');
+  const ipvaBody = document.getElementById('ipva_body');
+  const ipvaBadge = document.getElementById('ipva_badge');
+  const ipvaSubtitle = document.getElementById('ipva_subtitle');
+  const btnAbrirIpva = document.getElementById('btn_abrir_ipva');
+  const ipvaModal = document.getElementById('ipva_modal');
+  const ipvaUf = document.getElementById('ipva_uf');
+  const ipvaMunicipio = document.getElementById('ipva_municipio');
+  const ipvaModalStatus = document.getElementById('ipva_modal_status');
+  const btnFecharIpvaModal = document.getElementById('btn_fechar_ipva_modal');
+  const btnCancelarIpva = document.getElementById('btn_cancelar_ipva');
+  const btnConfirmarIpva = document.getElementById('btn_confirmar_ipva');
+  const btnIpvaGeo = document.getElementById('btn_ipva_geolocalizacao');
   const debugModal = document.getElementById('pbev_debug_modal');
   const debugText = document.getElementById('pbev_debug_text');
   const btnFecharDebug = document.getElementById('btn_fechar_pbev_debug');
@@ -224,6 +291,7 @@
   let veiculoAtual = null;
   let pbevAtual = null;
   let revendaAtual = null;
+  let ipvaAtual = null;
 
   function status(msg, erro=false){
     statusEl.textContent = msg || '';
@@ -372,6 +440,15 @@
     setBadge(revendaBadge, 'opcional', 'neutral');
     btnRevenda.disabled = false;
   }
+  function resetIpva(){
+    ipvaAtual = null;
+    if (ipvaSubtitle) ipvaSubtitle.textContent = 'consulta opcional';
+    if (ipvaBadge) setBadge(ipvaBadge, 'opcional', 'neutral');
+    if (ipvaBody) {
+      ipvaBody.className = 'pbev-empty';
+      ipvaBody.textContent = 'Consulte o IPVA usando a localização e o valor FIPE atual.';
+    }
+  }
   function hideResult(){
     consultaSeq += 1;
     veiculoAtual = null;
@@ -380,6 +457,7 @@
     enrichment.classList.remove('show');
     resetPbev();
     resetRevenda();
+    resetIpva();
   }
   function montarVeiculo(data){
     const marcaCodigo = selects.marca.value;
@@ -427,6 +505,7 @@
       ['Consulta', veiculoAtual.data_consulta || '—']
     ]);
     resetRevenda();
+    resetIpva();
     buscarPbev(veiculoAtual);
     scrollSuave(enrichment, 'start');
   }
@@ -493,8 +572,17 @@
     if (v === 'F' || v === 'FLEX') return 'Flex';
     if (v === 'G' || v === 'GASOLINA') return 'Gasolina';
     if (v === 'D' || v === 'DIESEL') return 'Diesel';
-    if (v === 'E' || v === 'ETANOL' || v === 'ALCOOL') return 'Etanol';
+    if (v === 'E' || v === 'ELETRICO' || v === 'ELETRICA') return 'Energia elétrica';
+    if (v === 'ETANOL' || v === 'ALCOOL') return 'Etanol';
     return valor || '';
+  }
+  function combustivelFichaPbev(candidato, sugestao, veiculo, propulsaoTexto){
+    const propNorm = normalizar(`${propulsaoTexto || ''} ${candidato?.tipo_propulsao || ''} ${sugestao?.tipo || ''}`);
+    const combBruto = primeiroValor(candidato?.combustivel_normalizado, candidato?.combustivel, veiculo?.combustivel);
+    const combLegivel = combustivelLegivel(combBruto);
+    if (/ELETRICO|ELETRICA|BEV|EV/.test(propNorm) && !/PHEV|PLUG|HIBRIDO|HIBRIDA/.test(propNorm)) return 'Energia elétrica';
+    if (normalizar(combLegivel).includes('ELETRIC')) return 'Energia elétrica';
+    return combLegivel;
   }
   function propulsaoLegivel(valor){
     const v = normalizar(valor).replace(/\s+/g,'_');
@@ -589,7 +677,7 @@
     const s = dados.sugestoes_consumo || {};
     const fonte = dados.fonte_oficial || {};
     const prop = propulsaoLegivel(c.tipo_propulsao || s.tipo);
-    const combustivel = combustivelLegivel(c.combustivel || veiculo.combustivel);
+    const combustivel = combustivelFichaPbev(c, s, veiculo, prop);
     const transmissao = c.transmissao || '';
     const marchas = marchasPorTransmissao(transmissao);
     const gasDiesel = rotuloGasDiesel(c);
@@ -698,7 +786,7 @@
   }
   btnFecharDebug.addEventListener('click', fecharDebug);
   debugModal.addEventListener('click', ev => { if (ev.target === debugModal) fecharDebug(); });
-  document.addEventListener('keydown', ev => { if (ev.key === 'Escape') fecharDebug(); });
+  document.addEventListener('keydown', ev => { if (ev.key === 'Escape') { fecharDebug(); fecharModalIpva(); } });
 
   function montarMemoriaCalculoRevenda(data, veiculo, horizonte){
     const vi = Number(veiculo?.valor_num || data?.valor_atual || 0);
@@ -888,6 +976,184 @@
     scrollSuave(document.getElementById('revenda_card'), 'center');
   }
 
+
+  const UFS_BR = [
+    ['AC','Acre'],['AL','Alagoas'],['AP','Amapá'],['AM','Amazonas'],['BA','Bahia'],['CE','Ceará'],['DF','Distrito Federal'],['ES','Espírito Santo'],['GO','Goiás'],['MA','Maranhão'],['MT','Mato Grosso'],['MS','Mato Grosso do Sul'],['MG','Minas Gerais'],['PA','Pará'],['PB','Paraíba'],['PR','Paraná'],['PE','Pernambuco'],['PI','Piauí'],['RJ','Rio de Janeiro'],['RN','Rio Grande do Norte'],['RS','Rio Grande do Sul'],['RO','Rondônia'],['RR','Roraima'],['SC','Santa Catarina'],['SP','São Paulo'],['SE','Sergipe'],['TO','Tocantins']
+  ];
+  const MAPA_ESTADO_NOME_PARA_UF_IPVA = UFS_BR.reduce((acc, [uf, nome]) => { acc[normalizar(nome)] = uf; return acc; }, {});
+
+  function statusIpvaModal(msg, erro=false){
+    if (!ipvaModalStatus) return;
+    ipvaModalStatus.textContent = msg || '';
+    ipvaModalStatus.classList.toggle('error', !!erro);
+  }
+  function preencherUfsIpva(){
+    if (!ipvaUf || ipvaUf.dataset.carregado === '1') return;
+    ipvaUf.innerHTML = '<option value="">Selecione</option>';
+    UFS_BR.forEach(([uf, nome]) => {
+      const option = document.createElement('option');
+      option.value = uf;
+      option.textContent = `${uf} - ${nome}`;
+      ipvaUf.appendChild(option);
+    });
+    ipvaUf.dataset.carregado = '1';
+  }
+  async function carregarMunicipiosIpva(uf, municipioPreferido=''){
+    if (!ipvaMunicipio) return;
+    ipvaMunicipio.innerHTML = '<option value="">Carregando...</option>';
+    ipvaMunicipio.disabled = true;
+    if (!uf) {
+      ipvaMunicipio.innerHTML = '<option value="">Selecione a UF</option>';
+      return;
+    }
+    try{
+      const resp = await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${encodeURIComponent(uf)}/municipios`);
+      const lista = await resp.json();
+      ipvaMunicipio.innerHTML = '<option value="">Selecione o município</option>';
+      (Array.isArray(lista) ? lista : []).forEach(m => {
+        const option = document.createElement('option');
+        option.value = m.nome;
+        option.textContent = m.nome;
+        ipvaMunicipio.appendChild(option);
+      });
+      ipvaMunicipio.disabled = false;
+      if (municipioPreferido) {
+        const alvo = Array.from(ipvaMunicipio.options).find(opt => normalizar(opt.textContent) === normalizar(municipioPreferido));
+        if (alvo) ipvaMunicipio.value = alvo.value;
+      }
+    }catch(e){
+      ipvaMunicipio.innerHTML = '<option value="">Erro ao carregar municípios</option>';
+      statusIpvaModal('Não consegui carregar municípios. Tente selecionar só a UF.', true);
+    }
+  }
+  function abrirModalIpva(){
+    if (!veiculoAtual) {
+      window.alert('Consulte um veículo primeiro.');
+      return;
+    }
+    preencherUfsIpva();
+    statusIpvaModal('');
+    ipvaModal?.classList.add('show');
+    ipvaModal?.setAttribute('aria-hidden','false');
+  }
+  function fecharModalIpva(){
+    ipvaModal?.classList.remove('show');
+    ipvaModal?.setAttribute('aria-hidden','true');
+  }
+  async function usarMinhaLocalizacaoIpva(){
+    if (!navigator.geolocation) {
+      statusIpvaModal('Seu navegador não permite geolocalização automática.', true);
+      return;
+    }
+    preencherUfsIpva();
+    statusIpvaModal('Identificando localização...');
+    navigator.geolocation.getCurrentPosition(async (pos) => {
+      try{
+        const lat = pos.coords.latitude;
+        const lon = pos.coords.longitude;
+        const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&zoom=10&addressdetails=1`;
+        const resp = await fetch(url, {headers:{'Accept-Language':'pt-BR'}});
+        const data = await resp.json();
+        const address = data.address || {};
+        const estadoNome = address.state || address.region || '';
+        const uf = MAPA_ESTADO_NOME_PARA_UF_IPVA[normalizar(estadoNome)] || String(address.state_code || '').toUpperCase();
+        const municipio = address.city || address.town || address.village || address.municipality || address.county || '';
+        if (!uf) {
+          statusIpvaModal('Não foi possível identificar a UF automaticamente.', true);
+          return;
+        }
+        ipvaUf.value = uf;
+        await carregarMunicipiosIpva(uf, municipio);
+        statusIpvaModal(municipio ? `Localização: ${municipio}/${uf}` : `Localização: ${uf}`);
+      }catch(e){
+        statusIpvaModal('Não foi possível usar a localização automática.', true);
+      }
+    }, () => statusIpvaModal('Permissão de localização negada ou indisponível.', true), {enableHighAccuracy:false, timeout:12000, maximumAge:300000});
+  }
+  function anoFabricacaoIpva(veiculo){
+    if (!veiculo) return new Date().getFullYear();
+    if (veiculo.zero_km) return new Date().getFullYear();
+    const n = parseInt(veiculo.ano_modelo_raw || veiculo.ano_modelo || '', 10);
+    return Number.isFinite(n) && n > 1900 ? n : new Date().getFullYear();
+  }
+  function combustivelParaIpva(veiculo){
+    const prop = propulsaoLegivel(pbevAtual?.candidato?.tipo_propulsao || pbevAtual?.sugestoes_consumo?.tipo || '');
+    return [prop, veiculo?.combustivel || '', veiculo?.texto_ano || ''].filter(Boolean).join(' ');
+  }
+  function valorBaseIpvaAno(indice, total){
+    const vi = Number(veiculoAtual?.valor_num || 0);
+    const mem = revendaAtual?.resultado?.memoria_calculo_fipe_plus || {};
+    const vf = Number(mem.valor_futuro_vf || revendaAtual?.resultado?.valor_futuro || 0);
+    const h = Math.max(1, Number(mem.horizonte_anos || revendaAtual?.horizonte || total || 1));
+    if (vi > 0 && vf > 0 && h > 0 && indice > 0) {
+      return vi * Math.pow(vf / vi, indice / h);
+    }
+    return vi;
+  }
+  async function calcularIpvaFipePlus(){
+    if (!veiculoAtual) {
+      statusIpvaModal('Consulte um veículo primeiro.', true);
+      return;
+    }
+    const uf = String(ipvaUf?.value || '').toUpperCase();
+    const municipio = String(ipvaMunicipio?.value || '').trim();
+    if (!uf) {
+      statusIpvaModal('Selecione a UF.', true);
+      return;
+    }
+    fecharModalIpva();
+    setBadge(ipvaBadge, 'calculando', 'neutral');
+    ipvaSubtitle.textContent = municipio ? `${municipio}/${uf}` : uf;
+    ipvaBody.className = 'pbev-empty';
+    ipvaBody.textContent = 'Calculando IPVA...';
+    const anoAtual = new Date().getFullYear();
+    const temRevenda = !!(revendaAtual?.resultado?.encontrado && revendaAtual?.horizonte);
+    const totalAnos = temRevenda ? Math.max(1, Math.min(20, Number(revendaAtual.horizonte) || 1)) : 1;
+    const anoFab = anoFabricacaoIpva(veiculoAtual);
+    const combustivel = combustivelParaIpva(veiculoAtual);
+    const linhas = [];
+    try{
+      for (let i = 0; i < totalAnos; i++) {
+        const anoCalendario = anoAtual + i;
+        const base = valorBaseIpvaAno(i, totalAnos);
+        const url = `/ipva_estimado?uf=${encodeURIComponent(uf)}&valor=${encodeURIComponent(base.toFixed(2))}&ano=${encodeURIComponent(anoFab)}&combustivel=${encodeURIComponent(combustivel)}`;
+        const resp = await fetch(url, {headers:{'Accept':'application/json'}});
+        const data = await resp.json().catch(() => ({}));
+        if (!resp.ok) throw new Error(data?.erro || 'Erro ao consultar IPVA.');
+        linhas.push({ano: anoCalendario, base, ipva: Number(data.ipva || 0)});
+      }
+      renderIpva({uf, municipio, linhas, temRevenda, anoFabricacao: anoFab});
+    }catch(e){
+      setBadge(ipvaBadge, 'erro', 'warn');
+      ipvaBody.className = 'pbev-empty';
+      ipvaBody.textContent = e?.message || 'Erro ao consultar IPVA.';
+    }
+  }
+  function renderIpva(resultado){
+    ipvaAtual = resultado;
+    setBadge(ipvaBadge, 'calculado', '');
+    ipvaSubtitle.textContent = resultado.municipio ? `${resultado.municipio}/${resultado.uf}` : resultado.uf;
+    const total = resultado.linhas.reduce((acc, item) => acc + Number(item.ipva || 0), 0);
+    const cards = resultado.linhas.map(item => `
+      <div class="plus-kv-item">
+        <small>${esc(item.ano)}</small>
+        <strong>${esc(fmtMoeda(item.ipva))}</strong>
+        <small>Base ${esc(fmtMoeda(item.base))}</small>
+      </div>
+    `).join('');
+    const nota = resultado.temRevenda
+      ? 'Anos futuros usam a base de revenda estimada pela CurVE.'
+      : 'Para projetar anos futuros, estime a revenda primeiro.';
+    ipvaBody.className = '';
+    ipvaBody.innerHTML = `
+      <p class="revenda-valor" style="font-size:1.65rem">${esc(fmtMoeda(total))}</p>
+      <p class="revenda-sub">${resultado.linhas.length > 1 ? 'IPVA estimado no período' : 'IPVA estimado no primeiro ano'}</p>
+      <div class="ipva-list">${cards}</div>
+      <p class="plus-note">${esc(nota)}</p>
+    `;
+    scrollSuave(document.getElementById('ipva_card'), 'center');
+  }
+
   async function carregarMarcas(){
     const token = requestToken();
     resetSelect(selects.marca, 'Carregando marcas...', true);
@@ -951,6 +1217,13 @@
   btnConsultar.addEventListener('click', consultarPreco);
   btnLimpar.addEventListener('click', () => carregarMarcas());
   btnRevenda.addEventListener('click', estimarRevenda);
+  btnAbrirIpva?.addEventListener('click', abrirModalIpva);
+  btnFecharIpvaModal?.addEventListener('click', fecharModalIpva);
+  btnCancelarIpva?.addEventListener('click', fecharModalIpva);
+  btnConfirmarIpva?.addEventListener('click', calcularIpvaFipePlus);
+  btnIpvaGeo?.addEventListener('click', usarMinhaLocalizacaoIpva);
+  ipvaUf?.addEventListener('change', () => carregarMunicipiosIpva(ipvaUf.value));
+  ipvaModal?.addEventListener('click', ev => { if (ev.target === ipvaModal) fecharModalIpva(); });
   carregarMarcas();
 })();
 </script>
