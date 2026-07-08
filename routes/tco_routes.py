@@ -17,6 +17,7 @@ import unicodedata
 from functools import lru_cache
 
 from services.fipe_service import FipeService, FipeApiError
+from services.ipva_service import IpvaService
 
 tco_bp = Blueprint("tco", __name__)
 
@@ -2414,48 +2415,8 @@ def fipe_preco():
         return _erro_fipe_tco(e, {"erro": "Erro ao consultar FIPE"})
 
 # ============================================================
-# 10) IPVA (MANTIDO COMO ESTAVA - ACADÊMICO)
+# 10) IPVA — serviço central CurVE
 # ============================================================
-ALIQUOTAS_IPVA_CARRO = {
-    "AC": 0.02, "AL": 0.03, "AP": 0.03, "AM": 0.03, "BA": 0.03, "CE": 0.03,
-    "DF": 0.04, "ES": 0.02, "GO": 0.04, "MA": 0.03, "MT": 0.03, "MS": 0.04,
-    "MG": 0.04, "PA": 0.03, "PB": 0.03, "PR": 0.04, "PE": 0.03, "PI": 0.03,
-    "RJ": 0.04, "RN": 0.03, "RS": 0.03, "RO": 0.03, "RR": 0.03, "SC": 0.02,
-    "SP": 0.04, "SE": 0.03, "TO": 0.02,
-}
-ANOS_ISENCAO_IPVA = {"SP": 20, "ES": 15, "RR": 10, "TO": 30}
-UF_ISENCAO_ELETRICO_TOTAL = {"DF", "RN", "RS", "PE", "PB", "AC"}
-
-def classificar_eletrificado(combustivel_str: str) -> bool:
-    if not combustivel_str:
-        return False
-    texto = combustivel_str.lower()
-    return ("elétric" in texto) or ("eletric" in texto) or ("híbrido" in texto) or ("hibrido" in texto)
-
-def calcular_ipva_estado(uf: str, valor_veiculo: float, ano_fabricacao, eletrificado: bool = False) -> float:
-    uf = (uf or "").upper()
-    if valor_veiculo <= 0:
-        return 0.0
-
-    ano_atual = datetime.now().year
-    try:
-        ano_int = int(ano_fabricacao)
-    except (TypeError, ValueError):
-        ano_int = None
-
-    idade = max(0, ano_atual - ano_int) if ano_int else 0
-
-    limite_idade = ANOS_ISENCAO_IPVA.get(uf)
-    if limite_idade is not None and ano_int and idade >= limite_idade:
-        return 0.0
-
-    if eletrificado and uf in UF_ISENCAO_ELETRICO_TOTAL:
-        return 0.0
-
-    aliquota = ALIQUOTAS_IPVA_CARRO.get(uf, 0.03)
-    ipva = valor_veiculo * aliquota
-    return round(ipva, 2)
-
 @tco_bp.route("/ipva_estimado")
 def ipva_estimado():
     uf = (request.args.get("uf", "") or "").upper()
@@ -2464,13 +2425,22 @@ def ipva_estimado():
     combustivel = request.args.get("combustivel", "") or ""
 
     valor = conv(valor_str)
-    eletrificado = classificar_eletrificado(combustivel)
-
-    ipva = calcular_ipva_estado(
+    resultado = IpvaService.calcular(
         uf=uf,
         valor_veiculo=valor,
         ano_fabricacao=ano,
-        eletrificado=eletrificado,
+        combustivel=combustivel,
+        tipo_propulsao=request.args.get("tipo_propulsao", "") or "",
+        potencia_cv=request.args.get("potencia_cv", "") or None,
+        cilindrada_cc=request.args.get("cilindrada_cc", "") or None,
+        motor=request.args.get("motor", "") or "",
+        categoria=request.args.get("categoria", "") or "",
+        uso=request.args.get("uso", "particular") or "particular",
+        ano_calendario=request.args.get("ano_calendario", "") or None,
+        ano_aquisicao=request.args.get("ano_aquisicao", "") or None,
+        valor_primeira_compra=request.args.get("valor_primeira_compra", "") or None,
+        compra_local=request.args.get("compra_local", "") or None,
+        zero_km=request.args.get("zero_km", "") or None,
     )
-    return jsonify({"ipva": ipva})
+    return jsonify(resultado)
 

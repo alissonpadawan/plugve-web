@@ -1093,7 +1093,24 @@
   }
   function combustivelParaIpva(veiculo){
     const prop = propulsaoLegivel(pbevAtual?.candidato?.tipo_propulsao || pbevAtual?.sugestoes_consumo?.tipo || '');
-    return [prop, veiculo?.combustivel || '', veiculo?.texto_ano || ''].filter(Boolean).join(' ');
+    const combustivelPbev = combustivelFichaPbev(pbevAtual?.candidato || {}, pbevAtual?.sugestoes_consumo || {}, veiculo || {}, prop);
+    return [prop, combustivelPbev, veiculo?.combustivel || '', veiculo?.texto_ano || ''].filter(Boolean).join(' ');
+  }
+  function tipoPropulsaoParaIpva(){
+    return [
+      pbevAtual?.candidato?.tipo_propulsao,
+      pbevAtual?.candidato?.tipo_propulsao_normalizado,
+      pbevAtual?.sugestoes_consumo?.tipo,
+      tipoHibridoLegivel(pbevAtual?.candidato || {}, pbevAtual?.sugestoes_consumo || {}, '')
+    ].filter(Boolean).join(' ');
+  }
+  function pbevCampoIpva(nome){
+    const c = pbevAtual?.candidato || {};
+    return c?.[nome] || '';
+  }
+  function criterioIpvaLegivel(item){
+    const criterio = String(item?.criterio || '').replaceAll('_', ' ');
+    return item?.regra || criterio || 'Alíquota por UF';
   }
   function valorBaseIpvaAno(indice, total){
     const vi = Number(veiculoAtual?.valor_num || 0);
@@ -1131,11 +1148,41 @@
       for (let i = 0; i < totalAnos; i++) {
         const anoCalendario = anoAtual + i;
         const base = valorBaseIpvaAno(i, totalAnos);
-        const url = `/ipva_estimado?uf=${encodeURIComponent(uf)}&valor=${encodeURIComponent(base.toFixed(2))}&ano=${encodeURIComponent(anoFab)}&combustivel=${encodeURIComponent(combustivel)}`;
-        const resp = await fetch(url, {headers:{'Accept':'application/json'}});
+        const params = new URLSearchParams({
+          uf,
+          valor: base.toFixed(2),
+          ano: String(anoFab || ''),
+          ano_calendario: String(anoCalendario),
+          combustivel,
+          tipo_propulsao: tipoPropulsaoParaIpva(),
+          motor: pbevCampoIpva('motor'),
+          categoria: pbevCampoIpva('categoria'),
+          uso: 'particular',
+          ano_aquisicao: String(anoFab || ''),
+          valor_primeira_compra: String(veiculoAtual?.valor_num || base || ''),
+          zero_km: veiculoAtual?.zero_km ? '1' : ''
+        });
+        const resp = await fetch(`/ipva_estimado?${params.toString()}`, {headers:{'Accept':'application/json'}});
         const data = await resp.json().catch(() => ({}));
         if (!resp.ok) throw new Error(data?.erro || 'Erro ao consultar IPVA.');
-        linhas.push({ano: anoCalendario, base, ipva: Number(data.ipva || 0)});
+        linhas.push({
+          ano: anoCalendario,
+          base,
+          ipva: Number(data.ipva || 0),
+          aliquota_percentual: data.aliquota_percentual,
+          criterio: data.criterio,
+          regra: data.regra,
+          observacao: data.observacao,
+          memoria: data.memoria,
+          cilindrada_cc: data.cilindrada_cc,
+          potencia_cv: data.potencia_cv,
+          tecnologia: data.tecnologia,
+          isento: data.isento,
+          isencao_idade: data.isencao_idade,
+          beneficio_tecnologia: data.beneficio_tecnologia,
+          ano_fabricacao: data.ano_fabricacao,
+          idade_veiculo: data.idade_veiculo
+        });
       }
       renderIpva({uf, municipio, linhas, temRevenda, anoFabricacao: anoFab});
     }catch(e){
@@ -1161,12 +1208,29 @@
         <strong>${esc(fmtMoeda(total))}</strong>
       </div>
     ` : '';
-    const nota = resultado.temRevenda
+    const primeiro = resultado.linhas[0] || {};
+    const aliquotas = [...new Set(resultado.linhas.map(i => isFilled(i.aliquota_percentual) ? `${fmtNum(i.aliquota_percentual, 2)}%` : '').filter(Boolean))];
+    const aliquotaLabel = aliquotas.length === 1 ? aliquotas[0] : (aliquotas.length ? 'varia por ano' : '—');
+    const statusRegra = primeiro.isencao_idade ? 'Isento por idade' : (primeiro.beneficio_tecnologia ? 'Benefício tecnológico' : (primeiro.isento ? 'Isento' : 'Alíquota aplicada'));
+    const infoRows = [
+      ['Local', resultado.municipio ? `${resultado.municipio}/${resultado.uf}` : resultado.uf],
+      ['Status', statusRegra],
+      ['Alíquota', aliquotaLabel],
+      ['Critério', criterioIpvaLegivel(primeiro)],
+      ['Tecnologia', primeiro.tecnologia || '—'],
+      ['Idade', isFilled(primeiro.idade_veiculo) ? `${primeiro.idade_veiculo} ano(s)` : 'não informada'],
+      ['Cilindrada', isFilled(primeiro.cilindrada_cc) ? `${primeiro.cilindrada_cc} cc` : 'não informada'],
+      ['Potência', isFilled(primeiro.potencia_cv) ? `${primeiro.potencia_cv} cv` : 'não informada']
+    ];
+    const nota = primeiro.observacao || (resultado.temRevenda
       ? 'Anos futuros usam a base de revenda estimada pela CurVE.'
-      : 'Para projetar anos futuros, estime a revenda primeiro.';
+      : 'Para projetar anos futuros, estime a revenda primeiro.');
     ipvaBody.className = '';
     ipvaBody.innerHTML = `
       <div class="ipva-list-rows">${rows}${totalRow}</div>
+      <div class="ipva-list-rows" style="margin-top:12px">
+        ${infoRows.filter(r => isFilled(r[1])).map(([label, value]) => `<div class="ipva-row"><span>${esc(label)}</span><strong>${esc(value)}</strong></div>`).join('')}
+      </div>
       <p class="plus-note">${esc(nota)}</p>
     `;
     scrollSuave(document.getElementById('ipva_card'), 'center');
