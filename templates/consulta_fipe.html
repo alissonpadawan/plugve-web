@@ -11,8 +11,11 @@
   .plus-hero p{margin:10px 0 0;color:#64748b;font-size:.98rem;line-height:1.45;max-width:680px}
   .plus-hero-badges{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
   .plus-chip{display:inline-flex;align-items:center;gap:.32rem;border:1px solid #e2e8f0;background:#fff;color:#334155;border-radius:999px;padding:.45rem .72rem;font-size:.75rem;font-weight:900;white-space:nowrap}
-  .plus-grid{display:grid;grid-template-columns:minmax(320px,.9fr) minmax(0,1.15fr);gap:18px;align-items:start}
+  .plus-grid{display:grid;grid-template-columns:1fr;gap:18px;align-items:start}
   .plus-card{border:1px solid #e2e8f0;border-radius:24px;background:#fff;box-shadow:0 16px 38px rgba(15,23,42,.05);padding:20px;min-width:0}
+  .plus-consulta-card{max-width:560px;margin:0 auto;width:100%}
+  .plus-result-card{display:none}
+  .plus-result-card.show{display:block}
   .plus-card h2{margin:0;color:#10202b;font-size:1.14rem;font-weight:950;letter-spacing:-.02em}
   .plus-card-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
   .plus-mini{color:#64748b;font-size:.78rem;font-weight:800}
@@ -50,7 +53,7 @@
   .plus-note{margin:10px 0 0;color:#64748b;font-size:.74rem;line-height:1.32;font-weight:650}
   .plus-result-actions{display:none;gap:8px;flex-wrap:wrap;margin-top:13px}
   .plus-result-actions.show{display:flex}
-  .plus-enrichment{display:none;grid-template-columns:minmax(0,1.2fr) minmax(320px,.8fr);gap:18px;margin-top:18px;align-items:start}
+  .plus-enrichment{display:none;grid-template-columns:1fr;gap:18px;margin-top:18px;align-items:start}
   .plus-enrichment.show{display:grid}
   .plus-badge{display:inline-flex;align-items:center;gap:.35rem;border:1px solid #bbf7d0;background:#ecfdf5;color:#047857;border-radius:999px;padding:.32rem .58rem;font-size:.7rem;font-weight:950;white-space:nowrap}
   .plus-badge.warn{border-color:#fed7aa;background:#fff7ed;color:#9a3412}
@@ -78,7 +81,7 @@
   .debug-head strong{font-size:.96rem;color:#10202b;font-weight:950}
   .debug-head small{display:block;color:#64748b;font-size:.76rem;font-weight:800;margin-top:2px}
   .debug-pre{margin:0;padding:16px;background:#020617;color:#bbf7d0;font-size:.74rem;line-height:1.48;white-space:pre-wrap;word-break:break-word;overflow:auto;max-height:540px}
-  @media(max-width:980px){.plus-hero{align-items:flex-start;flex-direction:column}.plus-hero-badges{justify-content:flex-start}.plus-grid,.plus-enrichment{grid-template-columns:1fr}.plus-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  @media(max-width:980px){.plus-hero{align-items:flex-start;flex-direction:column}.plus-hero-badges{justify-content:flex-start}.plus-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
   @media(max-width:620px){.fipe-plus-page{padding:0 0 32px}.fipe-type-row,.plus-kv,.revenda-form{grid-template-columns:1fr}.plus-metrics{grid-template-columns:1fr}.plus-card{padding:17px}.plus-hero{border-radius:22px}.fipe-btn{width:100%}}
   @media print{body{background:#fff!important}.site-header,.navbar,.plus-hero-badges,.fipe-actions,#btn_estimar_revenda,.debug-modal{display:none!important}.fipe-plus-page{max-width:none;padding:0;color:#111827}.plus-hero,.plus-card,.fipe-result{box-shadow:none!important;border-color:#cbd5e1!important;background:#fff!important}.plus-grid,.plus-enrichment,.plus-enrichment.show{display:grid!important;grid-template-columns:1fr!important;gap:12px}.fipe-empty,.pbev-empty:empty{display:none!important}.fipe-result.show,.revenda-output.show{display:block!important}.pbev-logo-btn{display:none!important}.revenda-actions{display:none!important}}
 </style>
@@ -98,7 +101,7 @@
   </header>
 
   <div class="plus-grid">
-    <section class="plus-card" aria-label="Formulário de consulta FIPE">
+    <section class="plus-card plus-consulta-card" aria-label="Formulário de consulta FIPE">
       <div class="plus-card-head">
         <h2>Veículo</h2>
         <span class="plus-mini">consulta livre</span>
@@ -127,7 +130,7 @@
       <div id="fipe_status" class="fipe-status" aria-live="polite"></div>
     </section>
 
-    <section class="plus-card" aria-label="Resultado da consulta FIPE">
+    <section class="plus-card plus-result-card" id="fipe_result_card" aria-label="Resultado da consulta FIPE">
       <div id="fipe_empty" class="fipe-empty">
         <div>
           <strong>Resultado</strong>
@@ -203,6 +206,7 @@
   };
   const statusEl = document.getElementById('fipe_status');
   const result = document.getElementById('fipe_result');
+  const resultCard = document.getElementById('fipe_result_card');
   const empty = document.getElementById('fipe_empty');
   const btnConsultar = document.getElementById('btn_consultar_fipe_publica');
   const btnLimpar = document.getElementById('btn_limpar_fipe_publica');
@@ -376,6 +380,7 @@
     consultaSeq += 1;
     veiculoAtual = null;
     result.classList.remove('show');
+    if (resultCard) resultCard.classList.remove('show');
     empty.style.display = 'grid';
     enrichment.classList.remove('show');
     resetPbev();
@@ -413,7 +418,10 @@
   }
   function showResult(data){
     veiculoAtual = montarVeiculo(data);
-    empty.style.display = 'none'; result.classList.add('show'); enrichment.classList.add('show');
+    empty.style.display = 'none';
+    if (resultCard) resultCard.classList.add('show');
+    result.classList.add('show');
+    enrichment.classList.add('show');
     const tipoLabel = tipoAtual === 'motos' ? 'Moto' : tipoAtual === 'caminhoes' ? 'Caminhão' : 'Carro';
     document.getElementById('fipe_result_tipo').textContent = `FIPE · ${tipoLabel}`;
     document.getElementById('fipe_result_valor').textContent = veiculoAtual.valor_texto || '—';
@@ -428,7 +436,7 @@
     ]);
     resetRevenda();
     buscarPbev(veiculoAtual);
-    scrollSuave(enrichment, 'start');
+    scrollSuave(resultCard || enrichment, 'start');
   }
 
   function montarPayloadDepreciacao(veiculo, horizonte=5){
