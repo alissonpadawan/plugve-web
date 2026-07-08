@@ -74,7 +74,7 @@
   .revenda-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
   .ipva-output{display:none;margin-top:14px}
   .ipva-output.show{display:block}
-  .ipva-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  .ipva-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;justify-content:flex-end}
   .ipva-list-rows{margin-top:10px;border-top:1px solid #e2e8f0}
   .ipva-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid #e2e8f0}
   .ipva-row span{color:#64748b;font-size:.92rem;font-weight:700}
@@ -106,10 +106,8 @@
       <h1>Consulta Fipe+</h1>
       <p>Valor FIPE, ficha técnica e revenda estimada quando houver dados confiáveis.</p>
     </div>
-    <div class="plus-hero-badges" aria-label="Fontes de dados">
-      <span class="plus-chip">FIPE hoje</span>
-      <span class="plus-chip">PBEV/Inmetro</span>
-      <span class="plus-chip">Curvas CurVE</span>
+    <div class="plus-hero-badges" aria-label="Ações da consulta">
+      <button type="button" id="btn_imprimir_fipe_plus_topo" class="fipe-btn ghost">Imprimir</button>
     </div>
   </header>
 
@@ -699,7 +697,8 @@
     const gasDiesel = rotuloGasDiesel(c);
     const gasCidade = primeiroValor(s.gasolina_cidade_km_l, s.gasolina_diesel_cidade_km_l);
     const gasEstrada = primeiroValor(s.gasolina_estrada_km_l, s.gasolina_diesel_estrada_km_l);
-    const energiaDerivada = !isFilled(s.consumo_eletrico_kwh_km) && isFilled(s.consumo_energetico_mj_km) ? (Number(s.consumo_energetico_mj_km) / 3.6) : null;
+    const propEletricaAplicavel = /ELETRICO|ELETRICA|PHEV|PLUG|HIBRIDO PLUG|DM I|DMI|\bDM\b/.test(normalizar(`${prop} ${c.tipo_propulsao || ''} ${s.tipo || ''} ${c.versao || ''} ${c.modelo || ''}`));
+    const energiaDerivada = propEletricaAplicavel && !isFilled(s.consumo_eletrico_kwh_km) && isFilled(s.consumo_energetico_mj_km) ? (Number(s.consumo_energetico_mj_km) / 3.6) : null;
     const metrics = [];
     if (isFilled(gasCidade)) metrics.push(metricHtml(`${gasDiesel} cidade`, fmtValorUnidade(gasCidade, 'km/L', 1)));
     if (isFilled(gasEstrada)) metrics.push(metricHtml(`${gasDiesel} estrada`, fmtValorUnidade(gasEstrada, 'km/L', 1)));
@@ -707,9 +706,9 @@
     if (isFilled(s.etanol_estrada_km_l)) metrics.push(metricHtml('Etanol estrada', fmtValorUnidade(s.etanol_estrada_km_l, 'km/L', 1)));
     if (isFilled(s.diesel_cidade_km_l)) metrics.push(metricHtml('Diesel cidade', fmtValorUnidade(s.diesel_cidade_km_l, 'km/L', 1)));
     if (isFilled(s.diesel_estrada_km_l)) metrics.push(metricHtml('Diesel estrada', fmtValorUnidade(s.diesel_estrada_km_l, 'km/L', 1)));
-    if (isFilled(s.consumo_eletrico_kwh_km) || isFilled(energiaDerivada)) metrics.push(metricHtml('Energia', fmtValorUnidade(primeiroValor(s.consumo_eletrico_kwh_km, energiaDerivada), 'kWh/km', 3)));
-    if (isFilled(s.eficiencia_eletrica_km_kwh)) metrics.push(metricHtml('Eficiência', fmtValorUnidade(s.eficiencia_eletrica_km_kwh, 'km/kWh', 2)));
-    if (isFilled(s.autonomia_eletrica_km)) metrics.push(metricHtml('Autonomia', fmtValorUnidade(s.autonomia_eletrica_km, 'km', 0)));
+    if (propEletricaAplicavel && (isFilled(s.consumo_eletrico_kwh_km) || isFilled(energiaDerivada))) metrics.push(metricHtml('Energia', fmtValorUnidade(primeiroValor(s.consumo_eletrico_kwh_km, energiaDerivada), 'kWh/km', 3)));
+    if (propEletricaAplicavel && isFilled(s.eficiencia_eletrica_km_kwh)) metrics.push(metricHtml('Eficiência', fmtValorUnidade(s.eficiencia_eletrica_km_kwh, 'km/kWh', 2)));
+    if (propEletricaAplicavel && isFilled(s.autonomia_eletrica_km)) metrics.push(metricHtml('Autonomia', fmtValorUnidade(s.autonomia_eletrica_km, 'km', 0)));
     if (isFilled(s.consumo_energetico_mj_km)) metrics.push(metricHtml('Consumo energético', fmtValorUnidade(s.consumo_energetico_mj_km, 'MJ/km', 3)));
 
     const specs = [
@@ -985,12 +984,10 @@
       <div class="plus-kv">${linhas.filter(l => isFilled(l[1])).map(([label, value]) => `<div class="plus-kv-item"><small>${esc(label)}</small><strong>${esc(value)}</strong></div>`).join('')}</div>
       <div class="revenda-actions">
         <button type="button" id="btn_auditoria_revenda" class="fipe-btn secondary">Auditoria</button>
-        <button type="button" id="btn_exportar_pdf_fipe_plus" class="fipe-btn ghost">Exportar PDF</button>
       </div>
     `;
     revendaOutput.classList.add('show');
     document.getElementById('btn_auditoria_revenda')?.addEventListener('click', abrirAuditoriaRevenda);
-    document.getElementById('btn_exportar_pdf_fipe_plus')?.addEventListener('click', exportarPdfFipePlus);
     scrollSuave(document.getElementById('revenda_card'), 'center');
   }
 
@@ -1237,6 +1234,7 @@
   selects.ano.addEventListener('change', hideResult);
   btnConsultar.addEventListener('click', consultarPreco);
   btnLimpar.addEventListener('click', () => carregarMarcas());
+  document.getElementById('btn_imprimir_fipe_plus_topo')?.addEventListener('click', exportarPdfFipePlus);
   btnRevenda.addEventListener('click', estimarRevenda);
   btnAbrirIpva?.addEventListener('click', abrirModalIpva);
   btnFecharIpvaModal?.addEventListener('click', fecharModalIpva);
