@@ -70,6 +70,7 @@
   .revenda-output.show{display:block}
   .revenda-valor{font-size:clamp(1.65rem,3vw,2.35rem);font-weight:950;letter-spacing:-.04em;color:#10202b;line-height:1;margin:0 0 6px}
   .revenda-sub{color:#64748b;font-size:.82rem;font-weight:800;margin:0 0 10px}
+  .revenda-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
   .debug-modal{position:fixed;inset:0;background:rgba(15,23,42,.56);display:none;align-items:center;justify-content:center;padding:20px;z-index:9999}
   .debug-modal.show{display:flex}
   .debug-panel{width:min(880px,100%);max-height:min(680px,92vh);background:#fff;border-radius:22px;overflow:hidden;box-shadow:0 32px 80px rgba(0,0,0,.25);display:flex;flex-direction:column}
@@ -79,6 +80,7 @@
   .debug-pre{margin:0;padding:16px;background:#020617;color:#bbf7d0;font-size:.74rem;line-height:1.48;white-space:pre-wrap;word-break:break-word;overflow:auto;max-height:540px}
   @media(max-width:980px){.plus-hero{align-items:flex-start;flex-direction:column}.plus-hero-badges{justify-content:flex-start}.plus-grid,.plus-enrichment{grid-template-columns:1fr}.plus-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
   @media(max-width:620px){.fipe-plus-page{padding:0 0 32px}.fipe-type-row,.plus-kv,.revenda-form{grid-template-columns:1fr}.plus-metrics{grid-template-columns:1fr}.plus-card{padding:17px}.plus-hero{border-radius:22px}.fipe-btn{width:100%}}
+  @media print{body{background:#fff!important}.site-header,.navbar,.plus-hero-badges,.fipe-actions,#btn_estimar_revenda,.debug-modal{display:none!important}.fipe-plus-page{max-width:none;padding:0;color:#111827}.plus-hero,.plus-card,.fipe-result{box-shadow:none!important;border-color:#cbd5e1!important;background:#fff!important}.plus-grid,.plus-enrichment,.plus-enrichment.show{display:grid!important;grid-template-columns:1fr!important;gap:12px}.fipe-empty,.pbev-empty:empty{display:none!important}.fipe-result.show,.revenda-output.show{display:block!important}.pbev-logo-btn{display:none!important}.revenda-actions{display:none!important}}
 </style>
 
 <section class="fipe-plus-page">
@@ -138,10 +140,6 @@
         <p class="fipe-model" id="fipe_result_modelo">Modelo</p>
         <p class="fipe-meta" id="fipe_result_marca">Marca</p>
         <div class="plus-kv" id="fipe_result_kv"></div>
-        <div class="plus-result-actions" id="fipe_result_actions">
-          <a href="/simular" id="btn_ir_simular" class="fipe-btn">Simular TCO</a>
-          <a href="/depreciacao" id="btn_ir_depreciacao" class="fipe-btn secondary">Depreciação</a>
-        </div>
         <p class="plus-note">FIPE é referência de mercado. A negociação real pode variar.</p>
       </div>
     </section>
@@ -225,6 +223,7 @@
   let controller = null;
   let veiculoAtual = null;
   let pbevAtual = null;
+  let revendaAtual = null;
 
   function status(msg, erro=false){
     statusEl.textContent = msg || '';
@@ -302,6 +301,13 @@
     controller = new AbortController();
     return {seq, signal: controller.signal};
   }
+  function scrollSuave(el, block='start'){
+    if (!el) return;
+    window.setTimeout(() => {
+      try { el.scrollIntoView({behavior:'smooth', block}); }
+      catch(e) { el.scrollIntoView(); }
+    }, 180);
+  }
 
   const CACHE_TTL_CATALOGO_FIPE = 7 * 24 * 60 * 60 * 1000;
   const CACHE_TTL_PRECO_FIPE = 30 * 60 * 1000;
@@ -359,6 +365,7 @@
     pbevBody.textContent = 'Consulte um veículo para buscar ficha técnica PBEV.';
   }
   function resetRevenda(){
+    revendaAtual = null;
     statusRevenda('');
     revendaOutput.classList.remove('show');
     revendaOutput.innerHTML = '';
@@ -371,7 +378,6 @@
     result.classList.remove('show');
     empty.style.display = 'grid';
     enrichment.classList.remove('show');
-    document.getElementById('fipe_result_actions').classList.remove('show');
     resetPbev();
     resetRevenda();
   }
@@ -420,10 +426,9 @@
       ['Referência', veiculoAtual.mes_referencia || '—'],
       ['Consulta', veiculoAtual.data_consulta || '—']
     ]);
-    document.getElementById('fipe_result_actions').classList.add('show');
-    prepararLinksAcao();
     resetRevenda();
     buscarPbev(veiculoAtual);
+    scrollSuave(enrichment, 'start');
   }
 
   function montarPayloadDepreciacao(veiculo, horizonte=5){
@@ -570,7 +575,7 @@
     pbevBody.innerHTML = `
       <div class="pbev-empty">${esc(texto || 'Não foi encontrada correspondência confiável na base Inmetro/PBEV.')}</div>
       <div class="pbev-actions">
-        ${dados?.diagnostico_terminal ? '<button type="button" id="btn_pbev_debug_inline" class="fipe-btn ghost">Ver análise PBEV</button>' : ''}
+        ${dados?.diagnostico_terminal ? '<button type="button" id="btn_pbev_debug_inline" class="fipe-btn ghost">Ver análise</button>' : ''}
       </div>`;
     const btn = document.getElementById('btn_pbev_debug_inline');
     if (btn) btn.onclick = () => abrirDebugPbev(dados);
@@ -628,14 +633,9 @@
       <div class="plus-section-title">Ficha técnica</div>
       <div class="plus-kv">${specHtml || '<div class="pbev-empty">Ficha técnica indisponível.</div>'}</div>
       <div class="pbev-actions">
-        <button type="button" id="btn_pbev_comprovacao" class="pbev-logo-btn" title="Ver comprovação Inmetro/PBEV"><img src="${esc(INMETRO_LOGO_URL)}" alt="Inmetro"></button>
-        <button type="button" id="btn_pbev_comprovacao_texto" class="fipe-btn secondary">Comprovação</button>
-        <button type="button" id="btn_pbev_debug_inline" class="fipe-btn ghost">Ver análise</button>
+        <button type="button" id="btn_pbev_inmetro" class="pbev-logo-btn" title="Abrir tabela oficial Inmetro/PBEV"><img src="${esc(INMETRO_LOGO_URL)}" alt="Inmetro"></button>
       </div>`;
-    const abrir = () => abrirComprovacaoPbev(dados, veiculo);
-    document.getElementById('btn_pbev_comprovacao')?.addEventListener('click', abrir);
-    document.getElementById('btn_pbev_comprovacao_texto')?.addEventListener('click', abrir);
-    document.getElementById('btn_pbev_debug_inline')?.addEventListener('click', () => abrirDebugPbev(dados));
+    document.getElementById('btn_pbev_inmetro')?.addEventListener('click', () => abrirTabelaInmetroPbev(dados, veiculo));
   }
   function dadosComprovacaoPbev(dados, veiculo){
     const candidato = dados?.candidato || {};
@@ -676,6 +676,16 @@
     const payload = dadosComprovacaoPbev(dados, veiculo);
     window.open(`/pbev/comprovacao?dados=${encodeURIComponent(JSON.stringify(payload))}`, '_blank', 'noopener');
   }
+  function abrirTabelaInmetroPbev(dados, veiculo){
+    if (!pbevConfiavel(dados)) return;
+    const fonte = dados?.fonte_oficial || {};
+    const url = fonte.url || fonte.portal_url || '';
+    if (url) {
+      window.open(url, '_blank', 'noopener');
+      return;
+    }
+    abrirComprovacaoPbev(dados, veiculo);
+  }
   function abrirDebugPbev(dados){
     const txt = dados?.diagnostico_terminal || JSON.stringify(dados || {}, null, 2) || 'Sem análise disponível.';
     debugText.textContent = txt;
@@ -689,6 +699,117 @@
   btnFecharDebug.addEventListener('click', fecharDebug);
   debugModal.addEventListener('click', ev => { if (ev.target === debugModal) fecharDebug(); });
   document.addEventListener('keydown', ev => { if (ev.key === 'Escape') fecharDebug(); });
+
+  function montarMemoriaCalculoRevenda(data, veiculo, horizonte){
+    const vi = Number(veiculo?.valor_num || data?.valor_atual || 0);
+    const vf = Number(primeiroValor(data?.valor_futuro, data?.valor_futuro_base));
+    const h = Math.max(1, Number(horizonte || data?.horizonte_anos || 1));
+    const M = Math.max(1, Math.round(h * 12));
+    const perda = vi > 0 && vf > 0 ? vi - vf : 0;
+    const dTotal = vi > 0 && vf > 0 ? (1 - (vf / vi)) : 0;
+    const ia = vi > 0 && vf > 0 ? (1 - Math.pow(vf / vi, 1 / h)) : 0;
+    const im = vi > 0 && vf > 0 ? (1 - Math.pow(vf / vi, 1 / M)) : 0;
+    const q = vi > 0 && vf > 0 ? Math.pow(vf / vi, 1 / M) : 0;
+    return {
+      valor_inicial_vi: vi,
+      valor_futuro_vf: vf,
+      horizonte_anos: h,
+      horizonte_meses: M,
+      perda_economica: perda,
+      depreciacao_total_percentual: dTotal * 100,
+      taxa_anual_equivalente_percentual: ia * 100,
+      taxa_mensal_equivalente_percentual: im * 100,
+      coeficiente_mensal_q: q,
+      formulas: [
+        'D_total = 1 - (VF / VI)',
+        'P = VI - VF',
+        'i_a = 1 - (VF / VI)^(1 / h)',
+        'i_m = 1 - (VF / VI)^(1 / M)',
+        'V_m = VI × (1 - i_m)^m'
+      ]
+    };
+  }
+
+  function montarResultadoAuditoriaRevenda(data, veiculo, horizonte){
+    const memoria = montarMemoriaCalculoRevenda(data, veiculo, horizonte);
+    const pacote = JSON.parse(JSON.stringify(data || {}));
+    pacote.origem_interface = 'Consulta Fipe+';
+    pacote.memoria_calculo_fipe_plus = memoria;
+    pacote.valor_atual = memoria.valor_inicial_vi || pacote.valor_atual;
+    pacote.valor_futuro = memoria.valor_futuro_vf || pacote.valor_futuro;
+    pacote.valor_futuro_base = memoria.valor_futuro_vf || pacote.valor_futuro_base || pacote.valor_futuro;
+    pacote.horizonte_anos = memoria.horizonte_anos;
+    pacote.horizonte_meses = memoria.horizonte_meses;
+    pacote.depreciacao_percentual = Math.abs(memoria.depreciacao_total_percentual || pacote.depreciacao_percentual || 0);
+    pacote.perda_economica = memoria.perda_economica;
+    pacote.codigo_fipe = veiculo?.codigo_fipe || pacote.codigo_fipe;
+    pacote.marca = veiculo?.marca || pacote.marca;
+    pacote.modelo = veiculo?.modelo || pacote.modelo;
+    pacote.ano_modelo = veiculo?.ano_modelo_label || veiculo?.texto_ano || pacote.ano_modelo;
+    pacote.data_base_fipe = veiculo?.mes_referencia || pacote.data_base_fipe;
+    pacote.detalhes = pacote.detalhes || {};
+    pacote.detalhes.veiculo = Object.assign({}, pacote.detalhes.veiculo || {}, {
+      marca: veiculo?.marca || '',
+      modelo: veiculo?.modelo || '',
+      ano_modelo: veiculo?.ano_modelo_label || veiculo?.texto_ano || '',
+      ano_combustivel: veiculo?.texto_ano || '',
+      combustivel: veiculo?.combustivel || '',
+      codigo_fipe: veiculo?.codigo_fipe || '',
+      valor_atual: memoria.valor_inicial_vi,
+      referencia_fipe: veiculo?.mes_referencia || ''
+    });
+    pacote.detalhes.horizonte_anos = memoria.horizonte_anos;
+    pacote.detalhes.horizonte_meses = memoria.horizonte_meses;
+    pacote.detalhes.memoria_calculo_fipe_plus = memoria;
+    const textoCalculo = [
+      'MEMÓRIA DE CÁLCULO DA REVENDA - CONSULTA FIPE+',
+      `VI = ${fmtMoeda(memoria.valor_inicial_vi)} (valor FIPE atual)`,
+      `VF = ${fmtMoeda(memoria.valor_futuro_vf)} (valor estimado no horizonte)`,
+      `h = ${memoria.horizonte_anos} ano(s)` ,
+      `M = ${memoria.horizonte_meses} meses`,
+      `P = VI - VF = ${fmtMoeda(memoria.perda_economica)}`,
+      `D_total = 1 - (VF / VI) = ${fmtNum(Math.abs(memoria.depreciacao_total_percentual), 2)}%`,
+      `i_a = 1 - (VF / VI)^(1/h) = ${fmtNum(Math.abs(memoria.taxa_anual_equivalente_percentual), 4)}% a.a.`,
+      `i_m = 1 - (VF / VI)^(1/M) = ${fmtNum(Math.abs(memoria.taxa_mensal_equivalente_percentual), 6)}% a.m.`,
+      `q = (VF / VI)^(1/M) = ${Number(memoria.coeficiente_mensal_q || 0).toFixed(8).replace('.', ',')}`
+    ].join('\n');
+    pacote.relatorio_textual = [textoCalculo, pacote.relatorio_textual || pacote.relatorio_tecnico || ''].filter(Boolean).join('\n\n');
+    pacote.relatorio_tecnico = pacote.relatorio_textual;
+    return pacote;
+  }
+
+  function abrirAuditoriaRevenda(){
+    if (!revendaAtual?.resultado?.encontrado) {
+      window.alert('Estime a revenda primeiro para abrir a auditoria.');
+      return;
+    }
+    try{
+      const chave = `aud_fipe_plus_${Date.now()}_${Math.random().toString(36).slice(2,10)}`;
+      const pacote = {
+        gerado_em: new Date().toISOString(),
+        origem: 'CurVE - Consulta Fipe+ / revenda',
+        tipo_auditoria: 'revenda_fipe_plus',
+        resultado: revendaAtual.resultado
+      };
+      localStorage.setItem(`curve_auditoria_depreciacao_${chave}`, JSON.stringify(pacote));
+      window.open(`/depreciacao/auditoria?key=${encodeURIComponent(chave)}`, '_blank', 'noopener');
+    }catch(e){
+      console.error(e);
+      window.alert('Não consegui abrir a auditoria da revenda.');
+    }
+  }
+
+  function exportarPdfFipePlus(){
+    if (!veiculoAtual) {
+      window.alert('Consulte um veículo primeiro.');
+      return;
+    }
+    document.body.classList.add('fipe-plus-print-mode');
+    window.setTimeout(() => {
+      window.print();
+      window.setTimeout(() => document.body.classList.remove('fipe-plus-print-mode'), 500);
+    }, 120);
+  }
 
   async function estimarRevenda(){
     const veiculo = veiculoAtual;
@@ -724,8 +845,10 @@
     if (!data?.encontrado || !(futuro > 0)) {
       statusRevenda('');
       setBadge(revendaBadge, 'sem curva', 'neutral');
+      revendaAtual = null;
       revendaOutput.innerHTML = '<div class="revenda-empty">Estimativa indisponível para este veículo.</div>';
       revendaOutput.classList.add('show');
+      scrollSuave(document.getElementById('revenda_card'), 'center');
       return;
     }
     const perda = atual - futuro;
@@ -748,12 +871,21 @@
       ['Confiança', primeiroValor(data?.confianca, detalhes.confianca)],
       ['Referência', referencia]
     ];
+    const resultadoAuditoria = montarResultadoAuditoriaRevenda(data, veiculo, horizonte);
+    revendaAtual = {resultado: resultadoAuditoria, veiculo, horizonte};
     revendaOutput.innerHTML = `
       <p class="revenda-valor">${esc(fmtMoeda(futuro))}</p>
       <p class="revenda-sub">Valor estimado de revenda</p>
       <div class="plus-kv">${linhas.filter(l => isFilled(l[1])).map(([label, value]) => `<div class="plus-kv-item"><small>${esc(label)}</small><strong>${esc(value)}</strong></div>`).join('')}</div>
+      <div class="revenda-actions">
+        <button type="button" id="btn_auditoria_revenda" class="fipe-btn secondary">Auditoria</button>
+        <button type="button" id="btn_exportar_pdf_fipe_plus" class="fipe-btn ghost">Exportar PDF</button>
+      </div>
     `;
     revendaOutput.classList.add('show');
+    document.getElementById('btn_auditoria_revenda')?.addEventListener('click', abrirAuditoriaRevenda);
+    document.getElementById('btn_exportar_pdf_fipe_plus')?.addEventListener('click', exportarPdfFipePlus);
+    scrollSuave(document.getElementById('revenda_card'), 'center');
   }
 
   async function carregarMarcas(){
