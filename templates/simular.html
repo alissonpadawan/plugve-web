@@ -46,13 +46,16 @@
 .plugve-usage-step{background:#fff;border-color:#e5e7eb;box-shadow:0 10px 24px rgba(15,23,42,.05)}
 .plugve-fipe-hero{position:relative;overflow:hidden;border:1px solid #dce5e0;border-radius:1rem;padding:1.15rem;background:#f8faf9;box-shadow:0 8px 24px rgba(15,23,42,.04);min-height:320px;display:flex;align-items:flex-start}
 .plugve-fipe-hero::before{content:'';position:absolute;inset:0;background:url('{{ url_for('static', filename='img/simular-stage-vehicle.png') }}') center bottom/cover no-repeat;opacity:.72;filter:grayscale(.18) saturate(.85) contrast(1.04) brightness(.98);transform:scale(1.01)}
+.plugve-fipe-hero.plugve-fipe-hero-ev::before{background-image:url('{{ url_for('static', filename='img/simular-stage-vehicle.png') }}')}
+.plugve-fipe-hero.plugve-fipe-hero-icev::before{background-image:url('{{ url_for('static', filename='img/simular-stage-vehicle-icev.png') }}')}
 .plugve-fipe-hero::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,rgba(255,255,255,.92) 0%,rgba(255,255,255,.72) 28%,rgba(255,255,255,.28) 60%,rgba(255,255,255,.12) 100%)}
 .plugve-fipe-overlay{position:relative;z-index:1;background:transparent;border:none;border-radius:0;padding:0;backdrop-filter:none;box-shadow:none;max-width:460px;width:min(100%,460px)}
 .plugve-fipe-overlay .plugve-pbev-select-slot{margin-bottom:.85rem}
 .plugve-fipe-overlay .plugve-pbev-select-slot p,.plugve-fipe-overlay .plugve-pbev-select-slot h3{color:#1f2937}
 .plugve-fipe-overlay .space-y-2 > div{margin-bottom:.75rem}
 .plugve-fipe-overlay label{color:#1f2937;text-shadow:0 1px 0 rgba(255,255,255,.35)}
-.plugve-fipe-overlay select,.plugve-fipe-overlay input{background:rgba(255,255,255,.94);backdrop-filter:blur(2px);box-shadow:0 8px 20px rgba(15,23,42,.06)}
+.plugve-fipe-overlay select,.plugve-fipe-overlay input{background:rgba(255,255,255,.58);border-color:rgba(148,163,184,.72);backdrop-filter:blur(1.6px);box-shadow:0 6px 16px rgba(15,23,42,.05)}
+.plugve-fipe-overlay select::placeholder,.plugve-fipe-overlay input::placeholder{color:#475569}
 @media(max-width:640px){.plugve-fipe-hero{padding:.85rem;min-height:270px}.plugve-fipe-overlay{max-width:100%}.plugve-fipe-hero::after{background:linear-gradient(180deg,rgba(255,255,255,.78) 0%,rgba(255,255,255,.56) 38%,rgba(255,255,255,.24) 100%)}}
     .plugve-progress-hidden{display:none !important}
     .plugve-card-selected{border-color:#2563eb !important;background:#eff6ff !important;box-shadow:0 6px 18px rgba(37,99,235,.12)}
@@ -1106,7 +1109,7 @@
           <div id="coluna_ve" class="border rounded-lg p-4 plugve-stage-panel">
             <h2 id="titulo_ve" class="font-semibold text-lg mb-3 text-blue-700">Veículo Elétrico (VE)</h2>
 
-            <div class="plugve-fipe-hero mb-4">
+            <div class="plugve-fipe-hero plugve-fipe-hero-ev mb-4">
               <div class="plugve-fipe-overlay">
                 <div class="plugve-pbev-select-slot"><p class="text-sm font-semibold">Busca FIPE - VE</p><p id="pbev_status_select_ve" class="plugve-pbev-status hidden"></p></div>
                 <div class="space-y-2">
@@ -1215,7 +1218,7 @@
           <div id="coluna_icev" class="border rounded-lg p-4 plugve-stage-panel">
             <h2 id="titulo_icev" class="font-semibold text-lg mb-3 text-gray-800">Veículo a Combustão (ICEV)</h2>
 
-            <div class="plugve-fipe-hero mb-4">
+            <div class="plugve-fipe-hero plugve-fipe-hero-icev mb-4">
               <div class="plugve-fipe-overlay">
                 <div class="plugve-pbev-select-slot"><p class="text-sm font-semibold">Busca FIPE - ICEV</p><p id="pbev_status_select_icev" class="plugve-pbev-status hidden"></p></div>
                 <div class="space-y-2">
