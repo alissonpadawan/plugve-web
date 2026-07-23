@@ -2843,6 +2843,20 @@
       return textoOriginal || "";
     }
 
+    function ordenarAnosFipeParaTela(listaAnos) {
+      return (Array.isArray(listaAnos) ? [...listaAnos] : []).sort((a, b) => {
+        const aZero = codigoAnoFipeZeroKm(a?.codigo);
+        const bZero = codigoAnoFipeZeroKm(b?.codigo);
+        if (aZero !== bZero) return aZero ? -1 : 1;
+
+        const anoA = anoModeloParaCalculo(a?.codigo, a?.nome || a?.codigo || '');
+        const anoB = anoModeloParaCalculo(b?.codigo, b?.nome || b?.codigo || '');
+        if (anoA !== anoB) return (Number(anoB) || -Infinity) - (Number(anoA) || -Infinity);
+
+        return String(a?.nome || a?.codigo || '').localeCompare(String(b?.nome || b?.codigo || ''), 'pt-BR', { numeric: true, sensitivity: 'base' });
+      });
+    }
+
     function limparNomeVeiculoTCO(texto) {
       let nome = String(texto || "").replace(/\s+/g, " ").trim();
       if (!nome) return "";
@@ -3364,7 +3378,7 @@
         const prefixoDestino = String(selectAnoId || "").split("_")[0];
         const nomeModeloSelecionado = modeloEl.options[modeloEl.selectedIndex]?.text || "";
         const nomeMarcaSelecionada = marcaEl.options[marcaEl.selectedIndex]?.text || "";
-        anos.forEach(a => {
+        ordenarAnosFipeParaTela(Array.isArray(anos) ? anos : []).forEach(a => {
           if (!anoFipePermitidoRecortePlugVE(a.codigo, a.nome)) return;
           const tipoAno = classificarTipoVeiculoTCO(nomeModeloSelecionado, a.nome, a.codigo, nomeMarcaSelecionada, prefixoDestino);
           if (!tipoPermitidoNoBloco(prefixoDestino, tipoAno)) return;
@@ -6338,7 +6352,7 @@
           const prefixoDestino = String(selectAnoId || "").split("_")[0];
           const nomeModeloSelecionado = modeloEl.options[modeloEl.selectedIndex]?.dataset?.nome || modeloEl.options[modeloEl.selectedIndex]?.text || "";
           const nomeMarcaSelecionada = marcaEl.options[marcaEl.selectedIndex]?.text || "";
-          (Array.isArray(anos) ? anos : []).forEach(a => {
+          ordenarAnosFipeParaTela(Array.isArray(anos) ? anos : []).forEach(a => {
             if (!anoFipePermitidoRecortePlugVE(a.codigo, a.nome)) return;
             const tipoAno = classificarTipoVeiculoTCO(nomeModeloSelecionado, a.nome, a.codigo, nomeMarcaSelecionada, prefixoDestino);
             if (!tipoPermitidoNoBloco(prefixoDestino, tipoAno)) return;

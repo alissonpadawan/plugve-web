@@ -333,6 +333,19 @@
     const n = parseInt(anoModeloFipe, 10);
     return Number.isFinite(n) && n > 1900 ? n : (anoModeloFipe || '');
   }
+  function ordenarAnosFipeParaTela(lista){
+    return (Array.isArray(lista) ? [...lista] : []).sort((a, b) => {
+      const aZero = codigoAnoFipeZeroKm(a?.codigo);
+      const bZero = codigoAnoFipeZeroKm(b?.codigo);
+      if (aZero !== bZero) return aZero ? -1 : 1;
+
+      const anoA = anoModeloParaMatchingPbev(a?.codigo, a?.nome || a?.codigo || '');
+      const anoB = anoModeloParaMatchingPbev(b?.codigo, b?.nome || b?.codigo || '');
+      if (anoA !== anoB) return (Number(anoB) || -Infinity) - (Number(anoA) || -Infinity);
+
+      return String(a?.nome || a?.codigo || '').localeCompare(String(b?.nome || b?.codigo || ''), 'pt-BR', { numeric: true, sensitivity: 'base' });
+    });
+  }
   function esc(valor){
     return String(valor ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   }
@@ -1272,7 +1285,7 @@
     try{
       const data = await getJSON(`/api/fipe/publica/anos?tipo=${encodeURIComponent(tipoAtual)}&codigo_marca=${encodeURIComponent(marca)}&codigo_modelo=${encodeURIComponent(modelo)}`, token);
       resetSelect(selects.ano, 'Selecione', false);
-      (Array.isArray(data) ? data : []).forEach(a => selects.ano.appendChild(opt(formatarAnoZeroKm(a.nome || 'Ano'), a.codigo || '')));
+      ordenarAnosFipeParaTela(Array.isArray(data) ? data : []).forEach(a => selects.ano.appendChild(opt(formatarAnoZeroKm(a.nome || 'Ano'), a.codigo || '')));
       status('');
     }catch(e){ if(e.message !== '__stale__') { resetSelect(selects.ano,'Não foi possível carregar anos',true); status(e.message,true); } }
   }
