@@ -41,6 +41,17 @@
     .plugve-flow-summary .plugve-flow-hint{font-size:.68rem;color:#64748b;align-self:center}
     @media(max-width:760px){.plugve-flow-summary .plugve-flow-edit{grid-template-columns:1fr}.plugve-flow-summary .plugve-flow-line span{display:block}.plugve-flow-summary .plugve-flow-line span+span::before{content:"";margin:0}}
     .plugve-usage-step{border:1px solid #bbf7d0;background:linear-gradient(135deg,#f0fdf4 0%,#ffffff 78%)}
+.plugve-white-panel{background:#fff;border-color:#e5e7eb;box-shadow:0 10px 24px rgba(15,23,42,.05)}
+.plugve-stage-panel{background:#fff;border:1px solid #e5e7eb;border-radius:.75rem;box-shadow:0 10px 24px rgba(15,23,42,.05)}
+.plugve-usage-step{background:#fff;border-color:#e5e7eb;box-shadow:0 10px 24px rgba(15,23,42,.05)}
+.plugve-fipe-hero{position:relative;overflow:hidden;border:1px solid #dce5e0;border-radius:1rem;padding:1rem;background:#f8faf9;box-shadow:0 8px 24px rgba(15,23,42,.04)}
+.plugve-fipe-hero::before{content:'';position:absolute;inset:0;background:url('{{ url_for('static', filename='img/simular-stage-vehicle.png') }}') center center/cover no-repeat;opacity:.18;filter:grayscale(1) saturate(0) brightness(1.02);transform:scale(1.02)}
+.plugve-fipe-hero::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,255,255,.10) 0%,rgba(255,255,255,.48) 38%,rgba(255,255,255,.80) 100%)}
+.plugve-fipe-overlay{position:relative;z-index:1;background:rgba(255,255,255,.88);border:1px solid rgba(220,229,224,.95);border-radius:.95rem;padding:1rem;backdrop-filter:blur(4px);box-shadow:0 14px 32px rgba(15,23,42,.07)}
+.plugve-fipe-overlay .plugve-pbev-select-slot{margin-bottom:.75rem}
+.plugve-fipe-overlay .plugve-pbev-select-slot p,.plugve-fipe-overlay .plugve-pbev-select-slot h3{color:#1f2937}
+.plugve-fipe-overlay select,.plugve-fipe-overlay input{background:#fff}
+@media(max-width:640px){.plugve-fipe-hero{padding:.75rem}.plugve-fipe-overlay{padding:.85rem}}
     .plugve-progress-hidden{display:none !important}
     .plugve-card-selected{border-color:#2563eb !important;background:#eff6ff !important;box-shadow:0 6px 18px rgba(37,99,235,.12)}
     .plugve-select-note{font-size:11px;color:#6b7280;margin-top:3px}
@@ -895,7 +906,7 @@
       <!-- =========================================================
         3.2) LOCALIZAÇÃO
       ========================================================= -->
-      <section id="secao_localizacao" class="border rounded-lg p-4">
+      <section id="secao_localizacao" class="border rounded-lg p-4 plugve-white-panel">
         <h2 class="font-semibold text-lg mb-3 text-gray-800">Localização</h2>
         <p class="text-xs text-gray-500 mb-3">
           
@@ -955,7 +966,7 @@
           </div>
           <div>
             <label class="block text-sm font-medium">KM por ano</label>
-            <input type="number" id="uso_km_ano_input" value="15000" min="1" class="mt-1 p-2 border rounded w-full" required>
+            <input type="number" id="uso_km_ano_input" value="15000" min="0" step="500" class="mt-1 p-2 border rounded w-full" required>
           </div>
           <div class="flex gap-2 md:justify-end">
             <button type="button" id="btn_cancelar_uso_previsto" class="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">
@@ -976,17 +987,18 @@
         <!-- =========================================================
           3.3.1) CARRO ATUAL
         ========================================================= -->
-        <section id="bloco_carro_atual" class="border rounded-lg p-4 hidden">
+        <section id="bloco_carro_atual" class="border rounded-lg p-4 hidden plugve-white-panel">
           <h2 class="font-semibold text-lg mb-3 text-gray-800">Meu carro atual</h2>
           <p class="text-xs text-gray-500 mb-3">
             Esse bloco aparece apenas nos cenários de troca.
           </p>
 
           <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div class="border rounded-lg p-4">
-              <div class="plugve-pbev-select-slot"><h3 class="font-semibold text-base text-gray-700">Busca FIPE - carro atual</h3><p id="pbev_status_select_atual" class="plugve-pbev-status hidden"></p></div>
+            <div class="plugve-fipe-hero">
+              <div class="plugve-fipe-overlay">
+                <div class="plugve-pbev-select-slot"><h3 class="font-semibold text-base text-gray-700">Busca FIPE - carro atual</h3><p id="pbev_status_select_atual" class="plugve-pbev-status hidden"></p></div>
 
-              <div class="space-y-2">
+                <div class="space-y-2">
                 <div>
                   <label class="block text-xs font-medium">Marca</label>
                   <select name="atual_marca_codigo" id="atual_marca" class="mt-1 p-2 border rounded w-full"></select>
@@ -998,6 +1010,7 @@
                 <div>
                   <label class="block text-xs font-medium">Ano/Combustível</label>
                   <select name="atual_ano_codigo" id="atual_ano" class="mt-1 p-2 border rounded w-full"></select>
+                </div>
                 </div>
               </div>
             </div>
@@ -1088,12 +1101,13 @@
           <!-- =========================
             VE
           ========================= -->
-          <div id="coluna_ve" class="border rounded-lg p-4">
+          <div id="coluna_ve" class="border rounded-lg p-4 plugve-stage-panel">
             <h2 id="titulo_ve" class="font-semibold text-lg mb-3 text-blue-700">Veículo Elétrico (VE)</h2>
 
-            <div class="bg-blue-50 border border-blue-100 rounded-lg p-3 mb-4">
-              <div class="plugve-pbev-select-slot"><p class="text-sm font-semibold">Busca FIPE - VE</p><p id="pbev_status_select_ve" class="plugve-pbev-status hidden"></p></div>
-              <div class="space-y-2">
+            <div class="plugve-fipe-hero mb-4">
+              <div class="plugve-fipe-overlay">
+                <div class="plugve-pbev-select-slot"><p class="text-sm font-semibold">Busca FIPE - VE</p><p id="pbev_status_select_ve" class="plugve-pbev-status hidden"></p></div>
+                <div class="space-y-2">
                 <div>
                   <label class="block text-xs font-medium">Marca</label>
                   <select name="ve_marca_codigo" id="ve_marca" class="mt-1 p-2 border rounded w-full"></select>
@@ -1107,6 +1121,7 @@
                   <select name="ve_ano_codigo" id="ve_ano" class="mt-1 p-2 border rounded w-full"></select>
                 </div>
 
+                </div>
               </div>
             </div>
 
@@ -1195,12 +1210,13 @@
           <!-- =========================
             ICEV
           ========================= -->
-          <div id="coluna_icev" class="border rounded-lg p-4">
+          <div id="coluna_icev" class="border rounded-lg p-4 plugve-stage-panel">
             <h2 id="titulo_icev" class="font-semibold text-lg mb-3 text-gray-800">Veículo a Combustão (ICEV)</h2>
 
-            <div class="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-4">
-              <div class="plugve-pbev-select-slot"><p class="text-sm font-semibold">Busca FIPE - ICEV</p><p id="pbev_status_select_icev" class="plugve-pbev-status hidden"></p></div>
-              <div class="space-y-2">
+            <div class="plugve-fipe-hero mb-4">
+              <div class="plugve-fipe-overlay">
+                <div class="plugve-pbev-select-slot"><p class="text-sm font-semibold">Busca FIPE - ICEV</p><p id="pbev_status_select_icev" class="plugve-pbev-status hidden"></p></div>
+                <div class="space-y-2">
                 <div>
                   <label class="block text-xs font-medium">Marca</label>
                   <select name="icev_marca_codigo" id="icev_marca" class="mt-1 p-2 border rounded w-full"></select>
@@ -1214,6 +1230,7 @@
                   <select name="icev_ano_codigo" id="icev_ano" class="mt-1 p-2 border rounded w-full"></select>
                 </div>
 
+                </div>
               </div>
             </div>
 
@@ -1296,7 +1313,7 @@
         <!-- =========================================================
           3.3.3) ENERGIA / COMBUSTÍVEL / USO
         ========================================================= -->
-        <section id="bloco_parametros_uso" class="border rounded-lg p-4 plugve-progress-hidden">
+        <section id="bloco_parametros_uso" class="border rounded-lg p-4 plugve-progress-hidden plugve-white-panel">
           <h2 class="font-semibold text-lg mb-3 text-gray-800">Reajustes anuais</h2>
 
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -1434,7 +1451,7 @@
 
             <div class="hidden">
               <label class="block text-sm font-medium">KM por ano</label>
-              <input type="number" name="km_ano" id="km_ano_input" value="15000" class="mt-1 p-2 border rounded w-full" required>
+              <input type="number" name="km_ano" id="km_ano_input" value="15000" min="0" step="500" class="mt-1 p-2 border rounded w-full" required>
             </div>
 
           </div>
@@ -5700,6 +5717,14 @@
         return Number.isInteger(anos) && anos > 0 && Number.isInteger(km) && km > 0;
       }
 
+      function liberarPassoKmParaEnvioPlugVE() {
+        const campos = ["uso_km_ano_input", "km_ano_input", "resumo_km_ano"]
+          .map(id => document.getElementById(id))
+          .filter(Boolean);
+        campos.forEach(campo => { campo.step = "any"; });
+        setTimeout(() => campos.forEach(campo => { campo.step = "500"; }), 0);
+      }
+
       function confirmarUsoPrevistoPlugVE() {
         if (!usoPrevistoValidoPlugVE()) {
           alert("Informe anos de uso e KM por ano para continuar.");
@@ -6097,7 +6122,7 @@
             </div>
             <div>
               <label>KM por ano</label>
-              <input type="number" id="resumo_km_ano" min="1" value="${km || 15000}">
+              <input type="number" id="resumo_km_ano" min="0" step="500" value="${km || 15000}">
             </div>
           </div>`;
         box.style.display = "block";
@@ -6444,6 +6469,10 @@
         aplicarFormatacaoBlurPlugVE();
         sincronizarCamposUsoPrevistoPlugVE();
         document.getElementById("btn_proximo_uso_previsto")?.addEventListener("click", confirmarUsoPrevistoPlugVE);
+        document.getElementById("btn_simular")?.addEventListener("click", liberarPassoKmParaEnvioPlugVE, { capture: true });
+        document.getElementById("form_simulacao_tco")?.addEventListener("keydown", function (ev) {
+          if (ev.key === "Enter") liberarPassoKmParaEnvioPlugVE();
+        }, { capture: true });
         document.getElementById("btn_cancelar_uso_previsto")?.addEventListener("click", function () {
           window.location.href = "/";
         });

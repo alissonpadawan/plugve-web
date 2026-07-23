@@ -461,6 +461,56 @@ class PbevService:
             core.add(token)
         return core or tokens
 
+    @classmethod
+    def _identificadores_comerciais_modelo(cls, texto_modelo: Any) -> set[str]:
+        """Extrai identificadores alfanuméricos que definem a família comercial.
+
+        A extração usa os tokens originais, sem aliases de score. Assim, ``HB20`` e
+        ``HB20S`` permanecem distintos, enquanto grafias separadas como ``E 2008``
+        também produzem o identificador ``E2008``. A regra é geral e não depende de
+        marca ou modelo específico.
+        """
+        bruto = cls.normalizar_texto(texto_modelo)
+        if not bruto:
+            return set()
+        tokens = bruto.split()
+        identificadores: set[str] = set()
+        ignorar = FUEL_TOKENS | TRANS_TOKENS | ENGINE_TOKENS | GENERIC_TOKENS | {
+            "4X4", "4X2", "AWD", "FWD", "RWD", "2WD",
+        }
+        for token in tokens:
+            if token in ignorar:
+                continue
+            if re.fullmatch(r"[A-Z]{1,8}\d{1,5}[A-Z]{0,4}", token) or re.fullmatch(r"\d{1,5}[A-Z]{1,4}", token):
+                identificadores.add(token)
+        for primeiro, segundo in zip(tokens, tokens[1:]):
+            # ``E 2008`` é uma grafia normalizada frequente de ``e-2008``; neste
+            # contexto o E não é conjunção, mas parte do identificador comercial.
+            e_modelo_separado = primeiro == "E" and re.fullmatch(r"\d{3,5}[A-Z]{0,3}", segundo)
+            if (primeiro in ignorar or segundo in ignorar) and not e_modelo_separado:
+                continue
+            if re.fullmatch(r"[A-Z]{1,3}", primeiro) and re.fullmatch(r"\d{2,5}[A-Z]{0,3}", segundo):
+                identificadores.add(f"{primeiro}{segundo}")
+        return identificadores
+
+    @staticmethod
+    def _identificadores_comerciais_divergentes(requisitados: set[str], candidatos: set[str]) -> bool:
+        """Detecta derivação comercial colada que muda a identidade do modelo.
+
+        Só há divergência quando não existe identificador exato e um identificador é
+        prefixo direto do outro com sufixo curto. Isso evita que igualdade numérica
+        mascare famílias diferentes sem transformar acabamentos soltos em bloqueio.
+        """
+        if not requisitados or not candidatos or requisitados & candidatos:
+            return False
+        for req in requisitados:
+            for cand in candidatos:
+                menor, maior = (req, cand) if len(req) <= len(cand) else (cand, req)
+                sufixo = maior[len(menor):] if maior.startswith(menor) else ""
+                if sufixo and len(sufixo) <= 3 and sufixo.isalpha():
+                    return True
+        return False
+
     # ------------------------------------------------------------------
     # Score de matching
     # ------------------------------------------------------------------
@@ -570,12 +620,28 @@ class PbevService:
                     nums.add(m_num.group(1))
             return nums
 
+        identificadores_req = self._identificadores_comerciais_modelo(query_modelo_norm)
+        identificadores_cand = self._identificadores_comerciais_modelo(cand_model_norm)
+        identificador_comercial_divergente = self._identificadores_comerciais_divergentes(
+            identificadores_req,
+            identificadores_cand,
+        )
+        if identificador_comercial_divergente:
+            modelo_score = min(modelo_score, 8)
+            score -= 36
+            penalidades.append(
+                "identificador comercial/família divergente (" +
+                ",".join(sorted(identificadores_req)) + " x " +
+                ",".join(sorted(identificadores_cand)) + ")"
+            )
+
         cand_nums_modelo = _numeros_modelo(cand_model_tokens | cand_model_core)
         query_nums_modelo = _numeros_modelo(query_all_tokens)
         if cand_nums_modelo and query_nums_modelo:
             if cand_nums_modelo & query_nums_modelo:
-                modelo_score = max(modelo_score, 32)
-                motivos.append("número/modelo compatível")
+                if not identificador_comercial_divergente:
+                    modelo_score = max(modelo_score, 32)
+                    motivos.append("número/modelo compatível")
             else:
                 score -= 28
                 penalidades.append(
@@ -745,6 +811,9 @@ class PbevService:
             "zero_km_contexto": zero_km_contexto,
             "ano_compativel_fipe_pbev": ano_compativel_fipe_pbev,
             "modelo_score": round(modelo_score, 2),
+            "identificadores_comerciais_fipe": sorted(identificadores_req),
+            "identificadores_comerciais_pbev": sorted(identificadores_cand),
+            "identificador_comercial_divergente": identificador_comercial_divergente,
             "req_fuel": req_fuel,
             "ok_flags": ok_flags,
             "bloqueios_flags": bloqueios,
@@ -969,9 +1038,20 @@ class PbevService:
         """
         if not proximos:
             return False
+        top_av = top.get("avaliacao") or {}
+        top_forte = bool(top_av.get("identidade_tecnica_forte"))
+        top_suficiente = bool(top_av.get("tecnica_suficiente_para_consumo"))
         top_sig = self._assinatura_tecnica_registro(top.get("registro") or {})
         top_sug = self._assinatura_sugestao(top.get("sugestao"))
         for cand in proximos:
+            cand_av = cand.get("avaliacao") or {}
+            # Um candidato tecnicamente fraco não pode bloquear outro que comprovou
+            # família, motor, transmissão, combustível e flags. A regra é geral e
+            # atua antes da comparação puramente numérica do score.
+            if top_forte and not cand_av.get("identidade_tecnica_forte"):
+                continue
+            if top_suficiente and not cand_av.get("tecnica_suficiente_para_consumo"):
+                continue
             cand_sig = self._assinatura_tecnica_registro(cand.get("registro") or {})
             if cand_sig == top_sig:
                 continue
@@ -1260,7 +1340,7 @@ class PbevService:
             add(f"- score bruto: {self._fmt_debug_val(resposta.get('score_bruto'))}")
         add(f"- motivo: {self._fmt_debug_val(resposta.get('motivo'))}")
         diag_final = resposta.get("diagnostico") or {}
-        for chave in ("dominante", "ambiguidade_proxima", "ambiguidade_resolvida_por_consumo", "ambiguidade_resolvida_por_criterio_conservador", "candidatos_conservador", "diferenca_para_segundo", "score_segundo_candidato", "ano_relacao", "ano_compativel_fipe_pbev", "zero_km_contexto", "identidade_tecnica_forte", "tecnica_suficiente_para_consumo", "modelo_score"):
+        for chave in ("dominante", "ambiguidade_proxima", "dominancia_resolvida_por_identidade_tecnica", "ambiguidade_resolvida_por_consumo", "ambiguidade_resolvida_por_criterio_conservador", "candidatos_conservador", "diferenca_para_segundo", "score_segundo_candidato", "ano_relacao", "ano_compativel_fipe_pbev", "zero_km_contexto", "identidade_tecnica_forte", "tecnica_suficiente_para_consumo", "modelo_score"):
             if chave in diag_final:
                 add(f"- {chave}: {self._fmt_debug_val(diag_final.get(chave))}")
         add("")
@@ -1394,12 +1474,39 @@ class PbevService:
                 1 if avaliacao.get("ano_exato") else 0,
                 ano_zero_km_preferido,
                 -int(avaliacao.get("ano_diff") if avaliacao.get("ano_diff") is not None else 999),
+                1 if avaliacao.get("identidade_tecnica_forte") else 0,
+                1 if avaliacao.get("tecnica_suficiente_para_consumo") else 0,
                 float(avaliacao.get("modelo_score") or 0),
                 1 if avaliacao.get("fuel_ok") else 0,
             )
 
         candidatos.sort(key=_ordem_candidato, reverse=True)
         debug_items.sort(key=_ordem_candidato, reverse=True)
+
+        def _priorizar_identidade_tecnica(lista: list[dict[str, Any]]) -> list[dict[str, Any]]:
+            if not lista:
+                return lista
+            scores_validos = [float(item.get("score") or 0) for item in lista if (item.get("avaliacao") or {}).get("ok_flags")]
+            if not scores_validos:
+                return lista
+            score_maximo = max(scores_validos)
+            faixa = [
+                item for item in lista
+                if (item.get("avaliacao") or {}).get("ok_flags")
+                and score_maximo - float(item.get("score") or 0) < 8
+            ]
+            fortes = [item for item in faixa if (item.get("avaliacao") or {}).get("identidade_tecnica_forte")]
+            if not fortes:
+                fortes = [item for item in faixa if (item.get("avaliacao") or {}).get("tecnica_suficiente_para_consumo")]
+            if not fortes:
+                return lista
+            preferido = max(fortes, key=_ordem_candidato)
+            if lista[0] is preferido:
+                return lista
+            return [preferido] + [item for item in lista if item is not preferido]
+
+        candidatos = _priorizar_identidade_tecnica(candidatos)
+        debug_items = _priorizar_identidade_tecnica(debug_items)
         utilizaveis = [c for c in candidatos if c["avaliacao"].get("ok_flags")]
 
         debug["filtros"].update({
@@ -1447,6 +1554,12 @@ class PbevService:
         proximos_mesmo_ano = [c for c in candidatos_proximos if (c.get("avaliacao") or {}).get("ano_exato")]
         proximos_relevantes_ambiguidade = proximos_mesmo_ano if avaliacao_top.get("ano_exato") and proximos_mesmo_ano else candidatos_proximos
         ambiguidade_proxima = self._candidatos_proximos_bloqueiam_autofill(top, proximos_relevantes_ambiguidade)
+        dominancia_resolvida_por_identidade_tecnica = bool(
+            proximos_relevantes_ambiguidade
+            and avaliacao_top.get("identidade_tecnica_forte")
+            and not ambiguidade_proxima
+            and any(not (c.get("avaliacao") or {}).get("identidade_tecnica_forte") for c in proximos_relevantes_ambiguidade)
+        )
         ambiguidade_resolvida_por_consumo = self._candidatos_equivalentes_por_consumo(top, proximos_relevantes_ambiguidade)
         grupo_conservador = self._candidatos_tecnicos_para_conservador(top, proximos_relevantes_ambiguidade)
         sugestao_conservadora = self._montar_sugestao_conservadora(grupo_conservador)
@@ -1519,6 +1632,8 @@ class PbevService:
 
         motivos = list(avaliacao_top.get("motivos") or [])
         penalidades = list(avaliacao_top.get("penalidades") or [])
+        if dominancia_resolvida_por_identidade_tecnica:
+            motivos.append("candidato dominante por identidade técnica forte; candidatos próximos tecnicamente fracos não bloqueiam")
         if ambiguidade_resolvida_por_consumo:
             motivos.append("candidatos próximos têm o mesmo consumo aplicável; ambiguidade não bloqueia")
         if ambiguidade_resolvida_por_criterio_conservador:
@@ -1559,6 +1674,7 @@ class PbevService:
                 "identidade_tecnica_forte": bool(avaliacao_top.get("identidade_tecnica_forte")),
                 "tecnica_suficiente_para_consumo": bool(avaliacao_top.get("tecnica_suficiente_para_consumo")),
                 "ambiguidade_proxima": bool(ambiguidade_proxima),
+                "dominancia_resolvida_por_identidade_tecnica": bool(dominancia_resolvida_por_identidade_tecnica),
                 "ambiguidade_resolvida_por_consumo": bool(ambiguidade_resolvida_por_consumo),
                 "ambiguidade_resolvida_por_criterio_conservador": bool(ambiguidade_resolvida_por_criterio_conservador),
                 "candidatos_conservador": len(grupo_conservador),
