@@ -64,6 +64,31 @@ class V42UiRegressionTests(unittest.TestCase):
         self.assertIn('const modoRefinado = document.getElementById("fuel_tipo_detectado")?.value || "";', html)
         self.assertIn('if (chaveSalva === chaveAtual && ["flex", "diesel", "etanol", "gasolina"].includes(modoRefinado))', html)
 
+    def test_all_visible_money_inputs_use_live_pt_br_two_decimal_mask(self):
+        html = (self.root / "templates" / "simular.html").read_text(encoding="utf-8")
+        for field_id in (
+            "preco_atual", "manut_atual", "ipva_atual_input", "seguro_atual",
+            "preco_ve", "manut_ve", "ipva_ve_input", "seguro_ve",
+            "preco_icev", "manut_icev", "ipva_icev_input", "seguro_icev",
+            "energia_input", "fuel_single_preco_input", "fuel_modal_preco_etanol",
+            "fuel_modal_preco_gasolina", "phev_modal_preco_combustivel",
+        ):
+            self.assertIn(f'"{field_id}"', html)
+        self.assertIn('function aplicarMascaraMonetariaDigitacaoTCO(input)', html)
+        self.assertIn('const valor = Number(digitos) / 100;', html)
+        self.assertIn('minimumFractionDigits: 2, maximumFractionDigits: 2', html)
+        self.assertIn('campoFin === "entrada" || campoFin === "custos"', html)
+        self.assertIn('document.addEventListener("input", function (ev)', html)
+        self.assertIn('formatarTodosCamposMonetariosTCO(card);', html)
+
+    def test_money_format_does_not_change_consumption_precision_rules(self):
+        html = (self.root / "templates" / "simular.html").read_text(encoding="utf-8")
+        self.assertIn('function formatarPrecoCombustivelInputTCO(valor)', html)
+        self.assertIn('function formatarConsumoInputTCO(valor)', html)
+        self.assertIn('function formatarValorLitroInputTCO(valor)', html)
+        self.assertIn('minimumFractionDigits: 3, maximumFractionDigits: 3', html)
+        self.assertIn('id.includes("preco") ? formatarPrecoCombustivelInputTCO(n)', html)
+
 
 if __name__ == "__main__":
     unittest.main()

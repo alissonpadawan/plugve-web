@@ -815,7 +815,7 @@
       </a>
       <nav class="curve-nav" aria-label="Menu principal">
         <a href="/" id="link_inicio_tco" data-plugve-reset="1">Início</a>
-        <a href="/simular" data-plugve-reset="1" class="curve-nav-active">Simular</a>
+        <a href="/simular" data-plugve-reset="1" class="curve-nav-active">Simular TCO</a>
         <a href="/depreciacao">Depreciação</a>
         <a href="/consulta-fipe">Consulta Fipe+</a>
         <a href="/sobre">Sobre</a>
@@ -1412,7 +1412,7 @@
                   <strong id="fuel_compact_preco" class="plugve-fuel-compact-price"></strong>
                   <div class="plugve-money-field plugve-fuel-money-field">
                     <span class="plugve-money-prefix">R$</span>
-                    <input type="text" id="fuel_single_preco_input" class="plugve-fuel-single-input" value="5,800" inputmode="decimal" aria-label="Preço do combustível em reais por litro">
+                    <input type="text" id="fuel_single_preco_input" class="plugve-fuel-single-input" value="5,80" inputmode="numeric" aria-label="Preço do combustível em reais por litro">
                   </div>
                   
                 </div>
@@ -1422,7 +1422,7 @@
                 </div>
                 <div class="plugve-fuel-compact-row">
                   <span id="fuel_compact_left">Gasolina</span>
-                  <span id="fuel_compact_right">R$ 5,800/L</span>
+                  <span id="fuel_compact_right">R$ 5,80/L</span>
                 </div>
               </div>
 
@@ -1565,7 +1565,7 @@
                 <label for="fuel_modal_preco_etanol">Preço (R$/L)</label>
                 <div class="plugve-money-field">
                   <span class="plugve-money-prefix">R$</span>
-                  <input type="text" id="fuel_modal_preco_etanol" inputmode="decimal" placeholder="ex: 4,48">
+                  <input type="text" id="fuel_modal_preco_etanol" inputmode="numeric" placeholder="ex: 4,48">
                 </div>
                 <label for="fuel_modal_consumo_etanol">Consumo (km/L)</label>
                 <div class="plugve-pbev-inline-field">
@@ -1578,7 +1578,7 @@
                 <label for="fuel_modal_preco_gasolina">Preço (R$/L)</label>
                 <div class="plugve-money-field">
                   <span class="plugve-money-prefix">R$</span>
-                  <input type="text" id="fuel_modal_preco_gasolina" inputmode="decimal" placeholder="ex: 6,87">
+                  <input type="text" id="fuel_modal_preco_gasolina" inputmode="numeric" placeholder="ex: 6,87">
                 </div>
                 <label for="fuel_modal_consumo_gasolina">Consumo (km/L)</label>
                 <div class="plugve-pbev-inline-field">
@@ -1652,7 +1652,7 @@
                 <label for="phev_modal_preco_combustivel">Preço (R$/L)</label>
                 <div class="plugve-money-field">
                   <span class="plugve-money-prefix">R$</span>
-                  <input type="text" id="phev_modal_preco_combustivel" inputmode="decimal" placeholder="ex: 6,87">
+                  <input type="text" id="phev_modal_preco_combustivel" inputmode="numeric" placeholder="ex: 6,87">
                 </div>
                 <label for="phev_modal_consumo_combustivel">Consumo (km/L)</label>
                 <div class="plugve-pbev-inline-field">
@@ -2264,9 +2264,89 @@
       return n ? formatarMoedaBR(n) : "";
     }
 
+    const PLUGVE_TCO_MONEY_INLINE_IDS = new Set([
+      "preco_atual", "manut_atual", "ipva_atual_input", "seguro_atual",
+      "preco_ve", "manut_ve", "ipva_ve_input", "seguro_ve",
+      "preco_icev", "manut_icev", "ipva_icev_input", "seguro_icev"
+    ]);
+    const PLUGVE_TCO_MONEY_EXTERNAL_IDS = new Set([
+      "energia_input", "fuel_single_preco_input", "fuel_modal_preco_etanol",
+      "fuel_modal_preco_gasolina", "phev_modal_preco_combustivel"
+    ]);
+
+    function tipoMascaraMonetariaTCO(input) {
+      if (!input || input.tagName !== "INPUT" || input.type === "hidden") return "";
+      if (PLUGVE_TCO_MONEY_INLINE_IDS.has(input.id)) return "inline";
+      if (PLUGVE_TCO_MONEY_EXTERNAL_IDS.has(input.id)) return "external";
+      const campoFin = input.dataset?.finCampo;
+      if (campoFin === "entrada" || campoFin === "custos") return "inline";
+      return "";
+    }
+
+    function formatarNumeroMonetarioSemPrefixoTCO(valor) {
+      const n = Number(valor);
+      if (!Number.isFinite(n)) return "";
+      return n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function formatarCampoMonetarioPorNumeroTCO(input, valor) {
+      const tipo = tipoMascaraMonetariaTCO(input);
+      if (!tipo) return;
+      const n = Number(valor);
+      if (!Number.isFinite(n)) {
+        input.value = "";
+        return;
+      }
+      input.value = tipo === "external" ? formatarNumeroMonetarioSemPrefixoTCO(n) : formatarMoedaBR(n);
+      input.inputMode = "numeric";
+    }
+
+    function aplicarMascaraMonetariaDigitacaoTCO(input) {
+      const tipo = tipoMascaraMonetariaTCO(input);
+      if (!tipo) return false;
+      const digitos = String(input.value || "").replace(/\D/g, "");
+      if (!digitos) {
+        input.value = "";
+        return true;
+      }
+      const valor = Number(digitos) / 100;
+      input.value = tipo === "external" ? formatarNumeroMonetarioSemPrefixoTCO(valor) : formatarMoedaBR(valor);
+      try { input.setSelectionRange(input.value.length, input.value.length); } catch (e) {}
+      return true;
+    }
+
+    function formatarCampoMonetarioAtualTCO(input) {
+      if (!tipoMascaraMonetariaTCO(input)) return;
+      const bruto = String(input.value || "").trim();
+      if (!bruto) return;
+      formatarCampoMonetarioPorNumeroTCO(input, numeroBRParaFloat(bruto));
+    }
+
+    function formatarTodosCamposMonetariosTCO(root = document) {
+      const seletores = [
+        ...Array.from(PLUGVE_TCO_MONEY_INLINE_IDS, id => `#${id}`),
+        ...Array.from(PLUGVE_TCO_MONEY_EXTERNAL_IDS, id => `#${id}`),
+        "[data-fin-campo='entrada']", "[data-fin-campo='custos']"
+      ];
+      root.querySelectorAll(seletores.join(",")).forEach(formatarCampoMonetarioAtualTCO);
+    }
+
+    document.addEventListener("input", function (ev) {
+      if (aplicarMascaraMonetariaDigitacaoTCO(ev.target)) {
+        ev.target.dataset.plugveMoneyMasked = "1";
+      }
+    }, true);
+
+    document.addEventListener("focus", function (ev) {
+      const input = ev.target;
+      if (!tipoMascaraMonetariaTCO(input)) return;
+      input.inputMode = "numeric";
+      try { input.setSelectionRange(input.value.length, input.value.length); } catch (e) {}
+    }, true);
+
     function formatarNumero5(valor) {
       if (valor == null || isNaN(valor)) return "";
-      return Number(valor).toFixed(5).replace(".", ",");
+      return Number(valor).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
     function escaparHTMLPlugVE(valor) {
@@ -2569,7 +2649,7 @@
         <div class="plugve-finance-form-grid">
           <div class="plugve-finance-control">
             <label class="block text-xs font-medium">Entrada (R$)</label>
-            <input type="text" data-fin-campo="entrada" value="${entrada && entrada !== "0" ? entrada : "0"}" class="mt-1 p-2 border rounded w-full" placeholder="ex: 30000">
+            <input type="text" data-fin-campo="entrada" value="${entrada && entrada !== "0" ? entrada : "0"}" inputmode="numeric" class="mt-1 p-2 border rounded w-full" placeholder="R$ 0,00">
           </div>
           <div class="plugve-finance-control">
             <label class="block text-xs font-medium">Juros (% a.m.)</label>
@@ -2581,7 +2661,7 @@
           </div>
           <div class="plugve-finance-control">
             <label class="block text-xs font-medium">Custos financiados (R$)</label>
-            <input type="text" data-fin-campo="custos" value="${custos && custos !== "0" ? custos : "0"}" class="mt-1 p-2 border rounded w-full" placeholder="ex: 0">
+            <input type="text" data-fin-campo="custos" value="${custos && custos !== "0" ? custos : "0"}" inputmode="numeric" class="mt-1 p-2 border rounded w-full" placeholder="R$ 0,00">
           </div>
         </div>
         <div data-fin-preview class="plugve-finance-total mt-4"></div>
@@ -2589,6 +2669,7 @@
       if (!ativo && valorHiddenFin(prefixo, "meses", "0") === "0") {
         card.querySelector("[data-fin-campo='ativo']").checked = true;
       }
+      formatarTodosCamposMonetariosTCO(card);
       card.querySelectorAll("input").forEach(input => {
         input.addEventListener("input", () => {
           previewFinanciamentoCard(card);
@@ -2678,10 +2759,10 @@
         const meses = card.querySelector("[data-fin-campo='meses']");
         const custos = card.querySelector("[data-fin-campo='custos']");
         if (ativo) ativo.checked = false;
-        if (entrada) entrada.value = "0";
+        if (entrada) formatarCampoMonetarioPorNumeroTCO(entrada, 0);
         if (juros) juros.value = "0";
         if (meses) meses.value = "0";
-        if (custos) custos.value = "0";
+        if (custos) formatarCampoMonetarioPorNumeroTCO(custos, 0);
         previewFinanciamentoCard(card);
       });
       capturarEstadoFormularioTCO();
@@ -3998,7 +4079,7 @@
       if (eletrico > 0) setValorPhevTCO("phev_consumo_eletrico", formatarValorLitroInputTCO(eletrico));
       if (combustivel > 0) setValorPhevTCO("phev_consumo_combustivel", formatarConsumoInputTCO(combustivel));
       if (!document.getElementById("phev_preco_combustivel")?.value) {
-        setValorPhevTCO("phev_preco_combustivel", formatarValorLitroInputTCO(precoCombustivelPhevPadraoTCO() || 0));
+        setValorPhevTCO("phev_preco_combustivel", formatarPrecoCombustivelInputTCO(precoCombustivelPhevPadraoTCO() || 0));
       }
 
       const campo = pbevCampoConsumoPorPrefixoTCO(prefixo);
@@ -4412,13 +4493,19 @@
     function formatarPrecoLitroTCO(valor) {
       const n = Number(valor);
       if (!Number.isFinite(n) || n <= 0) return "—";
-      return `R$ ${n.toFixed(3).replace(".", ",")}/L`;
+      return `R$ ${n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/L`;
     }
 
     function formatarValorLitroInputTCO(valor) {
       const n = Number(valor);
       if (!Number.isFinite(n) || n <= 0) return "";
-      return n.toFixed(3).replace(".", ",");
+      return n.toLocaleString("pt-BR", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+    }
+
+    function formatarPrecoCombustivelInputTCO(valor) {
+      const n = Number(valor);
+      if (!Number.isFinite(n) || n <= 0) return "";
+      return n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
     function formatarConsumoInputTCO(valor) {
@@ -4442,13 +4529,13 @@
       precosCombustivelTCO.diesel_s10 = numeroOuNullCombustivelTCO(dados?.diesel_s10);
 
       if (!valorNumeroInputTCO("fuel_preco_gasolina") && precosCombustivelTCO.gasolina) {
-        setValorInputTCO("fuel_preco_gasolina", formatarValorLitroInputTCO(precosCombustivelTCO.gasolina));
+        setValorInputTCO("fuel_preco_gasolina", formatarPrecoCombustivelInputTCO(precosCombustivelTCO.gasolina));
       }
       if (!valorNumeroInputTCO("fuel_preco_etanol") && precosCombustivelTCO.etanol) {
-        setValorInputTCO("fuel_preco_etanol", formatarValorLitroInputTCO(precosCombustivelTCO.etanol));
+        setValorInputTCO("fuel_preco_etanol", formatarPrecoCombustivelInputTCO(precosCombustivelTCO.etanol));
       }
       if (!valorNumeroInputTCO("fuel_preco_diesel_s10") && precosCombustivelTCO.diesel_s10) {
-        setValorInputTCO("fuel_preco_diesel_s10", formatarValorLitroInputTCO(precosCombustivelTCO.diesel_s10));
+        setValorInputTCO("fuel_preco_diesel_s10", formatarPrecoCombustivelInputTCO(precosCombustivelTCO.diesel_s10));
       }
     }
 
@@ -4563,7 +4650,7 @@
       const input = document.getElementById("combustivel_input");
       if (!input) return;
       const n = Number(valor);
-      if (Number.isFinite(n) && n > 0) input.value = formatarValorLitroInputTCO(n);
+      if (Number.isFinite(n) && n > 0) input.value = formatarPrecoCombustivelInputTCO(n);
     }
 
     function campoConsumoCombustaoTCO(prefixo) {
@@ -4626,7 +4713,7 @@
     function definirHiddenPrecoCombustivelTCO(chave, valor) {
       const el = document.getElementById(`fuel_preco_${chave}`);
       const n = Number(valor || 0);
-      if (el && Number.isFinite(n) && n > 0) el.value = formatarValorLitroInputTCO(n);
+      if (el && Number.isFinite(n) && n > 0) el.value = formatarPrecoCombustivelInputTCO(n);
     }
 
     function resetarPerfilCombustivelParaVeiculoTCO(prefixo, modo, chave) {
@@ -4765,8 +4852,8 @@
       const pct = Number(document.getElementById("fuel_percent_etanol")?.value || 0);
       const slider = document.getElementById("fuel_mix_slider");
       if (slider) slider.value = String(Math.max(0, Math.min(100, pct)));
-      setValorInputTCO("fuel_modal_preco_etanol", document.getElementById("fuel_preco_etanol")?.value || formatarValorLitroInputTCO(precosCombustivelTCO.etanol || 0));
-      setValorInputTCO("fuel_modal_preco_gasolina", document.getElementById("fuel_preco_gasolina")?.value || formatarValorLitroInputTCO(precosCombustivelTCO.gasolina || 0));
+      setValorInputTCO("fuel_modal_preco_etanol", document.getElementById("fuel_preco_etanol")?.value || formatarPrecoCombustivelInputTCO(precosCombustivelTCO.etanol || 0));
+      setValorInputTCO("fuel_modal_preco_gasolina", document.getElementById("fuel_preco_gasolina")?.value || formatarPrecoCombustivelInputTCO(precosCombustivelTCO.gasolina || 0));
       setValorInputTCO("fuel_modal_consumo_etanol", document.getElementById("fuel_consumo_etanol")?.value || "");
       setValorInputTCO("fuel_modal_consumo_gasolina", document.getElementById("fuel_consumo_gasolina")?.value || "");
       ["fuel_modal_consumo_etanol", "fuel_modal_consumo_gasolina"].forEach(id => {
@@ -4946,7 +5033,7 @@
       atualizarInputCombustivelTCO(precoFinal);
       if (inputSinglePreco) {
         inputSinglePreco.classList.remove("hidden");
-        if (document.activeElement !== inputSinglePreco) inputSinglePreco.value = formatarValorLitroInputTCO(precoFinal);
+        if (document.activeElement !== inputSinglePreco) inputSinglePreco.value = formatarPrecoCombustivelInputTCO(precoFinal);
       }
       if (barEtanol) barEtanol.style.width = "0%";
       if (barGasolina) barGasolina.style.width = "100%";
@@ -5172,7 +5259,7 @@
         });
         el?.addEventListener("blur", function () {
           const n = numeroBRParaFloat(this.value);
-          if (n > 0) this.value = id.includes("preco") ? formatarValorLitroInputTCO(n) : formatarConsumoInputTCO(n);
+          if (n > 0) this.value = id.includes("preco") ? formatarPrecoCombustivelInputTCO(n) : formatarConsumoInputTCO(n);
           if (id.includes("gasolina")) sugerirConsumoFlexTCO("gasolina");
           if (id.includes("etanol")) sugerirConsumoFlexTCO("etanol");
           atualizarEstadoModalCombustivelTCO();
@@ -5195,7 +5282,7 @@
       });
       single?.addEventListener("blur", function () {
         const n = numeroBRParaFloat(this.value);
-        if (n > 0) this.value = formatarValorLitroInputTCO(n);
+        if (n > 0) this.value = formatarPrecoCombustivelInputTCO(n);
         capturarEstadoFormularioTCO();
       });
     }
@@ -5281,7 +5368,7 @@
       const consumoEletricoAtual = numeroBRParaFloat(document.getElementById("consumo_ve")?.value || 0);
       setValorPhevTCO("phev_consumo_eletrico", consumoEletricoAtual > 0 ? formatarValorLitroInputTCO(consumoEletricoAtual) : "");
       setValorPhevTCO("phev_consumo_combustivel", "");
-      setValorPhevTCO("phev_preco_combustivel", formatarValorLitroInputTCO(precoCombustivelPhevPadraoTCO() || 0));
+      setValorPhevTCO("phev_preco_combustivel", formatarPrecoCombustivelInputTCO(precoCombustivelPhevPadraoTCO() || 0));
       const slider = document.getElementById("phev_mix_slider");
       if (slider) slider.value = "100";
       limparResumoPhevTCO();
@@ -5293,7 +5380,7 @@
       if (slider) slider.value = String(Math.max(0, Math.min(100, pct)));
       const consumoEletrico = document.getElementById("phev_consumo_eletrico")?.value || document.getElementById("consumo_ve")?.value || "";
       setValorPhevTCO("phev_modal_consumo_eletrico", consumoEletrico);
-      setValorPhevTCO("phev_modal_preco_combustivel", document.getElementById("phev_preco_combustivel")?.value || formatarValorLitroInputTCO(precoCombustivelPhevPadraoTCO() || 0));
+      setValorPhevTCO("phev_modal_preco_combustivel", document.getElementById("phev_preco_combustivel")?.value || formatarPrecoCombustivelInputTCO(precoCombustivelPhevPadraoTCO() || 0));
       setValorPhevTCO("phev_modal_consumo_combustivel", document.getElementById("phev_consumo_combustivel")?.value || "");
       atualizarEstadoModalPhevTCO();
     }
@@ -5401,7 +5488,7 @@
       setValorPhevTCO("phev_vehicle_key", chave);
       const consumoEletrico = document.getElementById("phev_modal_consumo_eletrico")?.value || document.getElementById("consumo_ve")?.value || "";
       setValorPhevTCO("phev_consumo_eletrico", consumoEletrico);
-      setValorPhevTCO("phev_preco_combustivel", document.getElementById("phev_modal_preco_combustivel")?.value || formatarValorLitroInputTCO(precoCombustivelPhevPadraoTCO() || 0));
+      setValorPhevTCO("phev_preco_combustivel", document.getElementById("phev_modal_preco_combustivel")?.value || formatarPrecoCombustivelInputTCO(precoCombustivelPhevPadraoTCO() || 0));
       setValorPhevTCO("phev_consumo_combustivel", "");
       if (numeroBRParaFloat(consumoEletrico || 0) > 0) aplicarResumoPhevTCO();
       else limparResumoPhevTCO();
@@ -5472,7 +5559,7 @@
         el?.addEventListener("input", atualizarEstadoModalPhevTCO);
         el?.addEventListener("blur", function () {
           const n = numeroBRParaFloat(this.value);
-          if (n > 0) this.value = id.includes("preco") ? formatarValorLitroInputTCO(n) : (id.includes("eletrico") ? formatarValorLitroInputTCO(n) : formatarConsumoInputTCO(n));
+          if (n > 0) this.value = id.includes("preco") ? formatarPrecoCombustivelInputTCO(n) : (id.includes("eletrico") ? formatarValorLitroInputTCO(n) : formatarConsumoInputTCO(n));
           atualizarEstadoModalPhevTCO();
         });
       });
@@ -6755,12 +6842,11 @@
       }
 
       function aplicarFormatacaoBlurPlugVE() {
-        ["preco_atual", "manut_atual", "ipva_atual_input", "seguro_atual", "preco_ve", "manut_ve", "ipva_ve_input", "seguro_ve", "preco_icev", "manut_icev", "ipva_icev_input", "seguro_icev"].forEach(id => {
+        ["preco_atual", "manut_atual", "ipva_atual_input", "seguro_atual", "preco_ve", "manut_ve", "ipva_ve_input", "seguro_ve", "preco_icev", "manut_icev", "ipva_icev_input", "seguro_icev", "energia_input", "fuel_single_preco_input", "fuel_modal_preco_etanol", "fuel_modal_preco_gasolina", "phev_modal_preco_combustivel"].forEach(id => {
           const el = document.getElementById(id);
           if (!el) return;
           el.addEventListener("blur", function () {
-            const n = numeroBRParaFloat(this.value);
-            if (n > 0) this.value = formatarMoedaBR(n);
+            formatarCampoMonetarioAtualTCO(this);
           });
         });
         ["consumo_atual", "consumo_ve", "consumo_icev", "depreciacao_atual", "depreciacao_ve", "depreciacao_icev", "aumento_energia_input", "aumento_combustivel_input"].forEach(id => {
@@ -6776,6 +6862,9 @@
 
       document.addEventListener("DOMContentLoaded", function () {
         aplicarFormatacaoBlurPlugVE();
+        formatarTodosCamposMonetariosTCO();
+        setTimeout(() => formatarTodosCamposMonetariosTCO(), 120);
+        setTimeout(() => formatarTodosCamposMonetariosTCO(), 500);
         const gradeVeiculosPlugVE = document.getElementById("grid_veiculos_tco");
         if (gradeVeiculosPlugVE) {
           const observerAlinhamentoPlugVE = new MutationObserver(() => agendarAlinhamentoVeiculosPlugVE());
