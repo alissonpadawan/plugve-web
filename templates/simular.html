@@ -8,6 +8,8 @@
   <title>Simulador CurVE</title>
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/favicon.png') }}">
   <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/favicon-180.png') }}">
+  <link rel="preload" as="image" type="image/webp" href="{{ url_for('static', filename='img/simular-stage-vehicle.webp') }}" fetchpriority="high">
+  <link rel="preload" as="image" type="image/webp" href="{{ url_for('static', filename='img/simular-stage-vehicle-icev.webp') }}" fetchpriority="high">
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
   <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
   <script src="{{ url_for('static', filename='js/curve_marcadores_curvas.js') }}?v=20260705_v35_marcadores_unificados"></script>
@@ -45,9 +47,9 @@
 .plugve-stage-panel{background:#fff;border:1px solid #e5e7eb;border-radius:.75rem;box-shadow:0 10px 24px rgba(15,23,42,.05)}
 .plugve-usage-step{background:#fff;border-color:#e5e7eb;box-shadow:0 10px 24px rgba(15,23,42,.05)}
 .plugve-fipe-hero{position:relative;overflow:visible;border:1px solid #dce5e0;border-radius:1rem;padding:1.15rem;background:#f8faf9;box-shadow:0 8px 24px rgba(15,23,42,.04);min-height:320px;display:flex;align-items:flex-start;isolation:isolate}
-.plugve-fipe-hero::before{content:'';position:absolute;inset:0;background:url('{{ url_for('static', filename='img/simular-stage-vehicle.png') }}') center bottom/cover no-repeat;opacity:.78;filter:grayscale(.12) saturate(.92) contrast(1.05) brightness(.98);transform:scale(1.01);border-radius:inherit;pointer-events:none;z-index:0}
-.plugve-fipe-hero.plugve-fipe-hero-ev::before{background-image:url('{{ url_for('static', filename='img/simular-stage-vehicle.png') }}')}
-.plugve-fipe-hero.plugve-fipe-hero-icev::before{background-image:url('{{ url_for('static', filename='img/simular-stage-vehicle-icev.png') }}')}
+.plugve-fipe-hero::before{content:'';position:absolute;inset:0;background:url('{{ url_for('static', filename='img/simular-stage-vehicle.webp') }}') center bottom/cover no-repeat;opacity:.78;filter:grayscale(.12) saturate(.92) contrast(1.05) brightness(.98);transform:scale(1.01);border-radius:inherit;pointer-events:none;z-index:0}
+.plugve-fipe-hero.plugve-fipe-hero-ev::before{background-image:url('{{ url_for('static', filename='img/simular-stage-vehicle.webp') }}')}
+.plugve-fipe-hero.plugve-fipe-hero-icev::before{background-image:url('{{ url_for('static', filename='img/simular-stage-vehicle-icev.webp') }}')}
 .plugve-fipe-hero::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,rgba(255,255,255,.52) 0%,rgba(255,255,255,.32) 30%,rgba(255,255,255,.12) 62%,rgba(255,255,255,.04) 100%);border-radius:inherit;pointer-events:none;z-index:1}
 .plugve-fipe-hero.plugve-fipe-hero-icev::after{background:linear-gradient(90deg,rgba(255,255,255,.60) 0%,rgba(255,255,255,.40) 32%,rgba(255,255,255,.18) 64%,rgba(255,255,255,.07) 100%)}
 .plugve-fipe-hero:has(.fipe-combobox.open){z-index:5900}
@@ -62,6 +64,10 @@
 .plugve-fipe-overlay select::placeholder,.plugve-fipe-overlay input::placeholder{color:#334155}
 .plugve-fipe-overlay .fipe-combobox-panel{background:#fff;z-index:6100}
 .plugve-fipe-overlay .fipe-combobox-list{max-height:320px}
+.plugve-consumo-only .plugve-fuel-slider-wrap{opacity:.58}
+.plugve-consumo-only #fuel_mix_slider{cursor:not-allowed}
+.plugve-consumo-only #fuel_modal_preco_etanol,.plugve-consumo-only #fuel_modal_preco_gasolina{background:#f8fafc;color:#64748b;cursor:not-allowed}
+.plugve-consumo-only #fuel_modal_consumo_etanol,.plugve-consumo-only #fuel_modal_consumo_gasolina{background:#fff;border-color:#16a34a;box-shadow:0 0 0 3px rgba(22,163,74,.08)}
 @media(max-width:640px){.plugve-fipe-hero{padding:.85rem;min-height:270px}.plugve-fipe-overlay{max-width:100%}.plugve-fipe-hero::after{background:linear-gradient(180deg,rgba(255,255,255,.44) 0%,rgba(255,255,255,.26) 42%,rgba(255,255,255,.08) 100%)}}
     .plugve-progress-hidden{display:none !important}
     .plugve-card-selected{border-color:#2563eb !important;background:#eff6ff !important;box-shadow:0 6px 18px rgba(37,99,235,.12)}
@@ -3069,6 +3075,7 @@
         modalFuel.classList.add("hidden");
         modalFuel.setAttribute("aria-hidden", "true");
       }
+      finalizarEstadoModalCombustivelTCO();
       atualizarInputCombustivelTCO(precoBasePorModoCombustivelTCO("gasolina") || 0);
       renderizarCardCombustivelTCO();
     }
@@ -3666,7 +3673,7 @@
         status.innerHTML = `<button type="button" class="plugve-pbev-proof-btn-main" title="Ver dados de consumo considerados e fonte oficial Inmetro/PBEV" aria-label="Ver comprovação Inmetro/PBEV"><img src="${PBEV_INMETRO_LOGO_URL}" alt="Inmetro"></button>`;
         status.classList.remove("hidden");
         const btn = status.querySelector("button");
-        if (btn) btn.onclick = function (ev) { ev.preventDefault(); pbevAbrirComprovacaoTCO(prefixo); };
+        if (btn) btn.onclick = function (ev) { ev.preventDefault(); ev.stopPropagation(); pbevAbrirComprovacaoTCO(prefixo); };
       });
     }
 
@@ -3676,15 +3683,8 @@
       pbevOcultarBotaoDebugTCO(prefixo);
       pbevRenderizarSeloComprovacaoTCO(prefixo, dados);
       const campo = pbevCampoConsumoPorPrefixoTCO(prefixo);
-      if (campo && (campo.readOnly || campo.dataset.flexConfigurado === "1" || campo.dataset.phevConfigurado === "1")) {
-        campo.classList.add("plugve-pbev-clickable");
-        campo.setAttribute("title", "Clique para ver os dados Inmetro/PBEV considerados");
-        campo.onclick = function (ev) {
-          if (campo.readOnly || campo.dataset.flexConfigurado === "1" || campo.dataset.phevConfigurado === "1") {
-            ev.preventDefault();
-            pbevAbrirComprovacaoTCO(prefixo);
-          }
-        };
+      if (campo && (prefixo === "icev" || prefixo === "atual") && modoCombustivelSelecionadoTCO(prefixo) === "flex") {
+        ativarEdicaoConsumoFlexTCO(prefixo);
       }
     }
 
@@ -4050,16 +4050,10 @@
           pbevMarcarConsumoEditadoUsuarioTCO(prefixo);
         });
         campo?.addEventListener("keydown", function (ev) {
-          if ((ev.key === "Enter" || ev.key === " ") && this.dataset.pbevAuto === "1" && (this.readOnly || this.dataset.flexConfigurado === "1" || this.dataset.phevConfigurado === "1")) {
+          if ((ev.key === "Enter" || ev.key === " ") && (prefixo === "icev" || prefixo === "atual") && modoCombustivelSelecionadoTCO(prefixo) === "flex") {
             ev.preventDefault();
-            pbevAbrirComprovacaoTCO(prefixo);
+            abrirModalCombustivelTCO({ somenteConsumo: true, prefixo });
           }
-        });
-      });
-      ["fuel_modal_consumo_etanol", "fuel_modal_consumo_gasolina"].forEach(id => {
-        document.getElementById(id)?.addEventListener("input", function () {
-          const prefixo = document.getElementById("fuel_prefixo_configurado")?.value || prefixoCombustaoPreferencialTCO();
-          pbevMarcarConsumoEditadoUsuarioTCO(prefixo);
         });
       });
       ["phev_modal_consumo_eletrico", "phev_modal_consumo_combustivel"].forEach(id => {
@@ -4367,6 +4361,9 @@
     let ultimoFlexAutoAbertoTCO = "";
     let sugestaoConsumoGasolinaUsadaTCO = false;
     let sugestaoConsumoEtanolUsadaTCO = false;
+    let snapshotModalCombustivelTCO = null;
+    let modoEdicaoSomenteConsumoFlexTCO = false;
+    let prefixoEdicaoConsumoFlexTCO = "";
 
     function numeroOuNullCombustivelTCO(valor) {
       const n = Number(valor);
@@ -4512,6 +4509,9 @@
         if (campo.dataset.flexConfigurado === "1") campo.value = "";
         campo.readOnly = false;
         campo.classList.remove("plugve-consumo-configurado");
+        campo.classList.remove("plugve-pbev-clickable");
+        campo.onclick = null;
+        campo.removeAttribute("title");
         delete campo.dataset.flexConfigurado;
       }
       if (resumo) {
@@ -4543,6 +4543,7 @@
       campo.readOnly = true;
       campo.dataset.flexConfigurado = "1";
       campo.classList.add("plugve-consumo-configurado");
+      ativarEdicaoConsumoFlexTCO(prefixo);
       const dadosPbev = PBEV_DEBUG_TCO[prefixo];
       if (dadosPbev?.autopreencher === true && dadosPbev?.nivel_match === "alto") pbevAtivarComprovacaoTCO(prefixo, dadosPbev);
 
@@ -4583,6 +4584,89 @@
 
       limparTodosResumosConsumoFlexTCO();
       atualizarInputCombustivelTCO(precoBasePorModoCombustivelTCO(modo || "gasolina") || 0);
+    }
+
+    function capturarSnapshotModalCombustivelTCO(prefixo) {
+      const ids = [
+        "fuel_percent_etanol", "fuel_flex_configurado", "fuel_prefixo_configurado", "fuel_vehicle_key",
+        "fuel_preco_etanol", "fuel_preco_gasolina", "fuel_consumo_etanol", "fuel_consumo_gasolina",
+        "combustivel_input"
+      ];
+      const valores = {};
+      ids.forEach(id => { valores[id] = document.getElementById(id)?.value ?? ""; });
+      const campo = campoConsumoCombustaoTCO(prefixo);
+      return {
+        prefixo,
+        valores,
+        campo: campo ? {
+          value: campo.value,
+          readOnly: campo.readOnly,
+          className: campo.className,
+          dataset: { ...campo.dataset },
+          title: campo.getAttribute("title") || "",
+        } : null,
+      };
+    }
+
+    function restaurarDatasetElementoTCO(el, dataset) {
+      if (!el) return;
+      Object.keys(el.dataset || {}).forEach(chave => delete el.dataset[chave]);
+      Object.entries(dataset || {}).forEach(([chave, valor]) => { el.dataset[chave] = valor; });
+    }
+
+    function restaurarSnapshotModalCombustivelTCO(snapshot) {
+      if (!snapshot) return;
+      Object.entries(snapshot.valores || {}).forEach(([id, valor]) => setValorInputTCO(id, valor));
+      const campo = campoConsumoCombustaoTCO(snapshot.prefixo);
+      if (campo && snapshot.campo) {
+        campo.value = snapshot.campo.value;
+        campo.readOnly = !!snapshot.campo.readOnly;
+        campo.className = snapshot.campo.className;
+        restaurarDatasetElementoTCO(campo, snapshot.campo.dataset);
+        if (snapshot.campo.title) campo.setAttribute("title", snapshot.campo.title);
+        else campo.removeAttribute("title");
+      }
+      const slider = document.getElementById("fuel_mix_slider");
+      if (slider) slider.value = String(snapshot.valores?.fuel_percent_etanol || "0");
+      renderizarCardCombustivelTCO();
+    }
+
+    function finalizarEstadoModalCombustivelTCO() {
+      snapshotModalCombustivelTCO = null;
+      modoEdicaoSomenteConsumoFlexTCO = false;
+      prefixoEdicaoConsumoFlexTCO = "";
+      const modal = document.getElementById("modal_combustivel_tco");
+      modal?.classList.remove("plugve-consumo-only");
+      const precoEta = document.getElementById("fuel_modal_preco_etanol");
+      const precoGas = document.getElementById("fuel_modal_preco_gasolina");
+      const slider = document.getElementById("fuel_mix_slider");
+      if (precoEta) precoEta.readOnly = false;
+      if (precoGas) precoGas.readOnly = false;
+      if (slider) slider.disabled = false;
+    }
+
+    function configurarModoEdicaoConsumoFlexTCO(ativo) {
+      modoEdicaoSomenteConsumoFlexTCO = !!ativo;
+      const modal = document.getElementById("modal_combustivel_tco");
+      modal?.classList.toggle("plugve-consumo-only", modoEdicaoSomenteConsumoFlexTCO);
+      const precoEta = document.getElementById("fuel_modal_preco_etanol");
+      const precoGas = document.getElementById("fuel_modal_preco_gasolina");
+      const slider = document.getElementById("fuel_mix_slider");
+      if (precoEta) precoEta.readOnly = modoEdicaoSomenteConsumoFlexTCO;
+      if (precoGas) precoGas.readOnly = modoEdicaoSomenteConsumoFlexTCO;
+      if (slider) slider.disabled = modoEdicaoSomenteConsumoFlexTCO;
+      atualizarEstadoModalCombustivelTCO();
+    }
+
+    function ativarEdicaoConsumoFlexTCO(prefixo) {
+      const campo = campoConsumoCombustaoTCO(prefixo);
+      if (!campo) return;
+      campo.classList.add("plugve-pbev-clickable");
+      campo.setAttribute("title", "Clique para editar os consumos de etanol e gasolina");
+      campo.onclick = function (ev) {
+        ev.preventDefault();
+        abrirModalCombustivelTCO({ somenteConsumo: true, prefixo });
+      };
     }
 
     function prepararModalCombustivelTCO() {
@@ -4656,16 +4740,30 @@
 
       const usaEta = etanolPct > 0;
       const usaGas = gasolinaPct > 0;
-      [precoEta, consEta].forEach(el => { if (el) el.disabled = !usaEta; });
-      [precoGas, consGas].forEach(el => { if (el) el.disabled = !usaGas; });
-      boxEta?.classList.toggle("plugve-disabled", !usaEta);
-      boxGas?.classList.toggle("plugve-disabled", !usaGas);
-
-      const okEta = !usaEta || (numeroBRParaFloat(precoEta?.value || 0) > 0 && numeroBRParaFloat(consEta?.value || 0) > 0);
-      const okGas = !usaGas || (numeroBRParaFloat(precoGas?.value || 0) > 0 && numeroBRParaFloat(consGas?.value || 0) > 0);
-      const valido = okEta && okGas;
+      let valido = false;
+      if (modoEdicaoSomenteConsumoFlexTCO) {
+        if (precoEta) { precoEta.disabled = false; precoEta.readOnly = true; }
+        if (precoGas) { precoGas.disabled = false; precoGas.readOnly = true; }
+        if (consEta) consEta.disabled = false;
+        if (consGas) consGas.disabled = false;
+        if (slider) slider.disabled = true;
+        boxEta?.classList.remove("plugve-disabled");
+        boxGas?.classList.remove("plugve-disabled");
+        valido = numeroBRParaFloat(consEta?.value || 0) > 0 && numeroBRParaFloat(consGas?.value || 0) > 0;
+      } else {
+        if (precoEta) precoEta.readOnly = false;
+        if (precoGas) precoGas.readOnly = false;
+        if (slider) slider.disabled = false;
+        [precoEta, consEta].forEach(el => { if (el) el.disabled = !usaEta; });
+        [precoGas, consGas].forEach(el => { if (el) el.disabled = !usaGas; });
+        boxEta?.classList.toggle("plugve-disabled", !usaEta);
+        boxGas?.classList.toggle("plugve-disabled", !usaGas);
+        const okEta = !usaEta || (numeroBRParaFloat(precoEta?.value || 0) > 0 && numeroBRParaFloat(consEta?.value || 0) > 0);
+        const okGas = !usaGas || (numeroBRParaFloat(precoGas?.value || 0) > 0 && numeroBRParaFloat(consGas?.value || 0) > 0);
+        valido = okEta && okGas;
+      }
       if (btnSalvar) {
-        btnSalvar.textContent = document.getElementById("fuel_flex_configurado")?.value === "1" ? "Salvar" : "Próximo";
+        btnSalvar.textContent = modoEdicaoSomenteConsumoFlexTCO || document.getElementById("fuel_flex_configurado")?.value === "1" ? "Salvar" : "Próximo";
         btnSalvar.disabled = !valido;
         btnSalvar.classList.toggle("plugve-fuel-save-disabled", !valido);
       }
@@ -4775,20 +4873,26 @@
       }
     }
 
-    function abrirModalCombustivelTCO() {
-      if (modoCombustivelTCO !== "flex") return;
+    function abrirModalCombustivelTCO(opcoes = {}) {
+      const prefixo = opcoes.prefixo || prefixoCombustaoPreferencialTCO();
+      if (modoCombustivelSelecionadoTCO(prefixo) !== "flex" && modoCombustivelTCO !== "flex") return;
+      modoCombustivelTCO = "flex";
       const modal = document.getElementById("modal_combustivel_tco");
       if (!modal) return;
+      snapshotModalCombustivelTCO = capturarSnapshotModalCombustivelTCO(prefixo);
+      prefixoEdicaoConsumoFlexTCO = prefixo;
+      const somenteConsumo = opcoes.somenteConsumo === true;
       const configurado = document.getElementById("fuel_flex_configurado")?.value === "1";
-      // Antes do primeiro Próximo, a configuração fica inline. Depois disso, o card compacto abre como modal.
-      if (modal.classList.contains("plugve-inline-profile") && !configurado) {
+      prepararModalCombustivelTCO();
+      configurarModoEdicaoConsumoFlexTCO(somenteConsumo);
+      renderizarCardCombustivelTCO();
+      // Antes do primeiro Próximo, a configuração fica inline. Edição direta do consumo sempre abre como modal.
+      if (modal.classList.contains("plugve-inline-profile") && !configurado && !somenteConsumo) {
         modal.classList.remove("plugve-edit-modal");
         modal.classList.remove("hidden");
         modal.setAttribute("aria-hidden", "false");
         return;
       }
-      prepararModalCombustivelTCO();
-      renderizarCardCombustivelTCO();
       if (modal.classList.contains("plugve-inline-profile")) modal.classList.add("plugve-edit-modal");
       modal.classList.remove("hidden");
       modal.setAttribute("aria-hidden", "false");
@@ -4810,18 +4914,26 @@
     }
 
     function cancelarModalCombustivelTCO() {
-      const prefixo = prefixoCombustaoPreferencialTCO();
-      const chave = chaveFlexAtualTCO(prefixo);
-      setValorInputTCO("fuel_percent_etanol", "0");
-      setValorInputTCO("fuel_flex_configurado", "1");
-      setValorInputTCO("fuel_prefixo_configurado", prefixo);
-      setValorInputTCO("fuel_vehicle_key", chave);
-      copiarModalParaHiddenCombustivelTCO();
-      atualizarInputCombustivelTCO(precoBasePorModoCombustivelTCO("gasolina") || precoHiddenCombustivelTCO("gasolina") || 0);
-      limparResumoConsumoFlexTCO(prefixo);
+      const snapshot = snapshotModalCombustivelTCO;
+      const prefixo = snapshot?.prefixo || prefixoEdicaoConsumoFlexTCO || prefixoCombustaoPreferencialTCO();
+      const eraConfigurado = snapshot?.valores?.fuel_flex_configurado === "1";
+      restaurarSnapshotModalCombustivelTCO(snapshot);
+
+      // No primeiro fluxo, Pular conclui a etapa sem apagar os consumos PBEV já existentes.
+      if (snapshot && !eraConfigurado && !modoEdicaoSomenteConsumoFlexTCO) {
+        setValorInputTCO("fuel_flex_configurado", "1");
+        setValorInputTCO("fuel_prefixo_configurado", prefixo);
+        setValorInputTCO("fuel_vehicle_key", chaveFlexAtualTCO(prefixo));
+        const temConsumo = valorNumeroInputTCO("fuel_consumo_etanol") > 0 || valorNumeroInputTCO("fuel_consumo_gasolina") > 0;
+        if (temConsumo) aplicarResumoConsumoFlexTCO(prefixo);
+      } else if (campoConsumoCombustaoTCO(prefixo)?.dataset.flexConfigurado === "1") {
+        ativarEdicaoConsumoFlexTCO(prefixo);
+      }
+
       renderizarCardCombustivelTCO();
       capturarEstadoFormularioTCO();
       fecharModalCombustivelTCO();
+      finalizarEstadoModalCombustivelTCO();
       if (typeof atualizarPerfisInlinePlugVE === "function") atualizarPerfisInlinePlugVE();
       if (typeof window.atualizarDetalhesProgressivosPlugVE === "function") window.atualizarDetalhesProgressivosPlugVE();
     }
@@ -4831,20 +4943,32 @@
       const btnSalvar = document.getElementById("btn_salvar_combustivel_tco");
       if (btnSalvar?.disabled) return;
 
-      const prefixo = prefixoCombustaoPreferencialTCO();
+      const prefixo = prefixoEdicaoConsumoFlexTCO || prefixoCombustaoPreferencialTCO();
       const chave = chaveFlexAtualTCO(prefixo);
       const slider = document.getElementById("fuel_mix_slider");
       const etanolPct = Math.max(0, Math.min(100, Number(slider?.value || 0)));
-      copiarModalParaHiddenCombustivelTCO();
-      setValorInputTCO("fuel_percent_etanol", String(etanolPct));
-      setValorInputTCO("fuel_flex_configurado", "1");
-      setValorInputTCO("fuel_prefixo_configurado", prefixo);
-      setValorInputTCO("fuel_vehicle_key", chave);
-      atualizarInputCombustivelTCO(precoPonderadoFlexTCO(etanolPct));
-      aplicarResumoConsumoFlexTCO(prefixo);
+
+      if (modoEdicaoSomenteConsumoFlexTCO) {
+        setValorInputTCO("fuel_consumo_etanol", document.getElementById("fuel_modal_consumo_etanol")?.value || "");
+        setValorInputTCO("fuel_consumo_gasolina", document.getElementById("fuel_modal_consumo_gasolina")?.value || "");
+        setValorInputTCO("fuel_flex_configurado", "1");
+        setValorInputTCO("fuel_prefixo_configurado", prefixo);
+        setValorInputTCO("fuel_vehicle_key", chave);
+        aplicarResumoConsumoFlexTCO(prefixo);
+        pbevMarcarConsumoEditadoUsuarioTCO(prefixo);
+      } else {
+        copiarModalParaHiddenCombustivelTCO();
+        setValorInputTCO("fuel_percent_etanol", String(etanolPct));
+        setValorInputTCO("fuel_flex_configurado", "1");
+        setValorInputTCO("fuel_prefixo_configurado", prefixo);
+        setValorInputTCO("fuel_vehicle_key", chave);
+        atualizarInputCombustivelTCO(precoPonderadoFlexTCO(etanolPct));
+        aplicarResumoConsumoFlexTCO(prefixo);
+      }
       renderizarCardCombustivelTCO();
       capturarEstadoFormularioTCO();
       fecharModalCombustivelTCO();
+      finalizarEstadoModalCombustivelTCO();
       if (typeof atualizarPerfisInlinePlugVE === "function") atualizarPerfisInlinePlugVE();
       if (typeof window.atualizarDetalhesProgressivosPlugVE === "function") window.atualizarDetalhesProgressivosPlugVE();
     }
@@ -5386,7 +5510,15 @@
       if (flexInline && !flexEditando) {
         flexInline.classList.toggle("hidden", !flex || flexConfigurado);
       }
-      if (flex && !flexConfigurado && !flexEditando && typeof prepararModalCombustivelTCO === "function") prepararModalCombustivelTCO();
+      if (flex && !flexConfigurado && !flexEditando && typeof prepararModalCombustivelTCO === "function") {
+        if (!snapshotModalCombustivelTCO) {
+          snapshotModalCombustivelTCO = capturarSnapshotModalCombustivelTCO(prefixoComb);
+          prefixoEdicaoConsumoFlexTCO = prefixoComb;
+          modoEdicaoSomenteConsumoFlexTCO = false;
+        }
+        prepararModalCombustivelTCO();
+        configurarModoEdicaoConsumoFlexTCO(false);
+      }
       if (combustaoSelecionada && typeof renderizarCardCombustivelTCO === "function") renderizarCardCombustivelTCO();
 
       atualizarFluxoSequencialVeiculosPlugVE();
@@ -6589,7 +6721,7 @@
             abrirModalCombustivelTCO();
           }
         });
-        document.getElementById("btn_fechar_combustivel_tco")?.addEventListener("click", fecharModalCombustivelTCO);
+        document.getElementById("btn_fechar_combustivel_tco")?.addEventListener("click", cancelarModalCombustivelTCO);
         document.getElementById("btn_cancelar_combustivel_tco")?.addEventListener("click", cancelarModalCombustivelTCO);
         document.getElementById("btn_cancelar_combustivel_tco")?.addEventListener("click", function () {
           setTimeout(atualizarDetalhesProgressivosPlugVE, 80);
@@ -6605,7 +6737,7 @@
           setTimeout(atualizarDetalhesProgressivosPlugVE, 80);
         });
         document.getElementById("modal_combustivel_tco")?.addEventListener("click", function (ev) {
-          if (ev.target === this) fecharModalCombustivelTCO();
+          if (ev.target === this) cancelarModalCombustivelTCO();
         });
 
         ["atual", "ve", "icev"].forEach(prefixo => {
@@ -6650,7 +6782,7 @@
     })();
   </script>
 
-  <script src="{{ url_for('static', filename='js/fipe_combobox.js') }}?v=20260705_v35_marcadores_unificados"></script>
+  <script src="{{ url_for('static', filename='js/fipe_combobox.js') }}?v=20260724_v42_08"></script>
 
 </body>
 </html>
