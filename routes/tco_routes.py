@@ -66,8 +66,16 @@ def conv(num):
 def seguro_padrao(preco: float) -> float:
     return max(0.0, float(preco or 0.0) * SEGURO_PADRAO_PERCENTUAL)
 
+def _flag_formulario_ativo(dados_form, campo: str) -> bool:
+    return str(dados_form.get(campo, "") or "").strip().lower() in {"1", "true", "sim", "s", "yes", "y"}
+
+
 def seguro_formulario_ou_padrao(dados_form, campo: str, preco: float) -> float:
-    valor = conv(dados_form.get(campo, 0))
+    valor_bruto = dados_form.get(campo, "")
+    if _flag_formulario_ativo(dados_form, f"{campo}_manual"):
+        # Campo apagado manualmente significa opção consciente por não considerar seguro.
+        return max(0.0, conv(valor_bruto))
+    valor = conv(valor_bruto)
     return valor if valor > 0 else seguro_padrao(preco)
 
 # 2.2) Normalizar texto (remove acento, upper, trim)
