@@ -106,6 +106,36 @@ class PbevMatchingRegressionTests(unittest.TestCase):
         self.assertTrue(result["diagnostico"]["dominante"])
         self.assertFalse(result["diagnostico"]["ambiguidade_proxima"])
 
+    def test_plus_after_trim_is_not_treated_as_family_descriptor(self):
+        tokens_all = self.service._tokens("DUSTER INTENSE PLUS 1.6 16V FLEX MEC")
+        trim_tokens = self.service._trim_tokens_contextual("DUSTER INTENSE PLUS 1.6 16V FLEX MEC")
+        self.assertEqual(self.service._family_descriptor_tokens_contextual(tokens_all, trim_tokens), set())
+
+    def test_duster_intense_plus_zero_km_prefers_exact_year_and_equivalent_consumption(self):
+        consulta = {
+            "prefixo": "icev",
+            "marca": "Renault",
+            "modelo": "DUSTER Intense Plus 1.6 16V Flex Mec.",
+            "texto_modelo": "Renault DUSTER Intense Plus 1.6 16V Flex Mec. Zero km Flex",
+            "ano": 2026,
+            "texto_ano": "Zero km Flex",
+            "ano_codigo": "32000-5",
+            "combustivel": "Flex",
+            "tipo_veiculo": "combustao",
+            "zero_km": True,
+        }
+        result = self.service.sugerir_consumo(consulta)
+        self.assertEqual(result["nivel_match"], "alto")
+        self.assertTrue(result["autopreencher"])
+        self.assertEqual(result["ano_tabela_pbev"], 2026)
+        self.assertEqual(result["candidato"]["modelo"], "DUSTER")
+        self.assertEqual(result["candidato"]["versao"], "DUSTER INTP MT")
+        self.assertEqual(result["sugestoes_consumo"]["gasolina_cidade_km_l"], 11.2)
+        self.assertEqual(result["sugestoes_consumo"]["etanol_cidade_km_l"], 7.6)
+        self.assertTrue(result["diagnostico"]["dominante"])
+        self.assertFalse(result["diagnostico"]["ambiguidade_proxima"])
+        self.assertTrue(result["diagnostico"]["ambiguidade_resolvida_por_consumo"])
+
 
 if __name__ == "__main__":
     unittest.main()

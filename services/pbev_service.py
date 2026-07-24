@@ -48,6 +48,15 @@ SOFT_BODY_TOKENS = {"HATCH", "HATCHBACK", "SEDAN", "SEDA", "SED", "SPORTBACK"}
 # Em algumas marcas, estes termos são parte da família comercial, não mero acabamento.
 # Evita confundir, por exemplo, BYD Dolphin Mini com Dolphin, Song Plus com Song Pro.
 FAMILY_DESCRIPTOR_TOKENS = {"MINI", "PLUS", "PRO"}
+
+TOKEN_ALIAS_MAP: dict[str, set[str]] = {
+    "INT": {"INTENSE"},
+    "INTP": {"INTENSE", "PLUS"},
+    "MT": {"MANUAL", "MEC"},
+    "MEC": {"MANUAL"},
+    "AT": {"AUTO", "AUTOMATICO"},
+    "AUT": {"AUTO", "AUTOMATICO"},
+}
 VERSION_STOP_TOKENS = FUEL_TOKENS | TRANS_TOKENS | ENGINE_TOKENS | GENERIC_TOKENS | SOFT_BODY_TOKENS | {
     "4P", "5P", "2P", "3P", "1P", "6P", "7L", "L", "V", "VALVE", "VALVES",
 }
@@ -146,6 +155,9 @@ class PbevService:
                     extras.add(f"{prefixo}{numero}")
                 if sufixo:
                     extras.add(sufixo)
+
+            # Alias comerciais/técnicos recorrentes na PBEV.
+            extras |= TOKEN_ALIAS_MAP.get(token, set())
 
             # Ferrari: a FIPE pode vir com erro de grafia; PBEV usa 12CILINDRI.
             if "CILINRDRI" in token:
@@ -441,6 +453,24 @@ class PbevService:
         return saida
 
     @classmethod
+    def _trim_tokens_contextual(cls, texto: Any) -> set[str]:
+        return {token for token in cls._tokens(texto) if token in TRIM_TOKENS_IMPORTANTES}
+
+    @classmethod
+    def _family_descriptor_tokens_contextual(cls, tokens_all: set[str], trim_tokens: set[str]) -> set[str]:
+        descriptors = set(tokens_all or set()) & FAMILY_DESCRIPTOR_TOKENS
+        if not descriptors:
+            return set()
+        outros_trims = set(trim_tokens or set()) - descriptors
+        saida = set(descriptors)
+        for token in list(saida):
+            # Quando PLUS/PRO/MINI aparece ao lado de outro acabamento forte
+            # (ex.: Intense Plus), ele deve atuar como versão, não como família.
+            if token in trim_tokens and outros_trims:
+                saida.discard(token)
+        return saida
+
+    @classmethod
     def _modelo_core_tokens(cls, texto_modelo: Any) -> set[str]:
         """Tokens de família/modelo para matching.
 
@@ -579,7 +609,9 @@ class PbevService:
         query_modelo_norm = self.normalizar_texto(" ".join(str(consulta.get(k) or "") for k in ("modelo", "texto_modelo")))
         query_all_norm = self.normalizar_texto(self._texto_consulta(consulta))
         query_model_tokens = self._tokens(query_modelo_norm)
+        query_model_core = self._modelo_core_tokens(query_modelo_norm)
         query_all_tokens = self._tokens(query_all_norm)
+        query_trim_tokens = self._trim_tokens_contextual(query_all_norm)
 
         cand_model_norm = self.normalizar_texto(registro.get("modelo_normalizado") or registro.get("modelo"))
         cand_version_norm = self.normalizar_texto(registro.get("versao_normalizada") or registro.get("versao_corrigida") or registro.get("versao"))
@@ -589,6 +621,7 @@ class PbevService:
 
         cand_model_tokens = self._tokens(cand_model_norm)
         cand_model_core = self._modelo_core_tokens(cand_model_norm)
+        cand_trim_tokens = self._trim_tokens_contextual(f"{cand_model_norm} {cand_version_norm}")
         modelo_overlap = len(cand_model_core & query_all_tokens) / max(1, len(cand_model_core))
         modelo_score = 0.0
         if modelo_overlap >= 1.0:
@@ -661,8 +694,8 @@ class PbevService:
             penalidades.append("descritor forte da FIPE ausente no PBEV: " + ", ".join(sorted(hard_query - set(cand_all_norm.split()))))
 
         cand_all_tokens = set(cand_all_norm.split())
-        family_query = query_all_tokens & FAMILY_DESCRIPTOR_TOKENS
-        family_cand = cand_all_tokens & FAMILY_DESCRIPTOR_TOKENS
+        family_query = self._family_descriptor_tokens_contextual(query_all_tokens, query_trim_tokens)
+        family_cand = self._family_descriptor_tokens_contextual(cand_all_tokens, cand_trim_tokens)
         missing_family = family_query - family_cand
         extra_family = family_cand - query_all_tokens
         if missing_family:
@@ -700,22 +733,23 @@ class PbevService:
         (motivos if fuel_score >= 0 else penalidades).append(fuel_motivo)
 
         cand_version_tokens = self._version_tokens(cand_version_norm, cand_model_core)
-        query_version_tokens = self._version_tokens(query_all_norm, cand_model_core)
-        if cand_version_tokens:
+        query_version_tokens = self._version_tokens(query_all_norm, query_model_core)
+        if cand_trim_tokens:
+            inter_trim = cand_trim_tokens & query_trim_tokens
+            ratio_trim_cand = len(inter_trim) / max(1, len(cand_trim_tokens))
+            ratio_trim_query = len(inter_trim) / max(1, len(query_trim_tokens)) if query_trim_tokens else ratio_trim_cand
+            score += (9 * ratio_trim_cand) + (7 * ratio_trim_query)
+            if ratio_trim_cand >= 0.75 and ratio_trim_query >= 0.75:
+                motivos.append("versão/acabamento compatível")
+            elif inter_trim and (ratio_trim_cand >= 0.5 or ratio_trim_query >= 0.5):
+                motivos.append("versão/acabamento parcialmente compatível")
+            elif query_trim_tokens and cand_trim_tokens.isdisjoint(query_trim_tokens):
+                score -= 12
+                penalidades.append("acabamento divergente")
+        elif cand_version_tokens:
             inter = cand_version_tokens & query_version_tokens
-            trim_cand = cand_version_tokens & TRIM_TOKENS_IMPORTANTES
-            trim_query = query_version_tokens & TRIM_TOKENS_IMPORTANTES
-            if trim_cand:
-                ratio_trim = len(trim_cand & trim_query) / max(1, len(trim_cand))
-                score += 15 * ratio_trim
-                if ratio_trim >= 0.75:
-                    motivos.append("versão/acabamento compatível")
-                elif trim_query and trim_cand.isdisjoint(trim_query):
-                    score -= 12
-                    penalidades.append("acabamento divergente")
-            else:
-                ratio_version = len(inter) / max(1, len(cand_version_tokens))
-                score += 8 * ratio_version
+            ratio_version = len(inter) / max(1, len(cand_version_tokens))
+            score += 8 * ratio_version
         else:
             score += 2
 
@@ -1462,14 +1496,16 @@ class PbevService:
                 candidatos_bloqueados += 1
             candidatos.append(item)
 
-        def _ordem_candidato(c: dict[str, Any]) -> tuple[float, int, int, int, float, int]:
+        def _ordem_candidato(c: dict[str, Any]) -> tuple[int, float, int, int, int, int, float, int]:
             avaliacao = c.get("avaliacao") or {}
             ano_cand = int(avaliacao.get("ano_cand") or self._ano_tabela_registro(c.get("registro") or {}))
+            zero_km_ano_exato = 1 if avaliacao.get("zero_km_contexto") and avaliacao.get("ano_exato") else 0
             # Para FIPE zero km (32000-x), o empate entre anos PBEV não é ambiguidade
-            # metodológica: é a mesma série histórica. O escritório central PBEV deve
-            # priorizar o ano PBEV mais recente tecnicamente compatível.
+            # metodológica: é a mesma série histórica. Quando existe ano exato compatível,
+            # ele deve prevalecer sobre tabela anterior com nome mais "bonito".
             ano_zero_km_preferido = ano_cand if avaliacao.get("zero_km_contexto") and avaliacao.get("ano_compativel_fipe_pbev") else 0
             return (
+                zero_km_ano_exato,
                 float(c.get("score") or 0),
                 1 if avaliacao.get("ano_exato") else 0,
                 ano_zero_km_preferido,
