@@ -45,6 +45,8 @@
     .plugve-usage-step{border:1px solid #bbf7d0;background:linear-gradient(135deg,#f0fdf4 0%,#ffffff 78%)}
 .plugve-white-panel{background:#fff;border-color:#e5e7eb;box-shadow:0 10px 24px rgba(15,23,42,.05)}
 .plugve-stage-panel{background:#fff;border:1px solid #e5e7eb;border-radius:.75rem;box-shadow:0 10px 24px rgba(15,23,42,.05)}
+.plugve-align-pair{box-sizing:border-box}
+@media(max-width:1023px){.plugve-align-pair{min-height:0!important}}
 .plugve-usage-step{background:#fff;border-color:#e5e7eb;box-shadow:0 10px 24px rgba(15,23,42,.05)}
 .plugve-fipe-hero{position:relative;overflow:visible;border:1px solid #dce5e0;border-radius:1rem;padding:1.15rem;background:#f8faf9;box-shadow:0 8px 24px rgba(15,23,42,.04);min-height:320px;display:flex;align-items:flex-start;isolation:isolate}
 .plugve-fipe-hero::before{content:'';position:absolute;inset:0;background:url('{{ url_for('static', filename='img/simular-stage-vehicle.webp') }}') center bottom/cover no-repeat;opacity:.78;filter:grayscale(.12) saturate(.92) contrast(1.05) brightness(.98);transform:scale(1.01);border-radius:inherit;pointer-events:none;z-index:0}
@@ -1146,7 +1148,7 @@
               </div>
             </div>
 
-            <div id="perfil_uso_ve_slot" class="plugve-uso-slot space-y-3"></div>
+            <div id="perfil_uso_ve_slot" class="plugve-uso-slot space-y-3 plugve-align-pair" data-plugve-align="perfil"></div>
 
             <div id="dados_ve_box" class="space-y-2 plugve-progress-hidden mt-5 border rounded-lg p-4 bg-white shadow-sm">
               <input type="hidden" name="modelo_ve" id="modelo_ve">
@@ -1163,7 +1165,7 @@
               <input type="hidden" name="pbev_ve_criterio_consumo" id="pbev_ve_criterio_consumo">
               <input type="hidden" name="pbev_ve_editado_usuario" id="pbev_ve_editado_usuario" value="0">
 
-              <div>
+              <div class="plugve-align-pair" data-plugve-align="preco">
                 <label class="block text-sm font-medium">Preço do VE</label>
                 <div class="plugve-price-finance-field">
                   <div class="plugve-price-row">
@@ -1186,19 +1188,19 @@
                 </div>
               </div>
 
-              <div class="plugve-pbev-field-wrap">
+              <div class="plugve-pbev-field-wrap plugve-align-pair" data-plugve-align="consumo">
                 <label class="block text-sm font-medium">Consumo VE (kWh/km)</label>
                 <input type="text" name="consumo_ve" id="consumo_ve" class="mt-1 p-2 border rounded w-full plugve-pbev-field-input" placeholder="ex: 0,15">
                 <p id="consumo_ve_resumo_phev" class="plugve-phev-resumo hidden"></p>
                 <p id="pbev_status_ve" class="plugve-pbev-status hidden"></p>
               </div>
 
-              <div>
+              <div class="plugve-align-pair" data-plugve-align="manutencao">
                 <label class="block text-sm font-medium">Manutenção anual VE</label>
                 <input type="text" name="manut_ve" id="manut_ve" class="mt-1 p-2 border rounded w-full" placeholder="ex: 800">
               </div>
 
-              <div>
+              <div class="plugve-align-pair" data-plugve-align="ipva">
                 <label class="block text-sm font-medium">IPVA anual VE</label>
                 <div class="plugve-inline-action-field">
                   <input type="text" name="ipva_ve" id="ipva_ve_input" class="plugve-inline-action-input" placeholder="Calculado automaticamente">
@@ -1209,14 +1211,14 @@
                 </div>
               </div>
 
-              <div>
+              <div class="plugve-align-pair" data-plugve-align="seguro">
                 <label class="block text-sm font-medium">Seguro anual VE</label>
                 <input type="text" name="seguro_ve" id="seguro_ve" class="mt-1 p-2 border rounded w-full" placeholder="ex: 4000">
                 <input type="hidden" name="seguro_ve_manual" id="seguro_ve_manual" value="0">
                 <p id="seguro_status_ve" class="hidden"></p>
               </div>
 
-              <div>
+              <div class="plugve-align-pair" data-plugve-align="depreciacao">
                 <label class="block text-sm font-medium">Depreciação VE (%)</label>
                 <div class="mt-1 flex gap-2 items-center">
                   <input type="text" name="depreciacao_ve" id="depreciacao_ve" class="p-2 border rounded w-full" placeholder="ex: 8">
@@ -1256,7 +1258,7 @@
               </div>
             </div>
 
-            <div id="perfil_uso_icev_slot" class="plugve-uso-slot space-y-3"></div>
+            <div id="perfil_uso_icev_slot" class="plugve-uso-slot space-y-3 plugve-align-pair" data-plugve-align="perfil"></div>
 
             <div id="dados_icev_box" class="space-y-2 plugve-progress-hidden mt-5 border rounded-lg p-4 bg-white shadow-sm">
               <input type="hidden" name="modelo_icev" id="modelo_icev">
@@ -1272,7 +1274,7 @@
               <input type="hidden" name="pbev_icev_criterio_consumo" id="pbev_icev_criterio_consumo">
               <input type="hidden" name="pbev_icev_editado_usuario" id="pbev_icev_editado_usuario" value="0">
 
-              <div>
+              <div class="plugve-align-pair" data-plugve-align="preco">
                 <label class="block text-sm font-medium">Preço do ICEV</label>
                 <div class="plugve-price-finance-field">
                   <div class="plugve-price-row">
@@ -1295,31 +1297,31 @@
                 </div>
               </div>
 
-              <div class="plugve-pbev-field-wrap">
+              <div class="plugve-pbev-field-wrap plugve-align-pair" data-plugve-align="consumo">
                 <label class="block text-sm font-medium">Consumo ICEV (km/L)</label>
                 <input type="text" name="consumo_icev" id="consumo_icev" class="mt-1 p-2 border rounded w-full plugve-pbev-field-input" placeholder="ex: 13,5">
                 <p id="consumo_icev_resumo_flex" class="plugve-consumo-resumo hidden"></p>
                 <p id="pbev_status_icev" class="plugve-pbev-status hidden"></p>
               </div>
 
-              <div>
+              <div class="plugve-align-pair" data-plugve-align="manutencao">
                 <label class="block text-sm font-medium">Manutenção anual ICEV</label>
                 <input type="text" name="manut_icev" id="manut_icev" class="mt-1 p-2 border rounded w-full" placeholder="ex: 1200">
               </div>
 
-              <div>
+              <div class="plugve-align-pair" data-plugve-align="ipva">
                 <label class="block text-sm font-medium">IPVA anual ICEV</label>
                 <input type="text" name="ipva_icev" id="ipva_icev_input" class="mt-1 p-2 border rounded w-full" placeholder="Calculado automaticamente">
               </div>
 
-              <div>
+              <div class="plugve-align-pair" data-plugve-align="seguro">
                 <label class="block text-sm font-medium">Seguro anual ICEV</label>
                 <input type="text" name="seguro_icev" id="seguro_icev" class="mt-1 p-2 border rounded w-full" placeholder="ex: 3000">
                 <input type="hidden" name="seguro_icev_manual" id="seguro_icev_manual" value="0">
                 <p id="seguro_status_icev" class="hidden"></p>
               </div>
 
-              <div>
+              <div class="plugve-align-pair" data-plugve-align="depreciacao">
                 <label class="block text-sm font-medium">Depreciação ICEV (%)</label>
                 <div class="mt-1 flex gap-2 items-center">
                   <input type="text" name="depreciacao_icev" id="depreciacao_icev" class="p-2 border rounded w-full" placeholder="ex: 10">
@@ -6323,6 +6325,51 @@
         wireResumoTopoEventosPlugVE();
       }
 
+      const plugveAlignKeys = ["perfil", "preco", "consumo", "manutencao", "ipva", "seguro", "depreciacao"];
+      let plugveAlignFrame = 0;
+
+      function resetarAlinhamentoVeiculosPlugVE() {
+        document.querySelectorAll("[data-plugve-align]").forEach(el => { el.style.minHeight = ""; });
+      }
+
+      function elementoVisivelPlugVE(el) {
+        if (!el) return false;
+        const estilo = window.getComputedStyle(el);
+        return estilo.display !== "none" && estilo.visibility !== "hidden" && el.getClientRects().length > 0;
+      }
+
+      function alinharParesVeiculosPlugVE() {
+        cancelAnimationFrame(plugveAlignFrame);
+        plugveAlignFrame = requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            const colunaVe = document.getElementById("coluna_ve");
+            const colunaIcev = document.getElementById("coluna_icev");
+            resetarAlinhamentoVeiculosPlugVE();
+            if (window.innerWidth < 1024 || !elementoVisivelPlugVE(colunaVe) || !elementoVisivelPlugVE(colunaIcev)) return;
+
+            plugveAlignKeys.forEach(chave => {
+              const ve = colunaVe.querySelector(`[data-plugve-align="${chave}"]`);
+              const icev = colunaIcev.querySelector(`[data-plugve-align="${chave}"]`);
+              if (!elementoVisivelPlugVE(ve) || !elementoVisivelPlugVE(icev)) return;
+              const altura = Math.ceil(Math.max(ve.getBoundingClientRect().height, icev.getBoundingClientRect().height));
+              if (altura > 0) {
+                ve.style.minHeight = `${altura}px`;
+                icev.style.minHeight = `${altura}px`;
+              }
+            });
+          });
+        });
+      }
+
+      function agendarAlinhamentoVeiculosPlugVE() {
+        alinharParesVeiculosPlugVE();
+        setTimeout(alinharParesVeiculosPlugVE, 90);
+        setTimeout(alinharParesVeiculosPlugVE, 260);
+      }
+
+      window.alinharParesVeiculosPlugVE = alinharParesVeiculosPlugVE;
+      window.agendarAlinhamentoVeiculosPlugVE = agendarAlinhamentoVeiculosPlugVE;
+
       function atualizarRequiredPlugVE() {
         const ids = [
           "preco_atual", "consumo_atual", "manut_atual", "seguro_atual", "depreciacao_atual",
@@ -6359,6 +6406,7 @@
         atualizarRequiredPlugVE();
         atualizarResumoTopoPlugVE();
         if (typeof atualizarPerfisInlinePlugVE === "function") atualizarPerfisInlinePlugVE();
+        agendarAlinhamentoVeiculosPlugVE();
       }
 
       window.atualizarDetalhesProgressivosPlugVE = atualizarDetalhesProgressivosPlugVE;
@@ -6657,6 +6705,13 @@
 
       document.addEventListener("DOMContentLoaded", function () {
         aplicarFormatacaoBlurPlugVE();
+        const gradeVeiculosPlugVE = document.getElementById("grid_veiculos_tco");
+        if (gradeVeiculosPlugVE) {
+          const observerAlinhamentoPlugVE = new MutationObserver(() => agendarAlinhamentoVeiculosPlugVE());
+          observerAlinhamentoPlugVE.observe(gradeVeiculosPlugVE, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ["class", "hidden"] });
+        }
+        window.addEventListener("resize", agendarAlinhamentoVeiculosPlugVE, { passive: true });
+        window.addEventListener("load", agendarAlinhamentoVeiculosPlugVE, { once: true });
         sincronizarCamposUsoPrevistoPlugVE();
         document.getElementById("btn_proximo_uso_previsto")?.addEventListener("click", confirmarUsoPrevistoPlugVE);
         document.getElementById("btn_simular")?.addEventListener("click", liberarPassoKmParaEnvioPlugVE, { capture: true });
