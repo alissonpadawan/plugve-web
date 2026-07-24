@@ -47,6 +47,23 @@ class V42UiRegressionTests(unittest.TestCase):
         self.assertIn('if _flag_formulario_ativo(dados_form, f"{campo}_manual"):', route)
         self.assertIn('return max(0.0, conv(valor_bruto))', route)
 
+    def test_hybrid_flex_requires_profile_before_unlocking_tco(self):
+        html = (self.root / "templates" / "simular.html").read_text(encoding="utf-8")
+        self.assertIn('id="fuel_flex_perfil_obrigatorio" value="0"', html)
+        self.assertIn('String(sugestao.tipo || "") === "hibrido_flex"', html)
+        self.assertIn('function perfilFlexObrigatorioTCO(prefixoPreferido)', html)
+        self.assertIn('function configurarObrigatoriedadePerfilFlexTCO(prefixoPreferido, somenteConsumo = false)', html)
+        self.assertIn('return obrigatorio && chaveSalva === chaveFlexAtualTCO(prefixo);', html)
+        self.assertIn('if (modo === "flex") return document.getElementById("fuel_flex_configurado")?.value === "1";', html)
+        self.assertIn('btn.classList.toggle("hidden", obrigatorio);', html)
+        self.assertIn('const perfilObrigatorio = perfilFlexObrigatorioTCO(prefixo)', html)
+        self.assertIn('setValorInputTCO("fuel_flex_configurado", "0");', html)
+
+    def test_refined_pbev_fuel_mode_is_bound_to_current_vehicle_key(self):
+        html = (self.root / "templates" / "simular.html").read_text(encoding="utf-8")
+        self.assertIn('const modoRefinado = document.getElementById("fuel_tipo_detectado")?.value || "";', html)
+        self.assertIn('if (chaveSalva === chaveAtual && ["flex", "diesel", "etanol", "gasolina"].includes(modoRefinado))', html)
+
 
 if __name__ == "__main__":
     unittest.main()

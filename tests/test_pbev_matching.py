@@ -136,6 +136,25 @@ class PbevMatchingRegressionTests(unittest.TestCase):
         self.assertFalse(result["diagnostico"]["ambiguidade_proxima"])
         self.assertTrue(result["diagnostico"]["ambiguidade_resolvida_por_consumo"])
 
+    def test_corolla_cross_xrx_hybrid_flex_exposes_separate_fuel_consumptions(self):
+        consulta = {
+            "prefixo": "icev",
+            "marca": "Toyota",
+            "modelo": "Corolla Cross XRX 1.8 16V Aut.",
+            "texto_modelo": "Corolla Cross XRX 1.8 16V Aut. Híbrido Zero km",
+            "ano": 2026,
+            "texto_ano": "Zero km Híbrido",
+            "ano_codigo": "32000-3",
+            "combustivel": "Híbrido",
+            "tipo_veiculo": "hibrido",
+        }
+        result = self.service.sugerir_consumo(consulta)
+        self.assertEqual(result["nivel_match"], "alto")
+        self.assertTrue(result["autopreencher"])
+        self.assertEqual(result["sugestoes_consumo"]["tipo"], "hibrido_flex")
+        self.assertEqual(result["sugestoes_consumo"]["gasolina_cidade_km_l"], 16.6)
+        self.assertEqual(result["sugestoes_consumo"]["etanol_cidade_km_l"], 11.6)
+
 
 if __name__ == "__main__":
     unittest.main()

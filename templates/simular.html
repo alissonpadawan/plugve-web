@@ -1389,6 +1389,7 @@
               <input type="hidden" name="fuel_tipo_detectado" id="fuel_tipo_detectado" value="gasolina">
               <input type="hidden" name="fuel_percent_etanol" id="fuel_percent_etanol" value="0">
               <input type="hidden" name="fuel_flex_configurado" id="fuel_flex_configurado" value="0">
+              <input type="hidden" name="fuel_flex_perfil_obrigatorio" id="fuel_flex_perfil_obrigatorio" value="0">
               <input type="hidden" name="fuel_prefixo_configurado" id="fuel_prefixo_configurado" value="">
               <input type="hidden" name="fuel_vehicle_key" id="fuel_vehicle_key" value="">
               <input type="hidden" name="fuel_preco_gasolina" id="fuel_preco_gasolina" value="">
@@ -3090,6 +3091,7 @@
       setValorInputTCO("fuel_tipo_detectado", "gasolina");
       setValorInputTCO("fuel_percent_etanol", "0");
       setValorInputTCO("fuel_flex_configurado", "0");
+      setValorInputTCO("fuel_flex_perfil_obrigatorio", "0");
       setValorInputTCO("fuel_prefixo_configurado", "");
       setValorInputTCO("fuel_vehicle_key", "");
       setValorInputTCO("fuel_consumo_gasolina", "");
@@ -3958,6 +3960,8 @@
       setValorInputTCO("fuel_tipo_detectado", "flex");
       setValorInputTCO("fuel_prefixo_configurado", prefixo);
       setValorInputTCO("fuel_vehicle_key", chaveFlexAtualTCO(prefixo));
+      // Híbrido flex exige confirmação explícita do perfil etanol x gasolina antes do TCO.
+      marcarPerfilFlexObrigatorioTCO(prefixo, String(sugestao.tipo || "") === "hibrido_flex" || ehHibridoSelecionadoTCO(prefixo));
       // Não inferir proporção etanol/gasolina. A PBEV preenche os consumos; o usuário confirma o perfil Flex.
       setValorInputTCO("fuel_flex_configurado", "0");
       if (gas > 0) setValorInputTCO("fuel_consumo_gasolina", formatarConsumoInputTCO(gas));
@@ -4479,10 +4483,43 @@
       return `${prefixo}|${modelo}|${combustivel}`;
     }
 
+    function ehHibridoSelecionadoTCO(prefixoPreferido) {
+      const prefixo = prefixoCombustaoPreferencialTCO(prefixoPreferido);
+      const modelo = document.getElementById(`modelo_${prefixo}`)?.value || "";
+      const combustivel = document.getElementById(`combustivel_${prefixo}`)?.value || "";
+      const dadosPbev = PBEV_DEBUG_TCO[prefixo] || {};
+      const sugestaoTipo = String(dadosPbev?.sugestoes_consumo?.tipo || "").toLowerCase();
+      const propulsaoPbev = normalizarTextoTipoTCO(`${dadosPbev?.candidato?.tipo_propulsao || ""} ${dadosPbev?.candidato?.tipo_propulsao_normalizado || ""}`);
+      const texto = normalizarTextoTipoTCO(`${modelo} ${combustivel}`);
+      return sugestaoTipo === "hibrido_flex" || /\b(HIBRIDO|HYBRID|HEV|MHEV)\b/.test(`${texto} ${propulsaoPbev}`);
+    }
+
+    function perfilFlexObrigatorioTCO(prefixoPreferido) {
+      const prefixo = prefixoCombustaoPreferencialTCO(prefixoPreferido);
+      const obrigatorio = document.getElementById("fuel_flex_perfil_obrigatorio")?.value === "1";
+      const chaveSalva = document.getElementById("fuel_vehicle_key")?.value || "";
+      return obrigatorio && chaveSalva === chaveFlexAtualTCO(prefixo);
+    }
+
+    function marcarPerfilFlexObrigatorioTCO(prefixoPreferido, obrigatorio) {
+      const prefixo = prefixoCombustaoPreferencialTCO(prefixoPreferido);
+      setValorInputTCO("fuel_flex_perfil_obrigatorio", obrigatorio ? "1" : "0");
+      if (obrigatorio) {
+        setValorInputTCO("fuel_prefixo_configurado", prefixo);
+        setValorInputTCO("fuel_vehicle_key", chaveFlexAtualTCO(prefixo));
+      }
+    }
+
     function modoCombustivelSelecionadoTCO(prefixoPreferido) {
       const prefixo = prefixoCombustaoPreferencialTCO(prefixoPreferido);
       const modelo = document.getElementById(`modelo_${prefixo}`)?.value || "";
       const combustivel = document.getElementById(`combustivel_${prefixo}`)?.value || "";
+      const chaveAtual = `${prefixo}|${modelo}|${combustivel}`;
+      const chaveSalva = document.getElementById("fuel_vehicle_key")?.value || "";
+      const modoRefinado = document.getElementById("fuel_tipo_detectado")?.value || "";
+      if (chaveSalva === chaveAtual && ["flex", "diesel", "etanol", "gasolina"].includes(modoRefinado)) {
+        return modoRefinado;
+      }
       return detectarModoCombustivelTCO(modelo, combustivel);
     }
 
@@ -4596,6 +4633,7 @@
       setValorInputTCO("fuel_tipo_detectado", modo || "gasolina");
       setValorInputTCO("fuel_percent_etanol", "0");
       setValorInputTCO("fuel_flex_configurado", "0");
+      setValorInputTCO("fuel_flex_perfil_obrigatorio", modo === "flex" && ehHibridoSelecionadoTCO(prefixo) ? "1" : "0");
       setValorInputTCO("fuel_prefixo_configurado", prefixo || "");
       setValorInputTCO("fuel_vehicle_key", chave || "");
       setValorInputTCO("fuel_consumo_gasolina", "");
@@ -4623,7 +4661,7 @@
 
     function capturarSnapshotModalCombustivelTCO(prefixo) {
       const ids = [
-        "fuel_percent_etanol", "fuel_flex_configurado", "fuel_prefixo_configurado", "fuel_vehicle_key",
+        "fuel_percent_etanol", "fuel_flex_configurado", "fuel_flex_perfil_obrigatorio", "fuel_prefixo_configurado", "fuel_vehicle_key",
         "fuel_preco_etanol", "fuel_preco_gasolina", "fuel_consumo_etanol", "fuel_consumo_gasolina",
         "combustivel_input"
       ];
@@ -4678,6 +4716,7 @@
       if (precoEta) precoEta.readOnly = false;
       if (precoGas) precoGas.readOnly = false;
       if (slider) slider.disabled = false;
+      configurarObrigatoriedadePerfilFlexTCO(prefixoCombustaoPreferencialTCO(), false);
     }
 
     function configurarModoEdicaoConsumoFlexTCO(ativo) {
@@ -4691,6 +4730,7 @@
       if (precoGas) precoGas.readOnly = modoEdicaoSomenteConsumoFlexTCO;
       if (slider) slider.disabled = modoEdicaoSomenteConsumoFlexTCO;
       atualizarEstadoModalCombustivelTCO();
+      configurarObrigatoriedadePerfilFlexTCO(prefixoEdicaoConsumoFlexTCO || prefixoCombustaoPreferencialTCO(), modoEdicaoSomenteConsumoFlexTCO);
     }
 
     function ativarEdicaoConsumoFlexTCO(prefixo) {
@@ -4702,6 +4742,23 @@
         ev.preventDefault();
         abrirModalCombustivelTCO({ somenteConsumo: true, prefixo });
       };
+    }
+
+    function configurarObrigatoriedadePerfilFlexTCO(prefixoPreferido, somenteConsumo = false) {
+      const prefixo = prefixoCombustaoPreferencialTCO(prefixoPreferido);
+      const configurado = document.getElementById("fuel_flex_configurado")?.value === "1";
+      const obrigatorio = perfilFlexObrigatorioTCO(prefixo) && !configurado && !somenteConsumo;
+      const btnPular = document.getElementById("btn_cancelar_combustivel_tco");
+      const btnFechar = document.getElementById("btn_fechar_combustivel_tco");
+      const modal = document.getElementById("modal_combustivel_tco");
+      [btnPular, btnFechar].forEach(btn => {
+        if (!btn) return;
+        btn.classList.toggle("hidden", obrigatorio);
+        btn.disabled = obrigatorio;
+        btn.setAttribute("aria-hidden", obrigatorio ? "true" : "false");
+      });
+      if (modal) modal.dataset.perfilObrigatorio = obrigatorio ? "1" : "0";
+      return obrigatorio;
     }
 
     function prepararModalCombustivelTCO() {
@@ -4720,6 +4777,7 @@
         }
       });
       atualizarEstadoModalCombustivelTCO();
+      configurarObrigatoriedadePerfilFlexTCO(prefixoEdicaoConsumoFlexTCO || prefixoCombustaoPreferencialTCO(), modoEdicaoSomenteConsumoFlexTCO);
     }
 
     function sugerirConsumoFlexTCO(origem) {
@@ -4967,7 +5025,19 @@
       const eraConfigurado = snapshot?.valores?.fuel_flex_configurado === "1";
       restaurarSnapshotModalCombustivelTCO(snapshot);
 
-      // No primeiro fluxo, Pular conclui a etapa sem apagar os consumos PBEV já existentes.
+      const perfilObrigatorio = perfilFlexObrigatorioTCO(prefixo) && !eraConfigurado && !modoEdicaoSomenteConsumoFlexTCO;
+      if (perfilObrigatorio) {
+        setValorInputTCO("fuel_flex_configurado", "0");
+        prepararModalCombustivelTCO();
+        configurarModoEdicaoConsumoFlexTCO(false);
+        renderizarCardCombustivelTCO();
+        capturarEstadoFormularioTCO();
+        if (typeof atualizarPerfisInlinePlugVE === "function") atualizarPerfisInlinePlugVE();
+        if (typeof window.atualizarDetalhesProgressivosPlugVE === "function") window.atualizarDetalhesProgressivosPlugVE();
+        return;
+      }
+
+      // No primeiro fluxo de flex convencional, Pular conclui a etapa sem apagar os consumos PBEV já existentes.
       if (snapshot && !eraConfigurado && !modoEdicaoSomenteConsumoFlexTCO) {
         setValorInputTCO("fuel_flex_configurado", "1");
         setValorInputTCO("fuel_prefixo_configurado", prefixo);
@@ -5568,6 +5638,7 @@
         }
         prepararModalCombustivelTCO();
         configurarModoEdicaoConsumoFlexTCO(false);
+        configurarObrigatoriedadePerfilFlexTCO(prefixoComb, false);
       }
       if (combustaoSelecionada && typeof renderizarCardCombustivelTCO === "function") renderizarCardCombustivelTCO();
 
