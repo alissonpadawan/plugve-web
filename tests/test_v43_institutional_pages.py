@@ -35,20 +35,21 @@ class V43InstitutionalPagesTests(unittest.TestCase):
         self.assertEqual(html.count('class="author-popover"'), 3)
 
 
-    def test_about_v43_04_author_links_and_hover_popovers(self):
+    def test_about_v43_05_author_card_and_hover_popovers(self):
         html = (self.templates / "sobre.html").read_text(encoding="utf-8")
         script = (self.root / "static" / "js" / "sobre.js").read_text(encoding="utf-8")
         css = (self.root / "static" / "css" / "institucional.css").read_text(encoding="utf-8")
 
         self.assertIn(">Autores<", html)
         self.assertNotIn(">Criadores<", html)
-        self.assertIn('class="authors-list"', html)
+        self.assertIn('class="authors-card card"', html)
         self.assertEqual(html.count('class="author-entry '), 3)
         self.assertEqual(html.count('class="author-name-link"'), 3)
         self.assertEqual(html.count('class="author-popover"'), 3)
         self.assertNotIn("<dialog", html)
         self.assertNotIn("Ver perfil", html)
-        self.assertNotIn('class="creators-card card"', html)
+        self.assertEqual(html.count('class="author-prefix"'), 2)
+        self.assertIn('>Prof. Dr.<', html)
         self.assertNotIn('class="creator-profile"', html)
 
         for url in (
@@ -68,6 +69,11 @@ class V43InstitutionalPagesTests(unittest.TestCase):
         self.assertIn("aria-expanded", script)
         self.assertIn(".author-entry:hover .author-popover", css)
         self.assertIn(".author-entry:focus-within .author-popover", css)
+        self.assertIn(".authors-card {", css)
+        self.assertIn("grid-template-columns: repeat(3, minmax(0, 1fr));", css)
+        self.assertIn(".author-entry + .author-entry", css)
+        self.assertIn(".author-summary {", css)
+        self.assertIn("font-weight: 400;", css)
         self.assertIn("position: absolute;", css)
 
     def test_contact_form_does_not_post_to_unimplemented_route(self):

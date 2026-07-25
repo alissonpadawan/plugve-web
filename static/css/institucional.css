@@ -38,13 +38,11 @@
   margin-bottom: 0;
 }
 
-.authors-list {
+.authors-card {
   position: relative;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  align-items: start;
-  gap: clamp(18px, 4vw, 54px);
-  padding: 4px 0 26px;
+  padding: 0;
   overflow: visible;
 }
 
@@ -52,36 +50,66 @@
   position: relative;
   min-width: 0;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  text-align: center;
+  padding: clamp(20px, 2.6vw, 30px);
+}
+
+.author-entry + .author-entry {
+  border-left: 1px solid var(--line);
+}
+
+.author-summary {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 16px;
 }
 
 .author-avatar {
-  width: 104px;
-  height: 104px;
+  width: 78px;
+  height: 78px;
+  flex: 0 0 78px;
   display: block;
-  margin-bottom: 13px;
   border: 4px solid #f3f8f5;
   border-radius: 50%;
   object-fit: cover;
   box-shadow: 0 0 0 1px #dbe7e0;
 }
 
+.author-identification {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0 5px;
+  color: var(--muted);
+  font-size: .9rem;
+  line-height: 1.5;
+}
+
+.author-identification--single {
+  align-items: center;
+}
+
+.author-prefix {
+  color: var(--muted);
+  font-weight: 400;
+  white-space: nowrap;
+}
+
 .author-name-link {
-  max-width: 290px;
+  min-width: 0;
   padding: 0;
   border: 0;
   background: transparent;
   color: #1d4ed8;
-  font-family: 'Sora', 'Inter', system-ui, sans-serif;
-  font-size: clamp(.94rem, 1.25vw, 1.08rem);
-  font-weight: 700;
-  line-height: 1.38;
-  text-align: center;
+  font: inherit;
+  font-weight: 400;
+  line-height: inherit;
+  text-align: left;
   text-decoration: underline;
   text-decoration-thickness: 1px;
-  text-underline-offset: 4px;
+  text-underline-offset: 3px;
   cursor: pointer;
 }
 
@@ -93,8 +121,8 @@
 
 .author-name-link:focus-visible {
   outline: 3px solid rgba(22, 138, 74, .24);
-  outline-offset: 5px;
-  border-radius: 4px;
+  outline-offset: 4px;
+  border-radius: 3px;
 }
 
 .author-popover {
@@ -586,21 +614,32 @@
 }
 
 @media (max-width: 720px) {
-  .authors-list {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 10px;
+  .authors-card {
+    grid-template-columns: 1fr;
+  }
+
+  .author-entry {
+    padding: 20px;
+  }
+
+  .author-entry + .author-entry {
+    border-top: 1px solid var(--line);
+    border-left: 0;
+  }
+
+  .author-summary {
+    gap: 14px;
   }
 
   .author-avatar {
-    width: 78px;
-    height: 78px;
+    width: 68px;
+    height: 68px;
+    flex-basis: 68px;
     border-width: 3px;
   }
 
-  .author-name-link {
-    max-width: 110px;
-    font-size: .78rem;
-    line-height: 1.35;
+  .author-identification {
+    font-size: .86rem;
   }
 
   .author-popover {

@@ -16,12 +16,17 @@
     <h2 id="people-title">Autores</h2>
   </div>
 
-  <div class="authors-list" aria-label="Autores da CurVE">
+  <div class="authors-card card" aria-label="Autores da CurVE">
     <article class="author-entry author-entry--start">
-      <img class="author-avatar" src="{{ url_for('static', filename='img/institucional/daywes-pinheiro-neto.webp') }}" alt="Prof. Dr. Daywes Pinheiro Neto" loading="lazy">
-      <button class="author-name-link" type="button" data-author-popover="author-daywes" aria-expanded="false" aria-controls="author-daywes">
-        Prof. Dr. Daywes Pinheiro Neto
-      </button>
+      <div class="author-summary">
+        <img class="author-avatar" src="{{ url_for('static', filename='img/institucional/daywes-pinheiro-neto.webp') }}" alt="Prof. Dr. Daywes Pinheiro Neto" loading="lazy">
+        <div class="author-identification">
+          <span class="author-prefix">Prof. Dr.</span>
+          <button class="author-name-link" type="button" data-author-popover="author-daywes" aria-expanded="false" aria-controls="author-daywes">
+            Daywes Pinheiro Neto
+          </button>
+        </div>
+      </div>
 
       <aside class="author-popover" id="author-daywes" role="dialog" aria-modal="false" aria-labelledby="author-daywes-title">
         <div class="author-popover-header">
@@ -44,10 +49,15 @@
     </article>
 
     <article class="author-entry author-entry--center">
-      <img class="author-avatar" src="{{ url_for('static', filename='img/institucional/carlos-roberto-silveira-junior.webp') }}" alt="Prof. Dr. Carlos Roberto da Silveira Júnior" loading="lazy">
-      <button class="author-name-link" type="button" data-author-popover="author-carlos" aria-expanded="false" aria-controls="author-carlos">
-        Prof. Dr. Carlos Roberto da Silveira Júnior
-      </button>
+      <div class="author-summary">
+        <img class="author-avatar" src="{{ url_for('static', filename='img/institucional/carlos-roberto-silveira-junior.webp') }}" alt="Prof. Dr. Carlos Roberto da Silveira Júnior" loading="lazy">
+        <div class="author-identification">
+          <span class="author-prefix">Prof. Dr.</span>
+          <button class="author-name-link" type="button" data-author-popover="author-carlos" aria-expanded="false" aria-controls="author-carlos">
+            Carlos Roberto da Silveira Júnior
+          </button>
+        </div>
+      </div>
 
       <aside class="author-popover" id="author-carlos" role="dialog" aria-modal="false" aria-labelledby="author-carlos-title">
         <div class="author-popover-header">
@@ -71,10 +81,14 @@
     </article>
 
     <article class="author-entry author-entry--end">
-      <img class="author-avatar" src="{{ url_for('static', filename='img/institucional/alisson-vieira-da-silva.webp') }}" alt="Alisson Vieira da Silva" loading="lazy">
-      <button class="author-name-link" type="button" data-author-popover="author-alisson" aria-expanded="false" aria-controls="author-alisson">
-        Alisson Vieira da Silva
-      </button>
+      <div class="author-summary">
+        <img class="author-avatar" src="{{ url_for('static', filename='img/institucional/alisson-vieira-da-silva.webp') }}" alt="Alisson Vieira da Silva" loading="lazy">
+        <div class="author-identification author-identification--single">
+          <button class="author-name-link" type="button" data-author-popover="author-alisson" aria-expanded="false" aria-controls="author-alisson">
+            Alisson Vieira da Silva
+          </button>
+        </div>
+      </div>
 
       <aside class="author-popover" id="author-alisson" role="dialog" aria-modal="false" aria-labelledby="author-alisson-title">
         <div class="author-popover-header">
@@ -136,5 +150,5 @@
 
 {% block scripts %}
   {{ super() }}
-  <script src="{{ url_for('static', filename='js/sobre.js') }}?v=20260725_v43_04"></script>
+  <script src="{{ url_for('static', filename='js/sobre.js') }}?v=20260725_v43_05"></script>
 {% endblock %}
