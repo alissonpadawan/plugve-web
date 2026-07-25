@@ -342,7 +342,19 @@
       <thead><tr><th>mês</th><th>idade curva</th><th>fator base</th><th>taxa mês</th><th>V_base</th><th>V_otimista</th><th>V_pessimista</th><th>perda base</th><th>D_base</th></tr></thead>
       <tbody>${rows}</tbody></table></div>`;
   }
+  function configurarTituloAuditoria(pkg) {
+    const tipo = String(pkg?.tipo_auditoria || pkg?.origem || "").toLowerCase();
+    const ehRevenda = tipo.includes("revenda") || tipo.includes("fipe+") || tipo.includes("fipe_plus");
+    const titulo = $("audit_page_title");
+    const subtitulo = $("audit_page_subtitle");
+    if (titulo) titulo.textContent = ehRevenda ? "CurVE :: auditoria da revenda" : "CurVE :: auditoria da depreciação";
+    if (subtitulo) subtitulo.textContent = ehRevenda
+      ? "Memória técnica, equações e pontos usados para estimar o valor de revenda."
+      : "Memória técnica, equações e pontos usados na construção dos gráficos.";
+  }
+
   function render(data, pkg) {
+    configurarTituloAuditoria(pkg);
     const info = getInfo(data);
     const memory = buildMemory(info);
     const im = taxaMensal(info.vi, info.vfBase, memory.meses) * 100;
@@ -384,6 +396,21 @@
       `taxa_referência_curva       = ${info.ref ? `${pct(info.ref, 4)} a.a.` : "-"}`,
       `taxa_mensal_calibrada       = ${info.tm ? `${pct(info.tm, 6)} a.m.` : "-"}`
     ].join("\n");
+    const qBase = info.vi > 0 && info.vfBase > 0 ? Math.pow(info.vfBase / info.vi, 1 / memory.meses) : 0;
+    const substituicaoNumerica = info.vi > 0 && info.vfBase > 0 ? [
+      ``,
+      `Substituição numérica do resultado:`,
+      `VI = ${money(info.vi)}`,
+      `VF_base = ${money(info.vfBase)}`,
+      `h = ${formatYears(info.horizonte)}`,
+      `M = ${memory.meses} meses`,
+      `P = VI - VF_base = ${money(info.vi)} - ${money(info.vfBase)} = ${money(info.perda)}`,
+      `D_total = 1 - (VF_base / VI) = 1 - (${money(info.vfBase)} / ${money(info.vi)}) = ${pct(info.dep, 2)}`,
+      `i_a = 1 - (VF_base / VI)^(1 / h) = ${pct(info.ia, 4)} a.a.`,
+      `i_m = 1 - (VF_base / VI)^(1 / M) = ${pct(im, 6)} a.m.`,
+      `q = (VF_base / VI)^(1 / M) = ${dec(qBase, 8)}`,
+      `V_${memory.meses} = VI × q^${memory.meses} = ${money(info.vfBase)}`
+    ] : [];
     $("audit_equations").textContent = [
       `VI = valor FIPE inicial`,
       `VF = valor futuro do cenário`,
@@ -400,6 +427,7 @@
       `Interpolação geométrica: V_m     = VI × q^m = VI × (1 - i_m)^m`,
       `Perda no mês m:          P_m     = VI - V_m`,
       `Depreciação no mês m:    D_m     = 1 - (V_m / VI)`,
+      ...substituicaoNumerica,
       ``,
       `Quando há curva mensal calibrada pelo backend:`,
       `V_m = VI × Π[k=0 até m-1] (1 - r_k)`,
