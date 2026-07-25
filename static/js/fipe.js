@@ -42,20 +42,6 @@ function anoPermitidoNaTela(item) {
   return ano !== null && ano >= 2012;
 }
 
-function ordenarAnosFipeParaTela(listaAnos) {
-  return (Array.isArray(listaAnos) ? [...listaAnos] : []).sort((a, b) => {
-    const aZero = codigoAnoFipeZeroKm(a?.codigo);
-    const bZero = codigoAnoFipeZeroKm(b?.codigo);
-    if (aZero !== bZero) return aZero ? -1 : 1;
-
-    const anoA = anoNumeroFipe(a?.codigo, a?.nome);
-    const anoB = anoNumeroFipe(b?.codigo, b?.nome);
-    if (anoA !== anoB) return (anoB || -Infinity) - (anoA || -Infinity);
-
-    return String(a?.nome || a?.codigo || '').localeCompare(String(b?.nome || b?.codigo || ''), 'pt-BR', { numeric: true, sensitivity: 'base' });
-  });
-}
-
 function obterTextoSelecionado(select) {
   if (!select || select.selectedIndex < 0) return "";
   return select.options[select.selectedIndex]?.dataset?.nome || select.options[select.selectedIndex]?.textContent || "";
@@ -695,7 +681,7 @@ async function carregarAnosFipe() {
     const url = `/api/fipe/anos?codigo_marca=${encodeURIComponent(marca.value)}&codigo_modelo=${encodeURIComponent(modelo.value)}`;
     const { data: anos } = await buscarJsonFipeSeguro(url);
     limparErroFipe();
-    const anosElegiveis = ordenarAnosFipeParaTela(Array.isArray(anos) ? anos.filter(anoPermitidoNaTela) : []);
+    const anosElegiveis = Array.isArray(anos) ? anos.filter(anoPermitidoNaTela) : [];
     await salvarModeloZeroKmSeEncontrado(marca, modelo, Array.isArray(anos) ? anos : []);
     limparSelect(ano, anosElegiveis.length ? "Selecione" : "Sem anos elegíveis");
 

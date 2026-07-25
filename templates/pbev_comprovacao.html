@@ -153,14 +153,6 @@
     addKv(regRoot, 'Transmissão', cand.transmissao);
     addKv(regRoot, 'Combustível', cand.combustivel);
     addKv(regRoot, 'Propulsão', cand.tipo_propulsao);
-    addKv(regRoot, 'Categoria', cand.categoria);
-    addKv(regRoot, 'PBE categoria', cand.classificacao_pbe_relativa_categoria);
-    addKv(regRoot, 'PBE geral', cand.classificacao_pbe_absoluta_geral);
-    addKv(regRoot, 'Selo CONPET', cand.selo_conpet);
-    addKv(regRoot, 'Ar-condicionado', cand.ar_condicionado);
-    addKv(regRoot, 'Direção assistida', cand.direcao_assistida);
-    addKv(regRoot, 'CO₂ gasolina/diesel', cand.co2_fossil_gasolina_diesel_g_km ? cand.co2_fossil_gasolina_diesel_g_km + ' g/km' : '');
-    addKv(regRoot, 'CO₂ etanol', cand.co2_fossil_etanol_g_km ? cand.co2_fossil_etanol_g_km + ' g/km' : '');
     addKv(regRoot, 'Critério aplicado', sug.criterio_campo_unico || d.criterio_consumo || '-');
     if (sug.criterio_conservador_descricao) addKv(regRoot, 'Critério conservador', sug.criterio_conservador_descricao);
     if (Array.isArray(sug.versoes_pbev_consideradas) && sug.versoes_pbev_consideradas.length) {

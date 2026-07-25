@@ -8,8 +8,6 @@
   <title>Simulador CurVE</title>
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/favicon.png') }}">
   <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/favicon-180.png') }}">
-  <link rel="preload" as="image" type="image/webp" href="{{ url_for('static', filename='img/simular-stage-vehicle.webp') }}" fetchpriority="high">
-  <link rel="preload" as="image" type="image/webp" href="{{ url_for('static', filename='img/simular-stage-vehicle-icev.webp') }}" fetchpriority="high">
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
   <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
   <script src="{{ url_for('static', filename='js/curve_marcadores_curvas.js') }}?v=20260705_v35_marcadores_unificados"></script>
@@ -28,8 +26,6 @@
     .curve-nav a.curve-nav-active{color:#0f5f36 !important;border-bottom-color:#168A4A;background:transparent !important;border-radius:0 !important;box-shadow:none !important}
     @media(max-width:820px){.curve-header .curve-nav-wrap{align-items:flex-start;flex-direction:column;padding:14px 0;gap:10px}.curve-nav{justify-content:flex-start}.curve-brand-logo{width:min(240px,70vw)}}
     .curve-shell{position:relative;z-index:1;flex:1 0 auto;width:min(1120px,calc(100% - 32px));max-width:1120px;margin-left:auto!important;margin-right:auto!important;overflow:visible;background:rgba(255,255,255,.88) !important;border:1px solid #e5e7eb !important;box-shadow:0 10px 28px rgba(15,23,42,.05) !important}
-    .curve-page-heading{margin:0 0 1.25rem;padding:0 .25rem;color:#14232c;font-size:clamp(2.5rem,5vw,4.25rem);font-weight:800;line-height:1.04;letter-spacing:-.04em}
-    @media(max-width:640px){.curve-page-heading{font-size:clamp(2.15rem,10vw,3rem);margin-bottom:1rem}}
     .curve-footer{margin-top:auto;padding:26px 0 30px;text-align:center;font-size:14px;color:#6b7280;position:relative;z-index:1}
     .plugve-flow-summary{display:none;margin:.5rem 0 1rem;padding:.45rem .75rem;border:1px solid #bbf7d0;border-radius:.5rem;background:#f9fffb;color:#4b5563;font-size:.78rem;line-height:1.35;position:relative;z-index:20;overflow:visible;transition:box-shadow .18s ease,border-color .18s ease}
     .plugve-flow-summary strong{color:#1f2937}
@@ -43,34 +39,6 @@
     .plugve-flow-summary .plugve-flow-hint{font-size:.68rem;color:#64748b;align-self:center}
     @media(max-width:760px){.plugve-flow-summary .plugve-flow-edit{grid-template-columns:1fr}.plugve-flow-summary .plugve-flow-line span{display:block}.plugve-flow-summary .plugve-flow-line span+span::before{content:"";margin:0}}
     .plugve-usage-step{border:1px solid #bbf7d0;background:linear-gradient(135deg,#f0fdf4 0%,#ffffff 78%)}
-.plugve-white-panel{background:#fff;border-color:#e5e7eb;box-shadow:0 10px 24px rgba(15,23,42,.05)}
-.plugve-stage-panel{background:#fff;border:1px solid #e5e7eb;border-radius:.75rem;box-shadow:0 10px 24px rgba(15,23,42,.05)}
-.plugve-align-pair{box-sizing:border-box}
-@media(max-width:1023px){.plugve-align-pair{min-height:0!important}}
-.plugve-usage-step{background:#fff;border-color:#e5e7eb;box-shadow:0 10px 24px rgba(15,23,42,.05)}
-.plugve-fipe-hero{position:relative;overflow:visible;border:1px solid #dce5e0;border-radius:1rem;padding:1.15rem;background:#f8faf9;box-shadow:0 8px 24px rgba(15,23,42,.04);min-height:320px;display:flex;align-items:flex-start;isolation:isolate}
-.plugve-fipe-hero::before{content:'';position:absolute;inset:0;background:url('{{ url_for('static', filename='img/simular-stage-vehicle.webp') }}') center bottom/cover no-repeat;opacity:.78;filter:grayscale(.12) saturate(.92) contrast(1.05) brightness(.98);transform:scale(1.01);border-radius:inherit;pointer-events:none;z-index:0}
-.plugve-fipe-hero.plugve-fipe-hero-ev::before{background-image:url('{{ url_for('static', filename='img/simular-stage-vehicle.webp') }}')}
-.plugve-fipe-hero.plugve-fipe-hero-icev::before{background-image:url('{{ url_for('static', filename='img/simular-stage-vehicle-icev.webp') }}')}
-.plugve-fipe-hero::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,rgba(255,255,255,.52) 0%,rgba(255,255,255,.32) 30%,rgba(255,255,255,.12) 62%,rgba(255,255,255,.04) 100%);border-radius:inherit;pointer-events:none;z-index:1}
-.plugve-fipe-hero.plugve-fipe-hero-icev::after{background:linear-gradient(90deg,rgba(255,255,255,.60) 0%,rgba(255,255,255,.40) 32%,rgba(255,255,255,.18) 64%,rgba(255,255,255,.07) 100%)}
-.plugve-fipe-hero:has(.fipe-combobox.open){z-index:5900}
-.plugve-fipe-overlay{position:relative;z-index:2;background:transparent;border:none;border-radius:0;padding:0;backdrop-filter:none;box-shadow:none;max-width:460px;width:min(100%,460px);overflow:visible}
-.plugve-fipe-overlay .plugve-pbev-select-slot{margin-bottom:.85rem}
-.plugve-fipe-overlay .plugve-pbev-select-slot p,.plugve-fipe-overlay .plugve-pbev-select-slot h3{color:#1f2937}
-.plugve-fipe-overlay .space-y-2 > div{margin-bottom:.75rem;overflow:visible}
-.plugve-fipe-overlay label{color:#1f2937;text-shadow:0 1px 2px rgba(255,255,255,.9)}
-.plugve-fipe-overlay select,.plugve-fipe-overlay input,.plugve-fipe-overlay .fipe-combobox-toggle{background:rgba(255,255,255,.36)!important;border-color:rgba(100,116,139,.66)!important;backdrop-filter:blur(.8px);-webkit-backdrop-filter:blur(.8px);box-shadow:0 5px 14px rgba(15,23,42,.05)!important;color:#0f172a!important}
-.plugve-fipe-overlay .fipe-combobox-toggle:hover{background:rgba(255,255,255,.46)!important}
-.plugve-fipe-overlay .fipe-combobox.open .fipe-combobox-toggle,.plugve-fipe-overlay .fipe-combobox-toggle:focus-visible{background:rgba(255,255,255,.52)!important}
-.plugve-fipe-overlay select::placeholder,.plugve-fipe-overlay input::placeholder{color:#334155}
-.plugve-fipe-overlay .fipe-combobox-panel{background:#fff;z-index:6100}
-.plugve-fipe-overlay .fipe-combobox-list{max-height:320px}
-.plugve-consumo-only .plugve-fuel-slider-wrap{opacity:.58}
-.plugve-consumo-only #fuel_mix_slider{cursor:not-allowed}
-.plugve-consumo-only #fuel_modal_preco_etanol,.plugve-consumo-only #fuel_modal_preco_gasolina{background:#f8fafc;color:#64748b;cursor:not-allowed}
-.plugve-consumo-only #fuel_modal_consumo_etanol,.plugve-consumo-only #fuel_modal_consumo_gasolina{background:#fff;border-color:#16a34a;box-shadow:0 0 0 3px rgba(22,163,74,.08)}
-@media(max-width:640px){.plugve-fipe-hero{padding:.85rem;min-height:270px}.plugve-fipe-overlay{max-width:100%}.plugve-fipe-hero::after{background:linear-gradient(180deg,rgba(255,255,255,.44) 0%,rgba(255,255,255,.26) 42%,rgba(255,255,255,.08) 100%)}}
     .plugve-progress-hidden{display:none !important}
     .plugve-card-selected{border-color:#2563eb !important;background:#eff6ff !important;box-shadow:0 6px 18px rgba(37,99,235,.12)}
     .plugve-select-note{font-size:11px;color:#6b7280;margin-top:3px}
@@ -563,9 +531,6 @@
     .plugve-fuel-compact-price{display:none!important}
     .plugve-fuel-single-input{width:7.5rem;max-width:42vw;border:1px solid #e5e7eb;border-radius:.65rem;background:#fff;padding:.45rem .55rem;text-align:right;font-weight:900;color:#0f172a;font-variant-numeric:tabular-nums;box-shadow:inset 0 1px 2px rgba(15,23,42,.06)}
     .plugve-fuel-single-input.hidden{display:none!important}
-    .plugve-fuel-money-field{width:7.5rem;max-width:42vw}
-    .plugve-fuel-money-field .plugve-fuel-single-input{width:100%;max-width:none;padding-left:2.05rem}
-    .plugve-fuel-money-field:has(.plugve-fuel-single-input.hidden){display:none}
     .plugve-fuel-mini-bar{display:flex;height:.85rem;border-radius:999px;overflow:hidden;background:#e5e7eb;margin-top:.72rem;border:1px solid rgba(15,23,42,.08);box-shadow:inset 0 1px 3px rgba(15,23,42,.13)}
     .plugve-fuel-mini-etanol{background:rgba(22,163,74,.88);min-width:0;transition:width .18s ease}
     .plugve-fuel-mini-gasolina{background:rgba(220,38,38,.56);min-width:0;transition:width .18s ease}
@@ -670,8 +635,8 @@
     .plugve-energy-row .plugve-energy-tooltip-panel{left:auto;right:0;text-align:left}
     .plugve-energy-input-wrap{display:flex;align-items:center;gap:.45rem;min-width:9.8rem}
     .plugve-energy-input-wrap .plugve-money-field{flex:1}
-    .plugve-energy-input-wrap .plugve-money-prefix{display:block}
-    .plugve-energy-input-wrap input{width:100%;border:1px solid #e5e7eb;border-radius:.65rem;background:#fff;padding:.45rem .55rem .45rem 2.05rem;text-align:right;font-weight:900;color:#0f172a;font-variant-numeric:tabular-nums;box-shadow:inset 0 1px 2px rgba(15,23,42,.06)}
+    .plugve-energy-input-wrap .plugve-money-prefix{display:none}
+    .plugve-energy-input-wrap input{width:100%;border:1px solid #e5e7eb;border-radius:.65rem;background:#fff;padding:.45rem .55rem;text-align:right;font-weight:900;color:#0f172a;font-variant-numeric:tabular-nums;box-shadow:inset 0 1px 2px rgba(15,23,42,.06)}
 
     @media(max-width:760px){.plugve-fuel-compact-top{align-items:flex-start;flex-direction:column}.plugve-fuel-compact-price{align-self:flex-end}.plugve-fuel-prices{grid-template-columns:1fr}.plugve-fuel-modal-actions button{flex:1}}
 
@@ -815,9 +780,9 @@
       </a>
       <nav class="curve-nav" aria-label="Menu principal">
         <a href="/" id="link_inicio_tco" data-plugve-reset="1">Início</a>
-        <a href="/simular" data-plugve-reset="1" class="curve-nav-active">Simular TCO</a>
+        <a href="/simular" data-plugve-reset="1" class="curve-nav-active">Simular</a>
         <a href="/depreciacao">Depreciação</a>
-        <a href="/consulta-fipe">Consulta Fipe+</a>
+        <a href="/consulta-fipe">Consulta FIPE</a>
         <a href="/sobre">Sobre</a>
         <a href="/contato">Contato</a>
       </nav>
@@ -841,8 +806,6 @@
         </div>
       {% endif %}
     {% endwith %}
-
-    <h1 class="curve-page-heading">Custo total de propriedade</h1>
 
     <div id="plugve_fluxo_resumo" class="plugve-flow-summary"></div>
 
@@ -928,7 +891,7 @@
       <!-- =========================================================
         3.2) LOCALIZAÇÃO
       ========================================================= -->
-      <section id="secao_localizacao" class="border rounded-lg p-4 plugve-white-panel">
+      <section id="secao_localizacao" class="border rounded-lg p-4">
         <h2 class="font-semibold text-lg mb-3 text-gray-800">Localização</h2>
         <p class="text-xs text-gray-500 mb-3">
           
@@ -988,7 +951,7 @@
           </div>
           <div>
             <label class="block text-sm font-medium">KM por ano</label>
-            <input type="number" id="uso_km_ano_input" value="15000" min="0" step="500" class="mt-1 p-2 border rounded w-full" required>
+            <input type="number" id="uso_km_ano_input" value="15000" min="1" class="mt-1 p-2 border rounded w-full" required>
           </div>
           <div class="flex gap-2 md:justify-end">
             <button type="button" id="btn_cancelar_uso_previsto" class="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">
@@ -1009,18 +972,17 @@
         <!-- =========================================================
           3.3.1) CARRO ATUAL
         ========================================================= -->
-        <section id="bloco_carro_atual" class="border rounded-lg p-4 hidden plugve-white-panel">
+        <section id="bloco_carro_atual" class="border rounded-lg p-4 hidden">
           <h2 class="font-semibold text-lg mb-3 text-gray-800">Meu carro atual</h2>
           <p class="text-xs text-gray-500 mb-3">
             Esse bloco aparece apenas nos cenários de troca.
           </p>
 
           <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div class="plugve-fipe-hero">
-              <div class="plugve-fipe-overlay">
-                <div class="plugve-pbev-select-slot"><h3 class="font-semibold text-base text-gray-700">Busca FIPE - carro atual</h3><p id="pbev_status_select_atual" class="plugve-pbev-status hidden"></p></div>
+            <div class="border rounded-lg p-4">
+              <div class="plugve-pbev-select-slot"><h3 class="font-semibold text-base text-gray-700">Busca FIPE - carro atual</h3><p id="pbev_status_select_atual" class="plugve-pbev-status hidden"></p></div>
 
-                <div class="space-y-2">
+              <div class="space-y-2">
                 <div>
                   <label class="block text-xs font-medium">Marca</label>
                   <select name="atual_marca_codigo" id="atual_marca" class="mt-1 p-2 border rounded w-full"></select>
@@ -1032,7 +994,6 @@
                 <div>
                   <label class="block text-xs font-medium">Ano/Combustível</label>
                   <select name="atual_ano_codigo" id="atual_ano" class="mt-1 p-2 border rounded w-full"></select>
-                </div>
                 </div>
               </div>
             </div>
@@ -1097,7 +1058,6 @@
                 <div>
                   <label class="block text-sm font-medium">Seguro atual (anual)</label>
                   <input type="text" name="seguro_atual" id="seguro_atual" class="mt-1 p-2 border rounded w-full" placeholder="ex: 2800">
-                  <input type="hidden" name="seguro_atual_manual" id="seguro_atual_manual" value="0">
                     <p id="seguro_status_atual" class="hidden"></p>
                 </div>
 
@@ -1124,13 +1084,12 @@
           <!-- =========================
             VE
           ========================= -->
-          <div id="coluna_ve" class="border rounded-lg p-4 plugve-stage-panel">
+          <div id="coluna_ve" class="border rounded-lg p-4">
             <h2 id="titulo_ve" class="font-semibold text-lg mb-3 text-blue-700">Veículo Elétrico (VE)</h2>
 
-            <div class="plugve-fipe-hero plugve-fipe-hero-ev mb-4">
-              <div class="plugve-fipe-overlay">
-                <div class="plugve-pbev-select-slot"><p class="text-sm font-semibold">Busca FIPE - VE</p><p id="pbev_status_select_ve" class="plugve-pbev-status hidden"></p></div>
-                <div class="space-y-2">
+            <div class="bg-blue-50 border border-blue-100 rounded-lg p-3 mb-4">
+              <div class="plugve-pbev-select-slot"><p class="text-sm font-semibold">Busca FIPE - VE</p><p id="pbev_status_select_ve" class="plugve-pbev-status hidden"></p></div>
+              <div class="space-y-2">
                 <div>
                   <label class="block text-xs font-medium">Marca</label>
                   <select name="ve_marca_codigo" id="ve_marca" class="mt-1 p-2 border rounded w-full"></select>
@@ -1143,12 +1102,13 @@
                   <label class="block text-xs font-medium">Ano/Combustível</label>
                   <select name="ve_ano_codigo" id="ve_ano" class="mt-1 p-2 border rounded w-full"></select>
                 </div>
-
-                </div>
+                <p class="text-[11px] text-gray-500">
+                  Preço e IPVA automáticos pela FIPE.
+                </p>
               </div>
             </div>
 
-            <div id="perfil_uso_ve_slot" class="plugve-uso-slot space-y-3 plugve-align-pair" data-plugve-align="perfil"></div>
+            <div id="perfil_uso_ve_slot" class="plugve-uso-slot space-y-3"></div>
 
             <div id="dados_ve_box" class="space-y-2 plugve-progress-hidden mt-5 border rounded-lg p-4 bg-white shadow-sm">
               <input type="hidden" name="modelo_ve" id="modelo_ve">
@@ -1165,7 +1125,7 @@
               <input type="hidden" name="pbev_ve_criterio_consumo" id="pbev_ve_criterio_consumo">
               <input type="hidden" name="pbev_ve_editado_usuario" id="pbev_ve_editado_usuario" value="0">
 
-              <div class="plugve-align-pair" data-plugve-align="preco">
+              <div>
                 <label class="block text-sm font-medium">Preço do VE</label>
                 <div class="plugve-price-finance-field">
                   <div class="plugve-price-row">
@@ -1188,19 +1148,19 @@
                 </div>
               </div>
 
-              <div class="plugve-pbev-field-wrap plugve-align-pair" data-plugve-align="consumo">
+              <div class="plugve-pbev-field-wrap">
                 <label class="block text-sm font-medium">Consumo VE (kWh/km)</label>
                 <input type="text" name="consumo_ve" id="consumo_ve" class="mt-1 p-2 border rounded w-full plugve-pbev-field-input" placeholder="ex: 0,15">
                 <p id="consumo_ve_resumo_phev" class="plugve-phev-resumo hidden"></p>
                 <p id="pbev_status_ve" class="plugve-pbev-status hidden"></p>
               </div>
 
-              <div class="plugve-align-pair" data-plugve-align="manutencao">
+              <div>
                 <label class="block text-sm font-medium">Manutenção anual VE</label>
                 <input type="text" name="manut_ve" id="manut_ve" class="mt-1 p-2 border rounded w-full" placeholder="ex: 800">
               </div>
 
-              <div class="plugve-align-pair" data-plugve-align="ipva">
+              <div>
                 <label class="block text-sm font-medium">IPVA anual VE</label>
                 <div class="plugve-inline-action-field">
                   <input type="text" name="ipva_ve" id="ipva_ve_input" class="plugve-inline-action-input" placeholder="Calculado automaticamente">
@@ -1211,14 +1171,13 @@
                 </div>
               </div>
 
-              <div class="plugve-align-pair" data-plugve-align="seguro">
+              <div>
                 <label class="block text-sm font-medium">Seguro anual VE</label>
                 <input type="text" name="seguro_ve" id="seguro_ve" class="mt-1 p-2 border rounded w-full" placeholder="ex: 4000">
-                <input type="hidden" name="seguro_ve_manual" id="seguro_ve_manual" value="0">
                 <p id="seguro_status_ve" class="hidden"></p>
               </div>
 
-              <div class="plugve-align-pair" data-plugve-align="depreciacao">
+              <div>
                 <label class="block text-sm font-medium">Depreciação VE (%)</label>
                 <div class="mt-1 flex gap-2 items-center">
                   <input type="text" name="depreciacao_ve" id="depreciacao_ve" class="p-2 border rounded w-full" placeholder="ex: 8">
@@ -1234,13 +1193,12 @@
           <!-- =========================
             ICEV
           ========================= -->
-          <div id="coluna_icev" class="border rounded-lg p-4 plugve-stage-panel">
+          <div id="coluna_icev" class="border rounded-lg p-4">
             <h2 id="titulo_icev" class="font-semibold text-lg mb-3 text-gray-800">Veículo a Combustão (ICEV)</h2>
 
-            <div class="plugve-fipe-hero plugve-fipe-hero-icev mb-4">
-              <div class="plugve-fipe-overlay">
-                <div class="plugve-pbev-select-slot"><p class="text-sm font-semibold">Busca FIPE - ICEV</p><p id="pbev_status_select_icev" class="plugve-pbev-status hidden"></p></div>
-                <div class="space-y-2">
+            <div class="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-4">
+              <div class="plugve-pbev-select-slot"><p class="text-sm font-semibold">Busca FIPE - ICEV</p><p id="pbev_status_select_icev" class="plugve-pbev-status hidden"></p></div>
+              <div class="space-y-2">
                 <div>
                   <label class="block text-xs font-medium">Marca</label>
                   <select name="icev_marca_codigo" id="icev_marca" class="mt-1 p-2 border rounded w-full"></select>
@@ -1253,12 +1211,13 @@
                   <label class="block text-xs font-medium">Ano/Combustível</label>
                   <select name="icev_ano_codigo" id="icev_ano" class="mt-1 p-2 border rounded w-full"></select>
                 </div>
-
-                </div>
+                <p class="text-[11px] text-gray-500">
+                  Preço e IPVA automáticos pela FIPE.
+                </p>
               </div>
             </div>
 
-            <div id="perfil_uso_icev_slot" class="plugve-uso-slot space-y-3 plugve-align-pair" data-plugve-align="perfil"></div>
+            <div id="perfil_uso_icev_slot" class="plugve-uso-slot space-y-3"></div>
 
             <div id="dados_icev_box" class="space-y-2 plugve-progress-hidden mt-5 border rounded-lg p-4 bg-white shadow-sm">
               <input type="hidden" name="modelo_icev" id="modelo_icev">
@@ -1274,7 +1233,7 @@
               <input type="hidden" name="pbev_icev_criterio_consumo" id="pbev_icev_criterio_consumo">
               <input type="hidden" name="pbev_icev_editado_usuario" id="pbev_icev_editado_usuario" value="0">
 
-              <div class="plugve-align-pair" data-plugve-align="preco">
+              <div>
                 <label class="block text-sm font-medium">Preço do ICEV</label>
                 <div class="plugve-price-finance-field">
                   <div class="plugve-price-row">
@@ -1297,31 +1256,30 @@
                 </div>
               </div>
 
-              <div class="plugve-pbev-field-wrap plugve-align-pair" data-plugve-align="consumo">
+              <div class="plugve-pbev-field-wrap">
                 <label class="block text-sm font-medium">Consumo ICEV (km/L)</label>
                 <input type="text" name="consumo_icev" id="consumo_icev" class="mt-1 p-2 border rounded w-full plugve-pbev-field-input" placeholder="ex: 13,5">
                 <p id="consumo_icev_resumo_flex" class="plugve-consumo-resumo hidden"></p>
                 <p id="pbev_status_icev" class="plugve-pbev-status hidden"></p>
               </div>
 
-              <div class="plugve-align-pair" data-plugve-align="manutencao">
+              <div>
                 <label class="block text-sm font-medium">Manutenção anual ICEV</label>
                 <input type="text" name="manut_icev" id="manut_icev" class="mt-1 p-2 border rounded w-full" placeholder="ex: 1200">
               </div>
 
-              <div class="plugve-align-pair" data-plugve-align="ipva">
+              <div>
                 <label class="block text-sm font-medium">IPVA anual ICEV</label>
                 <input type="text" name="ipva_icev" id="ipva_icev_input" class="mt-1 p-2 border rounded w-full" placeholder="Calculado automaticamente">
               </div>
 
-              <div class="plugve-align-pair" data-plugve-align="seguro">
+              <div>
                 <label class="block text-sm font-medium">Seguro anual ICEV</label>
                 <input type="text" name="seguro_icev" id="seguro_icev" class="mt-1 p-2 border rounded w-full" placeholder="ex: 3000">
-                <input type="hidden" name="seguro_icev_manual" id="seguro_icev_manual" value="0">
                 <p id="seguro_status_icev" class="hidden"></p>
               </div>
 
-              <div class="plugve-align-pair" data-plugve-align="depreciacao">
+              <div>
                 <label class="block text-sm font-medium">Depreciação ICEV (%)</label>
                 <div class="mt-1 flex gap-2 items-center">
                   <input type="text" name="depreciacao_icev" id="depreciacao_icev" class="p-2 border rounded w-full" placeholder="ex: 10">
@@ -1338,7 +1296,7 @@
         <!-- =========================================================
           3.3.3) ENERGIA / COMBUSTÍVEL / USO
         ========================================================= -->
-        <section id="bloco_parametros_uso" class="border rounded-lg p-4 plugve-progress-hidden plugve-white-panel">
+        <section id="bloco_parametros_uso" class="border rounded-lg p-4 plugve-progress-hidden">
           <h2 class="font-semibold text-lg mb-3 text-gray-800">Reajustes anuais</h2>
 
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -1389,7 +1347,6 @@
               <input type="hidden" name="fuel_tipo_detectado" id="fuel_tipo_detectado" value="gasolina">
               <input type="hidden" name="fuel_percent_etanol" id="fuel_percent_etanol" value="0">
               <input type="hidden" name="fuel_flex_configurado" id="fuel_flex_configurado" value="0">
-              <input type="hidden" name="fuel_flex_perfil_obrigatorio" id="fuel_flex_perfil_obrigatorio" value="0">
               <input type="hidden" name="fuel_prefixo_configurado" id="fuel_prefixo_configurado" value="">
               <input type="hidden" name="fuel_vehicle_key" id="fuel_vehicle_key" value="">
               <input type="hidden" name="fuel_preco_gasolina" id="fuel_preco_gasolina" value="">
@@ -1397,7 +1354,6 @@
               <input type="hidden" name="fuel_preco_diesel_s10" id="fuel_preco_diesel_s10" value="">
               <input type="hidden" name="fuel_consumo_gasolina" id="fuel_consumo_gasolina" value="">
               <input type="hidden" name="fuel_consumo_etanol" id="fuel_consumo_etanol" value="">
-              <input type="hidden" name="fuel_preco_editado_usuario" id="fuel_preco_editado_usuario" value="0">
               <input type="hidden" name="combustivel" id="combustivel_input" value="5,80">
 
               <div id="plugve_fuel_card" class="plugve-fuel-card plugve-fuel-compact-card" data-fuel-mode="gasolina" role="button" tabindex="0" title="Clique para ajustar quando o veículo for flex.">
@@ -1410,10 +1366,7 @@
                     </div>
                   </div>
                   <strong id="fuel_compact_preco" class="plugve-fuel-compact-price"></strong>
-                  <div class="plugve-money-field plugve-fuel-money-field">
-                    <span class="plugve-money-prefix">R$</span>
-                    <input type="text" id="fuel_single_preco_input" class="plugve-fuel-single-input" value="5,80" inputmode="numeric" aria-label="Preço do combustível em reais por litro">
-                  </div>
+                  <input type="text" id="fuel_single_preco_input" class="plugve-fuel-single-input" value="5,800" inputmode="decimal" aria-label="Preço do combustível em reais por litro">
                   
                 </div>
                 <div id="fuel_compact_bar" class="plugve-fuel-mini-bar" aria-hidden="true">
@@ -1422,7 +1375,7 @@
                 </div>
                 <div class="plugve-fuel-compact-row">
                   <span id="fuel_compact_left">Gasolina</span>
-                  <span id="fuel_compact_right">R$ 5,80/L</span>
+                  <span id="fuel_compact_right">R$ 5,800/L</span>
                 </div>
               </div>
 
@@ -1481,7 +1434,7 @@
 
             <div class="hidden">
               <label class="block text-sm font-medium">KM por ano</label>
-              <input type="number" name="km_ano" id="km_ano_input" value="15000" min="0" step="500" class="mt-1 p-2 border rounded w-full" required>
+              <input type="number" name="km_ano" id="km_ano_input" value="15000" class="mt-1 p-2 border rounded w-full" required>
             </div>
 
           </div>
@@ -1565,7 +1518,7 @@
                 <label for="fuel_modal_preco_etanol">Preço (R$/L)</label>
                 <div class="plugve-money-field">
                   <span class="plugve-money-prefix">R$</span>
-                  <input type="text" id="fuel_modal_preco_etanol" inputmode="numeric" placeholder="ex: 4,48">
+                  <input type="text" id="fuel_modal_preco_etanol" inputmode="decimal" placeholder="ex: 4,48">
                 </div>
                 <label for="fuel_modal_consumo_etanol">Consumo (km/L)</label>
                 <div class="plugve-pbev-inline-field">
@@ -1578,7 +1531,7 @@
                 <label for="fuel_modal_preco_gasolina">Preço (R$/L)</label>
                 <div class="plugve-money-field">
                   <span class="plugve-money-prefix">R$</span>
-                  <input type="text" id="fuel_modal_preco_gasolina" inputmode="numeric" placeholder="ex: 6,87">
+                  <input type="text" id="fuel_modal_preco_gasolina" inputmode="decimal" placeholder="ex: 6,87">
                 </div>
                 <label for="fuel_modal_consumo_gasolina">Consumo (km/L)</label>
                 <div class="plugve-pbev-inline-field">
@@ -1652,7 +1605,7 @@
                 <label for="phev_modal_preco_combustivel">Preço (R$/L)</label>
                 <div class="plugve-money-field">
                   <span class="plugve-money-prefix">R$</span>
-                  <input type="text" id="phev_modal_preco_combustivel" inputmode="numeric" placeholder="ex: 6,87">
+                  <input type="text" id="phev_modal_preco_combustivel" inputmode="decimal" placeholder="ex: 6,87">
                 </div>
                 <label for="phev_modal_consumo_combustivel">Consumo (km/L)</label>
                 <div class="plugve-pbev-inline-field">
@@ -2264,89 +2217,9 @@
       return n ? formatarMoedaBR(n) : "";
     }
 
-    const PLUGVE_TCO_MONEY_INLINE_IDS = new Set([
-      "preco_atual", "manut_atual", "ipva_atual_input", "seguro_atual",
-      "preco_ve", "manut_ve", "ipva_ve_input", "seguro_ve",
-      "preco_icev", "manut_icev", "ipva_icev_input", "seguro_icev"
-    ]);
-    const PLUGVE_TCO_MONEY_EXTERNAL_IDS = new Set([
-      "energia_input", "fuel_single_preco_input", "fuel_modal_preco_etanol",
-      "fuel_modal_preco_gasolina", "phev_modal_preco_combustivel"
-    ]);
-
-    function tipoMascaraMonetariaTCO(input) {
-      if (!input || input.tagName !== "INPUT" || input.type === "hidden") return "";
-      if (PLUGVE_TCO_MONEY_INLINE_IDS.has(input.id)) return "inline";
-      if (PLUGVE_TCO_MONEY_EXTERNAL_IDS.has(input.id)) return "external";
-      const campoFin = input.dataset?.finCampo;
-      if (campoFin === "entrada" || campoFin === "custos") return "inline";
-      return "";
-    }
-
-    function formatarNumeroMonetarioSemPrefixoTCO(valor) {
-      const n = Number(valor);
-      if (!Number.isFinite(n)) return "";
-      return n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    }
-
-    function formatarCampoMonetarioPorNumeroTCO(input, valor) {
-      const tipo = tipoMascaraMonetariaTCO(input);
-      if (!tipo) return;
-      const n = Number(valor);
-      if (!Number.isFinite(n)) {
-        input.value = "";
-        return;
-      }
-      input.value = tipo === "external" ? formatarNumeroMonetarioSemPrefixoTCO(n) : formatarMoedaBR(n);
-      input.inputMode = "numeric";
-    }
-
-    function aplicarMascaraMonetariaDigitacaoTCO(input) {
-      const tipo = tipoMascaraMonetariaTCO(input);
-      if (!tipo) return false;
-      const digitos = String(input.value || "").replace(/\D/g, "");
-      if (!digitos) {
-        input.value = "";
-        return true;
-      }
-      const valor = Number(digitos) / 100;
-      input.value = tipo === "external" ? formatarNumeroMonetarioSemPrefixoTCO(valor) : formatarMoedaBR(valor);
-      try { input.setSelectionRange(input.value.length, input.value.length); } catch (e) {}
-      return true;
-    }
-
-    function formatarCampoMonetarioAtualTCO(input) {
-      if (!tipoMascaraMonetariaTCO(input)) return;
-      const bruto = String(input.value || "").trim();
-      if (!bruto) return;
-      formatarCampoMonetarioPorNumeroTCO(input, numeroBRParaFloat(bruto));
-    }
-
-    function formatarTodosCamposMonetariosTCO(root = document) {
-      const seletores = [
-        ...Array.from(PLUGVE_TCO_MONEY_INLINE_IDS, id => `#${id}`),
-        ...Array.from(PLUGVE_TCO_MONEY_EXTERNAL_IDS, id => `#${id}`),
-        "[data-fin-campo='entrada']", "[data-fin-campo='custos']"
-      ];
-      root.querySelectorAll(seletores.join(",")).forEach(formatarCampoMonetarioAtualTCO);
-    }
-
-    document.addEventListener("input", function (ev) {
-      if (aplicarMascaraMonetariaDigitacaoTCO(ev.target)) {
-        ev.target.dataset.plugveMoneyMasked = "1";
-      }
-    }, true);
-
-    document.addEventListener("focus", function (ev) {
-      const input = ev.target;
-      if (!tipoMascaraMonetariaTCO(input)) return;
-      input.inputMode = "numeric";
-      try { input.setSelectionRange(input.value.length, input.value.length); } catch (e) {}
-    }, true);
-
     function formatarNumero5(valor) {
       if (valor == null || isNaN(valor)) return "";
-      return Number(valor).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      return Number(valor).toFixed(5).replace(".", ",");
     }
 
     function escaparHTMLPlugVE(valor) {
@@ -2649,7 +2522,7 @@
         <div class="plugve-finance-form-grid">
           <div class="plugve-finance-control">
             <label class="block text-xs font-medium">Entrada (R$)</label>
-            <input type="text" data-fin-campo="entrada" value="${entrada && entrada !== "0" ? entrada : "0"}" inputmode="numeric" class="mt-1 p-2 border rounded w-full" placeholder="R$ 0,00">
+            <input type="text" data-fin-campo="entrada" value="${entrada && entrada !== "0" ? entrada : "0"}" class="mt-1 p-2 border rounded w-full" placeholder="ex: 30000">
           </div>
           <div class="plugve-finance-control">
             <label class="block text-xs font-medium">Juros (% a.m.)</label>
@@ -2661,7 +2534,7 @@
           </div>
           <div class="plugve-finance-control">
             <label class="block text-xs font-medium">Custos financiados (R$)</label>
-            <input type="text" data-fin-campo="custos" value="${custos && custos !== "0" ? custos : "0"}" inputmode="numeric" class="mt-1 p-2 border rounded w-full" placeholder="R$ 0,00">
+            <input type="text" data-fin-campo="custos" value="${custos && custos !== "0" ? custos : "0"}" class="mt-1 p-2 border rounded w-full" placeholder="ex: 0">
           </div>
         </div>
         <div data-fin-preview class="plugve-finance-total mt-4"></div>
@@ -2669,7 +2542,6 @@
       if (!ativo && valorHiddenFin(prefixo, "meses", "0") === "0") {
         card.querySelector("[data-fin-campo='ativo']").checked = true;
       }
-      formatarTodosCamposMonetariosTCO(card);
       card.querySelectorAll("input").forEach(input => {
         input.addEventListener("input", () => {
           previewFinanciamentoCard(card);
@@ -2759,10 +2631,10 @@
         const meses = card.querySelector("[data-fin-campo='meses']");
         const custos = card.querySelector("[data-fin-campo='custos']");
         if (ativo) ativo.checked = false;
-        if (entrada) formatarCampoMonetarioPorNumeroTCO(entrada, 0);
+        if (entrada) entrada.value = "0";
         if (juros) juros.value = "0";
         if (meses) meses.value = "0";
-        if (custos) formatarCampoMonetarioPorNumeroTCO(custos, 0);
+        if (custos) custos.value = "0";
         previewFinanciamentoCard(card);
       });
       capturarEstadoFormularioTCO();
@@ -2971,20 +2843,6 @@
       return textoOriginal || "";
     }
 
-    function ordenarAnosFipeParaTela(listaAnos) {
-      return (Array.isArray(listaAnos) ? [...listaAnos] : []).sort((a, b) => {
-        const aZero = codigoAnoFipeZeroKm(a?.codigo);
-        const bZero = codigoAnoFipeZeroKm(b?.codigo);
-        if (aZero !== bZero) return aZero ? -1 : 1;
-
-        const anoA = anoModeloParaCalculo(a?.codigo, a?.nome || a?.codigo || '');
-        const anoB = anoModeloParaCalculo(b?.codigo, b?.nome || b?.codigo || '');
-        if (anoA !== anoB) return (Number(anoB) || -Infinity) - (Number(anoA) || -Infinity);
-
-        return String(a?.nome || a?.codigo || '').localeCompare(String(b?.nome || b?.codigo || ''), 'pt-BR', { numeric: true, sensitivity: 'base' });
-      });
-    }
-
     function limparNomeVeiculoTCO(texto) {
       let nome = String(texto || "").replace(/\s+/g, " ").trim();
       if (!nome) return "";
@@ -3088,21 +2946,6 @@
       return document.getElementById(`seguro_status_${prefixo}`);
     }
 
-    function campoSeguroManualPorPrefixo(prefixo) {
-      return document.getElementById(`seguro_${prefixo}_manual`);
-    }
-
-    function marcarSeguroManual(prefixo, manual) {
-      const seguroEl = campoSeguroPorPrefixo(prefixo);
-      const manualEl = campoSeguroManualPorPrefixo(prefixo);
-      const valor = manual ? "1" : "0";
-      if (manualEl) manualEl.value = valor;
-      if (seguroEl) {
-        seguroEl.dataset.editadoManual = valor;
-        seguroEl.dataset.autoSeguro = manual ? "0" : seguroEl.dataset.autoSeguro || "0";
-      }
-    }
-
     function atualizarSeguroAutomatico(prefixo, forcar = false) {
       const precoEl = campoPrecoPorPrefixo(prefixo);
       const seguroEl = campoSeguroPorPrefixo(prefixo);
@@ -3110,8 +2953,9 @@
       if (!precoEl || !seguroEl) return;
       const preco = numeroBRParaFloat(precoEl.value);
       if (!preco || preco <= 0) return;
-      const jaManual = seguroEl.dataset.editadoManual === "1" || campoSeguroManualPorPrefixo(prefixo)?.value === "1";
-      if (jaManual && !forcar) {
+      const jaManual = seguroEl.dataset.editadoManual === "1";
+      const eraAuto = seguroEl.dataset.autoSeguro === "1" || !String(seguroEl.value || "").trim();
+      if (jaManual && !forcar && !eraAuto) {
         if (status) status.textContent = "";
         return;
       }
@@ -3119,8 +2963,6 @@
       seguroEl.value = formatarMoedaBR(seguro);
       seguroEl.dataset.autoSeguro = "1";
       seguroEl.dataset.editadoManual = "0";
-      const manualEl = campoSeguroManualPorPrefixo(prefixo);
-      if (manualEl) manualEl.value = "0";
       if (status) status.textContent = "";
     }
 
@@ -3134,9 +2976,6 @@
         const el = document.getElementById(id);
         if (el) el.value = "";
       });
-      marcarSeguroManual(prefixo, false);
-      const seguroLimpo = campoSeguroPorPrefixo(prefixo);
-      if (seguroLimpo) { delete seguroLimpo.dataset.autoSeguro; delete seguroLimpo.dataset.editadoManual; }
       if (prefixo === "ve") setValorInputTCO("tipo_veiculo_ve", "");
       const status = statusDepreciacaoPorPrefixo(prefixo);
       if (status) status.textContent = "Seleção incompatível com este bloco.";
@@ -3172,7 +3011,6 @@
       setValorInputTCO("fuel_tipo_detectado", "gasolina");
       setValorInputTCO("fuel_percent_etanol", "0");
       setValorInputTCO("fuel_flex_configurado", "0");
-      setValorInputTCO("fuel_flex_perfil_obrigatorio", "0");
       setValorInputTCO("fuel_prefixo_configurado", "");
       setValorInputTCO("fuel_vehicle_key", "");
       setValorInputTCO("fuel_consumo_gasolina", "");
@@ -3189,7 +3027,6 @@
         modalFuel.classList.add("hidden");
         modalFuel.setAttribute("aria-hidden", "true");
       }
-      finalizarEstadoModalCombustivelTCO();
       atualizarInputCombustivelTCO(precoBasePorModoCombustivelTCO("gasolina") || 0);
       renderizarCardCombustivelTCO();
     }
@@ -3214,10 +3051,6 @@
         delete consumo.dataset.flexConfigurado;
         delete consumo.dataset.phevConfigurado;
       }
-
-      marcarSeguroManual(prefixo, false);
-      const seguroLimpo = campoSeguroPorPrefixo(prefixo);
-      if (seguroLimpo) { delete seguroLimpo.dataset.autoSeguro; delete seguroLimpo.dataset.editadoManual; }
 
       pbevLimparEstadoConsumoTCO(prefixo);
 
@@ -3531,7 +3364,7 @@
         const prefixoDestino = String(selectAnoId || "").split("_")[0];
         const nomeModeloSelecionado = modeloEl.options[modeloEl.selectedIndex]?.text || "";
         const nomeMarcaSelecionada = marcaEl.options[marcaEl.selectedIndex]?.text || "";
-        ordenarAnosFipeParaTela(Array.isArray(anos) ? anos : []).forEach(a => {
+        anos.forEach(a => {
           if (!anoFipePermitidoRecortePlugVE(a.codigo, a.nome)) return;
           const tipoAno = classificarTipoVeiculoTCO(nomeModeloSelecionado, a.nome, a.codigo, nomeMarcaSelecionada, prefixoDestino);
           if (!tipoPermitidoNoBloco(prefixoDestino, tipoAno)) return;
@@ -3791,7 +3624,7 @@
         status.innerHTML = `<button type="button" class="plugve-pbev-proof-btn-main" title="Ver dados de consumo considerados e fonte oficial Inmetro/PBEV" aria-label="Ver comprovação Inmetro/PBEV"><img src="${PBEV_INMETRO_LOGO_URL}" alt="Inmetro"></button>`;
         status.classList.remove("hidden");
         const btn = status.querySelector("button");
-        if (btn) btn.onclick = function (ev) { ev.preventDefault(); ev.stopPropagation(); pbevAbrirComprovacaoTCO(prefixo); };
+        if (btn) btn.onclick = function (ev) { ev.preventDefault(); pbevAbrirComprovacaoTCO(prefixo); };
       });
     }
 
@@ -3801,8 +3634,15 @@
       pbevOcultarBotaoDebugTCO(prefixo);
       pbevRenderizarSeloComprovacaoTCO(prefixo, dados);
       const campo = pbevCampoConsumoPorPrefixoTCO(prefixo);
-      if (campo && (prefixo === "icev" || prefixo === "atual") && modoCombustivelSelecionadoTCO(prefixo) === "flex") {
-        ativarEdicaoConsumoFlexTCO(prefixo);
+      if (campo && (campo.readOnly || campo.dataset.flexConfigurado === "1" || campo.dataset.phevConfigurado === "1")) {
+        campo.classList.add("plugve-pbev-clickable");
+        campo.setAttribute("title", "Clique para ver os dados Inmetro/PBEV considerados");
+        campo.onclick = function (ev) {
+          if (campo.readOnly || campo.dataset.flexConfigurado === "1" || campo.dataset.phevConfigurado === "1") {
+            ev.preventDefault();
+            pbevAbrirComprovacaoTCO(prefixo);
+          }
+        };
       }
     }
 
@@ -4041,8 +3881,6 @@
       setValorInputTCO("fuel_tipo_detectado", "flex");
       setValorInputTCO("fuel_prefixo_configurado", prefixo);
       setValorInputTCO("fuel_vehicle_key", chaveFlexAtualTCO(prefixo));
-      // Híbrido flex exige confirmação explícita do perfil etanol x gasolina antes do TCO.
-      marcarPerfilFlexObrigatorioTCO(prefixo, String(sugestao.tipo || "") === "hibrido_flex" || ehHibridoSelecionadoTCO(prefixo));
       // Não inferir proporção etanol/gasolina. A PBEV preenche os consumos; o usuário confirma o perfil Flex.
       setValorInputTCO("fuel_flex_configurado", "0");
       if (gas > 0) setValorInputTCO("fuel_consumo_gasolina", formatarConsumoInputTCO(gas));
@@ -4079,7 +3917,7 @@
       if (eletrico > 0) setValorPhevTCO("phev_consumo_eletrico", formatarValorLitroInputTCO(eletrico));
       if (combustivel > 0) setValorPhevTCO("phev_consumo_combustivel", formatarConsumoInputTCO(combustivel));
       if (!document.getElementById("phev_preco_combustivel")?.value) {
-        setValorPhevTCO("phev_preco_combustivel", formatarPrecoCombustivelInputTCO(precoCombustivelPhevPadraoTCO() || 0));
+        setValorPhevTCO("phev_preco_combustivel", formatarValorLitroInputTCO(precoCombustivelPhevPadraoTCO() || 0));
       }
 
       const campo = pbevCampoConsumoPorPrefixoTCO(prefixo);
@@ -4170,10 +4008,16 @@
           pbevMarcarConsumoEditadoUsuarioTCO(prefixo);
         });
         campo?.addEventListener("keydown", function (ev) {
-          if ((ev.key === "Enter" || ev.key === " ") && (prefixo === "icev" || prefixo === "atual") && modoCombustivelSelecionadoTCO(prefixo) === "flex") {
+          if ((ev.key === "Enter" || ev.key === " ") && this.dataset.pbevAuto === "1" && (this.readOnly || this.dataset.flexConfigurado === "1" || this.dataset.phevConfigurado === "1")) {
             ev.preventDefault();
-            abrirModalCombustivelTCO({ somenteConsumo: true, prefixo });
+            pbevAbrirComprovacaoTCO(prefixo);
           }
+        });
+      });
+      ["fuel_modal_consumo_etanol", "fuel_modal_consumo_gasolina"].forEach(id => {
+        document.getElementById(id)?.addEventListener("input", function () {
+          const prefixo = document.getElementById("fuel_prefixo_configurado")?.value || prefixoCombustaoPreferencialTCO();
+          pbevMarcarConsumoEditadoUsuarioTCO(prefixo);
         });
       });
       ["phev_modal_consumo_eletrico", "phev_modal_consumo_combustivel"].forEach(id => {
@@ -4481,9 +4325,6 @@
     let ultimoFlexAutoAbertoTCO = "";
     let sugestaoConsumoGasolinaUsadaTCO = false;
     let sugestaoConsumoEtanolUsadaTCO = false;
-    let snapshotModalCombustivelTCO = null;
-    let modoEdicaoSomenteConsumoFlexTCO = false;
-    let prefixoEdicaoConsumoFlexTCO = "";
 
     function numeroOuNullCombustivelTCO(valor) {
       const n = Number(valor);
@@ -4493,19 +4334,13 @@
     function formatarPrecoLitroTCO(valor) {
       const n = Number(valor);
       if (!Number.isFinite(n) || n <= 0) return "—";
-      return `R$ ${n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/L`;
+      return `R$ ${n.toFixed(3).replace(".", ",")}/L`;
     }
 
     function formatarValorLitroInputTCO(valor) {
       const n = Number(valor);
       if (!Number.isFinite(n) || n <= 0) return "";
-      return n.toLocaleString("pt-BR", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
-    }
-
-    function formatarPrecoCombustivelInputTCO(valor) {
-      const n = Number(valor);
-      if (!Number.isFinite(n) || n <= 0) return "";
-      return n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      return n.toFixed(3).replace(".", ",");
     }
 
     function formatarConsumoInputTCO(valor) {
@@ -4529,13 +4364,13 @@
       precosCombustivelTCO.diesel_s10 = numeroOuNullCombustivelTCO(dados?.diesel_s10);
 
       if (!valorNumeroInputTCO("fuel_preco_gasolina") && precosCombustivelTCO.gasolina) {
-        setValorInputTCO("fuel_preco_gasolina", formatarPrecoCombustivelInputTCO(precosCombustivelTCO.gasolina));
+        setValorInputTCO("fuel_preco_gasolina", formatarValorLitroInputTCO(precosCombustivelTCO.gasolina));
       }
       if (!valorNumeroInputTCO("fuel_preco_etanol") && precosCombustivelTCO.etanol) {
-        setValorInputTCO("fuel_preco_etanol", formatarPrecoCombustivelInputTCO(precosCombustivelTCO.etanol));
+        setValorInputTCO("fuel_preco_etanol", formatarValorLitroInputTCO(precosCombustivelTCO.etanol));
       }
       if (!valorNumeroInputTCO("fuel_preco_diesel_s10") && precosCombustivelTCO.diesel_s10) {
-        setValorInputTCO("fuel_preco_diesel_s10", formatarPrecoCombustivelInputTCO(precosCombustivelTCO.diesel_s10));
+        setValorInputTCO("fuel_preco_diesel_s10", formatarValorLitroInputTCO(precosCombustivelTCO.diesel_s10));
       }
     }
 
@@ -4570,43 +4405,10 @@
       return `${prefixo}|${modelo}|${combustivel}`;
     }
 
-    function ehHibridoSelecionadoTCO(prefixoPreferido) {
-      const prefixo = prefixoCombustaoPreferencialTCO(prefixoPreferido);
-      const modelo = document.getElementById(`modelo_${prefixo}`)?.value || "";
-      const combustivel = document.getElementById(`combustivel_${prefixo}`)?.value || "";
-      const dadosPbev = PBEV_DEBUG_TCO[prefixo] || {};
-      const sugestaoTipo = String(dadosPbev?.sugestoes_consumo?.tipo || "").toLowerCase();
-      const propulsaoPbev = normalizarTextoTipoTCO(`${dadosPbev?.candidato?.tipo_propulsao || ""} ${dadosPbev?.candidato?.tipo_propulsao_normalizado || ""}`);
-      const texto = normalizarTextoTipoTCO(`${modelo} ${combustivel}`);
-      return sugestaoTipo === "hibrido_flex" || /\b(HIBRIDO|HYBRID|HEV|MHEV)\b/.test(`${texto} ${propulsaoPbev}`);
-    }
-
-    function perfilFlexObrigatorioTCO(prefixoPreferido) {
-      const prefixo = prefixoCombustaoPreferencialTCO(prefixoPreferido);
-      const obrigatorio = document.getElementById("fuel_flex_perfil_obrigatorio")?.value === "1";
-      const chaveSalva = document.getElementById("fuel_vehicle_key")?.value || "";
-      return obrigatorio && chaveSalva === chaveFlexAtualTCO(prefixo);
-    }
-
-    function marcarPerfilFlexObrigatorioTCO(prefixoPreferido, obrigatorio) {
-      const prefixo = prefixoCombustaoPreferencialTCO(prefixoPreferido);
-      setValorInputTCO("fuel_flex_perfil_obrigatorio", obrigatorio ? "1" : "0");
-      if (obrigatorio) {
-        setValorInputTCO("fuel_prefixo_configurado", prefixo);
-        setValorInputTCO("fuel_vehicle_key", chaveFlexAtualTCO(prefixo));
-      }
-    }
-
     function modoCombustivelSelecionadoTCO(prefixoPreferido) {
       const prefixo = prefixoCombustaoPreferencialTCO(prefixoPreferido);
       const modelo = document.getElementById(`modelo_${prefixo}`)?.value || "";
       const combustivel = document.getElementById(`combustivel_${prefixo}`)?.value || "";
-      const chaveAtual = `${prefixo}|${modelo}|${combustivel}`;
-      const chaveSalva = document.getElementById("fuel_vehicle_key")?.value || "";
-      const modoRefinado = document.getElementById("fuel_tipo_detectado")?.value || "";
-      if (chaveSalva === chaveAtual && ["flex", "diesel", "etanol", "gasolina"].includes(modoRefinado)) {
-        return modoRefinado;
-      }
       return detectarModoCombustivelTCO(modelo, combustivel);
     }
 
@@ -4650,7 +4452,7 @@
       const input = document.getElementById("combustivel_input");
       if (!input) return;
       const n = Number(valor);
-      if (Number.isFinite(n) && n > 0) input.value = formatarPrecoCombustivelInputTCO(n);
+      if (Number.isFinite(n) && n > 0) input.value = formatarValorLitroInputTCO(n);
     }
 
     function campoConsumoCombustaoTCO(prefixo) {
@@ -4668,9 +4470,6 @@
         if (campo.dataset.flexConfigurado === "1") campo.value = "";
         campo.readOnly = false;
         campo.classList.remove("plugve-consumo-configurado");
-        campo.classList.remove("plugve-pbev-clickable");
-        campo.onclick = null;
-        campo.removeAttribute("title");
         delete campo.dataset.flexConfigurado;
       }
       if (resumo) {
@@ -4702,7 +4501,6 @@
       campo.readOnly = true;
       campo.dataset.flexConfigurado = "1";
       campo.classList.add("plugve-consumo-configurado");
-      ativarEdicaoConsumoFlexTCO(prefixo);
       const dadosPbev = PBEV_DEBUG_TCO[prefixo];
       if (dadosPbev?.autopreencher === true && dadosPbev?.nivel_match === "alto") pbevAtivarComprovacaoTCO(prefixo, dadosPbev);
 
@@ -4713,14 +4511,13 @@
     function definirHiddenPrecoCombustivelTCO(chave, valor) {
       const el = document.getElementById(`fuel_preco_${chave}`);
       const n = Number(valor || 0);
-      if (el && Number.isFinite(n) && n > 0) el.value = formatarPrecoCombustivelInputTCO(n);
+      if (el && Number.isFinite(n) && n > 0) el.value = formatarValorLitroInputTCO(n);
     }
 
     function resetarPerfilCombustivelParaVeiculoTCO(prefixo, modo, chave) {
       setValorInputTCO("fuel_tipo_detectado", modo || "gasolina");
       setValorInputTCO("fuel_percent_etanol", "0");
       setValorInputTCO("fuel_flex_configurado", "0");
-      setValorInputTCO("fuel_flex_perfil_obrigatorio", modo === "flex" && ehHibridoSelecionadoTCO(prefixo) ? "1" : "0");
       setValorInputTCO("fuel_prefixo_configurado", prefixo || "");
       setValorInputTCO("fuel_vehicle_key", chave || "");
       setValorInputTCO("fuel_consumo_gasolina", "");
@@ -4746,114 +4543,12 @@
       atualizarInputCombustivelTCO(precoBasePorModoCombustivelTCO(modo || "gasolina") || 0);
     }
 
-    function capturarSnapshotModalCombustivelTCO(prefixo) {
-      const ids = [
-        "fuel_percent_etanol", "fuel_flex_configurado", "fuel_flex_perfil_obrigatorio", "fuel_prefixo_configurado", "fuel_vehicle_key",
-        "fuel_preco_etanol", "fuel_preco_gasolina", "fuel_consumo_etanol", "fuel_consumo_gasolina",
-        "combustivel_input"
-      ];
-      const valores = {};
-      ids.forEach(id => { valores[id] = document.getElementById(id)?.value ?? ""; });
-      const campo = campoConsumoCombustaoTCO(prefixo);
-      return {
-        prefixo,
-        valores,
-        campo: campo ? {
-          value: campo.value,
-          readOnly: campo.readOnly,
-          className: campo.className,
-          dataset: { ...campo.dataset },
-          title: campo.getAttribute("title") || "",
-        } : null,
-      };
-    }
-
-    function restaurarDatasetElementoTCO(el, dataset) {
-      if (!el) return;
-      Object.keys(el.dataset || {}).forEach(chave => delete el.dataset[chave]);
-      Object.entries(dataset || {}).forEach(([chave, valor]) => { el.dataset[chave] = valor; });
-    }
-
-    function restaurarSnapshotModalCombustivelTCO(snapshot) {
-      if (!snapshot) return;
-      Object.entries(snapshot.valores || {}).forEach(([id, valor]) => setValorInputTCO(id, valor));
-      const campo = campoConsumoCombustaoTCO(snapshot.prefixo);
-      if (campo && snapshot.campo) {
-        campo.value = snapshot.campo.value;
-        campo.readOnly = !!snapshot.campo.readOnly;
-        campo.className = snapshot.campo.className;
-        restaurarDatasetElementoTCO(campo, snapshot.campo.dataset);
-        if (snapshot.campo.title) campo.setAttribute("title", snapshot.campo.title);
-        else campo.removeAttribute("title");
-      }
-      const slider = document.getElementById("fuel_mix_slider");
-      if (slider) slider.value = String(snapshot.valores?.fuel_percent_etanol || "0");
-      renderizarCardCombustivelTCO();
-    }
-
-    function finalizarEstadoModalCombustivelTCO() {
-      snapshotModalCombustivelTCO = null;
-      modoEdicaoSomenteConsumoFlexTCO = false;
-      prefixoEdicaoConsumoFlexTCO = "";
-      const modal = document.getElementById("modal_combustivel_tco");
-      modal?.classList.remove("plugve-consumo-only");
-      const precoEta = document.getElementById("fuel_modal_preco_etanol");
-      const precoGas = document.getElementById("fuel_modal_preco_gasolina");
-      const slider = document.getElementById("fuel_mix_slider");
-      if (precoEta) precoEta.readOnly = false;
-      if (precoGas) precoGas.readOnly = false;
-      if (slider) slider.disabled = false;
-      configurarObrigatoriedadePerfilFlexTCO(prefixoCombustaoPreferencialTCO(), false);
-    }
-
-    function configurarModoEdicaoConsumoFlexTCO(ativo) {
-      modoEdicaoSomenteConsumoFlexTCO = !!ativo;
-      const modal = document.getElementById("modal_combustivel_tco");
-      modal?.classList.toggle("plugve-consumo-only", modoEdicaoSomenteConsumoFlexTCO);
-      const precoEta = document.getElementById("fuel_modal_preco_etanol");
-      const precoGas = document.getElementById("fuel_modal_preco_gasolina");
-      const slider = document.getElementById("fuel_mix_slider");
-      if (precoEta) precoEta.readOnly = modoEdicaoSomenteConsumoFlexTCO;
-      if (precoGas) precoGas.readOnly = modoEdicaoSomenteConsumoFlexTCO;
-      if (slider) slider.disabled = modoEdicaoSomenteConsumoFlexTCO;
-      atualizarEstadoModalCombustivelTCO();
-      configurarObrigatoriedadePerfilFlexTCO(prefixoEdicaoConsumoFlexTCO || prefixoCombustaoPreferencialTCO(), modoEdicaoSomenteConsumoFlexTCO);
-    }
-
-    function ativarEdicaoConsumoFlexTCO(prefixo) {
-      const campo = campoConsumoCombustaoTCO(prefixo);
-      if (!campo) return;
-      campo.classList.add("plugve-pbev-clickable");
-      campo.setAttribute("title", "Clique para editar os consumos de etanol e gasolina");
-      campo.onclick = function (ev) {
-        ev.preventDefault();
-        abrirModalCombustivelTCO({ somenteConsumo: true, prefixo });
-      };
-    }
-
-    function configurarObrigatoriedadePerfilFlexTCO(prefixoPreferido, somenteConsumo = false) {
-      const prefixo = prefixoCombustaoPreferencialTCO(prefixoPreferido);
-      const configurado = document.getElementById("fuel_flex_configurado")?.value === "1";
-      const obrigatorio = perfilFlexObrigatorioTCO(prefixo) && !configurado && !somenteConsumo;
-      const btnPular = document.getElementById("btn_cancelar_combustivel_tco");
-      const btnFechar = document.getElementById("btn_fechar_combustivel_tco");
-      const modal = document.getElementById("modal_combustivel_tco");
-      [btnPular, btnFechar].forEach(btn => {
-        if (!btn) return;
-        btn.classList.toggle("hidden", obrigatorio);
-        btn.disabled = obrigatorio;
-        btn.setAttribute("aria-hidden", obrigatorio ? "true" : "false");
-      });
-      if (modal) modal.dataset.perfilObrigatorio = obrigatorio ? "1" : "0";
-      return obrigatorio;
-    }
-
     function prepararModalCombustivelTCO() {
       const pct = Number(document.getElementById("fuel_percent_etanol")?.value || 0);
       const slider = document.getElementById("fuel_mix_slider");
       if (slider) slider.value = String(Math.max(0, Math.min(100, pct)));
-      setValorInputTCO("fuel_modal_preco_etanol", document.getElementById("fuel_preco_etanol")?.value || formatarPrecoCombustivelInputTCO(precosCombustivelTCO.etanol || 0));
-      setValorInputTCO("fuel_modal_preco_gasolina", document.getElementById("fuel_preco_gasolina")?.value || formatarPrecoCombustivelInputTCO(precosCombustivelTCO.gasolina || 0));
+      setValorInputTCO("fuel_modal_preco_etanol", document.getElementById("fuel_preco_etanol")?.value || formatarValorLitroInputTCO(precosCombustivelTCO.etanol || 0));
+      setValorInputTCO("fuel_modal_preco_gasolina", document.getElementById("fuel_preco_gasolina")?.value || formatarValorLitroInputTCO(precosCombustivelTCO.gasolina || 0));
       setValorInputTCO("fuel_modal_consumo_etanol", document.getElementById("fuel_consumo_etanol")?.value || "");
       setValorInputTCO("fuel_modal_consumo_gasolina", document.getElementById("fuel_consumo_gasolina")?.value || "");
       ["fuel_modal_consumo_etanol", "fuel_modal_consumo_gasolina"].forEach(id => {
@@ -4864,7 +4559,6 @@
         }
       });
       atualizarEstadoModalCombustivelTCO();
-      configurarObrigatoriedadePerfilFlexTCO(prefixoEdicaoConsumoFlexTCO || prefixoCombustaoPreferencialTCO(), modoEdicaoSomenteConsumoFlexTCO);
     }
 
     function sugerirConsumoFlexTCO(origem) {
@@ -4920,30 +4614,16 @@
 
       const usaEta = etanolPct > 0;
       const usaGas = gasolinaPct > 0;
-      let valido = false;
-      if (modoEdicaoSomenteConsumoFlexTCO) {
-        if (precoEta) { precoEta.disabled = false; precoEta.readOnly = true; }
-        if (precoGas) { precoGas.disabled = false; precoGas.readOnly = true; }
-        if (consEta) consEta.disabled = false;
-        if (consGas) consGas.disabled = false;
-        if (slider) slider.disabled = true;
-        boxEta?.classList.remove("plugve-disabled");
-        boxGas?.classList.remove("plugve-disabled");
-        valido = numeroBRParaFloat(consEta?.value || 0) > 0 && numeroBRParaFloat(consGas?.value || 0) > 0;
-      } else {
-        if (precoEta) precoEta.readOnly = false;
-        if (precoGas) precoGas.readOnly = false;
-        if (slider) slider.disabled = false;
-        [precoEta, consEta].forEach(el => { if (el) el.disabled = !usaEta; });
-        [precoGas, consGas].forEach(el => { if (el) el.disabled = !usaGas; });
-        boxEta?.classList.toggle("plugve-disabled", !usaEta);
-        boxGas?.classList.toggle("plugve-disabled", !usaGas);
-        const okEta = !usaEta || (numeroBRParaFloat(precoEta?.value || 0) > 0 && numeroBRParaFloat(consEta?.value || 0) > 0);
-        const okGas = !usaGas || (numeroBRParaFloat(precoGas?.value || 0) > 0 && numeroBRParaFloat(consGas?.value || 0) > 0);
-        valido = okEta && okGas;
-      }
+      [precoEta, consEta].forEach(el => { if (el) el.disabled = !usaEta; });
+      [precoGas, consGas].forEach(el => { if (el) el.disabled = !usaGas; });
+      boxEta?.classList.toggle("plugve-disabled", !usaEta);
+      boxGas?.classList.toggle("plugve-disabled", !usaGas);
+
+      const okEta = !usaEta || (numeroBRParaFloat(precoEta?.value || 0) > 0 && numeroBRParaFloat(consEta?.value || 0) > 0);
+      const okGas = !usaGas || (numeroBRParaFloat(precoGas?.value || 0) > 0 && numeroBRParaFloat(consGas?.value || 0) > 0);
+      const valido = okEta && okGas;
       if (btnSalvar) {
-        btnSalvar.textContent = modoEdicaoSomenteConsumoFlexTCO || document.getElementById("fuel_flex_configurado")?.value === "1" ? "Salvar" : "Próximo";
+        btnSalvar.textContent = document.getElementById("fuel_flex_configurado")?.value === "1" ? "Salvar" : "Próximo";
         btnSalvar.disabled = !valido;
         btnSalvar.classList.toggle("plugve-fuel-save-disabled", !valido);
       }
@@ -4958,19 +4638,6 @@
 
     function textoResumoPrecoFlexTCO(label, pct, preco) {
       return `${pct}% ${label} • ${formatarPrecoLitroTCO(preco)}`;
-    }
-
-    function precoCombustivelEditadoUsuarioTCO() {
-      return document.getElementById("fuel_preco_editado_usuario")?.value === "1";
-    }
-
-    function marcarPrecoCombustivelEditadoUsuarioTCO(editado = true) {
-      const el = document.getElementById("fuel_preco_editado_usuario");
-      if (el) el.value = editado ? "1" : "0";
-    }
-
-    function subtituloOrigemCombustivelTCO() {
-      return precoCombustivelEditadoUsuarioTCO() ? "Ajustado pelo usuário" : "Valor médio ANP";
     }
 
     function renderizarCardCombustivelTCO() {
@@ -4993,7 +4660,7 @@
       const modo = modoCombustivelTCO || "gasolina";
       card.dataset.fuelMode = modo;
       card.setAttribute("aria-label", modo === "flex" ? "Editar perfil flex de combustível" : "Preço de combustível aplicado");
-      card.setAttribute("title", modo === "flex" ? "Clique para ajustar o perfil flex." : (precoCombustivelEditadoUsuarioTCO() ? "Preço ajustado manualmente pelo usuário." : "Edite o preço se quiser ajustar o valor ANP."));
+      card.setAttribute("title", modo === "flex" ? "Clique para ajustar o perfil flex." : "Edite o preço se quiser ajustar o valor ANP.");
       if (hiddenModo) hiddenModo.value = modo;
       if (compactPreco) compactPreco.textContent = "";
       if (barEtanol) barEtanol.style.background = "rgba(22,163,74,.88)";
@@ -5033,28 +4700,28 @@
       atualizarInputCombustivelTCO(precoFinal);
       if (inputSinglePreco) {
         inputSinglePreco.classList.remove("hidden");
-        if (document.activeElement !== inputSinglePreco) inputSinglePreco.value = formatarPrecoCombustivelInputTCO(precoFinal);
+        if (document.activeElement !== inputSinglePreco) inputSinglePreco.value = formatarValorLitroInputTCO(precoFinal);
       }
       if (barEtanol) barEtanol.style.width = "0%";
       if (barGasolina) barGasolina.style.width = "100%";
 
       if (modo === "diesel") {
         if (titulo) titulo.textContent = "Diesel S10";
-        if (subtitulo) subtitulo.textContent = subtituloOrigemCombustivelTCO();
+        if (subtitulo) subtitulo.textContent = "Valor médio ANP";
         if (icon) icon.textContent = "🛢️";
         if (barGasolina) barGasolina.style.background = "rgba(146,64,14,.72)";
         if (compactLeft) compactLeft.textContent = "Diesel S10";
         if (compactRight) compactRight.textContent = formatarPrecoLitroTCO(precoFinal);
       } else if (modo === "etanol") {
         if (titulo) titulo.textContent = "Etanol";
-        if (subtitulo) subtitulo.textContent = subtituloOrigemCombustivelTCO();
+        if (subtitulo) subtitulo.textContent = "Valor médio ANP";
         if (icon) icon.textContent = "🍃";
         if (barGasolina) barGasolina.style.background = "rgba(22,163,74,.88)";
         if (compactLeft) compactLeft.textContent = "Etanol";
         if (compactRight) compactRight.textContent = formatarPrecoLitroTCO(precoFinal);
       } else {
         if (titulo) titulo.textContent = "Gasolina";
-        if (subtitulo) subtitulo.textContent = subtituloOrigemCombustivelTCO();
+        if (subtitulo) subtitulo.textContent = "Valor médio ANP";
         if (icon) icon.textContent = "⛽";
         if (compactLeft) compactLeft.textContent = "Gasolina";
         if (compactRight) compactRight.textContent = formatarPrecoLitroTCO(precoFinal);
@@ -5066,26 +4733,20 @@
       }
     }
 
-    function abrirModalCombustivelTCO(opcoes = {}) {
-      const prefixo = opcoes.prefixo || prefixoCombustaoPreferencialTCO();
-      if (modoCombustivelSelecionadoTCO(prefixo) !== "flex" && modoCombustivelTCO !== "flex") return;
-      modoCombustivelTCO = "flex";
+    function abrirModalCombustivelTCO() {
+      if (modoCombustivelTCO !== "flex") return;
       const modal = document.getElementById("modal_combustivel_tco");
       if (!modal) return;
-      snapshotModalCombustivelTCO = capturarSnapshotModalCombustivelTCO(prefixo);
-      prefixoEdicaoConsumoFlexTCO = prefixo;
-      const somenteConsumo = opcoes.somenteConsumo === true;
       const configurado = document.getElementById("fuel_flex_configurado")?.value === "1";
-      prepararModalCombustivelTCO();
-      configurarModoEdicaoConsumoFlexTCO(somenteConsumo);
-      renderizarCardCombustivelTCO();
-      // Antes do primeiro Próximo, a configuração fica inline. Edição direta do consumo sempre abre como modal.
-      if (modal.classList.contains("plugve-inline-profile") && !configurado && !somenteConsumo) {
+      // Antes do primeiro Próximo, a configuração fica inline. Depois disso, o card compacto abre como modal.
+      if (modal.classList.contains("plugve-inline-profile") && !configurado) {
         modal.classList.remove("plugve-edit-modal");
         modal.classList.remove("hidden");
         modal.setAttribute("aria-hidden", "false");
         return;
       }
+      prepararModalCombustivelTCO();
+      renderizarCardCombustivelTCO();
       if (modal.classList.contains("plugve-inline-profile")) modal.classList.add("plugve-edit-modal");
       modal.classList.remove("hidden");
       modal.setAttribute("aria-hidden", "false");
@@ -5107,38 +4768,18 @@
     }
 
     function cancelarModalCombustivelTCO() {
-      const snapshot = snapshotModalCombustivelTCO;
-      const prefixo = snapshot?.prefixo || prefixoEdicaoConsumoFlexTCO || prefixoCombustaoPreferencialTCO();
-      const eraConfigurado = snapshot?.valores?.fuel_flex_configurado === "1";
-      restaurarSnapshotModalCombustivelTCO(snapshot);
-
-      const perfilObrigatorio = perfilFlexObrigatorioTCO(prefixo) && !eraConfigurado && !modoEdicaoSomenteConsumoFlexTCO;
-      if (perfilObrigatorio) {
-        setValorInputTCO("fuel_flex_configurado", "0");
-        prepararModalCombustivelTCO();
-        configurarModoEdicaoConsumoFlexTCO(false);
-        renderizarCardCombustivelTCO();
-        capturarEstadoFormularioTCO();
-        if (typeof atualizarPerfisInlinePlugVE === "function") atualizarPerfisInlinePlugVE();
-        if (typeof window.atualizarDetalhesProgressivosPlugVE === "function") window.atualizarDetalhesProgressivosPlugVE();
-        return;
-      }
-
-      // No primeiro fluxo de flex convencional, Pular conclui a etapa sem apagar os consumos PBEV já existentes.
-      if (snapshot && !eraConfigurado && !modoEdicaoSomenteConsumoFlexTCO) {
-        setValorInputTCO("fuel_flex_configurado", "1");
-        setValorInputTCO("fuel_prefixo_configurado", prefixo);
-        setValorInputTCO("fuel_vehicle_key", chaveFlexAtualTCO(prefixo));
-        const temConsumo = valorNumeroInputTCO("fuel_consumo_etanol") > 0 || valorNumeroInputTCO("fuel_consumo_gasolina") > 0;
-        if (temConsumo) aplicarResumoConsumoFlexTCO(prefixo);
-      } else if (campoConsumoCombustaoTCO(prefixo)?.dataset.flexConfigurado === "1") {
-        ativarEdicaoConsumoFlexTCO(prefixo);
-      }
-
+      const prefixo = prefixoCombustaoPreferencialTCO();
+      const chave = chaveFlexAtualTCO(prefixo);
+      setValorInputTCO("fuel_percent_etanol", "0");
+      setValorInputTCO("fuel_flex_configurado", "1");
+      setValorInputTCO("fuel_prefixo_configurado", prefixo);
+      setValorInputTCO("fuel_vehicle_key", chave);
+      copiarModalParaHiddenCombustivelTCO();
+      atualizarInputCombustivelTCO(precoBasePorModoCombustivelTCO("gasolina") || precoHiddenCombustivelTCO("gasolina") || 0);
+      limparResumoConsumoFlexTCO(prefixo);
       renderizarCardCombustivelTCO();
       capturarEstadoFormularioTCO();
       fecharModalCombustivelTCO();
-      finalizarEstadoModalCombustivelTCO();
       if (typeof atualizarPerfisInlinePlugVE === "function") atualizarPerfisInlinePlugVE();
       if (typeof window.atualizarDetalhesProgressivosPlugVE === "function") window.atualizarDetalhesProgressivosPlugVE();
     }
@@ -5148,32 +4789,20 @@
       const btnSalvar = document.getElementById("btn_salvar_combustivel_tco");
       if (btnSalvar?.disabled) return;
 
-      const prefixo = prefixoEdicaoConsumoFlexTCO || prefixoCombustaoPreferencialTCO();
+      const prefixo = prefixoCombustaoPreferencialTCO();
       const chave = chaveFlexAtualTCO(prefixo);
       const slider = document.getElementById("fuel_mix_slider");
       const etanolPct = Math.max(0, Math.min(100, Number(slider?.value || 0)));
-
-      if (modoEdicaoSomenteConsumoFlexTCO) {
-        setValorInputTCO("fuel_consumo_etanol", document.getElementById("fuel_modal_consumo_etanol")?.value || "");
-        setValorInputTCO("fuel_consumo_gasolina", document.getElementById("fuel_modal_consumo_gasolina")?.value || "");
-        setValorInputTCO("fuel_flex_configurado", "1");
-        setValorInputTCO("fuel_prefixo_configurado", prefixo);
-        setValorInputTCO("fuel_vehicle_key", chave);
-        aplicarResumoConsumoFlexTCO(prefixo);
-        pbevMarcarConsumoEditadoUsuarioTCO(prefixo);
-      } else {
-        copiarModalParaHiddenCombustivelTCO();
-        setValorInputTCO("fuel_percent_etanol", String(etanolPct));
-        setValorInputTCO("fuel_flex_configurado", "1");
-        setValorInputTCO("fuel_prefixo_configurado", prefixo);
-        setValorInputTCO("fuel_vehicle_key", chave);
-        atualizarInputCombustivelTCO(precoPonderadoFlexTCO(etanolPct));
-        aplicarResumoConsumoFlexTCO(prefixo);
-      }
+      copiarModalParaHiddenCombustivelTCO();
+      setValorInputTCO("fuel_percent_etanol", String(etanolPct));
+      setValorInputTCO("fuel_flex_configurado", "1");
+      setValorInputTCO("fuel_prefixo_configurado", prefixo);
+      setValorInputTCO("fuel_vehicle_key", chave);
+      atualizarInputCombustivelTCO(precoPonderadoFlexTCO(etanolPct));
+      aplicarResumoConsumoFlexTCO(prefixo);
       renderizarCardCombustivelTCO();
       capturarEstadoFormularioTCO();
       fecharModalCombustivelTCO();
-      finalizarEstadoModalCombustivelTCO();
       if (typeof atualizarPerfisInlinePlugVE === "function") atualizarPerfisInlinePlugVE();
       if (typeof window.atualizarDetalhesProgressivosPlugVE === "function") window.atualizarDetalhesProgressivosPlugVE();
     }
@@ -5254,12 +4883,11 @@
             this.dataset.manual = "1";
             delete this.dataset.sugerido;
           }
-          if (id.includes("preco")) marcarPrecoCombustivelEditadoUsuarioTCO(true);
           atualizarEstadoModalCombustivelTCO();
         });
         el?.addEventListener("blur", function () {
           const n = numeroBRParaFloat(this.value);
-          if (n > 0) this.value = id.includes("preco") ? formatarPrecoCombustivelInputTCO(n) : formatarConsumoInputTCO(n);
+          if (n > 0) this.value = id.includes("preco") ? formatarValorLitroInputTCO(n) : formatarConsumoInputTCO(n);
           if (id.includes("gasolina")) sugerirConsumoFlexTCO("gasolina");
           if (id.includes("etanol")) sugerirConsumoFlexTCO("etanol");
           atualizarEstadoModalCombustivelTCO();
@@ -5269,7 +4897,6 @@
       const single = document.getElementById("fuel_single_preco_input");
       single?.addEventListener("click", ev => ev.stopPropagation());
       single?.addEventListener("input", function () {
-        marcarPrecoCombustivelEditadoUsuarioTCO(true);
         const n = numeroBRParaFloat(this.value);
         if (n > 0) {
           if (modoCombustivelTCO === "diesel") setValorInputTCO("fuel_preco_diesel_s10", this.value);
@@ -5282,7 +4909,7 @@
       });
       single?.addEventListener("blur", function () {
         const n = numeroBRParaFloat(this.value);
-        if (n > 0) this.value = formatarPrecoCombustivelInputTCO(n);
+        if (n > 0) this.value = formatarValorLitroInputTCO(n);
         capturarEstadoFormularioTCO();
       });
     }
@@ -5368,7 +4995,7 @@
       const consumoEletricoAtual = numeroBRParaFloat(document.getElementById("consumo_ve")?.value || 0);
       setValorPhevTCO("phev_consumo_eletrico", consumoEletricoAtual > 0 ? formatarValorLitroInputTCO(consumoEletricoAtual) : "");
       setValorPhevTCO("phev_consumo_combustivel", "");
-      setValorPhevTCO("phev_preco_combustivel", formatarPrecoCombustivelInputTCO(precoCombustivelPhevPadraoTCO() || 0));
+      setValorPhevTCO("phev_preco_combustivel", formatarValorLitroInputTCO(precoCombustivelPhevPadraoTCO() || 0));
       const slider = document.getElementById("phev_mix_slider");
       if (slider) slider.value = "100";
       limparResumoPhevTCO();
@@ -5380,7 +5007,7 @@
       if (slider) slider.value = String(Math.max(0, Math.min(100, pct)));
       const consumoEletrico = document.getElementById("phev_consumo_eletrico")?.value || document.getElementById("consumo_ve")?.value || "";
       setValorPhevTCO("phev_modal_consumo_eletrico", consumoEletrico);
-      setValorPhevTCO("phev_modal_preco_combustivel", document.getElementById("phev_preco_combustivel")?.value || formatarPrecoCombustivelInputTCO(precoCombustivelPhevPadraoTCO() || 0));
+      setValorPhevTCO("phev_modal_preco_combustivel", document.getElementById("phev_preco_combustivel")?.value || formatarValorLitroInputTCO(precoCombustivelPhevPadraoTCO() || 0));
       setValorPhevTCO("phev_modal_consumo_combustivel", document.getElementById("phev_consumo_combustivel")?.value || "");
       atualizarEstadoModalPhevTCO();
     }
@@ -5488,7 +5115,7 @@
       setValorPhevTCO("phev_vehicle_key", chave);
       const consumoEletrico = document.getElementById("phev_modal_consumo_eletrico")?.value || document.getElementById("consumo_ve")?.value || "";
       setValorPhevTCO("phev_consumo_eletrico", consumoEletrico);
-      setValorPhevTCO("phev_preco_combustivel", document.getElementById("phev_modal_preco_combustivel")?.value || formatarPrecoCombustivelInputTCO(precoCombustivelPhevPadraoTCO() || 0));
+      setValorPhevTCO("phev_preco_combustivel", document.getElementById("phev_modal_preco_combustivel")?.value || formatarValorLitroInputTCO(precoCombustivelPhevPadraoTCO() || 0));
       setValorPhevTCO("phev_consumo_combustivel", "");
       if (numeroBRParaFloat(consumoEletrico || 0) > 0) aplicarResumoPhevTCO();
       else limparResumoPhevTCO();
@@ -5559,7 +5186,7 @@
         el?.addEventListener("input", atualizarEstadoModalPhevTCO);
         el?.addEventListener("blur", function () {
           const n = numeroBRParaFloat(this.value);
-          if (n > 0) this.value = id.includes("preco") ? formatarPrecoCombustivelInputTCO(n) : (id.includes("eletrico") ? formatarValorLitroInputTCO(n) : formatarConsumoInputTCO(n));
+          if (n > 0) this.value = id.includes("preco") ? formatarValorLitroInputTCO(n) : (id.includes("eletrico") ? formatarValorLitroInputTCO(n) : formatarConsumoInputTCO(n));
           atualizarEstadoModalPhevTCO();
         });
       });
@@ -5717,16 +5344,7 @@
       if (flexInline && !flexEditando) {
         flexInline.classList.toggle("hidden", !flex || flexConfigurado);
       }
-      if (flex && !flexConfigurado && !flexEditando && typeof prepararModalCombustivelTCO === "function") {
-        if (!snapshotModalCombustivelTCO) {
-          snapshotModalCombustivelTCO = capturarSnapshotModalCombustivelTCO(prefixoComb);
-          prefixoEdicaoConsumoFlexTCO = prefixoComb;
-          modoEdicaoSomenteConsumoFlexTCO = false;
-        }
-        prepararModalCombustivelTCO();
-        configurarModoEdicaoConsumoFlexTCO(false);
-        configurarObrigatoriedadePerfilFlexTCO(prefixoComb, false);
-      }
+      if (flex && !flexConfigurado && !flexEditando && typeof prepararModalCombustivelTCO === "function") prepararModalCombustivelTCO();
       if (combustaoSelecionada && typeof renderizarCardCombustivelTCO === "function") renderizarCardCombustivelTCO();
 
       atualizarFluxoSequencialVeiculosPlugVE();
@@ -5991,7 +5609,8 @@
         const preco = campoPrecoPorPrefixo(prefixo);
         if (seguro) {
           seguro.addEventListener("input", function () {
-            marcarSeguroManual(prefixo, true);
+            this.dataset.editadoManual = "1";
+            this.dataset.autoSeguro = "0";
             const status = statusSeguroPorPrefixo(prefixo);
             if (status) status.textContent = "";
           });
@@ -6060,19 +5679,8 @@
       }
 
       function usoPrevistoValidoPlugVE() {
-        const anosEl = document.getElementById("uso_anos_input");
-        const kmEl = document.getElementById("uso_km_ano_input");
-        const anos = Number(String(anosEl?.value || "").trim());
-        const km = Number(String(kmEl?.value || "").trim());
-        return Number.isInteger(anos) && anos > 0 && Number.isInteger(km) && km > 0;
-      }
-
-      function liberarPassoKmParaEnvioPlugVE() {
-        const campos = ["uso_km_ano_input", "km_ano_input", "resumo_km_ano"]
-          .map(id => document.getElementById(id))
-          .filter(Boolean);
-        campos.forEach(campo => { campo.step = "any"; });
-        setTimeout(() => campos.forEach(campo => { campo.step = "500"; }), 0);
+        const { anos, km } = sincronizarCamposUsoPrevistoPlugVE();
+        return anos > 0 && km > 0;
       }
 
       function confirmarUsoPrevistoPlugVE() {
@@ -6472,7 +6080,7 @@
             </div>
             <div>
               <label>KM por ano</label>
-              <input type="number" id="resumo_km_ano" min="0" step="500" value="${km || 15000}">
+              <input type="number" id="resumo_km_ano" min="1" value="${km || 15000}">
             </div>
           </div>`;
         box.style.display = "block";
@@ -6482,51 +6090,6 @@
         if (resumoMun) resumoMun.value = mun;
         wireResumoTopoEventosPlugVE();
       }
-
-      const plugveAlignKeys = ["perfil", "preco", "consumo", "manutencao", "ipva", "seguro", "depreciacao"];
-      let plugveAlignFrame = 0;
-
-      function resetarAlinhamentoVeiculosPlugVE() {
-        document.querySelectorAll("[data-plugve-align]").forEach(el => { el.style.minHeight = ""; });
-      }
-
-      function elementoVisivelPlugVE(el) {
-        if (!el) return false;
-        const estilo = window.getComputedStyle(el);
-        return estilo.display !== "none" && estilo.visibility !== "hidden" && el.getClientRects().length > 0;
-      }
-
-      function alinharParesVeiculosPlugVE() {
-        cancelAnimationFrame(plugveAlignFrame);
-        plugveAlignFrame = requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            const colunaVe = document.getElementById("coluna_ve");
-            const colunaIcev = document.getElementById("coluna_icev");
-            resetarAlinhamentoVeiculosPlugVE();
-            if (window.innerWidth < 1024 || !elementoVisivelPlugVE(colunaVe) || !elementoVisivelPlugVE(colunaIcev)) return;
-
-            plugveAlignKeys.forEach(chave => {
-              const ve = colunaVe.querySelector(`[data-plugve-align="${chave}"]`);
-              const icev = colunaIcev.querySelector(`[data-plugve-align="${chave}"]`);
-              if (!elementoVisivelPlugVE(ve) || !elementoVisivelPlugVE(icev)) return;
-              const altura = Math.ceil(Math.max(ve.getBoundingClientRect().height, icev.getBoundingClientRect().height));
-              if (altura > 0) {
-                ve.style.minHeight = `${altura}px`;
-                icev.style.minHeight = `${altura}px`;
-              }
-            });
-          });
-        });
-      }
-
-      function agendarAlinhamentoVeiculosPlugVE() {
-        alinharParesVeiculosPlugVE();
-        setTimeout(alinharParesVeiculosPlugVE, 90);
-        setTimeout(alinharParesVeiculosPlugVE, 260);
-      }
-
-      window.alinharParesVeiculosPlugVE = alinharParesVeiculosPlugVE;
-      window.agendarAlinhamentoVeiculosPlugVE = agendarAlinhamentoVeiculosPlugVE;
 
       function atualizarRequiredPlugVE() {
         const ids = [
@@ -6564,7 +6127,6 @@
         atualizarRequiredPlugVE();
         atualizarResumoTopoPlugVE();
         if (typeof atualizarPerfisInlinePlugVE === "function") atualizarPerfisInlinePlugVE();
-        agendarAlinhamentoVeiculosPlugVE();
       }
 
       window.atualizarDetalhesProgressivosPlugVE = atualizarDetalhesProgressivosPlugVE;
@@ -6773,7 +6335,7 @@
           const prefixoDestino = String(selectAnoId || "").split("_")[0];
           const nomeModeloSelecionado = modeloEl.options[modeloEl.selectedIndex]?.dataset?.nome || modeloEl.options[modeloEl.selectedIndex]?.text || "";
           const nomeMarcaSelecionada = marcaEl.options[marcaEl.selectedIndex]?.text || "";
-          ordenarAnosFipeParaTela(Array.isArray(anos) ? anos : []).forEach(a => {
+          (Array.isArray(anos) ? anos : []).forEach(a => {
             if (!anoFipePermitidoRecortePlugVE(a.codigo, a.nome)) return;
             const tipoAno = classificarTipoVeiculoTCO(nomeModeloSelecionado, a.nome, a.codigo, nomeMarcaSelecionada, prefixoDestino);
             if (!tipoPermitidoNoBloco(prefixoDestino, tipoAno)) return;
@@ -6842,11 +6404,12 @@
       }
 
       function aplicarFormatacaoBlurPlugVE() {
-        ["preco_atual", "manut_atual", "ipva_atual_input", "seguro_atual", "preco_ve", "manut_ve", "ipva_ve_input", "seguro_ve", "preco_icev", "manut_icev", "ipva_icev_input", "seguro_icev", "energia_input", "fuel_single_preco_input", "fuel_modal_preco_etanol", "fuel_modal_preco_gasolina", "phev_modal_preco_combustivel"].forEach(id => {
+        ["preco_atual", "manut_atual", "ipva_atual_input", "seguro_atual", "preco_ve", "manut_ve", "ipva_ve_input", "seguro_ve", "preco_icev", "manut_icev", "ipva_icev_input", "seguro_icev"].forEach(id => {
           const el = document.getElementById(id);
           if (!el) return;
           el.addEventListener("blur", function () {
-            formatarCampoMonetarioAtualTCO(this);
+            const n = numeroBRParaFloat(this.value);
+            if (n > 0) this.value = formatarMoedaBR(n);
           });
         });
         ["consumo_atual", "consumo_ve", "consumo_icev", "depreciacao_atual", "depreciacao_ve", "depreciacao_icev", "aumento_energia_input", "aumento_combustivel_input"].forEach(id => {
@@ -6862,28 +6425,15 @@
 
       document.addEventListener("DOMContentLoaded", function () {
         aplicarFormatacaoBlurPlugVE();
-        formatarTodosCamposMonetariosTCO();
-        setTimeout(() => formatarTodosCamposMonetariosTCO(), 120);
-        setTimeout(() => formatarTodosCamposMonetariosTCO(), 500);
-        const gradeVeiculosPlugVE = document.getElementById("grid_veiculos_tco");
-        if (gradeVeiculosPlugVE) {
-          const observerAlinhamentoPlugVE = new MutationObserver(() => agendarAlinhamentoVeiculosPlugVE());
-          observerAlinhamentoPlugVE.observe(gradeVeiculosPlugVE, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ["class", "hidden"] });
-        }
-        window.addEventListener("resize", agendarAlinhamentoVeiculosPlugVE, { passive: true });
-        window.addEventListener("load", agendarAlinhamentoVeiculosPlugVE, { once: true });
         sincronizarCamposUsoPrevistoPlugVE();
         document.getElementById("btn_proximo_uso_previsto")?.addEventListener("click", confirmarUsoPrevistoPlugVE);
-        document.getElementById("btn_simular")?.addEventListener("click", liberarPassoKmParaEnvioPlugVE, { capture: true });
-        document.getElementById("form_simulacao_tco")?.addEventListener("keydown", function (ev) {
-          if (ev.key === "Enter") liberarPassoKmParaEnvioPlugVE();
-        }, { capture: true });
         document.getElementById("btn_cancelar_uso_previsto")?.addEventListener("click", function () {
           window.location.href = "/";
         });
         ["uso_anos_input", "uso_km_ano_input"].forEach(id => {
           document.getElementById(id)?.addEventListener("input", function () {
-            setUsoPrevistoConfirmadoPlugVE(false);
+            sincronizarCamposUsoPrevistoPlugVE();
+            atualizarResumoTopoPlugVE();
           });
         });
         // Mantém a etapa de localização visível na primeira abertura da página.
@@ -6983,7 +6533,7 @@
             abrirModalCombustivelTCO();
           }
         });
-        document.getElementById("btn_fechar_combustivel_tco")?.addEventListener("click", cancelarModalCombustivelTCO);
+        document.getElementById("btn_fechar_combustivel_tco")?.addEventListener("click", fecharModalCombustivelTCO);
         document.getElementById("btn_cancelar_combustivel_tco")?.addEventListener("click", cancelarModalCombustivelTCO);
         document.getElementById("btn_cancelar_combustivel_tco")?.addEventListener("click", function () {
           setTimeout(atualizarDetalhesProgressivosPlugVE, 80);
@@ -6999,7 +6549,7 @@
           setTimeout(atualizarDetalhesProgressivosPlugVE, 80);
         });
         document.getElementById("modal_combustivel_tco")?.addEventListener("click", function (ev) {
-          if (ev.target === this) cancelarModalCombustivelTCO();
+          if (ev.target === this) fecharModalCombustivelTCO();
         });
 
         ["atual", "ve", "icev"].forEach(prefixo => {
@@ -7010,13 +6560,6 @@
         atualizarTodosResumosFinanciamento();
 
         document.getElementById("form_simulacao_tco")?.addEventListener("submit", function (ev) {
-          if (!usoPrevistoValidoPlugVE()) {
-            ev.preventDefault();
-            alert("Informe valores inteiros maiores que zero para anos de uso e KM por ano.");
-            document.getElementById("uso_km_ano_input")?.focus();
-            return;
-          }
-          sincronizarCamposUsoPrevistoPlugVE();
           if (!detalhesLiberadosPlugVE) {
             ev.preventDefault();
             alert("Selecione os veículos pela FIPE antes de simular. Os campos complementares serão liberados em seguida.");
@@ -7044,7 +6587,7 @@
     })();
   </script>
 
-  <script src="{{ url_for('static', filename='js/fipe_combobox.js') }}?v=20260724_v42_08"></script>
+  <script src="{{ url_for('static', filename='js/fipe_combobox.js') }}?v=20260705_v35_marcadores_unificados"></script>
 
 </body>
 </html>
