@@ -51,7 +51,7 @@
   min-width: 0;
   display: flex;
   align-items: center;
-  padding: clamp(20px, 2.6vw, 30px);
+  padding: clamp(16px, 1.7vw, 20px);
 }
 
 .author-entry + .author-entry {
@@ -62,13 +62,13 @@
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 10px;
 }
 
 .author-avatar {
-  width: 78px;
-  height: 78px;
-  flex: 0 0 78px;
+  width: 58px;
+  height: 58px;
+  flex: 0 0 58px;
   display: block;
   border: 4px solid #f3f8f5;
   border-radius: 50%;
@@ -83,7 +83,7 @@
   flex-wrap: wrap;
   gap: 0 5px;
   color: var(--muted);
-  font-size: .9rem;
+  font-size: .78rem;
   line-height: 1.5;
 }
 
@@ -110,6 +110,7 @@
   text-decoration: underline;
   text-decoration-thickness: 1px;
   text-underline-offset: 3px;
+  white-space: nowrap;
   cursor: pointer;
 }
 
@@ -117,6 +118,10 @@
 .author-name-link:focus-visible,
 .author-entry.is-open .author-name-link {
   color: var(--primary-dark);
+}
+
+.author-entry--center .author-name-link {
+  font-size: .72rem;
 }
 
 .author-name-link:focus-visible {
@@ -211,8 +216,7 @@
   margin-top: 10px;
 }
 
-.author-popover-links a,
-.author-lattes-link {
+.author-popover-links a {
   color: #1d4ed8;
   font-size: 14px;
   font-weight: 600;
@@ -236,15 +240,7 @@
   line-height: 1.62;
 }
 
-.author-lattes-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  margin-top: 16px;
-}
-
-.author-popover-links a:hover,
-.author-lattes-link:hover {
+.author-popover-links a:hover {
   color: var(--primary-dark);
 }
 
@@ -711,7 +707,6 @@
 
   .author-popover-header p,
   .author-popover-links a,
-  .author-lattes-link,
   .author-popover-bio {
     font-size: 13px;
   }

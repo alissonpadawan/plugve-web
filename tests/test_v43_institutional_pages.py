@@ -18,7 +18,7 @@ class V43InstitutionalPagesTests(unittest.TestCase):
     def test_about_keeps_requested_profile_order_and_contacts(self):
         html = (self.templates / "sobre.html").read_text(encoding="utf-8")
         daywes = html.index("Prof. Dr. Daywes Pinheiro Neto")
-        carlos = html.index("Prof. Dr. Carlos Roberto da Silveira Júnior")
+        carlos = html.index("Prof. Dr. Carlos Roberto da Silveira Jr.")
         alisson = html.index("Alisson Vieira da Silva")
         self.assertLess(daywes, carlos)
         self.assertLess(carlos, alisson)
@@ -35,7 +35,7 @@ class V43InstitutionalPagesTests(unittest.TestCase):
         self.assertEqual(html.count('class="author-popover"'), 3)
 
 
-    def test_about_v43_05_author_card_and_hover_popovers(self):
+    def test_about_v43_06_author_card_and_hover_popovers(self):
         html = (self.templates / "sobre.html").read_text(encoding="utf-8")
         script = (self.root / "static" / "js" / "sobre.js").read_text(encoding="utf-8")
         css = (self.root / "static" / "css" / "institucional.css").read_text(encoding="utf-8")
@@ -63,7 +63,13 @@ class V43InstitutionalPagesTests(unittest.TestCase):
         ):
             self.assertIn(url, html)
 
-        self.assertEqual(html.count('class="author-lattes-link"'), 3)
+        self.assertNotIn('class="author-lattes-link"', html)
+        self.assertEqual(html.count('>Lattes</a>'), 3)
+        self.assertIn("Carlos Roberto da Silveira Jr.", html)
+        self.assertNotIn("Carlos Roberto da Silveira Júnior", html)
+        self.assertIn("Estudante do PPGTGS em Energias Renováveis", html)
+        self.assertIn("com ênfase em Energias Renováveis", html)
+        self.assertNotIn("Autor da CurVE", html)
         self.assertIn("mouseenter", script)
         self.assertIn("focusin", script)
         self.assertIn("aria-expanded", script)
@@ -74,6 +80,7 @@ class V43InstitutionalPagesTests(unittest.TestCase):
         self.assertIn(".author-entry + .author-entry", css)
         self.assertIn(".author-summary {", css)
         self.assertIn("font-weight: 400;", css)
+        self.assertIn("white-space: nowrap;", css)
         self.assertIn("position: absolute;", css)
 
     def test_contact_form_does_not_post_to_unimplemented_route(self):
