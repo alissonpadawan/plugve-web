@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import os
+import secrets
 import threading
 
-from flask import Flask
+from flask import Flask, session
 
 from config import Config
 from routes.main_routes import main_bp
@@ -12,6 +13,7 @@ from routes.depreciacao_routes import depreciacao_bp
 from routes.tco_routes import tco_bp
 from routes.utility_routes import utility_bp
 from routes.pbev_routes import pbev_bp, pbev_pages_bp
+from routes.usage_routes import usage_bp
 from services.persistent_storage import bootstrap_persistent_storage
 
 
@@ -48,6 +50,20 @@ def create_app() -> Flask:
     # usem a versão modular, mesmo que existam rotas antigas no módulo TCO.
     app.register_blueprint(utility_bp)
     app.register_blueprint(tco_bp)
+    app.register_blueprint(usage_bp)
+
+    @app.context_processor
+    def inject_site_usage_context():
+        session.permanent = True
+        visitor_id = str(session.get("site_usage_visitor_id") or "").strip()
+        if not visitor_id:
+            visitor_id = secrets.token_urlsafe(24)
+            session["site_usage_visitor_id"] = visitor_id
+        csrf_token = str(session.get("site_usage_csrf_token") or "").strip()
+        if not csrf_token:
+            csrf_token = secrets.token_urlsafe(32)
+            session["site_usage_csrf_token"] = csrf_token
+        return {"site_usage_csrf_token": csrf_token}
 
     _preaquecer_catalogo_fipe_async(app)
 

@@ -939,7 +939,7 @@
     revendaOutput.classList.remove('show');
     revendaOutput.innerHTML = '';
     setBadge(revendaBadge, 'buscando', 'neutral');
-    const payload = montarPayloadDepreciacao(veiculo, horizonte);
+    const payload = {...montarPayloadDepreciacao(veiculo, horizonte), usage_context: 'fipe_plus'};
     try{
       const resp = await fetch('/api/depreciacao/resumo', {
         method:'POST',
@@ -957,6 +957,31 @@
       btnRevenda.disabled = false;
     }
   }
+  async function solicitarCurvaFipePlus(button, veiculo, horizonte){
+    const feedback = document.getElementById('curve_request_feedback_fipe_plus');
+    const csrf = document.querySelector('meta[name="curve-interaction-csrf"]')?.getAttribute('content') || '';
+    if (!(button instanceof HTMLButtonElement) || !veiculo) return;
+    button.disabled = true;
+    button.textContent = 'Enviando...';
+    if (feedback) feedback.textContent = '';
+    try {
+      const payload = montarPayloadDepreciacao(veiculo, horizonte);
+      const resp = await fetch('/api/site-usage/curve-requests', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json','Accept':'application/json','X-CSRF-Token':csrf},
+        body: JSON.stringify(payload)
+      });
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok || !data?.ok) throw new Error(data?.error || 'Não foi possível enviar a solicitação.');
+      button.textContent = 'Solicitado';
+      if (feedback) feedback.textContent = data.already_requested ? 'Solicitação já registrada.' : 'Solicitação registrada.';
+    } catch (error) {
+      button.disabled = false;
+      button.textContent = 'Solicitar curva';
+      if (feedback) feedback.textContent = error?.message || 'Não foi possível enviar a solicitação.';
+    }
+  }
+
   function renderRevenda(data, veiculo, horizonte){
     const futuro = Number(primeiroValor(data?.valor_futuro, data?.valor_futuro_base));
     const atual = Number(veiculo?.valor_num || data?.valor_atual || 0);
@@ -964,8 +989,16 @@
       statusRevenda('');
       setBadge(revendaBadge, 'sem curva', 'neutral');
       revendaAtual = null;
-      revendaOutput.innerHTML = '<div class="revenda-empty">Estimativa indisponível para este veículo.</div>';
+      revendaOutput.innerHTML = `
+        <div class="revenda-empty curve-request-empty">
+          <span>Estimativa indisponível para este veículo.</span>
+          <button type="button" id="btn_solicitar_curva_fipe_plus" class="fipe-btn secondary curve-request-button">Solicitar curva</button>
+          <small id="curve_request_feedback_fipe_plus" class="curve-request-feedback" role="status" aria-live="polite"></small>
+        </div>`;
       revendaOutput.classList.add('show');
+      document.getElementById('btn_solicitar_curva_fipe_plus')?.addEventListener('click', function(){
+        solicitarCurvaFipePlus(this, veiculo, horizonte);
+      });
       scrollSuave(document.getElementById('revenda_card'), 'center');
       return;
     }
@@ -1296,6 +1329,13 @@
     try{
       const data = await getJSON(`/api/fipe/publica/preco?tipo=${encodeURIComponent(tipoAtual)}&codigo_marca=${encodeURIComponent(marca)}&codigo_modelo=${encodeURIComponent(modelo)}&codigo_ano=${encodeURIComponent(ano)}`, token);
       showResult(data); status('Consulta concluída.');
+      const csrf = document.querySelector('meta[name="curve-interaction-csrf"]')?.getAttribute('content') || '';
+      fetch('/api/site-usage/analysis', {
+        method:'POST',
+        headers:{'Content-Type':'application/json','X-CSRF-Token':csrf},
+        body:JSON.stringify({type:'fipe_plus'}),
+        keepalive:true
+      }).catch(() => {});
     }catch(e){ if(e.message !== '__stale__') { hideResult(); status(e.message,true); } }
   }
 

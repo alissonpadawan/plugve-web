@@ -7,6 +7,7 @@ import traceback
 from services.depreciacao_service import DepreciacaoService
 from services.coorte_diagnostico_service import CoorteDiagnosticoService
 from services.depreciacao_motor_v1917_adapter import DepreciacaoMotorV1917Adapter
+from services.site_usage_service import get_site_usage_service
 from repositories.curvas_repository import CurvasRepository
 
 depreciacao_bp = Blueprint("depreciacao", __name__)
@@ -75,6 +76,12 @@ def resumo():
     payload = request.get_json(silent=True) or {}
     try:
         resultado = depreciacao_service.obter_resumo(payload)
+        is_internal_usage = bool(payload.get("origem_tco")) or str(payload.get("usage_context") or "").strip().lower() == "fipe_plus"
+        if resultado.get("encontrado") and not is_internal_usage:
+            try:
+                get_site_usage_service().record_analysis("depreciacao")
+            except Exception as analytics_error:
+                current_app.logger.warning("Falha ao registrar métrica de depreciação: %s", analytics_error)
         return jsonify(resultado)
     except Exception as exc:
         return jsonify({"encontrado": False, "erro": str(exc)}), 500

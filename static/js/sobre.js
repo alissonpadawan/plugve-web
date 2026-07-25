@@ -74,9 +74,10 @@
   const likeCount = document.querySelector("[data-like-count]");
   const dislikeCount = document.querySelector("[data-dislike-count]");
   const visitorCount = document.querySelector("[data-visitor-count]");
+  const analysisCount = document.querySelector("[data-analysis-count]");
   const voteButtons = Array.from(document.querySelectorAll("[data-vote]"));
 
-  [likeCount, dislikeCount, visitorCount].forEach((element) => {
+  [likeCount, dislikeCount, visitorCount, analysisCount].forEach((element) => {
     if (element) element.textContent = numberFormatter.format(Number(element.textContent || 0));
   });
 
@@ -129,17 +130,18 @@
   const shareDialog = document.getElementById("share-about-dialog");
   const shareUrlInput = document.getElementById("share-about-url");
   const shareFeedback = document.querySelector("[data-share-feedback]");
-  const shareTitle = "Sobre a CurVE — Calculadora Veicular";
-  const canonicalUrl = `${window.location.origin}${window.location.pathname}`;
+  const shareTitle = "CurVE — Calculadora Veicular";
+  const shareText = "Compare custos, depreciação, consumo e valor futuro de veículos.";
+  const canonicalUrl = "https://curveveicular.com.br/";
 
   const buildShareUrls = () => {
     const url = encodeURIComponent(canonicalUrl);
-    const title = encodeURIComponent(shareTitle);
+    const title = encodeURIComponent(`${shareTitle} — ${shareText}`);
     return {
       facebook: `https://www.facebook.com/sharer/sharer.php?u=${url}`,
       x: `https://twitter.com/intent/tweet?url=${url}&text=${title}`,
       linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${url}`,
-      whatsapp: `https://wa.me/?text=${encodeURIComponent(`${shareTitle} ${canonicalUrl}`)}`,
+      whatsapp: `https://wa.me/?text=${encodeURIComponent(`Conheça a ${shareTitle}.\n${canonicalUrl}`)}`,
     };
   };
 
@@ -186,7 +188,7 @@
     nativeShareButton.hidden = false;
     nativeShareButton.addEventListener("click", async () => {
       try {
-        await navigator.share({ title: shareTitle, url: canonicalUrl });
+        await navigator.share({ title: shareTitle, text: shareText, url: canonicalUrl });
       } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") return;
         setFeedback(shareFeedback, "Não foi possível abrir o compartilhamento do dispositivo.", true);

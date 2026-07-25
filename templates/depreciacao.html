@@ -99,6 +99,8 @@
           <button id="btn_nova_consulta" class="button secondary hidden" type="button">Nova consulta</button>
           <button id="btn_apagar_curva" class="button secondary hidden" type="button" disabled>Apagar curva</button>
           <button id="btn_usar_no_tco" class="button primary hidden" type="button" disabled>Usar no TCO e fechar</button>
+          <button id="btn_solicitar_curva" class="button secondary hidden curve-request-button" type="button" disabled>Solicitar curva</button>
+          <span id="curve_request_feedback_depreciacao" class="curve-request-feedback" role="status" aria-live="polite"></span>
         </div>
       </div>
       <div id="card_grafico_barras" class="card chart-card chart-card-bars hidden">
@@ -151,5 +153,5 @@
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/fipe.js') }}?v=20260705_v35_marcadores_unificados"></script>
-<script src="{{ url_for('static', filename='js/depreciacao.js') }}?v=20260705_v35_marcadores_unificados"></script>
+<script src="{{ url_for('static', filename='js/depreciacao.js') }}?v=20260725_v43_13"></script>
 {% endblock %}

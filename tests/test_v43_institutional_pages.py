@@ -143,6 +143,23 @@ class V43InstitutionalPagesTests(unittest.TestCase):
         self.assertNotIn('class="card contact-directory"', html)
         self.assertNotIn('class="contact-directory-group"', html)
 
+    def test_about_v43_12_social_preview_is_short_and_complete(self):
+        html = (self.templates / "sobre.html").read_text(encoding="utf-8")
+        script = (self.root / "static" / "js" / "sobre.js").read_text(encoding="utf-8")
+        for value in (
+            'property="og:title" content="CurVE — Calculadora Veicular"',
+            'property="og:description" content="Compare custos, depreciação, consumo e valor futuro de veículos."',
+            'property="og:url" content="https://curveveicular.com.br/sobre"',
+            'property="og:image" content="https://curveveicular.com.br/static/img/social/curve-sobre-share.png"',
+            'name="twitter:card" content="summary_large_image"',
+            'rel="canonical" href="https://curveveicular.com.br/sobre"',
+        ):
+            self.assertIn(value, html)
+        self.assertIn('const shareTitle = "CurVE — Calculadora Veicular";', script)
+        self.assertIn('const shareText = "Compare custos, depreciação, consumo e valor futuro de veículos.";', script)
+        self.assertIn('Conheça a ${shareTitle}', script)
+        self.assertTrue((self.root / "static" / "img" / "social" / "curve-sobre-share.png").is_file())
+
     def test_footer_has_ifg_logo_and_official_channels(self):
         html = (self.templates / "base.html").read_text(encoding="utf-8")
         self.assertIn("logo-ifg-horizontal-branco.png", html)

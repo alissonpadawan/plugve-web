@@ -1,6 +1,27 @@
 {% extends "base.html" %}
 
-{% block title %}Sobre | CurVE{% endblock %}
+{% block title %}Sobre a CurVE | Calculadora Veicular{% endblock %}
+
+{% block head_extra %}
+  <meta name="description" content="Compare custos, depreciação, consumo e valor futuro de veículos.">
+  <link rel="canonical" href="https://curveveicular.com.br/sobre">
+  <meta property="og:locale" content="pt_BR">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="CurVE">
+  <meta property="og:title" content="CurVE — Calculadora Veicular">
+  <meta property="og:description" content="Compare custos, depreciação, consumo e valor futuro de veículos.">
+  <meta property="og:url" content="https://curveveicular.com.br/sobre">
+  <meta property="og:image" content="https://curveveicular.com.br/static/img/social/curve-sobre-share.png">
+  <meta property="og:image:secure_url" content="https://curveveicular.com.br/static/img/social/curve-sobre-share.png">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="CurVE — Calculadora Veicular">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="CurVE — Calculadora Veicular">
+  <meta name="twitter:description" content="Compare custos, depreciação, consumo e valor futuro de veículos.">
+  <meta name="twitter:image" content="https://curveveicular.com.br/static/img/social/curve-sobre-share.png">
+{% endblock %}
 
 {% block content %}
 <section class="hero card institutional-hero">
@@ -33,6 +54,12 @@
       <span class="engagement-stat-label">visitantes</span>
     </div>
 
+    <div class="engagement-stat" aria-label="Análises realizadas na CurVE">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10h4v10H4Zm6 0V4h4v16h-4Zm6 0v-7h4v7h-4Z"></path></svg>
+      <span data-analysis-count>{{ analysis_counts.total }}</span>
+      <span class="engagement-stat-label">análises</span>
+    </div>
+
     <button class="engagement-button share-trigger" type="button" data-open-share aria-haspopup="dialog" aria-controls="share-about-dialog">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 16a3 3 0 0 0-2.4 1.2l-6.7-3.7a3.2 3.2 0 0 0 0-3l6.7-3.7A3 3 0 1 0 15 5a3 3 0 0 0 .1.8L8.4 9.5a3 3 0 1 0 0 5l6.7 3.7A3 3 0 1 0 18 16Z"></path></svg>
       <span>Compartilhar</span>
@@ -45,7 +72,7 @@
   <div class="share-dialog-header">
     <div>
       <h2 id="share-dialog-title">Compartilhar a CurVE</h2>
-      <p>Sobre a CurVE — Calculadora Veicular</p>
+      <p>Compare custos, depreciação, consumo e valor futuro.</p>
     </div>
     <button class="share-dialog-close" type="button" data-close-share aria-label="Fechar janela de compartilhamento">×</button>
   </div>
@@ -74,7 +101,7 @@
   </div>
 
   <div class="share-copy-row">
-    <input id="share-about-url" type="text" readonly aria-label="Link da página Sobre">
+    <input id="share-about-url" type="text" readonly aria-label="Link da página inicial da CurVE">
     <button class="button secondary" type="button" data-copy-share>Copiar</button>
   </div>
   <p class="share-feedback" data-share-feedback role="status" aria-live="polite"></p>
@@ -301,5 +328,5 @@
 
 {% block scripts %}
   {{ super() }}
-  <script src="{{ url_for('static', filename='js/sobre.js') }}?v=20260725_v43_10"></script>
+  <script src="{{ url_for('static', filename='js/sobre.js') }}?v=20260725_v43_13"></script>
 {% endblock %}

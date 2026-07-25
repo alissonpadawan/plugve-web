@@ -211,6 +211,8 @@ function configurarBotoesResultado(curvaEncontrada, podeCalcularFuturo, permitir
   const btnPdf = document.getElementById("btn_exportar_pdf");
   const btnNovaConsulta = document.getElementById("btn_nova_consulta");
   const btnDiag = document.getElementById("btn_diagnostico_coorte");
+  const btnSolicitar = document.getElementById("btn_solicitar_curva");
+  const feedbackSolicitar = document.getElementById("curve_request_feedback_depreciacao");
 
   if (btnAuditoria) {
     btnAuditoria.classList.toggle("hidden", !curvaEncontrada);
@@ -250,6 +252,14 @@ function configurarBotoesResultado(curvaEncontrada, podeCalcularFuturo, permitir
     btnDiag.classList.toggle("hidden", !mostrarDiag);
     btnDiag.disabled = !mostrarDiag;
   }
+
+  if (btnSolicitar) {
+    const mostrarSolicitacao = Boolean(!curvaEncontrada && podeCalcularFuturo && ultimoDetalheFipe);
+    btnSolicitar.classList.toggle("hidden", !mostrarSolicitacao);
+    btnSolicitar.disabled = !mostrarSolicitacao;
+    if (mostrarSolicitacao) btnSolicitar.textContent = "Solicitar curva";
+  }
+  if (feedbackSolicitar && curvaEncontrada) feedbackSolicitar.textContent = "";
 }
 
 function preencherResumo(data) {
@@ -847,8 +857,8 @@ async function consultarResumoDepreciacao(detalheFipe) {
       selecionarAbaPrincipalDepreciacao("resultado");
       if (estaEmModoBridgeTCO()) mostrarDetalhes();
     } else {
-      atualizarFeedbackCalculo("Curva não encontrada. Processamento deve ser feito no painel local.", 100, false);
-      atualizarStatusResultado((data.mensagem || "Curva não encontrada.") + " Processe esta curva no painel local e envie para o Render.", "nao-encontrado");
+      atualizarFeedbackCalculo("Curva não encontrada para o veículo selecionado.", 100, false);
+      atualizarStatusResultado(data.mensagem || "Curva ainda não disponível para este veículo.", "nao-encontrado");
       limparResumoParcialApenasValor(data.valor_atual || detalheFipe.valor_atual);
       mostrarGraficoBarrasArea(false);
       mostrarAuditoriaArea(false);
@@ -1124,6 +1134,35 @@ async function solicitarDiagnosticoCoorte(chamadaAutomatica = false) {
         btn.textContent = manterContinuar ? "Continuar diagnóstico técnico" : "Diagnóstico técnico";
       }
     }
+  }
+}
+
+async function solicitarCurvaDepreciacao() {
+  const payload = montarPayloadDepreciacao();
+  const btn = document.getElementById("btn_solicitar_curva");
+  const feedback = document.getElementById("curve_request_feedback_depreciacao");
+  const csrf = document.querySelector('meta[name="curve-interaction-csrf"]')?.getAttribute("content") || "";
+  if (!payload || !(btn instanceof HTMLButtonElement)) {
+    atualizarStatusResultado("Selecione um veículo antes de solicitar a curva.", "erro");
+    return;
+  }
+  btn.disabled = true;
+  btn.textContent = "Enviando...";
+  if (feedback) feedback.textContent = "";
+  try {
+    const resp = await fetch("/api/site-usage/curve-requests", {
+      method: "POST",
+      headers: {"Content-Type":"application/json", "Accept":"application/json", "X-CSRF-Token": csrf},
+      body: JSON.stringify(payload)
+    });
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok || !data?.ok) throw new Error(data?.error || "Não foi possível enviar a solicitação.");
+    btn.textContent = "Solicitado";
+    if (feedback) feedback.textContent = data.already_requested ? "Solicitação já registrada." : "Solicitação registrada.";
+  } catch (error) {
+    btn.disabled = false;
+    btn.textContent = "Solicitar curva";
+    if (feedback) feedback.textContent = error?.message || "Não foi possível enviar a solicitação.";
   }
 }
 
@@ -2951,6 +2990,7 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("btn_nova_consulta")?.addEventListener("click", novaConsultaDepreciacao);
   document.getElementById("btn_usar_no_tco")?.addEventListener("click", usarResultadoNoTCOEFechar);
   document.getElementById("btn_calcular_futuro")?.addEventListener("click", solicitarCalculoSobDemanda);
+  document.getElementById("btn_solicitar_curva")?.addEventListener("click", solicitarCurvaDepreciacao);
   document.getElementById("btn_diagnostico_coorte")?.addEventListener("click", solicitarDiagnosticoCoorte);
   document.getElementById("btn_apagar_curva")?.addEventListener("click", apagarCurvaAtual);
   document.getElementById("tab_relatorio_tecnico")?.addEventListener("click", () => selecionarAbaAuditoriaV1917("relatorio"));

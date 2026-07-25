@@ -1678,3 +1678,38 @@
     min-height: 210px;
   }
 }
+
+/* V43.13 — métricas e solicitações de curvas */
+.curve-request-empty {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: .65rem .8rem;
+}
+.curve-request-button {
+  min-height: 34px;
+  padding: .5rem .85rem;
+  font-size: .82rem;
+  white-space: nowrap;
+}
+.curve-request-feedback {
+  display: inline-block;
+  min-height: 1em;
+  color: #166534;
+  font-size: .78rem;
+  line-height: 1.3;
+}
+.result-card .actions .curve-request-feedback {
+  align-self: center;
+  margin-left: .15rem;
+}
+@media (max-width: 720px) {
+  .curve-request-empty {
+    flex-direction: column;
+  }
+  .result-card .actions .curve-request-feedback {
+    width: 100%;
+    margin-left: 0;
+  }
+}

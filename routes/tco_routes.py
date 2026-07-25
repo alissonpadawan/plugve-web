@@ -27,6 +27,7 @@ from services.sobre_engagement_service import (
     EngagementValidationError,
     SobreEngagementService,
 )
+from services.site_usage_service import get_site_usage_service
 from services.contact_email_service import (
     ContactEmailConfigurationError,
     ContactEmailDeliveryError,
@@ -272,6 +273,7 @@ def sobre():
         initial_comments=initial_comments,
         comment_max_length=COMMENT_MAX_LENGTH,
         sobre_csrf_token=csrf_token,
+        analysis_counts=get_site_usage_service().get_analysis_counts(),
     )
 
 
@@ -1985,6 +1987,11 @@ def simular():
             }
             token_auditoria = registrar_auditoria_tco(resultado_final)
             resultado_final["auditoria_url"] = url_for("tco.auditoria_tco", token=token_auditoria)
+            if comparacoes:
+                try:
+                    get_site_usage_service().record_analysis("tco")
+                except Exception as analytics_error:
+                    current_app.logger.warning("Falha ao registrar métrica TCO: %s", analytics_error)
 
         except Exception as e:
             print("Erro ao processar simulação:", e)
