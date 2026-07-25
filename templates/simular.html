@@ -27,7 +27,7 @@
     .curve-nav a:hover{color:#0b1720 !important;border-bottom-color:rgba(20,35,44,.28)}
     .curve-nav a.curve-nav-active{color:#0f5f36 !important;border-bottom-color:#168A4A;background:transparent !important;border-radius:0 !important;box-shadow:none !important}
     @media(max-width:820px){.curve-header .curve-nav-wrap{align-items:flex-start;flex-direction:column;padding:14px 0;gap:10px}.curve-nav{justify-content:flex-start}.curve-brand-logo{width:min(240px,70vw)}}
-    .curve-shell{position:relative;z-index:1;flex:1 0 auto;width:min(1120px,calc(100% - 32px));max-width:1120px;margin-left:auto!important;margin-right:auto!important;overflow:visible;background:rgba(255,255,255,.88) !important;border:1px solid #e5e7eb !important;box-shadow:0 10px 28px rgba(15,23,42,.05) !important}
+    .curve-shell{position:relative;z-index:1;flex:0 0 auto;min-height:calc(100vh - 72px);min-height:calc(100svh - 72px);width:min(1120px,calc(100% - 32px));max-width:1120px;margin-left:auto!important;margin-right:auto!important;overflow:visible;background:rgba(255,255,255,.88) !important;border:1px solid #e5e7eb !important;box-shadow:0 10px 28px rgba(15,23,42,.05) !important}
     .curve-page-heading{margin:0 0 1.25rem;padding:0 .25rem;color:#14232c;font-size:clamp(2.5rem,5vw,4.25rem);font-weight:800;line-height:1.04;letter-spacing:-.04em}
     @media(max-width:640px){.curve-page-heading{font-size:clamp(2.15rem,10vw,3rem);margin-bottom:1rem}}
     .curve-footer{margin-top:auto;padding:26px 0 30px;text-align:center;font-size:14px;color:#6b7280;position:relative;z-index:1}
@@ -801,6 +801,7 @@
 
   </style>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/curve-tailwind.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/institucional.css') }}?v=20260725_v43_02">
 </head>
 
 <body class="curve-internal-page text-gray-800">
@@ -2216,8 +2217,41 @@
   <!-- =========================================================
     5) FOOTER
   ========================================================= -->
-  <footer class="curve-footer">
-    CurVE © 2026 — Instituto Federal de Goiás. Todos os direitos reservados.
+  <footer class="footer institutional-footer">
+    <div class="container institutional-footer-main">
+      <div class="institutional-footer-brand">
+        <a href="https://www.ifg.edu.br/" target="_blank" rel="noopener noreferrer" aria-label="Acessar o portal do Instituto Federal de Goiás">
+          <img src="{{ url_for('static', filename='img/institucional/logo-ifg-horizontal.webp') }}" alt="Instituto Federal de Goiás" loading="lazy">
+        </a>
+        <p>Produto técnico desenvolvido no Programa de Pós-Graduação em Tecnologia, Gestão e Sustentabilidade.</p>
+      </div>
+
+      <div class="institutional-footer-network">
+        <strong>Acompanhe o IFG</strong>
+        <div class="institutional-social-links" aria-label="Redes sociais oficiais do Instituto Federal de Goiás">
+          <a href="https://www.instagram.com/ifg_oficial/" target="_blank" rel="noopener noreferrer" aria-label="Instagram oficial do IFG">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"></rect><circle cx="12" cy="12" r="4"></circle><circle cx="17.5" cy="6.5" r="1"></circle></svg>
+          </a>
+          <a href="https://www.facebook.com/IFG.oficial" target="_blank" rel="noopener noreferrer" aria-label="Facebook oficial do IFG">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 8H17V4.3c-.4-.1-1.8-.3-3.4-.3-3.3 0-5.6 2-5.6 5.8V13H4.5v4H8v7h4.2v-7h3.5l.6-4h-4.1V10.2c0-1.2.3-2.2 2.3-2.2Z"></path></svg>
+          </a>
+          <a href="https://x.com/IFG_Goias" target="_blank" rel="noopener noreferrer" aria-label="Perfil oficial do IFG no X">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h4.2l3.5 4.9L17 4h2l-5.4 6.3L20 20h-4.2l-4-5.6L7 20H5l5.9-7L5 4Zm3.1 1.5 8.5 13h1.3l-8.5-13H8.1Z"></path></svg>
+          </a>
+          <a href="https://www.youtube.com/user/ifgoficial" target="_blank" rel="noopener noreferrer" aria-label="YouTube oficial do IFG">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21.6 7.2a3 3 0 0 0-2.1-2.1C17.6 4.6 12 4.6 12 4.6s-5.6 0-7.5.5a3 3 0 0 0-2.1 2.1A31 31 0 0 0 2 12a31 31 0 0 0 .4 4.8 3 3 0 0 0 2.1 2.1c1.9.5 7.5.5 7.5.5s5.6 0 7.5-.5a3 3 0 0 0 2.1-2.1A31 31 0 0 0 22 12a31 31 0 0 0-.4-4.8ZM10 15.2V8.8l5.5 3.2-5.5 3.2Z"></path></svg>
+          </a>
+          <a href="https://www.linkedin.com/school/instituto-federal-de-goi%C3%A1s-ifg/" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn do Instituto Federal de Goiás">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5.3 3.5A2.3 2.3 0 1 1 5.3 8a2.3 2.3 0 0 1 0-4.5ZM3.3 9.5h4V21h-4V9.5Zm6.5 0h3.8v1.6h.1c.5-1 1.8-2 3.8-2 4 0 4.8 2.6 4.8 6.1V21h-4v-5.1c0-1.2 0-2.8-1.8-2.8s-2 1.3-2 2.7V21h-4V9.5Z"></path></svg>
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <div class="container institutional-footer-bottom">
+      <span>CurVE © 2026 — Instituto Federal de Goiás. Todos os direitos reservados.</span>
+      <a href="https://teclimpa.ifg.edu.br" target="_blank" rel="noopener noreferrer">Conheça o PPGTGS <span aria-hidden="true">↗</span></a>
+    </div>
   </footer>
 
   <!-- =========================================================

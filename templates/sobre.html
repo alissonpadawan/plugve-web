@@ -4,35 +4,40 @@
 
 {% block content %}
 <section class="hero card institutional-hero">
-  <span class="home-kicker">Produto técnico de mestrado</span>
   <h1>Sobre a CurVE</h1>
   <p>
     A CurVE — Calculadora Veicular é um produto técnico desenvolvido no Programa de Pós-Graduação em Tecnologia, Gestão e Sustentabilidade do Instituto Federal de Goiás. A plataforma apoia análises comparativas de veículos com dados de custo, depreciação, consumo e valor futuro.
   </p>
-  <div class="institutional-tags" aria-label="Principais análises da CurVE">
-    <span>TCO</span>
-    <span>Depreciação</span>
-    <span>Energia e combustível</span>
-    <span>Valor de revenda</span>
-  </div>
 </section>
 
-<section class="institutional-summary" aria-label="Apresentação da plataforma">
-  <article class="card institutional-summary-card">
-    <span class="institutional-card-label">Pesquisa aplicada</span>
-    <h2>Da pesquisa à ferramenta</h2>
-    <p>
-      A plataforma transforma o método desenvolvido no mestrado em uma aplicação de apoio à decisão. Ela reúne indicadores econômicos e dados veiculares em uma interface única, com parâmetros que podem ser conferidos e ajustados pelo usuário.
-    </p>
-  </article>
+<section class="people-section" aria-labelledby="people-title">
+  <div class="section-heading institutional-section-heading creators-heading">
+    <span class="institutional-card-label">Projeto acadêmico</span>
+    <h2 id="people-title">Criadores</h2>
+  </div>
 
-  <article class="card institutional-summary-card">
-    <span class="institutional-card-label">Dados e transparência</span>
-    <h2>Referências rastreáveis</h2>
-    <p>
-      As análises utilizam dados de referência da FIPE, do PBEV/Inmetro, da ANP, da ANEEL e do IPCA, conforme disponibilidade. Os resultados são estimativas e não representam garantia de preço, consumo ou custo futuro.
-    </p>
-  </article>
+  <div class="creators-card card" aria-label="Criadores da CurVE">
+    <button class="creator-profile" type="button" data-profile-dialog="profile-daywes" aria-haspopup="dialog">
+      <img src="{{ url_for('static', filename='img/institucional/daywes-pinheiro-neto.webp') }}" alt="Prof. Dr. Daywes Pinheiro Neto" loading="lazy">
+      <strong>Prof. Dr. Daywes Pinheiro Neto</strong>
+      <span>Energias renováveis e mobilidade elétrica</span>
+      <small>Ver perfil <span aria-hidden="true">↗</span></small>
+    </button>
+
+    <button class="creator-profile" type="button" data-profile-dialog="profile-carlos" aria-haspopup="dialog">
+      <img src="{{ url_for('static', filename='img/institucional/carlos-roberto-silveira-junior.webp') }}" alt="Prof. Dr. Carlos Roberto da Silveira Júnior" loading="lazy">
+      <strong>Prof. Dr. Carlos Roberto da Silveira Júnior</strong>
+      <span>Inteligência artificial e sistemas de controle</span>
+      <small>Ver perfil <span aria-hidden="true">↗</span></small>
+    </button>
+
+    <button class="creator-profile" type="button" data-profile-dialog="profile-alisson" aria-haspopup="dialog">
+      <img src="{{ url_for('static', filename='img/institucional/alisson-vieira-da-silva.webp') }}" alt="Alisson Vieira da Silva" loading="lazy">
+      <strong>Alisson Vieira da Silva</strong>
+      <span>Engenheiro de Controle e Automação</span>
+      <small>Ver perfil <span aria-hidden="true">↗</span></small>
+    </button>
+  </div>
 </section>
 
 <section class="card program-card" aria-labelledby="program-title">
@@ -44,47 +49,28 @@
       A CurVE foi desenvolvida no âmbito do mestrado profissional do IFG, como resultado acadêmico aplicado à análise técnico-econômica da mobilidade veicular.
     </p>
   </div>
-  <a class="button secondary program-link" href="https://teclimpa.ifg.edu.br" target="_blank" rel="noopener noreferrer">
-    Conhecer o PPGTGS
-    <span aria-hidden="true">↗</span>
-  </a>
-</section>
-
-<section class="people-section" aria-labelledby="people-title">
-  <div class="section-heading institutional-section-heading">
-    <span class="institutional-card-label">Projeto acadêmico</span>
-    <h2 id="people-title">Orientação e autoria</h2>
-    <p>Selecione um perfil para consultar formação, áreas de atuação e contatos acadêmicos.</p>
-  </div>
-
-  <h3 class="people-group-title">Orientação acadêmica</h3>
-  <div class="people-grid people-grid-orientadores">
-    <button class="profile-card" type="button" data-profile-dialog="profile-daywes" aria-haspopup="dialog">
-      <img src="{{ url_for('static', filename='img/institucional/daywes-pinheiro-neto.webp') }}" alt="Prof. Dr. Daywes Pinheiro Neto" loading="lazy">
-      <span class="profile-role">Orientação acadêmica</span>
-      <strong>Prof. Dr. Daywes Pinheiro Neto</strong>
-      <span class="profile-area">Energias renováveis, mobilidade elétrica e engenharia econômica</span>
-      <span class="profile-open">Ver perfil <span aria-hidden="true">↗</span></span>
-    </button>
-
-    <button class="profile-card" type="button" data-profile-dialog="profile-carlos" aria-haspopup="dialog">
-      <img src="{{ url_for('static', filename='img/institucional/carlos-roberto-silveira-junior.webp') }}" alt="Prof. Dr. Carlos Roberto da Silveira Júnior" loading="lazy">
-      <span class="profile-role">Orientação acadêmica</span>
-      <strong>Prof. Dr. Carlos Roberto da Silveira Júnior</strong>
-      <span class="profile-area">Inteligência artificial, Internet das Coisas e sistemas de controle</span>
-      <span class="profile-open">Ver perfil <span aria-hidden="true">↗</span></span>
-    </button>
-  </div>
-
-  <h3 class="people-group-title people-author-title">Autor e desenvolvimento</h3>
-  <div class="people-grid people-grid-author">
-    <button class="profile-card profile-card-author" type="button" data-profile-dialog="profile-alisson" aria-haspopup="dialog">
-      <img src="{{ url_for('static', filename='img/institucional/alisson-vieira-da-silva.webp') }}" alt="Alisson Vieira da Silva" loading="lazy">
-      <span class="profile-role">Autor e desenvolvedor</span>
-      <strong>Alisson Vieira da Silva</strong>
-      <span class="profile-area">Engenheiro de Controle e Automação</span>
-      <span class="profile-open">Ver perfil <span aria-hidden="true">↗</span></span>
-    </button>
+  <div class="program-actions">
+    <a class="button secondary program-link" href="https://teclimpa.ifg.edu.br" target="_blank" rel="noopener noreferrer">
+      Conhecer o PPGTGS
+      <span aria-hidden="true">↗</span>
+    </a>
+    <div class="institutional-social-links program-social-links" aria-label="Redes sociais do PPGTGS">
+      <a href="https://www.youtube.com/@ppgtgs-ifg" target="_blank" rel="noopener noreferrer" aria-label="YouTube do PPGTGS">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21.6 7.2a3 3 0 0 0-2.1-2.1C17.6 4.6 12 4.6 12 4.6s-5.6 0-7.5.5a3 3 0 0 0-2.1 2.1A31 31 0 0 0 2 12a31 31 0 0 0 .4 4.8 3 3 0 0 0 2.1 2.1c1.9.5 7.5.5 7.5.5s5.6 0 7.5-.5a3 3 0 0 0 2.1-2.1A31 31 0 0 0 22 12a31 31 0 0 0-.4-4.8ZM10 15.2V8.8l5.5 3.2-5.5 3.2Z"></path></svg>
+      </a>
+      <a href="https://x.com/ppgtgs" target="_blank" rel="noopener noreferrer" aria-label="Perfil do PPGTGS no X">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h4.2l3.5 4.9L17 4h2l-5.4 6.3L20 20h-4.2l-4-5.6L7 20H5l5.9-7L5 4Zm3.1 1.5 8.5 13h1.3l-8.5-13H8.1Z"></path></svg>
+      </a>
+      <a href="https://www.facebook.com/ppgtgs" target="_blank" rel="noopener noreferrer" aria-label="Facebook do PPGTGS">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 8H17V4.3c-.4-.1-1.8-.3-3.4-.3-3.3 0-5.6 2-5.6 5.8V13H4.5v4H8v7h4.2v-7h3.5l.6-4h-4.1V10.2c0-1.2.3-2.2 2.3-2.2Z"></path></svg>
+      </a>
+      <a href="https://www.instagram.com/teclimpa/" target="_blank" rel="noopener noreferrer" aria-label="Instagram do PPGTGS">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"></rect><circle cx="12" cy="12" r="4"></circle><circle cx="17.5" cy="6.5" r="1"></circle></svg>
+      </a>
+      <a href="https://www.linkedin.com/company/ppgtgs" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn do PPGTGS">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5.3 3.5A2.3 2.3 0 1 1 5.3 8a2.3 2.3 0 0 1 0-4.5ZM3.3 9.5h4V21h-4V9.5Zm6.5 0h3.8v1.6h.1c.5-1 1.8-2 3.8-2 4 0 4.8 2.6 4.8 6.1V21h-4v-5.1c0-1.2 0-2.8-1.8-2.8s-2 1.3-2 2.7V21h-4V9.5Z"></path></svg>
+      </a>
+    </div>
   </div>
 </section>
 
@@ -94,24 +80,19 @@
     <div class="profile-dialog-header">
       <img src="{{ url_for('static', filename='img/institucional/daywes-pinheiro-neto.webp') }}" alt="" aria-hidden="true">
       <div>
-        <span>Orientação acadêmica</span>
         <h2 id="profile-daywes-title">Prof. Dr. Daywes Pinheiro Neto</h2>
-        <p>Professor do Instituto Federal de Goiás</p>
+        <p>Engenheiro Eletricista e Computacional · Doutor em Engenharia Elétrica e Computação</p>
+        <nav class="profile-dialog-quick-links" aria-label="Contatos de Daywes Pinheiro Neto">
+          <a href="mailto:daywes.neto@ifg.edu.br">E-mail</a>
+        </nav>
       </div>
     </div>
     <p class="profile-dialog-bio">
-      Engenheiro Eletricista e Computacional, mestre e doutor em Engenharia Elétrica e Computação pela UFG e pós-doutor pela Universidade de Coimbra. Atua em energias renováveis, mobilidade elétrica, engenharia econômica e computação aplicada.
+      Professor do Instituto Federal de Goiás, mestre e doutor pela UFG e pós-doutor pela Universidade de Coimbra. Atua em energias renováveis, mobilidade elétrica, engenharia econômica e computação aplicada.
     </p>
-    <div class="profile-dialog-links">
-      <a href="mailto:daywes.neto@ifg.edu.br">
-        <span>E-mail</span>
-        <strong>daywes.neto@ifg.edu.br</strong>
-      </a>
-      <a href="http://lattes.cnpq.br/3885723899789699" target="_blank" rel="noopener noreferrer">
-        <span>Currículo acadêmico</span>
-        <strong>Acessar Lattes ↗</strong>
-      </a>
-    </div>
+    <a class="profile-lattes-link" href="http://lattes.cnpq.br/3885723899789699" target="_blank" rel="noopener noreferrer">
+      Currículo Lattes <span aria-hidden="true">↗</span>
+    </a>
   </article>
 </dialog>
 
@@ -121,24 +102,20 @@
     <div class="profile-dialog-header">
       <img src="{{ url_for('static', filename='img/institucional/carlos-roberto-silveira-junior.webp') }}" alt="" aria-hidden="true">
       <div>
-        <span>Orientação acadêmica</span>
         <h2 id="profile-carlos-title">Prof. Dr. Carlos Roberto da Silveira Júnior</h2>
-        <p>Professor titular do Instituto Federal de Goiás</p>
+        <p>Professor titular do IFG · Doutor em Ciências Ambientais</p>
+        <nav class="profile-dialog-quick-links" aria-label="Contatos de Carlos Roberto da Silveira Júnior">
+          <a href="https://www.linkedin.com/in/carlos-roberto-da-silveira-junior-957b47298/" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+          <a href="mailto:carlos.junior@ifg.edu.br">E-mail</a>
+        </nav>
       </div>
     </div>
     <p class="profile-dialog-bio">
-      Doutor em Ciências Ambientais e mestre em Engenharia Elétrica e de Computação pela UFG. Atua em inteligência artificial, Internet das Coisas, sensoriamento remoto e sistemas eletrônicos de medição e controle.
+      Mestre em Engenharia Elétrica e de Computação pela UFG. Atua em inteligência artificial, Internet das Coisas, sensoriamento remoto e sistemas eletrônicos de medição e controle.
     </p>
-    <div class="profile-dialog-links">
-      <a href="mailto:carlos.junior@ifg.edu.br">
-        <span>E-mail</span>
-        <strong>carlos.junior@ifg.edu.br</strong>
-      </a>
-      <a href="http://lattes.cnpq.br/5503461601783322" target="_blank" rel="noopener noreferrer">
-        <span>Currículo acadêmico</span>
-        <strong>Acessar Lattes ↗</strong>
-      </a>
-    </div>
+    <a class="profile-lattes-link" href="http://lattes.cnpq.br/5503461601783322" target="_blank" rel="noopener noreferrer">
+      Currículo Lattes <span aria-hidden="true">↗</span>
+    </a>
   </article>
 </dialog>
 
@@ -148,29 +125,25 @@
     <div class="profile-dialog-header">
       <img src="{{ url_for('static', filename='img/institucional/alisson-vieira-da-silva.webp') }}" alt="" aria-hidden="true">
       <div>
-        <span>Autor e desenvolvedor</span>
         <h2 id="profile-alisson-title">Alisson Vieira da Silva</h2>
-        <p>Engenheiro de Controle e Automação</p>
+        <p>Engenheiro de Controle e Automação · Mestrando em Tecnologia, Gestão e Sustentabilidade</p>
+        <nav class="profile-dialog-quick-links" aria-label="Contatos de Alisson Vieira da Silva">
+          <a href="https://www.linkedin.com/in/svalisson/" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+          <a href="mailto:sv.alisson@gmail.com">E-mail</a>
+        </nav>
       </div>
     </div>
     <p class="profile-dialog-bio">
-      Autor e desenvolvedor da CurVE, criada como produto técnico do Programa de Pós-Graduação em Tecnologia, Gestão e Sustentabilidade do Instituto Federal de Goiás.
+      Autor da CurVE, desenvolvida como produto técnico do Programa de Pós-Graduação em Tecnologia, Gestão e Sustentabilidade do Instituto Federal de Goiás.
     </p>
-    <div class="profile-dialog-links">
-      <a href="mailto:sv.alisson@gmail.com">
-        <span>E-mail</span>
-        <strong>sv.alisson@gmail.com</strong>
-      </a>
-      <a href="http://lattes.cnpq.br/1978825412536553" target="_blank" rel="noopener noreferrer">
-        <span>Currículo acadêmico</span>
-        <strong>Acessar Lattes ↗</strong>
-      </a>
-    </div>
+    <a class="profile-lattes-link" href="http://lattes.cnpq.br/1978825412536553" target="_blank" rel="noopener noreferrer">
+      Currículo Lattes <span aria-hidden="true">↗</span>
+    </a>
   </article>
 </dialog>
 {% endblock %}
 
 {% block scripts %}
   {{ super() }}
-  <script src="{{ url_for('static', filename='js/sobre.js') }}?v=20260725_v43_01"></script>
+  <script src="{{ url_for('static', filename='js/sobre.js') }}?v=20260725_v43_03"></script>
 {% endblock %}

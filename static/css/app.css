@@ -126,7 +126,13 @@ body.internal-page::after {
 }
 
 .page { padding: 32px 0; }
-.site-main { flex: 1 0 auto; position: relative; z-index: 1; }
+.site-main {
+  flex: 0 0 auto;
+  min-height: calc(100vh - 72px);
+  min-height: calc(100svh - 72px);
+  position: relative;
+  z-index: 1;
+}
 
 .card {
   background: var(--card);
