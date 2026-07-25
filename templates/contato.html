@@ -11,59 +11,98 @@
   </p>
 </section>
 
-<section class="contact-layout" aria-label="Canais de contato da CurVE">
-  <aside class="card contact-information">
-    <span class="institutional-card-label">Canal acadêmico</span>
-    <h2>Contato direto</h2>
-    <p>
-      As mensagens sobre a plataforma são direcionadas ao autor e desenvolvedor da CurVE.
-    </p>
-    <a class="contact-email" href="mailto:sv.alisson@gmail.com">
-      <span>E-mail</span>
-      <strong>sv.alisson@gmail.com</strong>
-    </a>
-    <div class="contact-note">
-      <strong>Privacidade</strong>
-      <p>O site não armazena os dados preenchidos. O formulário apenas prepara a mensagem no aplicativo de e-mail do seu dispositivo.</p>
-    </div>
-  </aside>
-
-  <form id="contact-form" class="card contact-form" novalidate>
+<section class="contact-layout contact-layout--single" aria-label="Envio de mensagem para a CurVE">
+  <form
+    id="contact-form"
+    class="card contact-form"
+    data-contact-csrf="{{ contato_csrf_token }}"
+    novalidate
+  >
     <div class="contact-form-heading">
       <span class="institutional-card-label">Escrever mensagem</span>
-      <h2>Envie pelo seu e-mail</h2>
+      <h2>Envie uma mensagem</h2>
+      <p>A mensagem será enviada diretamente para o e-mail de contato da CurVE.</p>
     </div>
 
     <div class="field">
       <label for="nome">Nome completo</label>
-      <input type="text" id="nome" name="nome" autocomplete="name" required>
+      <input type="text" id="nome" name="nome" maxlength="100" autocomplete="name" required>
     </div>
 
     <div class="field">
       <label for="email">E-mail</label>
-      <input type="email" id="email" name="email" autocomplete="email" required>
+      <input type="email" id="email" name="email" maxlength="254" autocomplete="email" required>
     </div>
 
     <div class="field">
       <label for="assunto">Assunto</label>
-      <input type="text" id="assunto" name="assunto" maxlength="120" placeholder="Ex.: sugestão para a plataforma" required>
+      <input type="text" id="assunto" name="assunto" minlength="3" maxlength="120" placeholder="Ex.: sugestão para a plataforma" required>
     </div>
 
     <div class="field">
       <label for="mensagem">Mensagem</label>
-      <textarea id="mensagem" name="mensagem" rows="7" maxlength="3000" required></textarea>
+      <textarea id="mensagem" name="mensagem" rows="7" minlength="8" maxlength="3000" required></textarea>
+    </div>
+
+    <div class="contact-honeypot" aria-hidden="true">
+      <label for="contact-website">Site</label>
+      <input id="contact-website" name="website" type="text" tabindex="-1" autocomplete="off">
     </div>
 
     <div class="contact-form-footer">
-      <p>Ao continuar, seu aplicativo de e-mail será aberto para você revisar e enviar a mensagem.</p>
-      <button type="submit" class="button primary">Abrir no e-mail</button>
+      <button type="submit" class="button primary" data-contact-submit>Enviar mensagem</button>
     </div>
     <p id="contact-status" class="contact-status" role="status" aria-live="polite"></p>
   </form>
+</section>
+
+<section class="card contact-directory" aria-labelledby="contact-directory-title">
+  <div class="contact-directory-heading">
+    <span class="institutional-card-label">Canais de contato</span>
+    <h2 id="contact-directory-title">Contatos</h2>
+  </div>
+
+  <div class="contact-directory-grid">
+    <article class="contact-directory-group">
+      <h3>Equipe CurVE</h3>
+      <div class="contact-people-list">
+        <a href="mailto:sv.alisson@gmail.com">
+          <span>Alisson Vieira da Silva</span>
+          <strong>sv.alisson@gmail.com</strong>
+        </a>
+        <a href="mailto:daywes.neto@ifg.edu.br">
+          <span>Prof. Dr. Daywes Pinheiro Neto</span>
+          <strong>daywes.neto@ifg.edu.br</strong>
+        </a>
+        <a href="mailto:carlos.junior@ifg.edu.br">
+          <span>Prof. Dr. Carlos Roberto da Silveira Jr.</span>
+          <strong>carlos.junior@ifg.edu.br</strong>
+        </a>
+      </div>
+    </article>
+
+    <article class="contact-directory-group contact-program-details">
+      <h3>PPGTGS — Câmpus Goiânia</h3>
+      <dl>
+        <div>
+          <dt>E-mail</dt>
+          <dd><a href="mailto:teclimpa@ifg.edu.br">teclimpa@ifg.edu.br</a></dd>
+        </div>
+        <div>
+          <dt>Telefone e WhatsApp</dt>
+          <dd><a href="https://wa.me/556232272811" target="_blank" rel="noopener noreferrer">+55 (62) 3227-2811</a></dd>
+        </div>
+        <div>
+          <dt>Endereço</dt>
+          <dd>Rua 75, nº 46, Centro, CEP 74055-110, Goiânia–GO.</dd>
+        </div>
+      </dl>
+    </article>
+  </div>
 </section>
 {% endblock %}
 
 {% block scripts %}
   {{ super() }}
-  <script src="{{ url_for('static', filename='js/contato.js') }}?v=20260725_v43_01"></script>
+  <script src="{{ url_for('static', filename='js/contato.js') }}?v=20260725_v43_10"></script>
 {% endblock %}

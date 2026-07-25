@@ -64,4 +64,17 @@ class Config:
     PLUGVE_SYNC_TOKEN = os.environ.get("PLUGVE_SYNC_TOKEN", "").strip()
     PLUGVE_ADMIN_TOKEN = os.environ.get("PLUGVE_ADMIN_TOKEN", PLUGVE_SYNC_TOKEN).strip()
 
+    # Envio direto da página Contato. Para Gmail, use uma senha de aplicativo
+    # e mantenha as credenciais apenas nas variáveis de ambiente do Render.
+    CONTACT_TO_EMAIL = os.environ.get("CONTACT_TO_EMAIL", "sv.alisson@gmail.com").strip()
+    CONTACT_FROM_EMAIL = os.environ.get("CONTACT_FROM_EMAIL", CONTACT_TO_EMAIL).strip()
+    CONTACT_SMTP_HOST = os.environ.get("CONTACT_SMTP_HOST", "smtp.gmail.com").strip()
+    CONTACT_SMTP_PORT = int(os.environ.get("CONTACT_SMTP_PORT", "587"))
+    CONTACT_SMTP_USERNAME = os.environ.get("CONTACT_SMTP_USERNAME", "").strip()
+    CONTACT_SMTP_PASSWORD = os.environ.get("CONTACT_SMTP_PASSWORD", "").strip()
+    CONTACT_SMTP_USE_TLS = os.environ.get("CONTACT_SMTP_USE_TLS", "1").strip().lower() in {"1", "true", "sim", "yes", "on"}
+    CONTACT_SMTP_USE_SSL = os.environ.get("CONTACT_SMTP_USE_SSL", "0").strip().lower() in {"1", "true", "sim", "yes", "on"}
+    CONTACT_SMTP_TIMEOUT = int(os.environ.get("CONTACT_SMTP_TIMEOUT", "20"))
+    CONTACT_RATE_LIMIT_SECONDS = int(os.environ.get("CONTACT_RATE_LIMIT_SECONDS", "60"))
+
     HORIZONTE_PADRAO_ANOS = 5

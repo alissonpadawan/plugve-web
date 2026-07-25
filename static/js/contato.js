@@ -3,34 +3,55 @@
 
   const form = document.getElementById("contact-form");
   const status = document.getElementById("contact-status");
+  const submitButton = form?.querySelector("[data-contact-submit]");
   if (!(form instanceof HTMLFormElement)) return;
 
-  form.addEventListener("submit", (event) => {
+  const setStatus = (message, isError = false) => {
+    if (!status) return;
+    status.textContent = message;
+    status.classList.toggle("is-error", isError);
+  };
+
+  form.addEventListener("submit", async (event) => {
     event.preventDefault();
 
     if (!form.reportValidity()) {
-      if (status) status.textContent = "Revise os campos obrigatórios antes de continuar.";
+      setStatus("Revise os campos obrigatórios antes de enviar.", true);
       return;
     }
 
     const data = new FormData(form);
-    const nome = String(data.get("nome") || "").trim();
-    const email = String(data.get("email") || "").trim();
-    const assunto = String(data.get("assunto") || "Contato pelo site").trim();
-    const mensagem = String(data.get("mensagem") || "").trim();
+    const payload = {
+      nome: String(data.get("nome") || "").trim(),
+      email: String(data.get("email") || "").trim(),
+      assunto: String(data.get("assunto") || "").trim(),
+      mensagem: String(data.get("mensagem") || "").trim(),
+      website: String(data.get("website") || "").trim(),
+    };
 
-    const subject = `[CurVE] ${assunto}`;
-    const body = [
-      `Nome: ${nome}`,
-      `E-mail para retorno: ${email}`,
-      "",
-      "Mensagem:",
-      mensagem,
-    ].join("\n");
+    if (submitButton instanceof HTMLButtonElement) submitButton.disabled = true;
+    setStatus("Enviando mensagem...");
 
-    if (status) status.textContent = "Abrindo seu aplicativo de e-mail para revisão e envio.";
+    try {
+      const response = await fetch("/api/contato", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": String(form.dataset.contactCsrf || ""),
+        },
+        body: JSON.stringify(payload),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result.ok) {
+        throw new Error(result.error || "Não foi possível enviar a mensagem.");
+      }
 
-    const mailto = `mailto:sv.alisson@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    window.location.href = mailto;
+      form.reset();
+      setStatus(result.message || "Mensagem enviada. Obrigado pelo contato.");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Não foi possível enviar a mensagem.", true);
+    } finally {
+      if (submitButton instanceof HTMLButtonElement) submitButton.disabled = false;
+    }
   });
 })();

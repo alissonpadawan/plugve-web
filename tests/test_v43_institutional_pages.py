@@ -108,20 +108,36 @@ class V43InstitutionalPagesTests(unittest.TestCase):
         self.assertIn('>Deixar seu comentário<', html)
         self.assertIn('.comment-dialog {', css)
         self.assertIn('showModal()', script)
+        self.assertNotIn("Seu e-mail não será exibido.", html)
+        self.assertIn(".comments-form-grid .field + .field", css)
+        self.assertIn("height: 48px;", css)
 
-    def test_contact_form_does_not_post_to_unimplemented_route(self):
+    def test_contact_form_sends_directly_and_lists_requested_contacts(self):
         html = (self.templates / "contato.html").read_text(encoding="utf-8")
-        self.assertIn('id="contact-form"', html)
-        self.assertNotIn('method="POST"', html)
-        self.assertNotIn('action="#"', html)
-        self.assertIn("O site não armazena os dados preenchidos", html)
         script = (self.root / "static" / "js" / "contato.js").read_text(encoding="utf-8")
-        self.assertIn("mailto:sv.alisson@gmail.com", script)
+        self.assertIn('id="contact-form"', html)
+        self.assertIn('data-contact-csrf="{{ contato_csrf_token }}"', html)
+        self.assertIn('>Enviar mensagem</button>', html)
+        self.assertNotIn("Abrir no e-mail", html)
+        self.assertNotIn("mailto:sv.alisson@gmail.com?subject", script)
+        self.assertIn('fetch("/api/contato"', script)
         self.assertIn("reportValidity", script)
+
+        alisson = html.index("sv.alisson@gmail.com")
+        daywes = html.index("daywes.neto@ifg.edu.br")
+        carlos = html.index("carlos.junior@ifg.edu.br")
+        self.assertLess(alisson, daywes)
+        self.assertLess(daywes, carlos)
+        for value in (
+            "teclimpa@ifg.edu.br",
+            "+55 (62) 3227-2811",
+            "Rua 75, nº 46, Centro, CEP 74055-110, Goiânia–GO.",
+        ):
+            self.assertIn(value, html)
 
     def test_footer_has_ifg_logo_and_official_channels(self):
         html = (self.templates / "base.html").read_text(encoding="utf-8")
-        self.assertIn("logo-ifg-horizontal.webp", html)
+        self.assertIn("logo-ifg-horizontal-branco.png", html)
         for url in (
             "https://www.instagram.com/ifg_oficial/",
             "https://www.facebook.com/IFG.oficial",
@@ -134,7 +150,7 @@ class V43InstitutionalPagesTests(unittest.TestCase):
 
     def test_footer_is_consistent_on_home_and_simulator(self):
         required = (
-            "logo-ifg-horizontal.webp",
+            "logo-ifg-horizontal-branco.png",
             "Acompanhe o IFG",
             "Conheça o PPGTGS",
             "CurVE © 2026 — Instituto Federal de Goiás. Todos os direitos reservados.",
@@ -157,7 +173,7 @@ class V43InstitutionalPagesTests(unittest.TestCase):
             "static/css/institucional.css",
             "static/js/sobre.js",
             "static/js/contato.js",
-            "static/img/institucional/logo-ifg-horizontal.webp",
+            "static/img/institucional/logo-ifg-horizontal-branco.png",
             "static/img/institucional/daywes-pinheiro-neto.webp",
             "static/img/institucional/carlos-roberto-silveira-junior.webp",
             "static/img/institucional/alisson-vieira-da-silva.webp",

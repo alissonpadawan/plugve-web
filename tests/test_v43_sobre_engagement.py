@@ -113,7 +113,7 @@ class SobreEngagementRoutesTests(unittest.TestCase):
         self.assertIn('data-vote="like"', html)
         self.assertIn('id="share-about-dialog"', html)
         self.assertIn('id="sobre-comment-form"', html)
-        self.assertIn("Não inclua telefone, links, e-mail", html)
+        self.assertNotIn("Não inclua telefone, links, e-mail", html)
 
         stats = self.client.get("/api/sobre/engagement").get_json()
         self.assertEqual(stats["visitors"], 1)

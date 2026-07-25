@@ -11,6 +11,7 @@ import uuid
 import secrets
 import hmac
 import re
+import time
 from pathlib import Path
 from datetime import datetime, date
 import requests
@@ -25,6 +26,13 @@ from services.sobre_engagement_service import (
     PAGE_SIZE as SOBRE_COMMENTS_PAGE_SIZE,
     EngagementValidationError,
     SobreEngagementService,
+)
+from services.contact_email_service import (
+    ContactEmailConfigurationError,
+    ContactEmailDeliveryError,
+    ContactEmailError,
+    send_contact_email,
+    validate_contact_message,
 )
 
 tco_bp = Blueprint("tco", __name__)
@@ -374,9 +382,70 @@ def sobre_admin_delete_comment(comment_id: int):
     return response
 
 
+def _contato_csrf_token() -> str:
+    session.permanent = True
+    token = str(session.get("contato_csrf_token") or "").strip()
+    if not token:
+        token = secrets.token_urlsafe(32)
+        session["contato_csrf_token"] = token
+    return token
+
+
+def _validate_contato_csrf(payload: dict | None = None) -> None:
+    expected = str(session.get("contato_csrf_token") or "")
+    supplied = str(
+        request.headers.get("X-CSRF-Token")
+        or (payload or {}).get("csrf_token")
+        or ""
+    )
+    if not expected or not supplied or not hmac.compare_digest(expected, supplied):
+        raise ContactEmailError(
+            "Sessão inválida. Atualize a página e tente novamente.", 403
+        )
+
+
 @tco_bp.route("/contato")
 def contato():
-    return render_template("contato.html")
+    return render_template(
+        "contato.html",
+        contato_csrf_token=_contato_csrf_token(),
+    )
+
+
+@tco_bp.route("/api/contato", methods=["POST"])
+def contato_enviar():
+    payload = request.get_json(silent=True) or {}
+    try:
+        _validate_contato_csrf(payload)
+
+        now = time.time()
+        last_sent_at = float(session.get("contato_last_sent_at") or 0.0)
+        rate_limit = max(0, int(current_app.config.get("CONTACT_RATE_LIMIT_SECONDS", 60)))
+        if last_sent_at and rate_limit and (now - last_sent_at) < rate_limit:
+            wait_seconds = max(1, int(rate_limit - (now - last_sent_at)))
+            raise ContactEmailError(
+                f"Aguarde {wait_seconds} segundos antes de enviar outra mensagem.",
+                429,
+            )
+
+        contact_message = validate_contact_message(
+            name=payload.get("nome"),
+            email=payload.get("email"),
+            subject=payload.get("assunto"),
+            message=payload.get("mensagem"),
+            honeypot=payload.get("website"),
+        )
+        send_contact_email(contact_message, current_app.config)
+        session["contato_last_sent_at"] = now
+    except ContactEmailError as exc:
+        if isinstance(exc, (ContactEmailConfigurationError, ContactEmailDeliveryError)):
+            current_app.logger.warning("Falha controlada no envio de contato: %s", exc)
+        return jsonify({"ok": False, "error": str(exc)}), exc.status_code
+
+    return jsonify({
+        "ok": True,
+        "message": "Mensagem enviada. Obrigado pelo contato.",
+    }), 201
 
 # ============================================================
 # 4) CÁLCULO TCO + NOVOS CENÁRIOS DE COMPARAÇÃO
