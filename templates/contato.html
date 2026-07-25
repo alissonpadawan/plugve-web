@@ -3,29 +3,67 @@
 {% block title %}Contato | CurVE{% endblock %}
 
 {% block content %}
-<section class="hero card form-card">
+<section class="hero card institutional-hero contact-hero">
   <span class="home-kicker">Contato</span>
   <h1>Fale com a CurVE</h1>
   <p>
-    Envie dúvidas, sugestões ou observações sobre a plataforma de TCO, depreciação e análise veicular.
+    Use este canal para enviar dúvidas, relatar inconsistências, sugerir melhorias ou tratar de colaboração acadêmica.
   </p>
 </section>
 
-<form action="#" method="POST" class="card form-card">
-  <div class="field">
-    <label for="nome">Nome completo</label>
-    <input type="text" id="nome" name="nome" required>
-  </div>
-  <div class="field">
-    <label for="email">E-mail</label>
-    <input type="email" id="email" name="email" required>
-  </div>
-  <div class="field">
-    <label for="mensagem">Mensagem</label>
-    <textarea id="mensagem" name="mensagem" rows="5" required></textarea>
-  </div>
-  <div class="actions">
-    <button type="submit" class="button primary">Enviar</button>
-  </div>
-</form>
+<section class="contact-layout" aria-label="Canais de contato da CurVE">
+  <aside class="card contact-information">
+    <span class="institutional-card-label">Canal acadêmico</span>
+    <h2>Contato direto</h2>
+    <p>
+      As mensagens sobre a plataforma são direcionadas ao autor e desenvolvedor da CurVE.
+    </p>
+    <a class="contact-email" href="mailto:sv.alisson@gmail.com">
+      <span>E-mail</span>
+      <strong>sv.alisson@gmail.com</strong>
+    </a>
+    <div class="contact-note">
+      <strong>Privacidade</strong>
+      <p>O site não armazena os dados preenchidos. O formulário apenas prepara a mensagem no aplicativo de e-mail do seu dispositivo.</p>
+    </div>
+  </aside>
+
+  <form id="contact-form" class="card contact-form" novalidate>
+    <div class="contact-form-heading">
+      <span class="institutional-card-label">Escrever mensagem</span>
+      <h2>Envie pelo seu e-mail</h2>
+    </div>
+
+    <div class="field">
+      <label for="nome">Nome completo</label>
+      <input type="text" id="nome" name="nome" autocomplete="name" required>
+    </div>
+
+    <div class="field">
+      <label for="email">E-mail</label>
+      <input type="email" id="email" name="email" autocomplete="email" required>
+    </div>
+
+    <div class="field">
+      <label for="assunto">Assunto</label>
+      <input type="text" id="assunto" name="assunto" maxlength="120" placeholder="Ex.: sugestão para a plataforma" required>
+    </div>
+
+    <div class="field">
+      <label for="mensagem">Mensagem</label>
+      <textarea id="mensagem" name="mensagem" rows="7" maxlength="3000" required></textarea>
+    </div>
+
+    <div class="contact-form-footer">
+      <p>Ao continuar, seu aplicativo de e-mail será aberto para você revisar e enviar a mensagem.</p>
+      <button type="submit" class="button primary">Abrir no e-mail</button>
+    </div>
+    <p id="contact-status" class="contact-status" role="status" aria-live="polite"></p>
+  </form>
+</section>
+{% endblock %}
+
+{% block scripts %}
+  {{ super() }}
+  <script src="{{ url_for('static', filename='js/contato.js') }}?v=20260725_v43_01"></script>
 {% endblock %}

@@ -3,38 +3,174 @@
 {% block title %}Sobre | CurVE{% endblock %}
 
 {% block content %}
-<section class="hero card">
-  <span class="home-kicker">Projeto de mestrado</span>
+<section class="hero card institutional-hero">
+  <span class="home-kicker">Produto técnico de mestrado</span>
   <h1>Sobre a CurVE</h1>
   <p>
-    A CurVE — Calculadora Veicular é uma plataforma web de apoio à decisão para análise de custo total de propriedade, depreciação e uso de energia ou combustível em veículos.
+    A CurVE — Calculadora Veicular é um produto técnico desenvolvido no Programa de Pós-Graduação em Tecnologia, Gestão e Sustentabilidade do Instituto Federal de Goiás. A plataforma apoia análises comparativas de veículos com dados de custo, depreciação, consumo e valor futuro.
   </p>
+  <div class="institutional-tags" aria-label="Principais análises da CurVE">
+    <span>TCO</span>
+    <span>Depreciação</span>
+    <span>Energia e combustível</span>
+    <span>Valor de revenda</span>
+  </div>
 </section>
 
-<section class="grid two">
-  <div class="card">
-    <h2>Objetivo</h2>
-    <p class="muted">
-      Apoiar comparações entre veículos elétricos, híbridos e a combustão por meio de indicadores econômicos, curvas de depreciação e premissas claras.
+<section class="institutional-summary" aria-label="Apresentação da plataforma">
+  <article class="card institutional-summary-card">
+    <span class="institutional-card-label">Pesquisa aplicada</span>
+    <h2>Da pesquisa à ferramenta</h2>
+    <p>
+      A plataforma transforma o método desenvolvido no mestrado em uma aplicação de apoio à decisão. Ela reúne indicadores econômicos e dados veiculares em uma interface única, com parâmetros que podem ser conferidos e ajustados pelo usuário.
+    </p>
+  </article>
+
+  <article class="card institutional-summary-card">
+    <span class="institutional-card-label">Dados e transparência</span>
+    <h2>Referências rastreáveis</h2>
+    <p>
+      As análises utilizam dados de referência da FIPE, do PBEV/Inmetro, da ANP, da ANEEL e do IPCA, conforme disponibilidade. Os resultados são estimativas e não representam garantia de preço, consumo ou custo futuro.
+    </p>
+  </article>
+</section>
+
+<section class="card program-card" aria-labelledby="program-title">
+  <div class="program-mark" aria-hidden="true">PPGTGS</div>
+  <div class="program-copy">
+    <span class="institutional-card-label">Programa de mestrado</span>
+    <h2 id="program-title">Tecnologia, Gestão e Sustentabilidade</h2>
+    <p>
+      A CurVE foi desenvolvida no âmbito do mestrado profissional do IFG, como resultado acadêmico aplicado à análise técnico-econômica da mobilidade veicular.
     </p>
   </div>
-  <div class="card">
-    <h2>Contexto acadêmico</h2>
-    <p class="muted">
-      A plataforma integra uma pesquisa de mestrado voltada à avaliação técnico-econômica da mobilidade veicular e à tomada de decisão baseada em dados.
-    </p>
+  <a class="button secondary program-link" href="https://teclimpa.ifg.edu.br" target="_blank" rel="noopener noreferrer">
+    Conhecer o PPGTGS
+    <span aria-hidden="true">↗</span>
+  </a>
+</section>
+
+<section class="people-section" aria-labelledby="people-title">
+  <div class="section-heading institutional-section-heading">
+    <span class="institutional-card-label">Projeto acadêmico</span>
+    <h2 id="people-title">Orientação e autoria</h2>
+    <p>Selecione um perfil para consultar formação, áreas de atuação e contatos acadêmicos.</p>
   </div>
-  <div class="card">
-    <h2>Escopo da análise</h2>
-    <p class="muted">
-      O sistema considera TCO, FIPE, depreciação, energia, combustível, IPVA, seguro, manutenção e financiamento quando aplicável.
-    </p>
+
+  <h3 class="people-group-title">Orientação acadêmica</h3>
+  <div class="people-grid people-grid-orientadores">
+    <button class="profile-card" type="button" data-profile-dialog="profile-daywes" aria-haspopup="dialog">
+      <img src="{{ url_for('static', filename='img/institucional/daywes-pinheiro-neto.webp') }}" alt="Prof. Dr. Daywes Pinheiro Neto" loading="lazy">
+      <span class="profile-role">Orientação acadêmica</span>
+      <strong>Prof. Dr. Daywes Pinheiro Neto</strong>
+      <span class="profile-area">Energias renováveis, mobilidade elétrica e engenharia econômica</span>
+      <span class="profile-open">Ver perfil <span aria-hidden="true">↗</span></span>
+    </button>
+
+    <button class="profile-card" type="button" data-profile-dialog="profile-carlos" aria-haspopup="dialog">
+      <img src="{{ url_for('static', filename='img/institucional/carlos-roberto-silveira-junior.webp') }}" alt="Prof. Dr. Carlos Roberto da Silveira Júnior" loading="lazy">
+      <span class="profile-role">Orientação acadêmica</span>
+      <strong>Prof. Dr. Carlos Roberto da Silveira Júnior</strong>
+      <span class="profile-area">Inteligência artificial, Internet das Coisas e sistemas de controle</span>
+      <span class="profile-open">Ver perfil <span aria-hidden="true">↗</span></span>
+    </button>
   </div>
-  <div class="card">
-    <h2>Produto web</h2>
-    <p class="muted">
-      A interface foi pensada para ser simples, auditável e adequada tanto para apresentação acadêmica quanto para evolução como produto digital.
-    </p>
+
+  <h3 class="people-group-title people-author-title">Autor e desenvolvimento</h3>
+  <div class="people-grid people-grid-author">
+    <button class="profile-card profile-card-author" type="button" data-profile-dialog="profile-alisson" aria-haspopup="dialog">
+      <img src="{{ url_for('static', filename='img/institucional/alisson-vieira-da-silva.webp') }}" alt="Alisson Vieira da Silva" loading="lazy">
+      <span class="profile-role">Autor e desenvolvedor</span>
+      <strong>Alisson Vieira da Silva</strong>
+      <span class="profile-area">Engenheiro de Controle e Automação</span>
+      <span class="profile-open">Ver perfil <span aria-hidden="true">↗</span></span>
+    </button>
   </div>
 </section>
+
+<dialog class="profile-dialog" id="profile-daywes" aria-labelledby="profile-daywes-title">
+  <article class="profile-dialog-card">
+    <button class="profile-dialog-close" type="button" data-dialog-close aria-label="Fechar perfil">×</button>
+    <div class="profile-dialog-header">
+      <img src="{{ url_for('static', filename='img/institucional/daywes-pinheiro-neto.webp') }}" alt="" aria-hidden="true">
+      <div>
+        <span>Orientação acadêmica</span>
+        <h2 id="profile-daywes-title">Prof. Dr. Daywes Pinheiro Neto</h2>
+        <p>Professor do Instituto Federal de Goiás</p>
+      </div>
+    </div>
+    <p class="profile-dialog-bio">
+      Engenheiro Eletricista e Computacional, mestre e doutor em Engenharia Elétrica e Computação pela UFG e pós-doutor pela Universidade de Coimbra. Atua em energias renováveis, mobilidade elétrica, engenharia econômica e computação aplicada.
+    </p>
+    <div class="profile-dialog-links">
+      <a href="mailto:daywes.neto@ifg.edu.br">
+        <span>E-mail</span>
+        <strong>daywes.neto@ifg.edu.br</strong>
+      </a>
+      <a href="http://lattes.cnpq.br/3885723899789699" target="_blank" rel="noopener noreferrer">
+        <span>Currículo acadêmico</span>
+        <strong>Acessar Lattes ↗</strong>
+      </a>
+    </div>
+  </article>
+</dialog>
+
+<dialog class="profile-dialog" id="profile-carlos" aria-labelledby="profile-carlos-title">
+  <article class="profile-dialog-card">
+    <button class="profile-dialog-close" type="button" data-dialog-close aria-label="Fechar perfil">×</button>
+    <div class="profile-dialog-header">
+      <img src="{{ url_for('static', filename='img/institucional/carlos-roberto-silveira-junior.webp') }}" alt="" aria-hidden="true">
+      <div>
+        <span>Orientação acadêmica</span>
+        <h2 id="profile-carlos-title">Prof. Dr. Carlos Roberto da Silveira Júnior</h2>
+        <p>Professor titular do Instituto Federal de Goiás</p>
+      </div>
+    </div>
+    <p class="profile-dialog-bio">
+      Doutor em Ciências Ambientais e mestre em Engenharia Elétrica e de Computação pela UFG. Atua em inteligência artificial, Internet das Coisas, sensoriamento remoto e sistemas eletrônicos de medição e controle.
+    </p>
+    <div class="profile-dialog-links">
+      <a href="mailto:carlos.junior@ifg.edu.br">
+        <span>E-mail</span>
+        <strong>carlos.junior@ifg.edu.br</strong>
+      </a>
+      <a href="http://lattes.cnpq.br/5503461601783322" target="_blank" rel="noopener noreferrer">
+        <span>Currículo acadêmico</span>
+        <strong>Acessar Lattes ↗</strong>
+      </a>
+    </div>
+  </article>
+</dialog>
+
+<dialog class="profile-dialog" id="profile-alisson" aria-labelledby="profile-alisson-title">
+  <article class="profile-dialog-card">
+    <button class="profile-dialog-close" type="button" data-dialog-close aria-label="Fechar perfil">×</button>
+    <div class="profile-dialog-header">
+      <img src="{{ url_for('static', filename='img/institucional/alisson-vieira-da-silva.webp') }}" alt="" aria-hidden="true">
+      <div>
+        <span>Autor e desenvolvedor</span>
+        <h2 id="profile-alisson-title">Alisson Vieira da Silva</h2>
+        <p>Engenheiro de Controle e Automação</p>
+      </div>
+    </div>
+    <p class="profile-dialog-bio">
+      Autor e desenvolvedor da CurVE, criada como produto técnico do Programa de Pós-Graduação em Tecnologia, Gestão e Sustentabilidade do Instituto Federal de Goiás.
+    </p>
+    <div class="profile-dialog-links">
+      <a href="mailto:sv.alisson@gmail.com">
+        <span>E-mail</span>
+        <strong>sv.alisson@gmail.com</strong>
+      </a>
+      <a href="http://lattes.cnpq.br/1978825412536553" target="_blank" rel="noopener noreferrer">
+        <span>Currículo acadêmico</span>
+        <strong>Acessar Lattes ↗</strong>
+      </a>
+    </div>
+  </article>
+</dialog>
+{% endblock %}
+
+{% block scripts %}
+  {{ super() }}
+  <script src="{{ url_for('static', filename='js/sobre.js') }}?v=20260725_v43_01"></script>
 {% endblock %}
