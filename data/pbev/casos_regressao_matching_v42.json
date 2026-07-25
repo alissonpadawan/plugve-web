@@ -1,0 +1,102 @@
+[
+  {
+    "id": "corolla_cross_xre_zero_km",
+    "consulta": {"prefixo":"icev","marca":"Toyota","modelo":"Corolla Cross XRE 2.0 16V Flex Aut.","texto_modelo":"Corolla Cross XRE 2.0 16V Flex Aut. Zero km Flex","ano":32000,"ano_codigo":"32000-5","texto_ano":"Zero km Flex","combustivel":"Flex","tipo_veiculo":"combustao"},
+    "esperado": {"nivel_match":"alto","autopreencher":true,"ano_tabela_pbev":2026,"modelo_contem":"COROLLA CROSS"}
+  },
+  {
+    "id": "song_plus_phev",
+    "consulta": {"prefixo":"ve","marca":"BYD","modelo":"Song Plus 1.5 Híbrido Aut.","texto_modelo":"Song Plus 1.5 Híbrido Aut. Zero km Híbrido","ano":32000,"ano_codigo":"32000-1","texto_ano":"Zero km Híbrido","combustivel":"Híbrido","tipo_veiculo":"hibrido"},
+    "esperado": {"nivel_match":"alto","autopreencher":true,"tipo_consumo":"phev","modelo_contem":"SONG PLUS"}
+  },
+  {
+    "id": "hb20_hatch",
+    "consulta": {"prefixo":"icev","marca":"Hyundai","modelo":"HB20 Limited 1.0 TB Flex 12V Aut.","texto_modelo":"HB20 Limited 1.0 TB Flex 12V Aut. Zero km Flex","ano":2026,"ano_codigo":"32000-5","texto_ano":"Zero km Flex","combustivel":"Flex","tipo_veiculo":"combustao"},
+    "esperado": {"nivel_match":"alto","autopreencher":true,"modelo_igual":"HB20","modelo_nao_contem":"HB20S"}
+  },
+  {
+    "id": "hb20s_sedan",
+    "consulta": {"prefixo":"icev","marca":"Hyundai","modelo":"HB20S Limited 1.0 TB Flex 12V Aut.","texto_modelo":"HB20S Limited 1.0 TB Flex 12V Aut. Zero km Flex","ano":2026,"ano_codigo":"32000-5","texto_ano":"Zero km Flex","combustivel":"Flex","tipo_veiculo":"combustao"},
+    "esperado": {"nivel_match":"alto","autopreencher":true,"modelo_igual":"HB20S"}
+  },
+  {
+    "id": "duster_intense_plus",
+    "consulta": {"prefixo":"icev","marca":"Renault","modelo":"DUSTER Intense Plus 1.6 16V Flex Mec.","texto_modelo":"Renault DUSTER Intense Plus 1.6 16V Flex Mec. Zero km Flex","ano":2026,"ano_codigo":"32000-5","texto_ano":"Zero km Flex","combustivel":"Flex","tipo_veiculo":"combustao","zero_km":true},
+    "esperado": {"nivel_match":"alto","autopreencher":true,"ano_tabela_pbev":2026,"modelo_contem":"DUSTER","gasolina_cidade_km_l":11.2,"etanol_cidade_km_l":7.6}
+  },
+  {
+    "id": "jetour_t1",
+    "consulta": {"prefixo":"ve","marca":"Jetour","modelo":"T1 Advance 1.5 Híbrido Aut.","texto_modelo":"T1 Advance 1.5 Híbrido Aut. Zero km Híbrido","ano":32000,"ano_codigo":"32000-1","texto_ano":"Zero km Híbrido","combustivel":"Híbrido","tipo_veiculo":"hibrido"},
+    "esperado": {"nivel_match":"alto","autopreencher":true,"modelo_contem":"T1","modelo_nao_contem":"T2"}
+  },
+  {
+    "id": "jetour_s06",
+    "consulta": {"prefixo":"ve","marca":"Jetour","modelo":"S06 Advance 1.5 Híbrido Aut.","texto_modelo":"S06 Advance 1.5 Híbrido Aut. Zero km Híbrido","ano":32000,"ano_codigo":"32000-1","texto_ano":"Zero km Híbrido","combustivel":"Híbrido","tipo_veiculo":"hibrido"},
+    "esperado": {"nivel_match":"alto","autopreencher":true,"modelo_contem":"S06","modelo_nao_contem":"T1"}
+  },
+  {
+    "id": "defender_d300",
+    "consulta": {"prefixo":"icev","marca":"Land Rover","modelo":"Defender 110 D300 HSE Diesel Aut. Híbrido","texto_modelo":"Defender 110 D300 HSE Diesel Aut. Híbrido","ano":2024,"ano_codigo":"2024-3","texto_ano":"2024 Diesel","combustivel":"Diesel","tipo_veiculo":"hibrido"},
+    "esperado": {"nivel_match":"alto","autopreencher":true,"modelo_contem":"DEFENDER 110","tipo_consumo":"diesel"}
+  },
+  {
+    "id": "discovery_sport_p250",
+    "consulta": {"prefixo":"icev","marca":"Land Rover","modelo":"Discovery Sp. Dyn. P250 Flex Aut.","texto_modelo":"Discovery Sp. Dyn. P250 Flex Aut.","ano":2021,"ano_codigo":"2021-3","texto_ano":"2021 Flex","combustivel":"Flex","tipo_veiculo":"combustao"},
+    "esperado": {"nivel_match":"alto","autopreencher":true,"modelo_contem":"DISCOVERY SPORT"}
+  },
+  {
+    "id": "towner_pickup",
+    "consulta": {"prefixo":"icev","marca":"Hafei","modelo":"Towner Jr. Pick-up Baú 1.0 Gasolina Mec.","texto_modelo":"Towner Jr. Pick-up Baú 1.0 Gasolina Mec.","ano":2014,"ano_codigo":"2014-1","texto_ano":"2014 Gasolina","combustivel":"Gasolina","tipo_veiculo":"combustao"},
+    "esperado": {"nivel_match":"alto","autopreencher":true,"modelo_contem":"PICKUP","modelo_nao_contem":"VAN"}
+  },
+  {
+    "id": "huracan_sterrato",
+    "consulta": {"prefixo":"icev","marca":"Lamborghini","modelo":"Huracán Sterrato 5.2 V10 Gasolina Aut.","texto_modelo":"Huracán Sterrato 5.2 V10 Gasolina Aut.","ano":2024,"ano_codigo":"2024-1","texto_ano":"2024 Gasolina","combustivel":"Gasolina","tipo_veiculo":"combustao"},
+    "esperado": {"nivel_match":"alto","autopreencher":true,"criterio_match":"conservador_por_familia","modelo_contem":"HURACAN"}
+  },
+  {
+    "id": "aventador_ano_distante",
+    "consulta": {"prefixo":"icev","marca":"Lamborghini","modelo":"Aventador SVJ Roadster 6.5 V12 Gasolina Aut.","texto_modelo":"Aventador SVJ Roadster 6.5 V12 Gasolina Aut.","ano":2021,"ano_codigo":"2021-1","texto_ano":"2021 Gasolina","combustivel":"Gasolina","tipo_veiculo":"combustao"},
+    "esperado": {"nivel_match":"medio","autopreencher":false,"criterio_match":"aproximacao_com_observacao","modelo_contem":"AVENTADOR"}
+  },
+  {
+    "id": "durango_fallback_familia",
+    "consulta": {"prefixo":"icev","marca":"Dodge","modelo":"Durango Crew 3.6 24V 4x4 Aut.","texto_modelo":"Durango Crew 3.6 24V 4x4 Aut. 2013 Gasolina","ano":2013,"ano_codigo":"2013-1","texto_ano":"2013 Gasolina","combustivel":"Gasolina","tipo_veiculo":"combustao"},
+    "esperado": {"nivel_match":"alto","autopreencher":true,"criterio_match":"conservador_por_familia","modelo_contem":"DURANGO","modelo_nao_contem":"JOURNEY","gasolina_cidade_km_l":6.5}
+  },
+  {
+    "id": "ram_2500_sem_cobertura",
+    "consulta": {"prefixo":"icev","marca":"Dodge","modelo":"Ram 2500 LARAMIE 6.7 TDI CD 4x4 Dies","texto_modelo":"Ram 2500 LARAMIE 6.7 TDI CD 4x4 Dies 2012 Diesel","ano":2012,"ano_codigo":"2012-3","texto_ano":"2012 Diesel","combustivel":"Diesel","tipo_veiculo":"combustao"},
+    "esperado": {"nivel_match":"sem_match","autopreencher":false,"cobertura_pbev":"ausente"}
+  },
+  {
+    "id": "sf90_sem_cobertura",
+    "consulta": {"prefixo":"icev","marca":"Ferrari","modelo":"SF 90 SPIDER 4.0 V8 Bi-Turbo (Híbrido)","texto_modelo":"SF 90 SPIDER 4.0 V8 Bi-Turbo (Híbrido) 2023","ano":2023,"ano_codigo":"2023-6","texto_ano":"2023 Híbrido","combustivel":"Híbrido","tipo_veiculo":"hibrido"},
+    "esperado": {"nivel_match":"sem_match","autopreencher":false,"cobertura_pbev":"ausente"}
+  },
+  {
+    "id": "f8_spider_potencia_secundaria",
+    "consulta": {"prefixo":"icev","marca":"Ferrari","modelo":"F8 Spider 3.9 V8 Bi-Turbo 720cv","texto_modelo":"F8 Spider 3.9 V8 Bi-Turbo 720cv 2022 Gasolina","ano":2022,"ano_codigo":"2022-1","texto_ano":"2022 Gasolina","combustivel":"Gasolina","tipo_veiculo":"combustao"},
+    "esperado": {"nivel_match":"alto","autopreencher":true,"ano_tabela_pbev":2022,"modelo_versao_contem":"F8 SPIDER","gasolina_cidade_km_l":5.6}
+  },
+  {
+    "id": "ferrari_roma_potencia_secundaria",
+    "consulta": {"prefixo":"icev","marca":"Ferrari","modelo":"Roma 3.9 V8 620cv","texto_modelo":"Roma 3.9 V8 620cv 2024 Gasolina","ano":2024,"ano_codigo":"2024-1","texto_ano":"2024 Gasolina","combustivel":"Gasolina","tipo_veiculo":"combustao"},
+    "esperado": {"nivel_match":"alto","autopreencher":true,"ano_tabela_pbev":2024,"modelo_contem":"ROMA","gasolina_cidade_km_l":6.9}
+  },
+  {
+    "id": "wey_07_versoes_equivalentes",
+    "consulta": {"prefixo":"icev","marca":"GWM","modelo":"Wey 07 Dark Edition 1.5 Turbo AWD","texto_modelo":"Wey 07 Dark Edition 1.5 Turbo AWD Zero km Híbrido","ano":2026,"ano_codigo":"32000-6","texto_ano":"Zero km Híbrido","combustivel":"Híbrido","tipo_veiculo":"hibrido"},
+    "esperado": {"nivel_match":"alto","autopreencher":true,"ano_tabela_pbev":2026,"modelo_versao_contem":"WEY 07","tipo_consumo":"phev"}
+  },
+  {
+    "id": "volvo_xc40_composto",
+    "consulta": {"prefixo":"icev","marca":"Volvo","modelo":"XC 40 T-5 MOMENT FIRST ED. 2.0 252cv AWD","texto_modelo":"XC 40 T-5 MOMENT FIRST ED. 2.0 252cv AWD 2018 Gasolina","ano":2018,"ano_codigo":"2018-1","texto_ano":"2018 Gasolina","combustivel":"Gasolina","tipo_veiculo":"combustao"},
+    "esperado": {"nivel_match":"alto","autopreencher":true,"ano_tabela_pbev":2018,"modelo_contem":"XC40","modelo_nao_contem":"V40"}
+  },
+  {
+    "id": "volvo_xc60_composto",
+    "consulta": {"prefixo":"icev","marca":"Volvo","modelo":"XC 60 T-5 R-DESIGN 2.0 FWD 5p","texto_modelo":"XC 60 T-5 R-DESIGN 2.0 FWD 5p 2017 Gasolina","ano":2017,"ano_codigo":"2017-1","texto_ano":"2017 Gasolina","combustivel":"Gasolina","tipo_veiculo":"combustao"},
+    "esperado": {"nivel_match":"alto","autopreencher":true,"ano_tabela_pbev":2017,"modelo_igual":"XC60","modelo_nao_contem":"V60"}
+  }
+]

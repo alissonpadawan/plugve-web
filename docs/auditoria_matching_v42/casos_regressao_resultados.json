@@ -1,0 +1,222 @@
+[
+  {
+    "id": "corolla_cross_xre_zero_km",
+    "passou": true,
+    "nivel_match": "alto",
+    "autopreencher": true,
+    "criterio_match": "exato",
+    "cobertura_pbev": "exata",
+    "candidato": "COROLLA CROSS XRE 20",
+    "erros": "",
+    "motivo": "marca compatível; zero km FIPE: ano PBEV mais recente compatível priorizado; família comercial textual compatível: COROLLA; carroceria compatível; designação comercial exata; modelo/família compatível; combustível flex compatível; versão/acabamento compatível; motor compatível; transmissão automática/CVT compatível"
+  },
+  {
+    "id": "song_plus_phev",
+    "passou": true,
+    "nivel_match": "alto",
+    "autopreencher": true,
+    "criterio_match": "exato",
+    "cobertura_pbev": "exata",
+    "candidato": "SONG PLUS PREM DM",
+    "erros": "",
+    "motivo": "marca compatível; zero km FIPE: ano PBEV mais recente compatível priorizado; família comercial textual compatível: SONG; designação comercial parcialmente compatível; modelo/família compatível; PHEV/plugin compatível; versão/acabamento compatível; motor compatível; transmissão compatível"
+  },
+  {
+    "id": "hb20_hatch",
+    "passou": true,
+    "nivel_match": "alto",
+    "autopreencher": true,
+    "criterio_match": "exato",
+    "cobertura_pbev": "exata",
+    "candidato": "HB20 LIMITED",
+    "erros": "",
+    "motivo": "marca compatível; ano PBEV igual ao ano-modelo FIPE; token forte de modelo compatível: HB20; designação comercial exata; número/modelo compatível; modelo/família compatível; combustível flex compatível; versão/acabamento compatível; motor compatível; transmissão compatível"
+  },
+  {
+    "id": "hb20s_sedan",
+    "passou": true,
+    "nivel_match": "alto",
+    "autopreencher": true,
+    "criterio_match": "exato",
+    "cobertura_pbev": "exata",
+    "candidato": "HB20S LIMITED",
+    "erros": "",
+    "motivo": "marca compatível; ano PBEV igual ao ano-modelo FIPE; token forte de modelo compatível: HB20S; designação comercial exata; número/modelo compatível; modelo/família compatível; combustível flex compatível; versão/acabamento compatível; motor compatível; transmissão compatível"
+  },
+  {
+    "id": "duster_intense_plus",
+    "passou": true,
+    "nivel_match": "alto",
+    "autopreencher": true,
+    "criterio_match": "exato",
+    "cobertura_pbev": "exata",
+    "candidato": "DUSTER DUSTER INTP MT",
+    "erros": "",
+    "motivo": "marca compatível; ano PBEV igual ao ano-modelo FIPE; família comercial textual parcialmente compatível: DUSTER; designação comercial parcialmente compatível; modelo/família compatível; combustível flex compatível; versão/acabamento compatível; motor compatível; transmissão compatível"
+  },
+  {
+    "id": "jetour_t1",
+    "passou": true,
+    "nivel_match": "alto",
+    "autopreencher": true,
+    "criterio_match": "exato",
+    "cobertura_pbev": "exata",
+    "candidato": "T1 I-DM ADVANCE",
+    "erros": "",
+    "motivo": "marca compatível; zero km FIPE: ano PBEV mais recente compatível priorizado; token forte de modelo compatível: T1; designação comercial parcialmente compatível; modelo/família compatível; PHEV/plugin compatível; versão/acabamento compatível; motor compatível; transmissão compatível"
+  },
+  {
+    "id": "jetour_s06",
+    "passou": true,
+    "nivel_match": "alto",
+    "autopreencher": true,
+    "criterio_match": "exato",
+    "cobertura_pbev": "exata",
+    "candidato": "S06 DM ADVANCE",
+    "erros": "",
+    "motivo": "marca compatível; zero km FIPE: ano PBEV mais recente compatível priorizado; token forte de modelo compatível: S06; designação comercial exata; número/modelo compatível; modelo/família compatível; PHEV/plugin compatível; versão/acabamento compatível; motor compatível; transmissão compatível"
+  },
+  {
+    "id": "defender_d300",
+    "passou": true,
+    "nivel_match": "alto",
+    "autopreencher": true,
+    "criterio_match": "versoes_equivalentes",
+    "cobertura_pbev": "equivalente",
+    "candidato": "DEFENDER 110 HSE",
+    "erros": "",
+    "motivo": "marca compatível; token forte de modelo compatível: 110; designação comercial parcialmente compatível; número/modelo compatível; modelo/família compatível; combustível diesel compatível; versão/acabamento compatível; transmissão compatível; ano PBEV próximo aceito por família técnica equivalente; candidatos próximos têm o mesmo consumo aplicável; ambiguidade não bloqueia; ano distante (2024 x 2021); código técnico da FIPE ausente no PBEV: D300"
+  },
+  {
+    "id": "discovery_sport_p250",
+    "passou": true,
+    "nivel_match": "alto",
+    "autopreencher": true,
+    "criterio_match": "versoes_equivalentes",
+    "cobertura_pbev": "equivalente",
+    "candidato": "DISCOVERY SPORT P250FF SERD7",
+    "erros": "",
+    "motivo": "marca compatível; ano PBEV adjacente ao ano-modelo FIPE; família comercial textual parcialmente compatível: DISCOVERY; código técnico compatível: P250; designação comercial parcialmente compatível; modelo/família compatível; combustível flex compatível; versão/acabamento parcialmente compatível; transmissão compatível; candidatos próximos têm o mesmo consumo aplicável; ambiguidade não bloqueia"
+  },
+  {
+    "id": "towner_pickup",
+    "passou": true,
+    "nivel_match": "alto",
+    "autopreencher": true,
+    "criterio_match": "exato",
+    "cobertura_pbev": "exata",
+    "candidato": "START PICKUP L",
+    "erros": "",
+    "motivo": "marca compatível; ano PBEV igual ao ano-modelo FIPE; família comercial textual compatível: START, TOWNER; carroceria compatível; designação comercial exata; modelo/família compatível; combustível gasolina compatível; motor compatível; transmissão compatível"
+  },
+  {
+    "id": "huracan_sterrato",
+    "passou": true,
+    "nivel_match": "alto",
+    "autopreencher": true,
+    "criterio_match": "conservador_por_familia",
+    "cobertura_pbev": "familia",
+    "candidato": "HURACAN TECNICA",
+    "erros": "",
+    "motivo": "marca compatível; ano PBEV igual ao ano-modelo FIPE; família comercial textual compatível: HURACAN; modelo/família compatível; combustível gasolina compatível; motor compatível; transmissão compatível; acabamento divergente"
+  },
+  {
+    "id": "aventador_ano_distante",
+    "passou": true,
+    "nivel_match": "medio",
+    "autopreencher": false,
+    "criterio_match": "aproximacao_com_observacao",
+    "cobertura_pbev": "familia",
+    "candidato": "AVENTADOR",
+    "erros": "",
+    "motivo": "marca compatível; família comercial textual compatível: AVENTADOR; modelo/família compatível; combustível gasolina compatível; motor compatível; transmissão compatível; ano distante (2021 x 2016); carroceria explícita da FIPE ausente no PBEV: CONVERSIVEL; há outro candidato PBEV próximo tecnicamente ambíguo; autofill bloqueado"
+  },
+  {
+    "id": "durango_fallback_familia",
+    "passou": true,
+    "nivel_match": "alto",
+    "autopreencher": true,
+    "criterio_match": "conservador_por_familia",
+    "cobertura_pbev": "familia",
+    "candidato": "DURANGO LIMITED",
+    "erros": "",
+    "motivo": "marca compatível; família comercial textual compatível: DURANGO; modelo/família compatível; combustível gasolina compatível; motor compatível; transmissão compatível; ano PBEV próximo aceito por família técnica equivalente; candidatos próximos têm o mesmo consumo aplicável; ambiguidade não bloqueia; ano distante (2013 x 2015); acabamento divergente"
+  },
+  {
+    "id": "ram_2500_sem_cobertura",
+    "passou": true,
+    "nivel_match": "sem_match",
+    "autopreencher": false,
+    "criterio_match": "sem_match",
+    "cobertura_pbev": "ausente",
+    "candidato": "",
+    "erros": "",
+    "motivo": "Nenhum candidato PBEV confiável encontrado."
+  },
+  {
+    "id": "sf90_sem_cobertura",
+    "passou": true,
+    "nivel_match": "sem_match",
+    "autopreencher": false,
+    "criterio_match": "sem_match",
+    "cobertura_pbev": "ausente",
+    "candidato": "",
+    "erros": "",
+    "motivo": "Nenhum candidato PBEV confiável encontrado. 4 candidato(s) foram bloqueados por status/flags."
+  },
+  {
+    "id": "f8_spider_potencia_secundaria",
+    "passou": true,
+    "nivel_match": "alto",
+    "autopreencher": true,
+    "criterio_match": "exato",
+    "cobertura_pbev": "exata",
+    "candidato": "F8 SPIDER",
+    "erros": "",
+    "motivo": "marca compatível; ano PBEV igual ao ano-modelo FIPE; token forte de modelo compatível: F8; carroceria compatível; designação comercial exata; modelo/família compatível; combustível gasolina compatível; motor compatível"
+  },
+  {
+    "id": "ferrari_roma_potencia_secundaria",
+    "passou": true,
+    "nivel_match": "alto",
+    "autopreencher": true,
+    "criterio_match": "exato",
+    "cobertura_pbev": "exata",
+    "candidato": "ROMA --",
+    "erros": "",
+    "motivo": "marca compatível; ano PBEV igual ao ano-modelo FIPE; família comercial textual compatível: ROMA; designação comercial exata; modelo/família compatível; combustível gasolina compatível; motor compatível"
+  },
+  {
+    "id": "wey_07_versoes_equivalentes",
+    "passou": true,
+    "nivel_match": "alto",
+    "autopreencher": true,
+    "criterio_match": "versoes_equivalentes",
+    "cobertura_pbev": "equivalente",
+    "candidato": "WEY 07",
+    "erros": "",
+    "motivo": "marca compatível; ano PBEV igual ao ano-modelo FIPE; token forte de modelo compatível: WEY07; modelo/família compatível; PHEV/plugin compatível; motor compatível; candidato dominante por identidade técnica forte; candidatos próximos tecnicamente fracos não bloqueiam; candidatos próximos têm o mesmo consumo aplicável; ambiguidade não bloqueia"
+  },
+  {
+    "id": "volvo_xc40_composto",
+    "passou": true,
+    "nivel_match": "alto",
+    "autopreencher": true,
+    "criterio_match": "conservador_por_familia",
+    "cobertura_pbev": "familia",
+    "candidato": "XC40 T5 INSCRIPT T5 MOMENTUM T5 R-DESIGN",
+    "erros": "",
+    "motivo": "marca compatível; ano PBEV igual ao ano-modelo FIPE; token forte de modelo compatível: XC40; número/modelo compatível; modelo/família compatível; combustível gasolina compatível; motor compatível; candidatos próximos da mesma família resolvidos por critério conservador de consumo; acabamento divergente"
+  },
+  {
+    "id": "volvo_xc60_composto",
+    "passou": true,
+    "nivel_match": "alto",
+    "autopreencher": true,
+    "criterio_match": "exato",
+    "cobertura_pbev": "exata",
+    "candidato": "XC60 2.0 T5 INSCRIPTION / 2.0 T5 R-DESIGN",
+    "erros": "",
+    "motivo": "marca compatível; ano PBEV igual ao ano-modelo FIPE; token forte de modelo compatível: XC60; designação comercial parcialmente compatível; número/modelo compatível; modelo/família compatível; combustível gasolina compatível; versão/acabamento parcialmente compatível; motor compatível"
+  }
+]

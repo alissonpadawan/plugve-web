@@ -32,15 +32,20 @@ FUEL_TOKENS = {
     "HIBRIDO", "HIBRIDA", "HYBRID", "PHEV", "PLUGIN", "PLUG", "IN", "BEV", "EV",
 }
 TRANS_TOKENS = {
-    "AUT", "AUTO", "AUTOMATICO", "AUTOMATICA", "AT", "A", "CVT", "M", "MT", "MANUAL", "MEC", "MECANICO", "MECANICA",
+    "AUT", "AUTO", "AUTOMATICO", "AUTOMATICA", "AT", "A", "CVT", "MTA", "DCT", "DHT",
+    "M", "MT", "MANUAL", "MEC", "MECANICO", "MECANICA",
 }
 ENGINE_TOKENS = {"8V", "10V", "12V", "16V", "20V", "24V", "32V", "40V", "48V", "60V"}
 GENERIC_TOKENS = {
     "DE", "DO", "DA", "DOS", "DAS", "E", "COM", "SEM", "PARA", "THE", "OF", "BY",
     "NOVO", "NOVA", "NEW", "ZERO", "KM", "MY", "MODELO", "VERSAO", "VERSÃO",
-    "PORTA", "PORTAS", "P", "CV", "HP", "TURBO", "T", "TSI", "TFSI", "GDI", "MPI",
+    "PORTA", "PORTAS", "P", "CV", "HP", "PS", "KW", "TURBO", "T", "TSI", "TFSI", "GDI", "MPI",
     "VVT", "VVTIE", "VVT I", "DOHC", "SOHC", "VALV", "VALVULAS", "VALVULAS",
 }
+POWER_TOKEN_RE = re.compile(r"^\d{2,4}(?:CV|HP|PS|KW)$")
+PORT_TOKEN_RE = re.compile(r"^[1-9]P$")
+YEAR_TOKEN_RE = re.compile(r"^(?:19|20)\d{2}$")
+SINGLE_DIGIT_MODEL_PREFIXES = {"A", "B", "C", "E", "F", "G", "I", "Q", "S", "T", "X", "Z", "CX", "MX", "RX", "ID"}
 # CROSS costuma mudar família/modelo no PBEV e na FIPE (Yaris x Yaris Cross, Corolla x Corolla Cross).
 HARD_BODY_TOKENS = {"CROSS", "PICKUP", "PICAPE", "CABINE", "CAB", "SW", "WAGON", "TOURING", "VAN", "MINIVAN"}
 # HATCH/SEDAN ajudam, mas a FIPE frequentemente usa apenas 4P/5P ou omite a carroceria.
@@ -91,7 +96,10 @@ TRIM_TOKENS_IMPORTANTES = {
     "PLATINUM", "ELITE", "ADVANCE", "ADVANCED", "AUDACE", "IMPETUS", "IMPETUS", "ICONIC",
     "PLUS", "MINI", "PRO", "MAX", "ULTRA", "COMFORT", "COMFORTLINE", "HIGHLINE", "TRENDLINE",
     "EXCLUSIVE", "INTENSE", "ZEN", "TROPHY", "FEEL", "SHINE", "LIVE", "TITANIUM", "TREMOR", "RANCH", "WILDTRAK",
-    "HSE", "HSEL", "DYNAMIC", "STERRATO", "SVJ", "ROADSTER", "TECNICA", "EVO",
+    "HSE", "HSEL", "DYNAMIC", "STERRATO", "SVJ", "ROADSTER", "TECNICA", "EVO", "CREW",
+    "ED", "EDITION", "FIRST", "MOMENT", "MOMENTUM", "INSCRIPT", "INSCRIPTION", "RDESIGN",
+    "EL", "DX", "LXL", "FIRE", "BASE", "PULSE", "CLASS", "CULT", "DUALOGIC",
+    "DESIGN", "KINETIC", "SUMMUM", "TOP", "DRIVE",
     "XDRIVE", "SDRIVE", "QUATTRO", "AWD", "FWD", "RWD", "4X4", "4X2",
 }
 
@@ -244,6 +252,23 @@ class PbevService:
         if "CAOA" in texto and "HYUNDAI" in texto:
             return "HYUNDAI"
         return texto
+
+    @classmethod
+    def _marca_keys_busca(cls, consulta: dict[str, Any]) -> list[str]:
+        """Resolve marca e submarca sem aceitar família errada.
+
+        A FIPE historicamente pode listar RAM como Dodge. A ampliação serve apenas
+        para buscar no índice correto; modelo, combustível e motor continuam sendo
+        filtros obrigatórios no score.
+        """
+        principal = cls._marca_key(consulta.get("marca"))
+        texto = cls.normalizar_aliases_automotivos(cls._texto_consulta(consulta))
+        keys: list[str] = [principal] if principal else []
+        if principal == "DODGE" and re.search(r"\bRAM\b", texto):
+            keys.append("RAM")
+        elif principal == "RAM":
+            keys.append("DODGE")
+        return list(dict.fromkeys(k for k in keys if k))
 
     # ------------------------------------------------------------------
     # Carregamento/cache
@@ -438,6 +463,8 @@ class PbevService:
             return ""
         if "CVT" in texto:
             return "CVT"
+        if re.search(r"\b(MTA|DCT|DHT)\b", texto):
+            return "AUTO"
         if re.search(r"\b(A|AT|AUT|AUTO|AUTOMATICO|AUTOMATICA)\b", texto) or re.search(r"\bA\s*[0-9]\b", texto) or re.search(r"\b[0-9]+\s*AT\b", texto):
             return "AUTO"
         if re.search(r"\b(M|MT|MEC|MANUAL|MECANICO|MECANICA)\b", texto) or re.search(r"\bM\s*[0-9]\b", texto) or re.search(r"\b[0-9]+\s*MT\b", texto):
@@ -465,10 +492,10 @@ class PbevService:
         # D300/D350 e códigos Dxxx, combinados com híbrido/diesel, representam diesel.
         if "DIESEL" in tokens or any(re.fullmatch(r"D\d{3}", token) for token in fortes):
             return "DIESEL"
-        if "FLEX" in tokens or re.search(r"\b(TOTAL FLEX|BICOMBUSTIVEL|BI COMBUSTIVEL)\b", texto):
-            return "FLEX"
         if tipo == "HIBRIDO" or re.search(r"\b(HIBRIDO|HIBRIDA|HYBRID|HEV|MHEV)\b", texto):
-            # A PBEV pode refinar o híbrido genérico da FIPE.
+            # A PBEV pode refinar o híbrido genérico da FIPE. O rótulo FLEX
+            # não deve apagar a natureza híbrida; o combustível real continua
+            # disponível no registro e gera sugestão ``hibrido_flex``.
             if registro:
                 prop = cls.normalizar_texto(registro.get("tipo_propulsao_normalizado") or registro.get("tipo_propulsao")).replace(" ", "_")
                 comb = cls.normalizar_texto(registro.get("combustivel_normalizado") or registro.get("combustivel")).replace(" ", "_")
@@ -477,6 +504,8 @@ class PbevService:
                 if comb == "DIESEL":
                     return "DIESEL"
             return "HIBRIDO"
+        if "FLEX" in tokens or re.search(r"\b(TOTAL FLEX|BICOMBUSTIVEL|BI COMBUSTIVEL)\b", texto):
+            return "FLEX"
         if "ETANOL" in tokens or "ALCOOL" in tokens:
             return "ETANOL"
         if "GASOLINA" in tokens:
@@ -516,21 +545,111 @@ class PbevService:
                 return True, 22, "híbrido FIPE compatível com PHEV/plugin PBEV"
             return False, -45, "propulsão não híbrida"
         if req in {"FLEX", "DIESEL", "GASOLINA", "ETANOL"}:
+            if cand_is_eletrico or cand_is_plugin or cand_is_hibrido_convencional:
+                return False, -55, f"propulsão PBEV incompatível com veículo FIPE {req.lower()} não híbrido"
             if cand_comb == req:
                 return True, 22, f"combustível {req.lower()} compatível"
             return False, -55, f"combustível diverge: FIPE {req.lower()} x PBEV {cand_comb.lower() or 'vazio'}"
         # Sem combustível explícito: aceita, mas não permite sozinho um match alto.
         return True, 4, "combustível FIPE não explícito"
 
+    @staticmethod
+    def _token_secundario_identidade(token: str) -> bool:
+        token = str(token or "").upper().strip()
+        return bool(
+            not token
+            or POWER_TOKEN_RE.fullmatch(token)
+            or PORT_TOKEN_RE.fullmatch(token)
+            or YEAR_TOKEN_RE.fullmatch(token)
+        )
+
     @classmethod
-    def extrair_tokens_fortes_modelo(cls, texto: Any) -> set[str]:
-        """Extrai identificadores curtos/alfanuméricos que definem o modelo."""
+    def _tokens_compostos_modelo(cls, texto: Any) -> set[str]:
+        """Monta identificadores comerciais separados na FIPE/PBEV.
+
+        Exemplos: XC 40 -> XC40, SF 90 -> SF90, E 2008 -> E2008,
+        RAM 2500 -> RAM2500. A função não decide sozinha se o código é
+        família ou versão; essa classificação ocorre no score contextual.
+        """
         norm = cls.normalizar_aliases_automotivos(texto)
         tokens = norm.split()
-        fortes: set[str] = set()
-        ignorar = FUEL_TOKENS | TRANS_TOKENS | ENGINE_TOKENS | GENERIC_TOKENS | {"4X4", "4X2", "AWD", "FWD", "RWD", "2WD"}
+        compostos: set[str] = set()
+        ignorar_prefixo = (
+            FUEL_TOKENS | TRANS_TOKENS | ENGINE_TOKENS | GENERIC_TOKENS
+            | TRIM_TOKENS_IMPORTANTES | HARD_BODY_TOKENS | SOFT_BODY_TOKENS
+            | {"BAU", "FURGAO", "CABRIO", "CABRIOLET"}
+        )
+        for idx, (primeiro, segundo) in enumerate(zip(tokens, tokens[1:])):
+            if primeiro in ignorar_prefixo or cls._token_secundario_identidade(segundo):
+                continue
+            if re.fullmatch(r"[A-Z]{1,3}", primeiro) and re.fullmatch(r"\d{1,5}[A-Z]{0,3}", segundo):
+                if YEAR_TOKEN_RE.fullmatch(segundo):
+                    continue
+                numero = re.match(r"\d+", segundo)
+                if numero and len(numero.group(0)) == 1:
+                    if primeiro not in SINGLE_DIGIT_MODEL_PREFIXES:
+                        continue
+                    # Evita criar modelo falso a partir de acabamento + cilindrada
+                    # normalizada, como ``Etios X 1 3`` -> X1. Em designações
+                    # reais como BMW X 1, o próximo token não é outro algarismo.
+                    proximo = tokens[idx + 2] if idx + 2 < len(tokens) else ""
+                    if re.fullmatch(r"\d", proximo):
+                        continue
+                compostos.add(f"{primeiro}{segundo}")
+        return compostos
+
+    @classmethod
+    def _palavras_familia_modelo(cls, texto: Any) -> set[str]:
+        """Extrai nomes textuais de família, separados de acabamento/técnica."""
+        tokens = cls.normalizar_aliases_automotivos(texto).split()
+        excluir = (
+            FUEL_TOKENS | TRANS_TOKENS | ENGINE_TOKENS | GENERIC_TOKENS
+            | TRIM_TOKENS_IMPORTANTES | HARD_BODY_TOKENS | SOFT_BODY_TOKENS
+            | {"BAU", "FURGAO", "SPIDER", "CONVERSIVEL", "CABRIO", "CABRIOLET", "DCT", "DHT"}
+        )
+        palavras: set[str] = set()
         for token in tokens:
-            if token in ignorar or re.fullmatch(r"V\d{1,2}", token):
+            if token in excluir or cls._token_secundario_identidade(token):
+                continue
+            if re.fullmatch(r"\d+(?:\.\d+)?", token) or re.fullmatch(r"V\d{1,2}", token):
+                continue
+            if cls._token_forte_tecnico(token):
+                continue
+            if len(token) <= 2:
+                continue
+            if re.fullmatch(r"[A-Z]{1,8}\d{1,5}[A-Z]{0,4}", token):
+                continue
+            palavras.add(token)
+        return palavras
+
+    @classmethod
+    def _tokens_designacao_modelo(cls, texto: Any) -> set[str]:
+        """Assinatura comercial da designação, sem motor/potência/ano."""
+        norm = cls.normalizar_aliases_automotivos(texto)
+        tokens = norm.split()
+        saida = set(cls.extrair_tokens_fortes_modelo(norm))
+        saida |= cls._palavras_familia_modelo(norm)
+        saida |= {t for t in cls._tokens(norm) if t in TRIM_TOKENS_IMPORTANTES}
+        saida |= cls.classificar_carroceria(norm)
+        for token in tokens:
+            if PORT_TOKEN_RE.fullmatch(token):
+                saida.add(token)
+        for primeiro, segundo in zip(tokens, tokens[1:]):
+            if re.fullmatch(r"[1-9]", primeiro) and segundo in {"PORTA", "PORTAS"}:
+                saida.add(f"{primeiro}P")
+        return {t for t in saida if not cls._token_secundario_identidade(t)}
+
+    @classmethod
+    def extrair_tokens_fortes_modelo(cls, texto: Any) -> set[str]:
+        """Extrai identificadores comerciais fortes, sem potência/portas/ano."""
+        norm = cls.normalizar_aliases_automotivos(texto)
+        tokens = norm.split()
+        fortes: set[str] = set(cls._tokens_compostos_modelo(norm))
+        ignorar = FUEL_TOKENS | TRANS_TOKENS | ENGINE_TOKENS | GENERIC_TOKENS | {
+            "4X4", "4X2", "AWD", "FWD", "RWD", "2WD",
+        }
+        for token in tokens:
+            if token in ignorar or cls._token_secundario_identidade(token) or re.fullmatch(r"V\d{1,2}", token):
                 continue
             canon = token
             for sufixo in STRONG_TOKEN_TECH_SUFFIXES:
@@ -539,15 +658,14 @@ class PbevService:
                     if re.fullmatch(r"[A-Z]{1,8}\d{1,5}[A-Z]{0,3}", base):
                         canon = base
                         break
+            if cls._token_secundario_identidade(canon):
+                continue
             if re.fullmatch(r"[A-Z]{1,8}\d{1,5}[A-Z]{0,4}", canon) or re.fullmatch(r"\d{1,5}[A-Z]{1,4}", canon):
                 fortes.add(canon)
             elif re.fullmatch(r"\d{3,4}", canon):
                 n = int(canon)
                 if not 2010 <= n <= 2035:
                     fortes.add(canon)
-        for primeiro, segundo in zip(tokens, tokens[1:]):
-            if primeiro == "E" and re.fullmatch(r"\d{3,4}", segundo):
-                fortes.add(f"E{segundo}")
         return fortes
 
     @classmethod
@@ -564,6 +682,8 @@ class PbevService:
             categorias.add("HATCH")
         if tokens & {"SW", "WAGON", "TOURING"}:
             categorias.add("WAGON")
+        if tokens & {"SPIDER", "ROADSTER", "CABRIO", "CABRIOLET", "CONVERSIVEL"}:
+            categorias.add("CONVERSIVEL")
         if "CROSS" in tokens:
             categorias.add("CROSS")
         return categorias
@@ -575,13 +695,15 @@ class PbevService:
 
     @classmethod
     def calcular_score_modelo(cls, texto_fipe: Any, texto_pbev: Any) -> dict[str, Any]:
-        """Score complementar de identidade de modelo, tokens fortes e carroceria."""
+        """Score de identidade comercial separado de acabamento e técnica."""
         fortes_fipe = cls.extrair_tokens_fortes_modelo(texto_fipe)
         fortes_pbev = cls.extrair_tokens_fortes_modelo(texto_pbev)
         familia_fipe = {t for t in fortes_fipe if not cls._token_forte_tecnico(t)}
         familia_pbev = {t for t in fortes_pbev if not cls._token_forte_tecnico(t)}
         tecnicos_fipe = fortes_fipe - familia_fipe
         tecnicos_pbev = fortes_pbev - familia_pbev
+        palavras_fipe = cls._palavras_familia_modelo(texto_fipe)
+        palavras_pbev = cls._palavras_familia_modelo(texto_pbev)
         corpo_fipe = cls.classificar_carroceria(texto_fipe)
         corpo_pbev = cls.classificar_carroceria(texto_pbev)
         ajuste = 0.0
@@ -590,45 +712,86 @@ class PbevService:
         forte_compativel = False
         forte_divergente = False
         token_forte_parcial = False
+        identidade_nivel = 0
+
         if familia_fipe:
             inter = familia_fipe & familia_pbev
             cobertura = len(inter) / max(1, len(familia_fipe))
             if cobertura >= 1.0:
-                ajuste += 30
+                ajuste += 36
                 forte_compativel = True
+                identidade_nivel = 4
                 motivos.append("token forte de modelo compatível: " + ", ".join(sorted(inter)))
             elif inter:
-                ajuste += 6
+                ajuste += 8
                 token_forte_parcial = True
+                identidade_nivel = 2
                 ausentes = familia_fipe - familia_pbev
                 motivos.append("token forte de modelo parcialmente compatível: " + ", ".join(sorted(inter)))
                 penalidades.append("token forte da FIPE ausente no PBEV: " + ", ".join(sorted(ausentes)))
             elif familia_pbev:
-                ajuste -= 45
+                ajuste -= 55
                 forte_divergente = True
+                identidade_nivel = -2
                 penalidades.append("token forte de modelo divergente: " + ", ".join(sorted(familia_fipe)) + " x " + ", ".join(sorted(familia_pbev)))
             else:
-                ajuste -= 16
+                ajuste -= 18
+                identidade_nivel = -1
                 penalidades.append("token forte da FIPE ausente no PBEV: " + ", ".join(sorted(familia_fipe)))
+        else:
+            inter_palavras = palavras_fipe & palavras_pbev
+            if palavras_fipe and inter_palavras:
+                cobertura_palavras = len(inter_palavras) / max(1, len(palavras_fipe))
+                if cobertura_palavras >= 1.0:
+                    ajuste += 28
+                    identidade_nivel = 3
+                    motivos.append("família comercial textual compatível: " + ", ".join(sorted(inter_palavras)))
+                else:
+                    ajuste += 12
+                    identidade_nivel = 2
+                    motivos.append("família comercial textual parcialmente compatível: " + ", ".join(sorted(inter_palavras)))
+            elif palavras_fipe and palavras_pbev:
+                ajuste -= 35
+                identidade_nivel = -2
+                penalidades.append("família comercial textual divergente: " + ", ".join(sorted(palavras_fipe)) + " x " + ", ".join(sorted(palavras_pbev)))
+
         if tecnicos_fipe:
             inter_tecnico = tecnicos_fipe & tecnicos_pbev
             if inter_tecnico:
-                ajuste += 12
+                ajuste += 10
                 motivos.append("código técnico compatível: " + ", ".join(sorted(inter_tecnico)))
             else:
-                # A PBEV às vezes omite D300/P250 do nome, mas mantém motor e combustível.
-                ajuste -= 4
+                ajuste -= 3
                 penalidades.append("código técnico da FIPE ausente no PBEV: " + ", ".join(sorted(tecnicos_fipe)))
+
         if corpo_fipe and corpo_pbev:
             if corpo_fipe & corpo_pbev:
-                ajuste += 8
+                ajuste += 10
                 motivos.append("carroceria compatível")
             else:
-                ajuste -= 35
+                ajuste -= 38
+                identidade_nivel = min(identidade_nivel, -1)
                 penalidades.append("carroceria divergente: " + ", ".join(sorted(corpo_fipe)) + " x " + ", ".join(sorted(corpo_pbev)))
         elif corpo_fipe and not corpo_pbev:
-            ajuste -= 8
+            ajuste -= 7
             penalidades.append("carroceria explícita da FIPE ausente no PBEV: " + ", ".join(sorted(corpo_fipe)))
+
+        designacao_fipe = cls._tokens_designacao_modelo(texto_fipe)
+        designacao_pbev = cls._tokens_designacao_modelo(texto_pbev)
+        designacao_exata = bool(designacao_fipe and designacao_fipe == designacao_pbev)
+        designacao_parcial = False
+        if designacao_exata:
+            ajuste += 18
+            motivos.append("designação comercial exata")
+            identidade_nivel = max(identidade_nivel, 4)
+        elif designacao_fipe and designacao_pbev:
+            inter_designacao = designacao_fipe & designacao_pbev
+            cobertura_designacao = len(inter_designacao) / max(1, len(designacao_fipe))
+            if cobertura_designacao >= 0.6:
+                designacao_parcial = True
+                ajuste += 6
+                motivos.append("designação comercial parcialmente compatível")
+
         return {
             "ajuste": ajuste,
             "motivos": motivos,
@@ -639,11 +802,20 @@ class PbevService:
             "tokens_familia_pbev": familia_pbev,
             "tokens_tecnicos_fipe": tecnicos_fipe,
             "tokens_tecnicos_pbev": tecnicos_pbev,
+            "palavras_familia_fipe": palavras_fipe,
+            "palavras_familia_pbev": palavras_pbev,
             "token_forte_compativel": forte_compativel,
             "token_forte_parcial": token_forte_parcial,
             "token_forte_divergente": forte_divergente,
             "carroceria_fipe": corpo_fipe,
             "carroceria_pbev": corpo_pbev,
+            "nivel_identidade_modelo": identidade_nivel,
+            "familia_textual_compativel": bool(palavras_fipe & palavras_pbev),
+            "familia_textual_divergente": bool(palavras_fipe and palavras_pbev and not (palavras_fipe & palavras_pbev)),
+            "designacao_fipe": designacao_fipe,
+            "designacao_pbev": designacao_pbev,
+            "designacao_exata": designacao_exata,
+            "designacao_parcial": designacao_parcial,
         }
 
     @classmethod
@@ -692,6 +864,8 @@ class PbevService:
         tokens = cls._tokens(texto_modelo)
         core: set[str] = set()
         for token in tokens:
+            if cls._token_secundario_identidade(token):
+                continue
             if token in SOFT_BODY_TOKENS or token in FUEL_TOKENS or token in TRANS_TOKENS or token in ENGINE_TOKENS or token in GENERIC_TOKENS:
                 continue
             if re.fullmatch(r"20\d{2}", token) and token != "2008":
@@ -703,35 +877,8 @@ class PbevService:
 
     @classmethod
     def _identificadores_comerciais_modelo(cls, texto_modelo: Any) -> set[str]:
-        """Extrai identificadores alfanuméricos que definem a família comercial.
-
-        A extração usa os tokens originais, sem aliases de score. Assim, ``HB20`` e
-        ``HB20S`` permanecem distintos, enquanto grafias separadas como ``E 2008``
-        também produzem o identificador ``E2008``. A regra é geral e não depende de
-        marca ou modelo específico.
-        """
-        bruto = cls.normalizar_texto(texto_modelo)
-        if not bruto:
-            return set()
-        tokens = bruto.split()
-        identificadores: set[str] = set()
-        ignorar = FUEL_TOKENS | TRANS_TOKENS | ENGINE_TOKENS | GENERIC_TOKENS | {
-            "4X4", "4X2", "AWD", "FWD", "RWD", "2WD",
-        }
-        for token in tokens:
-            if token in ignorar:
-                continue
-            if re.fullmatch(r"[A-Z]{1,8}\d{1,5}[A-Z]{0,4}", token) or re.fullmatch(r"\d{1,5}[A-Z]{1,4}", token):
-                identificadores.add(token)
-        for primeiro, segundo in zip(tokens, tokens[1:]):
-            # ``E 2008`` é uma grafia normalizada frequente de ``e-2008``; neste
-            # contexto o E não é conjunção, mas parte do identificador comercial.
-            e_modelo_separado = primeiro == "E" and re.fullmatch(r"\d{3,5}[A-Z]{0,3}", segundo)
-            if (primeiro in ignorar or segundo in ignorar) and not e_modelo_separado:
-                continue
-            if re.fullmatch(r"[A-Z]{1,3}", primeiro) and re.fullmatch(r"\d{2,5}[A-Z]{0,3}", segundo):
-                identificadores.add(f"{primeiro}{segundo}")
-        return identificadores
+        """Identificadores comerciais, excluindo potência, portas e ano."""
+        return cls.extrair_tokens_fortes_modelo(texto_modelo)
 
     @staticmethod
     def _identificadores_comerciais_divergentes(requisitados: set[str], candidatos: set[str]) -> bool:
@@ -1060,6 +1207,22 @@ class PbevService:
         identidade_tecnica_forte = identidade["identidade_tecnica_forte"]
         tecnica_suficiente_para_consumo = identidade["tecnica_suficiente_para_consumo"]
 
+        limite_ano_fallback = 3 if (
+            score_modelo_geral.get("token_forte_compativel") and acabamento_exato
+        ) else 2
+        fallback_familia_tecnica = bool(
+            not ano_compativel_fipe_pbev
+            and ano_req and ano_cand and 0 < ano_diff <= limite_ano_fallback
+            and int(score_modelo_geral.get("nivel_identidade_modelo") or 0) >= 3
+            and fuel_ok and ok_flags and tecnica_suficiente_para_consumo
+            and (not motor_q or not motor_c or motor_q == motor_c)
+            and (not trans_q or not trans_c or trans_q == trans_c or {trans_q, trans_c} <= {"AUTO", "CVT"})
+        )
+        if fallback_familia_tecnica:
+            ano_compativel_fipe_pbev = True
+            ano_relacao = "familia_tecnica_proxima"
+            motivos.append("ano PBEV próximo aceito por família técnica equivalente")
+
         score_bruto = max(0.0, round(score, 2))
         score_publico = min(100.0, score_bruto)
         return {
@@ -1076,6 +1239,12 @@ class PbevService:
             "zero_km_contexto": zero_km_contexto,
             "ano_compativel_fipe_pbev": ano_compativel_fipe_pbev,
             "modelo_score": round(modelo_score, 2),
+            "nivel_identidade_modelo": int(score_modelo_geral.get("nivel_identidade_modelo") or 0),
+            "familia_textual_compativel": bool(score_modelo_geral.get("familia_textual_compativel")),
+            "familia_textual_divergente": bool(score_modelo_geral.get("familia_textual_divergente")),
+            "designacao_exata": bool(score_modelo_geral.get("designacao_exata")),
+            "designacao_parcial": bool(score_modelo_geral.get("designacao_parcial")),
+            "fallback_familia_tecnica": fallback_familia_tecnica,
             "tokens_fortes_fipe": sorted(score_modelo_geral["tokens_fortes_fipe"]),
             "tokens_fortes_pbev": sorted(score_modelo_geral["tokens_fortes_pbev"]),
             "token_forte_compativel": bool(score_modelo_geral["token_forte_compativel"]),
@@ -1516,6 +1685,11 @@ class PbevService:
             "zero_km_contexto": bool(avaliacao.get("zero_km_contexto")),
             "identidade_tecnica_forte": bool(avaliacao.get("identidade_tecnica_forte")),
             "tecnica_suficiente_para_consumo": bool(avaliacao.get("tecnica_suficiente_para_consumo")),
+            "token_forte_divergente": bool(avaliacao.get("token_forte_divergente")),
+            "familia_textual_divergente": bool(avaliacao.get("familia_textual_divergente")),
+            "nivel_identidade_modelo": int(avaliacao.get("nivel_identidade_modelo") or 0),
+            "designacao_exata": bool(avaliacao.get("designacao_exata")),
+            "fallback_familia_tecnica": bool(avaliacao.get("fallback_familia_tecnica")),
             "combustivel_detectado_fipe": avaliacao.get("req_fuel"),
             "motivos": list(avaliacao.get("motivos") or []),
             "penalidades": list(avaliacao.get("penalidades") or []),
@@ -1647,15 +1821,31 @@ class PbevService:
     ) -> str:
         if aproximacao:
             return "aproximacao_com_observacao"
-        if conservador or (avaliacao.get("acabamento_divergente") and avaliacao.get("tecnica_suficiente_para_consumo")):
+        if conservador:
             return "conservador_por_familia"
-        if equivalentes:
+        fallback_com_acabamento_divergente = bool(
+            avaliacao.get("fallback_familia_tecnica")
+            and avaliacao.get("acabamento_divergente")
+        )
+        if equivalentes and not fallback_com_acabamento_divergente:
             return "versoes_equivalentes"
+        if avaliacao.get("fallback_familia_tecnica") or (avaliacao.get("acabamento_divergente") and avaliacao.get("tecnica_suficiente_para_consumo")):
+            return "conservador_por_familia"
         if avaliacao.get("ano_exato") or avaliacao.get("ano_relacao") == "zero_km_tabela_atual":
             return "exato"
         if avaliacao.get("ano_relacao") in {"adjacente", "zero_km_tabela_anterior", "zero_km_tabela_posterior"}:
             return "ano_modelo_adjacente"
         return "aproximacao_com_observacao"
+
+    @staticmethod
+    def _cobertura_por_criterio(criterio_match: str, *, autopreencher: bool) -> str:
+        if criterio_match == "exato":
+            return "exata"
+        if criterio_match == "versoes_equivalentes":
+            return "equivalente"
+        if criterio_match in {"ano_modelo_adjacente", "conservador_por_familia", "aproximacao_com_observacao"}:
+            return "familia"
+        return "ausente"
 
     @classmethod
     def decidir_nivel_match(
@@ -1696,10 +1886,12 @@ class PbevService:
         }
         texto_normalizado = self.normalizar_aliases_automotivos(self._texto_consulta(consulta))
         marca_key = self._marca_key(consulta.get("marca"))
+        marca_keys_busca = self._marca_keys_busca(consulta)
         debug: dict[str, Any] = {
             "entrada_fipe": entrada_debug,
             "normalizacao": {
                 "marca_key": marca_key,
+                "marca_keys_busca": marca_keys_busca,
                 "combustivel_detectado": self._detectar_combustivel_consulta(consulta),
                 "texto_normalizado": texto_normalizado,
                 "tokens_modelo": sorted(self._tokens(" ".join(str(consulta.get(k) or "") for k in ("modelo", "texto_modelo"))))[:80],
@@ -1720,10 +1912,14 @@ class PbevService:
                 "motivo": f"Base PBEV indisponível: {exc}",
                 "autopreencher": False,
                 "criterio_match": "sem_match",
+                "cobertura_pbev": "ausente",
                 "origem": "Inmetro/PBEV",
                 "sugestoes_consumo": {},
                 "candidato": None,
                 "flags": {},
+                "motivo_decisao": [],
+                "motivo_nao_preenchimento": [f"Base PBEV indisponível: {exc}"],
+                "candidatos_equivalentes": [],
                 "diagnostico": {},
             }
             debug["filtros"] = {"registros_base": 0, "marcas_indexadas": 0, "registros_marca": 0}
@@ -1744,10 +1940,14 @@ class PbevService:
                 "motivo": "Marca FIPE ausente para busca PBEV.",
                 "autopreencher": False,
                 "criterio_match": "sem_match",
+                "cobertura_pbev": "ausente",
                 "origem": "Inmetro/PBEV",
                 "sugestoes_consumo": {},
                 "candidato": None,
                 "flags": {},
+                "motivo_decisao": [],
+                "motivo_nao_preenchimento": ["Marca FIPE ausente para busca PBEV."],
+                "candidatos_equivalentes": [],
                 "diagnostico": {},
             }
             debug["filtros"].update({"registros_marca": 0, "registros_avaliados_marca": 0})
@@ -1755,15 +1955,49 @@ class PbevService:
             resposta["diagnostico_terminal"] = self._montar_terminal_debug(debug, resposta)
             return resposta
 
-        registros_marca = cache.indice_marca.get(marca_key, [])
+        registros_marca: list[dict[str, Any]] = []
+        vistos_registros: set[int] = set()
+        for chave_marca in marca_keys_busca or [marca_key]:
+            for registro in cache.indice_marca.get(chave_marca, []):
+                ident = id(registro)
+                if ident not in vistos_registros:
+                    vistos_registros.add(ident)
+                    registros_marca.append(registro)
         candidatos: list[dict[str, Any]] = []
         candidatos_bloqueados = 0
         debug_items: list[dict[str, Any]] = []
         sem_sugestao_consumo = 0
         com_sugestao_consumo = 0
         descartados_score_baixo = 0
+        descartados_prefiltro_identidade = 0
+
+        texto_modelo_consulta = " ".join(str(consulta.get(k) or "") for k in ("modelo", "texto_modelo"))
+        fortes_consulta = {
+            token for token in self.extrair_tokens_fortes_modelo(texto_modelo_consulta)
+            if not self._token_forte_tecnico(token)
+        }
+        palavras_consulta = self._palavras_familia_modelo(texto_modelo_consulta)
+
+        def _passa_prefiltro_identidade(registro: dict[str, Any]) -> bool:
+            texto_candidato = " ".join(str(registro.get(k) or "") for k in ("modelo", "versao_corrigida", "versao"))
+            fortes_candidato = {
+                token for token in self.extrair_tokens_fortes_modelo(texto_candidato)
+                if not self._token_forte_tecnico(token)
+            }
+            palavras_candidato = self._palavras_familia_modelo(texto_candidato)
+            if fortes_consulta:
+                if fortes_candidato and not (fortes_consulta & fortes_candidato):
+                    return False
+                if not fortes_candidato and palavras_consulta and palavras_candidato and not (palavras_consulta & palavras_candidato):
+                    return False
+            elif palavras_consulta and palavras_candidato and not (palavras_consulta & palavras_candidato):
+                return False
+            return True
 
         for registro in registros_marca:
+            if not _passa_prefiltro_identidade(registro):
+                descartados_prefiltro_identidade += 1
+                continue
             avaliacao = self.calcular_score_match(registro, consulta)
             sugestao = self.montar_sugestao_consumo(registro)
             item = {
@@ -1794,27 +2028,21 @@ class PbevService:
             ano_cand = int(avaliacao.get("ano_cand") or self._ano_tabela_registro(c.get("registro") or {}))
             zero_km = bool(avaliacao.get("zero_km_contexto"))
             zero_km_sem_ano_real = zero_km and not avaliacao.get("ano_req")
-            zero_km_ano_exato = 1 if zero_km and avaliacao.get("ano_exato") else 0
-            qualidade_tecnica = (
-                2 if avaliacao.get("identidade_tecnica_forte") else
-                1 if avaliacao.get("tecnica_suficiente_para_consumo") else 0
-            )
-            # Sem ano-modelo real (código 32000), primeiro restringe ao grupo técnico
-            # confiável e depois prioriza a tabela PBEV mais recente. Com ano real,
-            # mantém a prioridade do ano exato antes do score textual.
+            nivel_identidade = int(avaliacao.get("nivel_identidade_modelo") or 0)
             ano_zero_km_preferido = ano_cand if zero_km and avaliacao.get("ano_compativel_fipe_pbev") else 0
             return (
-                qualidade_tecnica if zero_km_sem_ano_real else 0,
+                1 if avaliacao.get("fuel_ok") else 0,
+                1 if avaliacao.get("tecnica_suficiente_para_consumo") else 0,
+                nivel_identidade,
                 ano_zero_km_preferido if zero_km_sem_ano_real else 0,
-                zero_km_ano_exato,
-                float(c.get("score") or 0),
                 1 if avaliacao.get("ano_exato") else 0,
+                1 if avaliacao.get("designacao_exata") else 0,
+                1 if avaliacao.get("identidade_tecnica_forte") else 0,
+                1 if avaliacao.get("fallback_familia_tecnica") else 0,
+                float(avaliacao.get("modelo_score") or 0),
+                float(c.get("score") or 0),
                 ano_zero_km_preferido,
                 -int(avaliacao.get("ano_diff") if avaliacao.get("ano_diff") is not None else 999),
-                1 if avaliacao.get("identidade_tecnica_forte") else 0,
-                1 if avaliacao.get("tecnica_suficiente_para_consumo") else 0,
-                float(avaliacao.get("modelo_score") or 0),
-                1 if avaliacao.get("fuel_ok") else 0,
             )
 
         candidatos.sort(key=_ordem_candidato, reverse=True)
@@ -1832,12 +2060,20 @@ class PbevService:
                 if (item.get("avaliacao") or {}).get("ok_flags")
                 and score_maximo - float(item.get("score") or 0) < 8
             ]
-            fortes = [item for item in faixa if (item.get("avaliacao") or {}).get("identidade_tecnica_forte")]
-            if not fortes:
-                fortes = [item for item in faixa if (item.get("avaliacao") or {}).get("tecnica_suficiente_para_consumo")]
-            if not fortes:
-                return lista
-            preferido = max(fortes, key=_ordem_candidato)
+            exatos_suficientes = [
+                item for item in faixa
+                if (item.get("avaliacao") or {}).get("ano_exato")
+                and (item.get("avaliacao") or {}).get("tecnica_suficiente_para_consumo")
+            ]
+            if exatos_suficientes:
+                preferido = max(exatos_suficientes, key=_ordem_candidato)
+            else:
+                fortes = [item for item in faixa if (item.get("avaliacao") or {}).get("identidade_tecnica_forte")]
+                if not fortes:
+                    fortes = [item for item in faixa if (item.get("avaliacao") or {}).get("tecnica_suficiente_para_consumo")]
+                if not fortes:
+                    return lista
+                preferido = max(fortes, key=_ordem_candidato)
             if lista[0] is preferido:
                 return lista
             return [preferido] + [item for item in lista if item is not preferido]
@@ -1852,6 +2088,7 @@ class PbevService:
             "com_sugestao_consumo": com_sugestao_consumo,
             "sem_sugestao_consumo": sem_sugestao_consumo,
             "descartados_score_baixo": descartados_score_baixo,
+            "descartados_prefiltro_identidade": descartados_prefiltro_identidade,
             "candidatos_considerados": len(candidatos),
             "candidatos_utilizaveis": len(utilizaveis),
             "candidatos_bloqueados_flags": candidatos_bloqueados,
@@ -1859,6 +2096,14 @@ class PbevService:
         debug["candidatos_top"] = [self._debug_candidato_item(item, idx + 1) for idx, item in enumerate(debug_items[:12])]
 
         if not utilizaveis:
+            bloqueados_relevantes = [
+                item for item in debug_items
+                if not (item.get("avaliacao") or {}).get("ok_flags")
+                and (item.get("avaliacao") or {}).get("fuel_ok")
+                and float((item.get("avaliacao") or {}).get("modelo_score") or 0) >= 30
+                and not (item.get("avaliacao") or {}).get("token_forte_divergente")
+                and not (item.get("avaliacao") or {}).get("familia_textual_divergente")
+            ]
             motivo = "Nenhum candidato PBEV confiável encontrado."
             if candidatos_bloqueados:
                 motivo += f" {candidatos_bloqueados} candidato(s) foram bloqueados por status/flags."
@@ -1869,11 +2114,19 @@ class PbevService:
                 "motivo": motivo,
                 "autopreencher": False,
                 "criterio_match": "sem_match",
+                "cobertura_pbev": "bloqueada" if bloqueados_relevantes else "ausente",
                 "origem": "Inmetro/PBEV",
                 "sugestoes_consumo": {},
                 "candidato": None,
                 "flags": {},
-                "diagnostico": {"candidatos_bloqueados": candidatos_bloqueados, "total_candidatos_marca": len(registros_marca)},
+                "motivo_decisao": [],
+                "motivo_nao_preenchimento": [motivo],
+                "candidatos_equivalentes": [],
+                "diagnostico": {
+                    "candidatos_bloqueados": candidatos_bloqueados,
+                    "candidatos_bloqueados_relevantes": len(bloqueados_relevantes),
+                    "total_candidatos_marca": len(registros_marca),
+                },
             }
             resposta["debug"] = debug
             resposta["diagnostico_terminal"] = self._montar_terminal_debug(debug, resposta)
@@ -1883,14 +2136,27 @@ class PbevService:
         segundo_score = utilizaveis[1]["score"] if len(utilizaveis) > 1 else None
         diferenca = top["score"] - segundo_score if segundo_score is not None else None
         avaliacao_top = top["avaliacao"]
-        candidatos_proximos = [c for c in utilizaveis[1:] if top["score"] - c["score"] < 8]
+        top_nivel_identidade = int(avaliacao_top.get("nivel_identidade_modelo") or 0)
+        candidatos_proximos = [
+            c for c in utilizaveis[1:]
+            if abs(float(top["score"]) - float(c["score"])) < 8
+            and int((c.get("avaliacao") or {}).get("nivel_identidade_modelo") or 0) >= max(2, top_nivel_identidade - 1)
+            and not (c.get("avaliacao") or {}).get("token_forte_divergente")
+            and not (c.get("avaliacao") or {}).get("familia_textual_divergente")
+            and (
+                not avaliacao_top.get("designacao_exata")
+                or (c.get("avaliacao") or {}).get("designacao_exata")
+            )
+        ]
         dominante = segundo_score is None or (diferenca is not None and diferenca >= 8)
 
         # Se o melhor candidato é do ano exato, candidatos adjacentes não devem bloquear
         # quando existe grupo do mesmo ano para comparação. Ex.: Corolla Cross 2022 XRV/XRX
         # empata no mesmo ano e no mesmo consumo; 2021/2023 não devem travar a escolha 2022.
         proximos_mesmo_ano = [c for c in candidatos_proximos if (c.get("avaliacao") or {}).get("ano_exato")]
-        proximos_relevantes_ambiguidade = proximos_mesmo_ano if avaliacao_top.get("ano_exato") and proximos_mesmo_ano else candidatos_proximos
+        # Ano exato tecnicamente suficiente não deve ser bloqueado por versões de
+        # anos adjacentes, mesmo quando estas têm score textual parecido ou maior.
+        proximos_relevantes_ambiguidade = proximos_mesmo_ano if avaliacao_top.get("ano_exato") else candidatos_proximos
         ambiguidade_proxima = self._candidatos_proximos_bloqueiam_autofill(top, proximos_relevantes_ambiguidade)
         dominancia_resolvida_por_identidade_tecnica = bool(
             proximos_relevantes_ambiguidade
@@ -1946,6 +2212,23 @@ class PbevService:
             criterio_match=criterio_match,
         )
 
+        # Um fallback técnico conservador pode ter apenas um registro utilizável
+        # da família correta. Nesse caso, mantém o consumo observado, mas marca
+        # explicitamente que não é correspondência exata de acabamento.
+        if criterio_match == "conservador_por_familia" and top.get("sugestao"):
+            sugestao_marcada = dict(top["sugestao"])
+            sugestao_marcada.setdefault("criterio_conservador_versoes_compativeis", True)
+            sugestao_marcada.setdefault(
+                "criterio_conservador_descricao",
+                "Correspondência pela família técnica compatível; usado o consumo PBEV disponível com observação conservadora.",
+            )
+            if not sugestao_marcada.get("versoes_pbev_consideradas"):
+                reg_top = top.get("registro") or {}
+                sugestao_marcada["versoes_pbev_consideradas"] = [
+                    " ".join(str(reg_top.get(k) or "") for k in ("modelo", "versao", "ano_tabela")).strip()
+                ]
+            top["sugestao"] = sugestao_marcada
+
         if nivel == "medio":
             score_retorno = min(score_publico_top, 89.0)
         elif nivel == "baixo":
@@ -1977,12 +2260,24 @@ class PbevService:
             "motivo": motivo_txt,
             "autopreencher": autopreencher,
             "criterio_match": criterio_match,
+            "cobertura_pbev": self._cobertura_por_criterio(criterio_match, autopreencher=autopreencher),
             "origem": "Inmetro/PBEV",
             "ano_tabela_pbev": top["registro"].get("ano_tabela"),
             "candidato": self._candidato_publico(top["registro"]),
             "sugestoes_consumo": top["sugestao"],
             "flags": self._flags_publicas(top["registro"]),
             "fonte_oficial": self._fonte_oficial_por_ano(top["registro"].get("ano_tabela")),
+            "motivo_decisao": motivos,
+            "motivo_nao_preenchimento": [] if autopreencher else penalidades,
+            "candidatos_equivalentes": [
+                self._candidato_publico(item.get("registro") or {})
+                for item in ([top] + list(proximos_relevantes_ambiguidade))
+                if item.get("registro")
+                and (
+                    self._assinatura_sugestao(item.get("sugestao")) == self._assinatura_sugestao(top.get("sugestao"))
+                    or item is top
+                )
+            ],
             "diagnostico": {
                 "score_segundo_candidato": round(segundo_score, 2) if segundo_score is not None else None,
                 "diferenca_para_segundo": round(diferenca, 2) if diferenca is not None else None,

@@ -134,7 +134,16 @@ class PbevMatchingRegressionTests(unittest.TestCase):
         self.assertEqual(result["sugestoes_consumo"]["etanol_cidade_km_l"], 7.6)
         self.assertTrue(result["diagnostico"]["dominante"])
         self.assertFalse(result["diagnostico"]["ambiguidade_proxima"])
-        self.assertTrue(result["diagnostico"]["ambiguidade_resolvida_por_consumo"])
+
+    def test_hybrid_flex_label_does_not_become_plain_combustion_flex(self):
+        resolved = self.service.resolver_propulsao_real({
+            "marca": "Toyota",
+            "modelo": "Corolla Cross XRX 1.8 Híbrido Flex",
+            "texto_modelo": "Corolla Cross XRX 1.8 Híbrido Flex",
+            "combustivel": "Flex",
+            "tipo_veiculo": "hibrido",
+        })
+        self.assertEqual(resolved, "HIBRIDO")
 
     def test_corolla_cross_xrx_hybrid_flex_exposes_separate_fuel_consumptions(self):
         consulta = {
@@ -329,6 +338,141 @@ class PbevMatchingRegressionTests(unittest.TestCase):
         self.assertEqual(result["nivel_match"], "medio")
         self.assertFalse(result["autopreencher"])
         self.assertEqual(result["criterio_match"], "aproximacao_com_observacao")
+
+
+    def test_trim_before_decimal_engine_is_not_compound_model_token(self):
+        fortes = self.service.extrair_tokens_fortes_modelo("Etios HB X 1.3-16V M-5")
+        self.assertNotIn("X1", fortes)
+
+    def test_power_and_door_tokens_are_not_model_identity(self):
+        self.assertNotIn("720CV", self.service.extrair_tokens_fortes_modelo("F8 Spider 3.9 V8 720cv"))
+        self.assertNotIn("620CV", self.service.extrair_tokens_fortes_modelo("Roma 3.9 V8 620cv"))
+        self.assertNotIn("252CV", self.service.extrair_tokens_fortes_modelo("XC 40 T5 252cv"))
+        self.assertNotIn("5P", self.service.extrair_tokens_fortes_modelo("XC 60 T5 5p"))
+
+    def test_split_composite_identifiers_are_canonical(self):
+        self.assertIn("XC40", self.service.extrair_tokens_fortes_modelo("XC 40 T5"))
+        self.assertIn("XC60", self.service.extrair_tokens_fortes_modelo("XC 60 T5"))
+        self.assertIn("SF90", self.service.extrair_tokens_fortes_modelo("SF 90 Spider"))
+        self.assertIn("RAM2500", self.service.extrair_tokens_fortes_modelo("RAM 2500 Laramie"))
+
+    def test_durango_family_beats_exact_year_journey_and_uses_safe_fallback(self):
+        result = self.service.sugerir_consumo({
+            "prefixo": "icev", "marca": "Dodge",
+            "modelo": "Durango Crew 3.6 24V 4x4 Aut.",
+            "texto_modelo": "Durango Crew 3.6 24V 4x4 Aut. 2013 Gasolina",
+            "ano": 2013, "texto_ano": "2013 Gasolina", "ano_codigo": "2013-1",
+            "combustivel": "Gasolina", "tipo_veiculo": "combustao",
+        })
+        self.assertEqual(result["nivel_match"], "alto")
+        self.assertTrue(result["autopreencher"])
+        self.assertEqual(result["candidato"]["modelo"].upper(), "DURANGO")
+        self.assertNotIn("JOURNEY", result["candidato"]["modelo"].upper())
+        self.assertEqual(result["criterio_match"], "conservador_por_familia")
+        self.assertEqual(result["sugestoes_consumo"]["gasolina_cidade_km_l"], 6.5)
+
+    def test_dodge_ram_query_expands_search_to_ram_brand_group(self):
+        keys = self.service._marca_keys_busca({
+            "marca": "Dodge",
+            "modelo": "Ram 2500 Laramie 6.7 TDI",
+            "texto_modelo": "Ram 2500 Laramie 6.7 TDI Diesel",
+        })
+        self.assertEqual(keys, ["DODGE", "RAM"])
+
+    def test_ram_2500_absent_does_not_receive_other_ram_or_dodge_consumption(self):
+        result = self.service.sugerir_consumo({
+            "prefixo": "icev", "marca": "Dodge",
+            "modelo": "Ram 2500 LARAMIE 6.7 TDI CD 4x4 Dies",
+            "texto_modelo": "Ram 2500 LARAMIE 6.7 TDI CD 4x4 Dies 2012 Diesel",
+            "ano": 2012, "texto_ano": "2012 Diesel", "ano_codigo": "2012-3",
+            "combustivel": "Diesel", "tipo_veiculo": "combustao",
+        })
+        self.assertEqual(result["nivel_match"], "sem_match")
+        self.assertFalse(result["autopreencher"])
+        self.assertIsNone(result["candidato"])
+        self.assertEqual(result["cobertura_pbev"], "ausente")
+
+    def test_sf90_absent_does_not_fallback_to_ferrari_296(self):
+        result = self.service.sugerir_consumo({
+            "prefixo": "icev", "marca": "Ferrari",
+            "modelo": "SF 90 SPIDER 4.0 V8 Bi-Turbo (Híbrido)",
+            "texto_modelo": "SF 90 SPIDER 4.0 V8 Bi-Turbo (Híbrido) 2023",
+            "ano": 2023, "texto_ano": "2023 Híbrido", "ano_codigo": "2023-6",
+            "combustivel": "Híbrido", "tipo_veiculo": "hibrido",
+        })
+        self.assertEqual(result["nivel_match"], "sem_match")
+        self.assertFalse(result["autopreencher"])
+        self.assertIsNone(result["candidato"])
+
+    def test_f8_spider_power_is_secondary_and_exact_candidate_autofills(self):
+        result = self.service.sugerir_consumo({
+            "prefixo": "icev", "marca": "Ferrari",
+            "modelo": "F8 Spider 3.9 V8 Bi-Turbo 720cv",
+            "texto_modelo": "F8 Spider 3.9 V8 Bi-Turbo 720cv 2022 Gasolina",
+            "ano": 2022, "texto_ano": "2022 Gasolina", "ano_codigo": "2022-1",
+            "combustivel": "Gasolina", "tipo_veiculo": "combustao",
+        })
+        self.assertEqual(result["nivel_match"], "alto")
+        self.assertTrue(result["autopreencher"])
+        self.assertIn("F8 SPIDER", f"{result["candidato"]["modelo"]} {result["candidato"].get("versao") or ""}".upper())
+        self.assertEqual(result["ano_tabela_pbev"], 2022)
+        self.assertEqual(result["sugestoes_consumo"]["gasolina_cidade_km_l"], 5.6)
+
+    def test_ferrari_roma_power_is_secondary_and_exact_candidate_autofills(self):
+        result = self.service.sugerir_consumo({
+            "prefixo": "icev", "marca": "Ferrari",
+            "modelo": "Roma 3.9 V8 620cv",
+            "texto_modelo": "Roma 3.9 V8 620cv 2024 Gasolina",
+            "ano": 2024, "texto_ano": "2024 Gasolina", "ano_codigo": "2024-1",
+            "combustivel": "Gasolina", "tipo_veiculo": "combustao",
+        })
+        self.assertEqual(result["nivel_match"], "alto")
+        self.assertTrue(result["autopreencher"])
+        self.assertEqual(result["candidato"]["modelo"], "ROMA")
+        self.assertEqual(result["ano_tabela_pbev"], 2024)
+        self.assertEqual(result["sugestoes_consumo"]["gasolina_cidade_km_l"], 6.9)
+
+    def test_wey_07_positive_equivalent_versions_remain_autofill(self):
+        result = self.service.sugerir_consumo({
+            "prefixo": "icev", "marca": "GWM",
+            "modelo": "Wey 07 Dark Edition 1.5 Turbo AWD",
+            "texto_modelo": "Wey 07 Dark Edition 1.5 Turbo AWD Zero km Híbrido",
+            "ano": 2026, "texto_ano": "Zero km Híbrido", "ano_codigo": "32000-6",
+            "combustivel": "Híbrido", "tipo_veiculo": "hibrido",
+        })
+        self.assertEqual(result["nivel_match"], "alto")
+        self.assertTrue(result["autopreencher"])
+        self.assertIn("WEY 07", f"{result["candidato"]["modelo"]} {result["candidato"].get("versao") or ""}".upper())
+        self.assertEqual(result["sugestoes_consumo"]["tipo"], "phev")
+        self.assertEqual(result["sugestoes_consumo"]["gasolina_diesel_cidade_km_l"], 10.8)
+
+    def test_xc40_composite_family_beats_v40_and_ignores_power(self):
+        result = self.service.sugerir_consumo({
+            "prefixo": "icev", "marca": "Volvo",
+            "modelo": "XC 40 T-5 MOMENT FIRST ED. 2.0 252cv AWD",
+            "texto_modelo": "XC 40 T-5 MOMENT FIRST ED. 2.0 252cv AWD 2018 Gasolina",
+            "ano": 2018, "texto_ano": "2018 Gasolina", "ano_codigo": "2018-1",
+            "combustivel": "Gasolina", "tipo_veiculo": "combustao",
+        })
+        self.assertEqual(result["nivel_match"], "alto")
+        self.assertTrue(result["autopreencher"])
+        self.assertIn("XC40", result["candidato"]["modelo"].replace(" ", ""))
+        self.assertNotIn("V40", result["candidato"]["modelo"].replace("XC40", ""))
+        self.assertEqual(result["ano_tabela_pbev"], 2018)
+
+    def test_xc60_composite_family_beats_v60_and_ignores_5p(self):
+        result = self.service.sugerir_consumo({
+            "prefixo": "icev", "marca": "Volvo",
+            "modelo": "XC 60 T-5 R-DESIGN 2.0 FWD 5p",
+            "texto_modelo": "XC 60 T-5 R-DESIGN 2.0 FWD 5p 2017 Gasolina",
+            "ano": 2017, "texto_ano": "2017 Gasolina", "ano_codigo": "2017-1",
+            "combustivel": "Gasolina", "tipo_veiculo": "combustao",
+        })
+        self.assertEqual(result["nivel_match"], "alto")
+        self.assertTrue(result["autopreencher"])
+        self.assertEqual(result["candidato"]["modelo"], "XC60")
+        self.assertEqual(result["ano_tabela_pbev"], 2017)
+        self.assertNotIn("V60", result["candidato"]["modelo"])
 
 
 

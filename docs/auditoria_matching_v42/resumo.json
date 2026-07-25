@@ -1,0 +1,11 @@
+{
+  "versao": "V42 pacote 15",
+  "casos_regressao": 20,
+  "casos_regressao_aprovados": 20,
+  "registros_pbev_validos_amostrados": 500,
+  "registros_pbev_validos_aprovados": 500,
+  "testes_automatizados_unitarios_integracao": 53,
+  "observacao": "A amostra técnica usa consultas sintéticas construídas a partir de registros PBEV válidos. A auditoria integral do catálogo FIPE requer exportação/entrada FIPE JSON ou CSV; o script também verifica invariantes de cobertura forte não preenchida e seleção de família divergente.",
+  "comando_regressao": "python scripts/auditar_matching_pbev.py",
+  "comando_self_audit_lote": "python scripts/auditar_matching_pbev.py --self-audit --offset 0 --limit 50"
+}
