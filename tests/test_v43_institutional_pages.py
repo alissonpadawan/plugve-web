@@ -135,6 +135,14 @@ class V43InstitutionalPagesTests(unittest.TestCase):
         ):
             self.assertIn(value, html)
 
+        self.assertIn('class="card contact-workspace"', html)
+        self.assertIn('class="contact-sidebar"', html)
+        self.assertIn('class="contact-map"', html)
+        self.assertIn('output=embed', html)
+        self.assertEqual(html.count('class="contact-simple-icon"'), 6)
+        self.assertNotIn('class="card contact-directory"', html)
+        self.assertNotIn('class="contact-directory-group"', html)
+
     def test_footer_has_ifg_logo_and_official_channels(self):
         html = (self.templates / "base.html").read_text(encoding="utf-8")
         self.assertIn("logo-ifg-horizontal-branco.png", html)
