@@ -1,29 +1,66 @@
 (() => {
   "use strict";
 
-  const triggers = document.querySelectorAll("[data-profile-dialog]");
+  const entries = Array.from(document.querySelectorAll(".author-entry"));
+  const hoverMedia = window.matchMedia("(hover: hover) and (pointer: fine)");
 
-  triggers.forEach((trigger) => {
-    const dialogId = trigger.getAttribute("data-profile-dialog");
-    const dialog = dialogId ? document.getElementById(dialogId) : null;
-    if (!(dialog instanceof HTMLDialogElement)) return;
+  const setOpen = (entry, open) => {
+    const trigger = entry.querySelector("[data-author-popover]");
+    entry.classList.toggle("is-open", open);
+    trigger?.setAttribute("aria-expanded", String(open));
+  };
 
-    const closeButton = dialog.querySelector("[data-dialog-close]");
+  const closeAll = (except = null) => {
+    entries.forEach((entry) => {
+      if (entry !== except) setOpen(entry, false);
+    });
+  };
 
-    trigger.addEventListener("click", () => {
-      dialog.showModal();
-      document.body.classList.add("dialog-open");
+  entries.forEach((entry) => {
+    const trigger = entry.querySelector("[data-author-popover]");
+    if (!(trigger instanceof HTMLButtonElement)) return;
+
+    entry.addEventListener("mouseenter", () => {
+      if (!hoverMedia.matches) return;
+      closeAll(entry);
+      setOpen(entry, true);
     });
 
-    closeButton?.addEventListener("click", () => dialog.close());
-
-    dialog.addEventListener("click", (event) => {
-      if (event.target === dialog) dialog.close();
+    entry.addEventListener("mouseleave", () => {
+      if (!hoverMedia.matches) return;
+      setOpen(entry, false);
     });
 
-    dialog.addEventListener("close", () => {
-      document.body.classList.remove("dialog-open");
-      trigger.focus();
+    entry.addEventListener("focusin", () => {
+      closeAll(entry);
+      setOpen(entry, true);
     });
+
+    entry.addEventListener("focusout", () => {
+      window.setTimeout(() => {
+        if (!entry.contains(document.activeElement)) setOpen(entry, false);
+      }, 0);
+    });
+
+    trigger.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const willOpen = !entry.classList.contains("is-open");
+      closeAll(entry);
+      setOpen(entry, willOpen);
+    });
+  });
+
+  document.addEventListener("pointerdown", (event) => {
+    if (!(event.target instanceof Node)) return;
+    if (!entries.some((entry) => entry.contains(event.target))) closeAll();
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape") return;
+    const openEntry = entries.find((entry) => entry.classList.contains("is-open"));
+    if (!openEntry) return;
+    const trigger = openEntry.querySelector("[data-author-popover]");
+    setOpen(openEntry, false);
+    if (trigger instanceof HTMLButtonElement) trigger.focus();
   });
 })();

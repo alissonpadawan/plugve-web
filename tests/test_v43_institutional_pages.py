@@ -32,23 +32,25 @@ class V43InstitutionalPagesTests(unittest.TestCase):
         ):
             self.assertIn(value, html)
         self.assertIn("https://teclimpa.ifg.edu.br", html)
-        self.assertEqual(html.count("<dialog"), 3)
+        self.assertEqual(html.count('class="author-popover"'), 3)
 
 
-    def test_about_v43_03_compact_creator_layout_and_program_links(self):
+    def test_about_v43_04_author_links_and_hover_popovers(self):
         html = (self.templates / "sobre.html").read_text(encoding="utf-8")
-        self.assertIn(">Criadores<", html)
-        self.assertIn('class="creators-card card"', html)
-        self.assertEqual(html.count('class="creator-profile"'), 3)
-        for removed in (
-            "Produto técnico de mestrado",
-            "Da pesquisa à ferramenta",
-            "Referências rastreáveis",
-            "Orientação acadêmica",
-            "Autor e desenvolvimento",
-        ):
-            self.assertNotIn(removed, html)
-        self.assertGreater(html.index('class="card program-card"'), html.index('class="creators-card card"'))
+        script = (self.root / "static" / "js" / "sobre.js").read_text(encoding="utf-8")
+        css = (self.root / "static" / "css" / "institucional.css").read_text(encoding="utf-8")
+
+        self.assertIn(">Autores<", html)
+        self.assertNotIn(">Criadores<", html)
+        self.assertIn('class="authors-list"', html)
+        self.assertEqual(html.count('class="author-entry '), 3)
+        self.assertEqual(html.count('class="author-name-link"'), 3)
+        self.assertEqual(html.count('class="author-popover"'), 3)
+        self.assertNotIn("<dialog", html)
+        self.assertNotIn("Ver perfil", html)
+        self.assertNotIn('class="creators-card card"', html)
+        self.assertNotIn('class="creator-profile"', html)
+
         for url in (
             "https://www.youtube.com/@ppgtgs-ifg",
             "https://x.com/ppgtgs",
@@ -59,7 +61,14 @@ class V43InstitutionalPagesTests(unittest.TestCase):
             "https://www.linkedin.com/in/carlos-roberto-da-silveira-junior-957b47298/",
         ):
             self.assertIn(url, html)
-        self.assertIn('class="profile-lattes-link"', html)
+
+        self.assertEqual(html.count('class="author-lattes-link"'), 3)
+        self.assertIn("mouseenter", script)
+        self.assertIn("focusin", script)
+        self.assertIn("aria-expanded", script)
+        self.assertIn(".author-entry:hover .author-popover", css)
+        self.assertIn(".author-entry:focus-within .author-popover", css)
+        self.assertIn("position: absolute;", css)
 
     def test_contact_form_does_not_post_to_unimplemented_route(self):
         html = (self.templates / "contato.html").read_text(encoding="utf-8")

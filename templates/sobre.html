@@ -10,33 +10,92 @@
   </p>
 </section>
 
-<section class="people-section" aria-labelledby="people-title">
-  <div class="section-heading institutional-section-heading creators-heading">
+<section class="people-section authors-section" aria-labelledby="people-title">
+  <div class="section-heading institutional-section-heading authors-heading">
     <span class="institutional-card-label">Projeto acadêmico</span>
-    <h2 id="people-title">Criadores</h2>
+    <h2 id="people-title">Autores</h2>
   </div>
 
-  <div class="creators-card card" aria-label="Criadores da CurVE">
-    <button class="creator-profile" type="button" data-profile-dialog="profile-daywes" aria-haspopup="dialog">
-      <img src="{{ url_for('static', filename='img/institucional/daywes-pinheiro-neto.webp') }}" alt="Prof. Dr. Daywes Pinheiro Neto" loading="lazy">
-      <strong>Prof. Dr. Daywes Pinheiro Neto</strong>
-      <span>Energias renováveis e mobilidade elétrica</span>
-      <small>Ver perfil <span aria-hidden="true">↗</span></small>
-    </button>
+  <div class="authors-list" aria-label="Autores da CurVE">
+    <article class="author-entry author-entry--start">
+      <img class="author-avatar" src="{{ url_for('static', filename='img/institucional/daywes-pinheiro-neto.webp') }}" alt="Prof. Dr. Daywes Pinheiro Neto" loading="lazy">
+      <button class="author-name-link" type="button" data-author-popover="author-daywes" aria-expanded="false" aria-controls="author-daywes">
+        Prof. Dr. Daywes Pinheiro Neto
+      </button>
 
-    <button class="creator-profile" type="button" data-profile-dialog="profile-carlos" aria-haspopup="dialog">
-      <img src="{{ url_for('static', filename='img/institucional/carlos-roberto-silveira-junior.webp') }}" alt="Prof. Dr. Carlos Roberto da Silveira Júnior" loading="lazy">
-      <strong>Prof. Dr. Carlos Roberto da Silveira Júnior</strong>
-      <span>Inteligência artificial e sistemas de controle</span>
-      <small>Ver perfil <span aria-hidden="true">↗</span></small>
-    </button>
+      <aside class="author-popover" id="author-daywes" role="dialog" aria-modal="false" aria-labelledby="author-daywes-title">
+        <div class="author-popover-header">
+          <img src="{{ url_for('static', filename='img/institucional/daywes-pinheiro-neto.webp') }}" alt="" aria-hidden="true">
+          <div>
+            <h3 id="author-daywes-title">Prof. Dr. Daywes Pinheiro Neto</h3>
+            <p>Engenheiro Eletricista e Computacional · Doutor em Engenharia Elétrica e Computação</p>
+            <nav class="author-popover-links" aria-label="Contatos de Daywes Pinheiro Neto">
+              <a href="mailto:daywes.neto@ifg.edu.br">E-mail</a>
+            </nav>
+          </div>
+        </div>
+        <p class="author-popover-bio">
+          Professor do Instituto Federal de Goiás, mestre e doutor pela UFG e pós-doutor pela Universidade de Coimbra. Atua em energias renováveis, mobilidade elétrica, engenharia econômica e computação aplicada.
+        </p>
+        <a class="author-lattes-link" href="http://lattes.cnpq.br/3885723899789699" target="_blank" rel="noopener noreferrer">
+          Currículo Lattes <span aria-hidden="true">↗</span>
+        </a>
+      </aside>
+    </article>
 
-    <button class="creator-profile" type="button" data-profile-dialog="profile-alisson" aria-haspopup="dialog">
-      <img src="{{ url_for('static', filename='img/institucional/alisson-vieira-da-silva.webp') }}" alt="Alisson Vieira da Silva" loading="lazy">
-      <strong>Alisson Vieira da Silva</strong>
-      <span>Engenheiro de Controle e Automação</span>
-      <small>Ver perfil <span aria-hidden="true">↗</span></small>
-    </button>
+    <article class="author-entry author-entry--center">
+      <img class="author-avatar" src="{{ url_for('static', filename='img/institucional/carlos-roberto-silveira-junior.webp') }}" alt="Prof. Dr. Carlos Roberto da Silveira Júnior" loading="lazy">
+      <button class="author-name-link" type="button" data-author-popover="author-carlos" aria-expanded="false" aria-controls="author-carlos">
+        Prof. Dr. Carlos Roberto da Silveira Júnior
+      </button>
+
+      <aside class="author-popover" id="author-carlos" role="dialog" aria-modal="false" aria-labelledby="author-carlos-title">
+        <div class="author-popover-header">
+          <img src="{{ url_for('static', filename='img/institucional/carlos-roberto-silveira-junior.webp') }}" alt="" aria-hidden="true">
+          <div>
+            <h3 id="author-carlos-title">Prof. Dr. Carlos Roberto da Silveira Júnior</h3>
+            <p>Professor titular do IFG · Doutor em Ciências Ambientais</p>
+            <nav class="author-popover-links" aria-label="Contatos de Carlos Roberto da Silveira Júnior">
+              <a href="https://www.linkedin.com/in/carlos-roberto-da-silveira-junior-957b47298/" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+              <a href="mailto:carlos.junior@ifg.edu.br">E-mail</a>
+            </nav>
+          </div>
+        </div>
+        <p class="author-popover-bio">
+          Mestre em Engenharia Elétrica e de Computação pela UFG. Atua em inteligência artificial, Internet das Coisas, sensoriamento remoto e sistemas eletrônicos de medição e controle.
+        </p>
+        <a class="author-lattes-link" href="http://lattes.cnpq.br/5503461601783322" target="_blank" rel="noopener noreferrer">
+          Currículo Lattes <span aria-hidden="true">↗</span>
+        </a>
+      </aside>
+    </article>
+
+    <article class="author-entry author-entry--end">
+      <img class="author-avatar" src="{{ url_for('static', filename='img/institucional/alisson-vieira-da-silva.webp') }}" alt="Alisson Vieira da Silva" loading="lazy">
+      <button class="author-name-link" type="button" data-author-popover="author-alisson" aria-expanded="false" aria-controls="author-alisson">
+        Alisson Vieira da Silva
+      </button>
+
+      <aside class="author-popover" id="author-alisson" role="dialog" aria-modal="false" aria-labelledby="author-alisson-title">
+        <div class="author-popover-header">
+          <img src="{{ url_for('static', filename='img/institucional/alisson-vieira-da-silva.webp') }}" alt="" aria-hidden="true">
+          <div>
+            <h3 id="author-alisson-title">Alisson Vieira da Silva</h3>
+            <p>Engenheiro de Controle e Automação · Mestrando em Tecnologia, Gestão e Sustentabilidade</p>
+            <nav class="author-popover-links" aria-label="Contatos de Alisson Vieira da Silva">
+              <a href="https://www.linkedin.com/in/svalisson/" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+              <a href="mailto:sv.alisson@gmail.com">E-mail</a>
+            </nav>
+          </div>
+        </div>
+        <p class="author-popover-bio">
+          Autor da CurVE, desenvolvida como produto técnico do Programa de Pós-Graduação em Tecnologia, Gestão e Sustentabilidade do Instituto Federal de Goiás.
+        </p>
+        <a class="author-lattes-link" href="http://lattes.cnpq.br/1978825412536553" target="_blank" rel="noopener noreferrer">
+          Currículo Lattes <span aria-hidden="true">↗</span>
+        </a>
+      </aside>
+    </article>
   </div>
 </section>
 
@@ -73,77 +132,9 @@
     </div>
   </div>
 </section>
-
-<dialog class="profile-dialog" id="profile-daywes" aria-labelledby="profile-daywes-title">
-  <article class="profile-dialog-card">
-    <button class="profile-dialog-close" type="button" data-dialog-close aria-label="Fechar perfil">×</button>
-    <div class="profile-dialog-header">
-      <img src="{{ url_for('static', filename='img/institucional/daywes-pinheiro-neto.webp') }}" alt="" aria-hidden="true">
-      <div>
-        <h2 id="profile-daywes-title">Prof. Dr. Daywes Pinheiro Neto</h2>
-        <p>Engenheiro Eletricista e Computacional · Doutor em Engenharia Elétrica e Computação</p>
-        <nav class="profile-dialog-quick-links" aria-label="Contatos de Daywes Pinheiro Neto">
-          <a href="mailto:daywes.neto@ifg.edu.br">E-mail</a>
-        </nav>
-      </div>
-    </div>
-    <p class="profile-dialog-bio">
-      Professor do Instituto Federal de Goiás, mestre e doutor pela UFG e pós-doutor pela Universidade de Coimbra. Atua em energias renováveis, mobilidade elétrica, engenharia econômica e computação aplicada.
-    </p>
-    <a class="profile-lattes-link" href="http://lattes.cnpq.br/3885723899789699" target="_blank" rel="noopener noreferrer">
-      Currículo Lattes <span aria-hidden="true">↗</span>
-    </a>
-  </article>
-</dialog>
-
-<dialog class="profile-dialog" id="profile-carlos" aria-labelledby="profile-carlos-title">
-  <article class="profile-dialog-card">
-    <button class="profile-dialog-close" type="button" data-dialog-close aria-label="Fechar perfil">×</button>
-    <div class="profile-dialog-header">
-      <img src="{{ url_for('static', filename='img/institucional/carlos-roberto-silveira-junior.webp') }}" alt="" aria-hidden="true">
-      <div>
-        <h2 id="profile-carlos-title">Prof. Dr. Carlos Roberto da Silveira Júnior</h2>
-        <p>Professor titular do IFG · Doutor em Ciências Ambientais</p>
-        <nav class="profile-dialog-quick-links" aria-label="Contatos de Carlos Roberto da Silveira Júnior">
-          <a href="https://www.linkedin.com/in/carlos-roberto-da-silveira-junior-957b47298/" target="_blank" rel="noopener noreferrer">LinkedIn</a>
-          <a href="mailto:carlos.junior@ifg.edu.br">E-mail</a>
-        </nav>
-      </div>
-    </div>
-    <p class="profile-dialog-bio">
-      Mestre em Engenharia Elétrica e de Computação pela UFG. Atua em inteligência artificial, Internet das Coisas, sensoriamento remoto e sistemas eletrônicos de medição e controle.
-    </p>
-    <a class="profile-lattes-link" href="http://lattes.cnpq.br/5503461601783322" target="_blank" rel="noopener noreferrer">
-      Currículo Lattes <span aria-hidden="true">↗</span>
-    </a>
-  </article>
-</dialog>
-
-<dialog class="profile-dialog" id="profile-alisson" aria-labelledby="profile-alisson-title">
-  <article class="profile-dialog-card">
-    <button class="profile-dialog-close" type="button" data-dialog-close aria-label="Fechar perfil">×</button>
-    <div class="profile-dialog-header">
-      <img src="{{ url_for('static', filename='img/institucional/alisson-vieira-da-silva.webp') }}" alt="" aria-hidden="true">
-      <div>
-        <h2 id="profile-alisson-title">Alisson Vieira da Silva</h2>
-        <p>Engenheiro de Controle e Automação · Mestrando em Tecnologia, Gestão e Sustentabilidade</p>
-        <nav class="profile-dialog-quick-links" aria-label="Contatos de Alisson Vieira da Silva">
-          <a href="https://www.linkedin.com/in/svalisson/" target="_blank" rel="noopener noreferrer">LinkedIn</a>
-          <a href="mailto:sv.alisson@gmail.com">E-mail</a>
-        </nav>
-      </div>
-    </div>
-    <p class="profile-dialog-bio">
-      Autor da CurVE, desenvolvida como produto técnico do Programa de Pós-Graduação em Tecnologia, Gestão e Sustentabilidade do Instituto Federal de Goiás.
-    </p>
-    <a class="profile-lattes-link" href="http://lattes.cnpq.br/1978825412536553" target="_blank" rel="noopener noreferrer">
-      Currículo Lattes <span aria-hidden="true">↗</span>
-    </a>
-  </article>
-</dialog>
 {% endblock %}
 
 {% block scripts %}
   {{ super() }}
-  <script src="{{ url_for('static', filename='js/sobre.js') }}?v=20260725_v43_03"></script>
+  <script src="{{ url_for('static', filename='js/sobre.js') }}?v=20260725_v43_04"></script>
 {% endblock %}
