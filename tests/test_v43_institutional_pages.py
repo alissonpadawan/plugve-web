@@ -103,6 +103,11 @@ class V43InstitutionalPagesTests(unittest.TestCase):
         self.assertIn('textContent', script)
         self.assertIn('.share-dialog {', css)
         self.assertIn('.comments-card {', css)
+        self.assertIn('id="comment-about-dialog"', html)
+        self.assertIn('data-open-comment', html)
+        self.assertIn('>Deixar seu comentário<', html)
+        self.assertIn('.comment-dialog {', css)
+        self.assertIn('showModal()', script)
 
     def test_contact_form_does_not_post_to_unimplemented_route(self):
         html = (self.templates / "contato.html").read_text(encoding="utf-8")

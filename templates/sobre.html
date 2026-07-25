@@ -217,40 +217,19 @@
       <span class="institutional-card-label">Participação</span>
       <h2 id="comments-title">Comentários</h2>
     </div>
-    <span class="comments-total"><strong data-comments-total>{{ initial_comments.total }}</strong> publicados</span>
+    <div class="comments-heading-actions">
+      <span class="comments-total"><strong data-comments-total>{{ initial_comments.total }}</strong> publicados</span>
+      <button
+        class="button primary comments-open-button"
+        type="button"
+        data-open-comment
+        aria-haspopup="dialog"
+        aria-controls="comment-about-dialog"
+      >
+        Deixar seu comentário
+      </button>
+    </div>
   </div>
-
-  <form class="comments-form" id="sobre-comment-form" novalidate>
-    <div class="comments-form-grid">
-      <div class="field">
-        <label for="comment-name">Nome</label>
-        <input id="comment-name" name="name" type="text" maxlength="60" autocomplete="name" required>
-      </div>
-      <div class="field">
-        <label for="comment-email">E-mail</label>
-        <input id="comment-email" name="email" type="email" maxlength="254" autocomplete="email" required>
-      </div>
-    </div>
-
-    <div class="field comment-field">
-      <div class="comment-label-row">
-        <label for="comment-body">Comentário</label>
-        <span><strong data-comment-character-count>0</strong>/{{ comment_max_length }}</span>
-      </div>
-      <textarea id="comment-body" name="comment" rows="5" minlength="8" maxlength="{{ comment_max_length }}" required></textarea>
-    </div>
-
-    <div class="comment-honeypot" aria-hidden="true">
-      <label for="comment-website">Site</label>
-      <input id="comment-website" name="website" type="text" tabindex="-1" autocomplete="off">
-    </div>
-
-    <div class="comments-form-footer">
-      <p>Seu e-mail não será exibido. Não inclua telefone, links, e-mail ou outros dados pessoais no comentário.</p>
-      <button class="button primary" type="submit" data-comment-submit>Publicar comentário</button>
-    </div>
-    <p class="comments-form-feedback" data-comment-feedback role="status" aria-live="polite"></p>
-  </form>
 
   <div class="comments-list" data-comments-list>
     {% for comment in initial_comments.comments %}
@@ -273,10 +252,55 @@
   >
     Ver mais
   </button>
+  <p class="comments-list-feedback" data-comments-list-feedback role="status" aria-live="polite"></p>
 </section>
+
+<dialog class="comment-dialog" id="comment-about-dialog" aria-labelledby="comment-dialog-title">
+  <div class="comment-dialog-shell">
+    <div class="comment-dialog-header">
+      <div>
+        <span class="institutional-card-label">Participação</span>
+        <h2 id="comment-dialog-title">Deixar seu comentário</h2>
+      </div>
+      <button class="comment-dialog-close" type="button" data-close-comment aria-label="Fechar janela de comentário">×</button>
+    </div>
+
+    <form class="comments-form comments-form--dialog" id="sobre-comment-form" novalidate>
+      <div class="comments-form-grid">
+        <div class="field">
+          <label for="comment-name">Nome</label>
+          <input id="comment-name" name="name" type="text" maxlength="60" autocomplete="name" required>
+        </div>
+        <div class="field">
+          <label for="comment-email">E-mail</label>
+          <input id="comment-email" name="email" type="email" maxlength="254" autocomplete="email" required>
+        </div>
+      </div>
+
+      <div class="field comment-field">
+        <div class="comment-label-row">
+          <label for="comment-body">Comentário</label>
+          <span><strong data-comment-character-count>0</strong>/{{ comment_max_length }}</span>
+        </div>
+        <textarea id="comment-body" name="comment" rows="4" minlength="8" maxlength="{{ comment_max_length }}" required></textarea>
+      </div>
+
+      <div class="comment-honeypot" aria-hidden="true">
+        <label for="comment-website">Site</label>
+        <input id="comment-website" name="website" type="text" tabindex="-1" autocomplete="off">
+      </div>
+
+      <div class="comments-form-footer">
+        <p>Seu e-mail não será exibido. Não inclua telefone, links, e-mail ou outros dados pessoais no comentário.</p>
+        <button class="button primary" type="submit" data-comment-submit>Publicar comentário</button>
+      </div>
+      <p class="comments-form-feedback" data-comment-feedback role="status" aria-live="polite"></p>
+    </form>
+  </div>
+</dialog>
 {% endblock %}
 
 {% block scripts %}
   {{ super() }}
-  <script src="{{ url_for('static', filename='js/sobre.js') }}?v=20260725_v43_07"></script>
+  <script src="{{ url_for('static', filename='js/sobre.js') }}?v=20260725_v43_09"></script>
 {% endblock %}

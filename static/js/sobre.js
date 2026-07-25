@@ -195,16 +195,43 @@
   }
 
   /* Comentários */
+  const commentDialog = document.getElementById("comment-about-dialog");
+  const commentOpenButton = document.querySelector("[data-open-comment]");
+  const commentCloseButton = document.querySelector("[data-close-comment]");
   const commentForm = document.getElementById("sobre-comment-form");
+  const commentName = document.getElementById("comment-name");
   const commentBody = document.getElementById("comment-body");
   const characterCount = document.querySelector("[data-comment-character-count]");
   const commentFeedback = document.querySelector("[data-comment-feedback]");
+  const commentsListFeedback = document.querySelector("[data-comments-list-feedback]");
   const commentSubmit = document.querySelector("[data-comment-submit]");
   const commentsList = document.querySelector("[data-comments-list]");
   const commentsEmpty = document.querySelector("[data-comments-empty]");
   const commentsMore = document.querySelector("[data-comments-more]");
   const commentsTotal = document.querySelector("[data-comments-total]");
   if (commentsTotal) commentsTotal.textContent = numberFormatter.format(Number(commentsTotal.textContent || 0));
+
+  const openCommentDialog = () => {
+    if (!(commentDialog instanceof HTMLDialogElement)) return;
+    setFeedback(commentFeedback, "");
+    if (!commentDialog.open) commentDialog.showModal();
+    window.setTimeout(() => commentName?.focus(), 40);
+  };
+
+  const closeCommentDialog = () => {
+    if (!(commentDialog instanceof HTMLDialogElement) || !commentDialog.open) return;
+    commentDialog.close();
+    commentOpenButton?.focus();
+  };
+
+  commentOpenButton?.addEventListener("click", openCommentDialog);
+  commentCloseButton?.addEventListener("click", closeCommentDialog);
+  commentDialog?.addEventListener("click", (event) => {
+    if (!(commentDialog instanceof HTMLDialogElement)) return;
+    const rect = commentDialog.getBoundingClientRect();
+    const outside = event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom;
+    if (outside) closeCommentDialog();
+  });
 
   const updateCharacterCount = () => {
     if (!(commentBody instanceof HTMLTextAreaElement) || !characterCount) return;
@@ -273,9 +300,10 @@
       }
       commentsEmpty?.classList.add("is-hidden");
       updateCommentsTotal(result.stats?.comments || 0);
-      if (commentBody instanceof HTMLTextAreaElement) commentBody.value = "";
+      if (commentForm instanceof HTMLFormElement) commentForm.reset();
       updateCharacterCount();
       setFeedback(commentFeedback, "Comentário publicado.");
+      window.setTimeout(closeCommentDialog, 650);
     } catch (error) {
       setFeedback(commentFeedback, error instanceof Error ? error.message : "Não foi possível publicar o comentário.", true);
     } finally {
@@ -288,6 +316,7 @@
     const offset = Number(commentsMore.dataset.commentsOffset || 0);
     commentsMore.disabled = true;
     commentsMore.textContent = "Carregando...";
+    setFeedback(commentsListFeedback, "");
 
     try {
       const response = await fetch(`/api/sobre/comments?offset=${offset}&limit=5`);
@@ -303,7 +332,7 @@
       commentsMore.dataset.commentsOffset = String(Number(result.offset || 0) + Number(result.comments?.length || 0));
       commentsMore.classList.toggle("is-hidden", !result.has_more);
     } catch (error) {
-      setFeedback(commentFeedback, error instanceof Error ? error.message : "Não foi possível carregar os comentários.", true);
+      setFeedback(commentsListFeedback, error instanceof Error ? error.message : "Não foi possível carregar os comentários.", true);
     } finally {
       commentsMore.disabled = false;
       commentsMore.textContent = "Ver mais";
