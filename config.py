@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+from datetime import timedelta
 
 
 class Config:
@@ -15,6 +16,11 @@ class Config:
     # Localmente, se /var/data não existir, usa data/_runtime apenas para teste.
     _DEFAULT_PERSISTENT_DIR = Path("/var/data/plugve") if Path("/var/data").exists() else DATA_DIR / "_runtime"
     PERSISTENT_DIR = Path(os.environ.get("PLUGVE_PERSISTENT_DIR", str(_DEFAULT_PERSISTENT_DIR)))
+    ARQUIVO_SOBRE_ENGAJAMENTO = PERSISTENT_DIR / "institucional" / "sobre_engagement.sqlite3"
+
+    PERMANENT_SESSION_LIFETIME = timedelta(days=365)
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = "Lax"
     FIPE_CACHE_DIR = PERSISTENT_DIR / "fipe_cache"
 
     ARQUIVO_FAMILIAS = DATA_DIR / "familias_fipe.xlsx"

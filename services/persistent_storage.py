@@ -28,7 +28,7 @@ def bootstrap_persistent_storage(app: Flask) -> None:
     persistent_dir.mkdir(parents=True, exist_ok=True)
 
     # Subpastas persistentes usadas pelo sistema
-    for relative in ["combustao", "eletrico", "fipe_cache", "noticias", "_staging", "_backups"]:
+    for relative in ["combustao", "eletrico", "fipe_cache", "noticias", "institucional", "_staging", "_backups"]:
         (persistent_dir / relative).mkdir(parents=True, exist_ok=True)
     (persistent_dir / "fipe_cache" / "catalogo_http").mkdir(parents=True, exist_ok=True)
 

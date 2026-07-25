@@ -3,11 +3,13 @@
 # ============================================================
 # 0) IMPORTS E APP
 # ============================================================
-from flask import Blueprint, render_template, request, flash, jsonify, redirect, url_for, abort
+from flask import Blueprint, render_template, request, flash, jsonify, redirect, url_for, abort, current_app, session
 import plotly.graph_objs as go
 import plotly.io as pio
 import os
 import uuid
+import secrets
+import hmac
 import re
 from pathlib import Path
 from datetime import datetime, date
@@ -18,6 +20,12 @@ from functools import lru_cache
 
 from services.fipe_service import FipeService, FipeApiError
 from services.ipva_service import IpvaService
+from services.sobre_engagement_service import (
+    COMMENT_MAX_LENGTH,
+    PAGE_SIZE as SOBRE_COMMENTS_PAGE_SIZE,
+    EngagementValidationError,
+    SobreEngagementService,
+)
 
 tco_bp = Blueprint("tco", __name__)
 
@@ -178,9 +186,193 @@ def _parse_data_aneel(v):
 def home():
     return redirect(url_for("tco.simular"))
 
+@lru_cache(maxsize=4)
+def _cached_sobre_engagement_service(database_path: str) -> SobreEngagementService:
+    return SobreEngagementService(database_path)
+
+
+def _sobre_engagement_service() -> SobreEngagementService:
+    database_path = str(current_app.config["ARQUIVO_SOBRE_ENGAJAMENTO"])
+    return _cached_sobre_engagement_service(database_path)
+
+
+def _sobre_session_context() -> tuple[str, str]:
+    session.permanent = True
+    visitor_id = str(session.get("sobre_visitor_id") or "").strip()
+    if not visitor_id:
+        visitor_id = secrets.token_urlsafe(24)
+        session["sobre_visitor_id"] = visitor_id
+
+    csrf_token = str(session.get("sobre_csrf_token") or "").strip()
+    if not csrf_token:
+        csrf_token = secrets.token_urlsafe(32)
+        session["sobre_csrf_token"] = csrf_token
+    return visitor_id, csrf_token
+
+
+def _validate_sobre_csrf(payload: dict | None = None) -> None:
+    expected = str(session.get("sobre_csrf_token") or "")
+    supplied = str(
+        request.headers.get("X-CSRF-Token")
+        or (payload or {}).get("csrf_token")
+        or ""
+    )
+    if not expected or not supplied or not hmac.compare_digest(expected, supplied):
+        raise EngagementValidationError(
+            "Sessão inválida. Atualize a página e tente novamente.", 403
+        )
+
+
+def _sobre_admin_token_recebido() -> str:
+    token = request.headers.get("X-PlugVE-Admin-Token", "").strip()
+    if token:
+        return token
+    token = request.headers.get("X-PlugVE-Sync-Token", "").strip()
+    if token:
+        return token
+    authorization = request.headers.get("Authorization", "").strip()
+    if authorization.lower().startswith("bearer "):
+        return authorization[7:].strip()
+    return ""
+
+
+def _sobre_admin_token_valido() -> bool:
+    esperado = str(
+        current_app.config.get("PLUGVE_ADMIN_TOKEN", "")
+        or current_app.config.get("PLUGVE_SYNC_TOKEN", "")
+        or ""
+    ).strip()
+    recebido = _sobre_admin_token_recebido()
+    return bool(esperado and recebido and hmac.compare_digest(esperado, recebido))
+
+
+def _sobre_admin_unauthorized():
+    return jsonify({"ok": False, "error": "Acesso administrativo não autorizado."}), 401
+
+
 @tco_bp.route("/sobre")
 def sobre():
-    return render_template("sobre.html")
+    visitor_id, csrf_token = _sobre_session_context()
+    service = _sobre_engagement_service()
+    service.register_visitor(visitor_id)
+    stats = service.get_stats()
+    initial_comments = service.list_comments(offset=0, limit=SOBRE_COMMENTS_PAGE_SIZE)
+    return render_template(
+        "sobre.html",
+        engagement_stats=stats,
+        user_vote=service.get_user_vote(visitor_id),
+        initial_comments=initial_comments,
+        comment_max_length=COMMENT_MAX_LENGTH,
+        sobre_csrf_token=csrf_token,
+    )
+
+
+@tco_bp.route("/api/sobre/engagement", methods=["GET"])
+def sobre_engagement_stats():
+    visitor_id, _ = _sobre_session_context()
+    service = _sobre_engagement_service()
+    service.register_visitor(visitor_id)
+    stats = service.get_stats()
+    stats["user_vote"] = service.get_user_vote(visitor_id)
+    return jsonify({"ok": True, **stats})
+
+
+@tco_bp.route("/api/sobre/vote", methods=["POST"])
+def sobre_vote():
+    payload = request.get_json(silent=True) or {}
+    try:
+        _validate_sobre_csrf(payload)
+        visitor_id, _ = _sobre_session_context()
+        service = _sobre_engagement_service()
+        service.register_visitor(visitor_id)
+        vote = payload.get("vote")
+        if vote == service.get_user_vote(visitor_id):
+            vote = None
+        stats = service.set_vote(visitor_id, vote)
+    except EngagementValidationError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), exc.status_code
+    return jsonify({"ok": True, **stats})
+
+
+@tco_bp.route("/api/sobre/comments", methods=["GET", "POST"])
+def sobre_comments():
+    visitor_id, _ = _sobre_session_context()
+    service = _sobre_engagement_service()
+    service.register_visitor(visitor_id)
+
+    if request.method == "GET":
+        try:
+            offset = max(0, int(request.args.get("offset", 0)))
+            limit = max(1, int(request.args.get("limit", SOBRE_COMMENTS_PAGE_SIZE)))
+        except (TypeError, ValueError):
+            return jsonify({"ok": False, "error": "Paginação inválida."}), 400
+        return jsonify({"ok": True, **service.list_comments(offset=offset, limit=limit)})
+
+    payload = request.get_json(silent=True) or {}
+    try:
+        _validate_sobre_csrf(payload)
+        comment = service.add_comment(
+            visitor_id=visitor_id,
+            name=payload.get("name"),
+            email=payload.get("email"),
+            body=payload.get("comment"),
+            honeypot=payload.get("website"),
+        )
+    except EngagementValidationError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), exc.status_code
+
+    return jsonify({
+        "ok": True,
+        "comment": comment,
+        "stats": service.get_stats(),
+    }), 201
+
+
+@tco_bp.route("/api/sobre/admin/comments", methods=["GET"])
+def sobre_admin_comments():
+    if not _sobre_admin_token_valido():
+        return _sobre_admin_unauthorized()
+
+    try:
+        offset = max(0, int(request.args.get("offset", 0)))
+        limit = max(1, int(request.args.get("limit", 100)))
+        status = str(request.args.get("status", "all") or "all")
+        page = _sobre_engagement_service().list_comments_admin(
+            offset=offset,
+            limit=limit,
+            status=status,
+        )
+    except (TypeError, ValueError):
+        return jsonify({"ok": False, "error": "Paginação inválida."}), 400
+    except EngagementValidationError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), exc.status_code
+
+    response = jsonify({"ok": True, **page})
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
+
+@tco_bp.route("/api/sobre/admin/comments/<int:comment_id>", methods=["DELETE"])
+def sobre_admin_delete_comment(comment_id: int):
+    if not _sobre_admin_token_valido():
+        return _sobre_admin_unauthorized()
+
+    service = _sobre_engagement_service()
+    try:
+        deleted = service.delete_comment(comment_id)
+    except EngagementValidationError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), exc.status_code
+    if not deleted:
+        return jsonify({"ok": False, "error": "Comentário não encontrado."}), 404
+
+    response = jsonify({
+        "ok": True,
+        "deleted_id": comment_id,
+        "stats": service.get_stats(),
+    })
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
 
 @tco_bp.route("/contato")
 def contato():

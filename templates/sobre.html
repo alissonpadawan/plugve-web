@@ -8,7 +8,77 @@
   <p>
     A CurVE — Calculadora Veicular é um produto técnico desenvolvido no Programa de Pós-Graduação em Tecnologia, Gestão e Sustentabilidade do Instituto Federal de Goiás. A plataforma apoia análises comparativas de veículos com dados de custo, depreciação, consumo e valor futuro.
   </p>
+
+  <div
+    class="about-engagement"
+    data-sobre-engagement
+    data-csrf-token="{{ sobre_csrf_token }}"
+    data-user-vote="{{ user_vote or '' }}"
+    aria-label="Interações da página Sobre"
+  >
+    <div class="reaction-group" aria-label="Avalie esta página">
+      <button class="engagement-button reaction-button{% if user_vote == 'like' %} is-active{% endif %}" type="button" data-vote="like" aria-pressed="{{ 'true' if user_vote == 'like' else 'false' }}" aria-label="Gostei desta página">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.5 10.5 11 3.8c.5-1 1.8-1.4 2.7-.7.6.5.8 1.2.7 1.9l-.6 3.5H19c1.5 0 2.6 1.4 2.2 2.8l-1.8 7A2.3 2.3 0 0 1 17.2 20H7.5V10.5ZM3 10h3v10H3V10Z"></path></svg>
+        <span data-like-count>{{ engagement_stats.likes }}</span>
+      </button>
+      <button class="engagement-button reaction-button{% if user_vote == 'dislike' %} is-active{% endif %}" type="button" data-vote="dislike" aria-pressed="{{ 'true' if user_vote == 'dislike' else 'false' }}" aria-label="Não gostei desta página">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16.5 13.5 13 20.2c-.5 1-1.8 1.4-2.7.7-.6-.5-.8-1.2-.7-1.9l.6-3.5H5c-1.5 0-2.6-1.4-2.2-2.8l1.8-7A2.3 2.3 0 0 1 6.8 4h9.7v9.5ZM18 4h3v10h-3V4Z"></path></svg>
+        <span data-dislike-count>{{ engagement_stats.dislikes }}</span>
+      </button>
+    </div>
+
+    <div class="engagement-stat" aria-label="Visitantes da página">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.2 12s3.5-6 9.8-6 9.8 6 9.8 6-3.5 6-9.8 6-9.8-6-9.8-6Zm9.8 3.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"></path></svg>
+      <span data-visitor-count>{{ engagement_stats.visitors }}</span>
+      <span class="engagement-stat-label">visitantes</span>
+    </div>
+
+    <button class="engagement-button share-trigger" type="button" data-open-share aria-haspopup="dialog" aria-controls="share-about-dialog">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 16a3 3 0 0 0-2.4 1.2l-6.7-3.7a3.2 3.2 0 0 0 0-3l6.7-3.7A3 3 0 1 0 15 5a3 3 0 0 0 .1.8L8.4 9.5a3 3 0 1 0 0 5l6.7 3.7A3 3 0 1 0 18 16Z"></path></svg>
+      <span>Compartilhar</span>
+    </button>
+    <p class="engagement-feedback" data-engagement-feedback role="status" aria-live="polite"></p>
+  </div>
 </section>
+
+<dialog class="share-dialog" id="share-about-dialog" aria-labelledby="share-dialog-title">
+  <div class="share-dialog-header">
+    <div>
+      <h2 id="share-dialog-title">Compartilhar a CurVE</h2>
+      <p>Sobre a CurVE — Calculadora Veicular</p>
+    </div>
+    <button class="share-dialog-close" type="button" data-close-share aria-label="Fechar janela de compartilhamento">×</button>
+  </div>
+
+  <div class="share-platforms" aria-label="Opções de compartilhamento">
+    <a href="#" data-share-platform="facebook" target="_blank" rel="noopener noreferrer">
+      <span class="share-platform-icon share-platform-icon--facebook" aria-hidden="true">f</span>
+      <span>Facebook</span>
+    </a>
+    <a href="#" data-share-platform="x" target="_blank" rel="noopener noreferrer">
+      <span class="share-platform-icon share-platform-icon--x" aria-hidden="true">X</span>
+      <span>X</span>
+    </a>
+    <a href="#" data-share-platform="linkedin" target="_blank" rel="noopener noreferrer">
+      <span class="share-platform-icon share-platform-icon--linkedin" aria-hidden="true">in</span>
+      <span>LinkedIn</span>
+    </a>
+    <a href="#" data-share-platform="whatsapp" target="_blank" rel="noopener noreferrer">
+      <span class="share-platform-icon share-platform-icon--whatsapp" aria-hidden="true">◔</span>
+      <span>WhatsApp</span>
+    </a>
+    <button type="button" data-native-share hidden>
+      <span class="share-platform-icon share-platform-icon--more" aria-hidden="true">•••</span>
+      <span>Outros</span>
+    </button>
+  </div>
+
+  <div class="share-copy-row">
+    <input id="share-about-url" type="text" readonly aria-label="Link da página Sobre">
+    <button class="button secondary" type="button" data-copy-share>Copiar</button>
+  </div>
+  <p class="share-feedback" data-share-feedback role="status" aria-live="polite"></p>
+</dialog>
 
 <section class="people-section authors-section" aria-labelledby="people-title">
   <div class="section-heading institutional-section-heading authors-heading">
@@ -35,7 +105,7 @@
             <h3 id="author-daywes-title">Prof. Dr. Daywes Pinheiro Neto</h3>
             <p>Engenheiro Eletricista e Computacional · Doutor em Engenharia Elétrica e Computação</p>
             <nav class="author-popover-links" aria-label="Contatos de Daywes Pinheiro Neto">
-              <a href="mailto:daywes.neto@ifg.edu.br">E-mail</a>
+              <a href="mailto:daywes.neto@ifg.edu.br" target="_blank" rel="noopener noreferrer">E-mail</a>
               <a href="http://lattes.cnpq.br/3885723899789699" target="_blank" rel="noopener noreferrer">Lattes</a>
             </nav>
           </div>
@@ -64,7 +134,7 @@
             <h3 id="author-carlos-title">Prof. Dr. Carlos Roberto da Silveira Jr.</h3>
             <p>Professor titular do IFG · Doutor em Ciências Ambientais</p>
             <nav class="author-popover-links" aria-label="Contatos de Carlos Roberto da Silveira Jr.">
-              <a href="mailto:carlos.junior@ifg.edu.br">E-mail</a>
+              <a href="mailto:carlos.junior@ifg.edu.br" target="_blank" rel="noopener noreferrer">E-mail</a>
               <a href="https://www.linkedin.com/in/carlos-roberto-da-silveira-junior-957b47298/" target="_blank" rel="noopener noreferrer">LinkedIn</a>
               <a href="http://lattes.cnpq.br/5503461601783322" target="_blank" rel="noopener noreferrer">Lattes</a>
             </nav>
@@ -93,7 +163,7 @@
             <h3 id="author-alisson-title">Alisson Vieira da Silva</h3>
             <p>Engenheiro de Controle e Automação · Estudante do PPGTGS em Energias Renováveis</p>
             <nav class="author-popover-links" aria-label="Contatos de Alisson Vieira da Silva">
-              <a href="mailto:sv.alisson@gmail.com">E-mail</a>
+              <a href="mailto:sv.alisson@gmail.com" target="_blank" rel="noopener noreferrer">E-mail</a>
               <a href="https://www.linkedin.com/in/svalisson/" target="_blank" rel="noopener noreferrer">LinkedIn</a>
               <a href="http://lattes.cnpq.br/1978825412536553" target="_blank" rel="noopener noreferrer">Lattes</a>
             </nav>
@@ -140,9 +210,73 @@
     </div>
   </div>
 </section>
+
+<section class="card comments-card" id="sobre-comentarios" aria-labelledby="comments-title">
+  <div class="comments-heading">
+    <div>
+      <span class="institutional-card-label">Participação</span>
+      <h2 id="comments-title">Comentários</h2>
+    </div>
+    <span class="comments-total"><strong data-comments-total>{{ initial_comments.total }}</strong> publicados</span>
+  </div>
+
+  <form class="comments-form" id="sobre-comment-form" novalidate>
+    <div class="comments-form-grid">
+      <div class="field">
+        <label for="comment-name">Nome</label>
+        <input id="comment-name" name="name" type="text" maxlength="60" autocomplete="name" required>
+      </div>
+      <div class="field">
+        <label for="comment-email">E-mail</label>
+        <input id="comment-email" name="email" type="email" maxlength="254" autocomplete="email" required>
+      </div>
+    </div>
+
+    <div class="field comment-field">
+      <div class="comment-label-row">
+        <label for="comment-body">Comentário</label>
+        <span><strong data-comment-character-count>0</strong>/{{ comment_max_length }}</span>
+      </div>
+      <textarea id="comment-body" name="comment" rows="5" minlength="8" maxlength="{{ comment_max_length }}" required></textarea>
+    </div>
+
+    <div class="comment-honeypot" aria-hidden="true">
+      <label for="comment-website">Site</label>
+      <input id="comment-website" name="website" type="text" tabindex="-1" autocomplete="off">
+    </div>
+
+    <div class="comments-form-footer">
+      <p>Seu e-mail não será exibido. Não inclua telefone, links, e-mail ou outros dados pessoais no comentário.</p>
+      <button class="button primary" type="submit" data-comment-submit>Publicar comentário</button>
+    </div>
+    <p class="comments-form-feedback" data-comment-feedback role="status" aria-live="polite"></p>
+  </form>
+
+  <div class="comments-list" data-comments-list>
+    {% for comment in initial_comments.comments %}
+      <article class="comment-item" data-comment-id="{{ comment.id }}">
+        <div class="comment-meta">
+          <strong>{{ comment.name }}</strong>
+          <time>{{ comment.date }}</time>
+        </div>
+        <p>{{ comment.body }}</p>
+      </article>
+    {% endfor %}
+  </div>
+
+  <p class="comments-empty{% if initial_comments.total %} is-hidden{% endif %}" data-comments-empty>Nenhum comentário publicado até o momento.</p>
+  <button
+    class="button secondary comments-more{% if not initial_comments.has_more %} is-hidden{% endif %}"
+    type="button"
+    data-comments-more
+    data-comments-offset="{{ initial_comments.comments|length }}"
+  >
+    Ver mais
+  </button>
+</section>
 {% endblock %}
 
 {% block scripts %}
   {{ super() }}
-  <script src="{{ url_for('static', filename='js/sobre.js') }}?v=20260725_v43_06"></script>
+  <script src="{{ url_for('static', filename='js/sobre.js') }}?v=20260725_v43_07"></script>
 {% endblock %}

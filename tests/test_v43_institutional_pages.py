@@ -46,7 +46,7 @@ class V43InstitutionalPagesTests(unittest.TestCase):
         self.assertEqual(html.count('class="author-entry '), 3)
         self.assertEqual(html.count('class="author-name-link"'), 3)
         self.assertEqual(html.count('class="author-popover"'), 3)
-        self.assertNotIn("<dialog", html)
+        self.assertNotIn('<dialog class="author', html)
         self.assertNotIn("Ver perfil", html)
         self.assertEqual(html.count('class="author-prefix"'), 2)
         self.assertIn('>Prof. Dr.<', html)
@@ -82,6 +82,27 @@ class V43InstitutionalPagesTests(unittest.TestCase):
         self.assertIn("font-weight: 400;", css)
         self.assertIn("white-space: nowrap;", css)
         self.assertIn("position: absolute;", css)
+
+
+    def test_about_v43_07_engagement_and_comments_interface(self):
+        html = (self.templates / "sobre.html").read_text(encoding="utf-8")
+        script = (self.root / "static" / "js" / "sobre.js").read_text(encoding="utf-8")
+        css = (self.root / "static" / "css" / "institucional.css").read_text(encoding="utf-8")
+        for value in (
+            'data-vote="like"',
+            'data-vote="dislike"',
+            'data-visitor-count',
+            'id="share-about-dialog"',
+            'id="sobre-comment-form"',
+            'data-comments-more',
+            'maxlength="{{ comment_max_length }}"',
+        ):
+            self.assertIn(value, html)
+        self.assertIn('/api/sobre/vote', script)
+        self.assertIn('/api/sobre/comments', script)
+        self.assertIn('textContent', script)
+        self.assertIn('.share-dialog {', css)
+        self.assertIn('.comments-card {', css)
 
     def test_contact_form_does_not_post_to_unimplemented_route(self):
         html = (self.templates / "contato.html").read_text(encoding="utf-8")
