@@ -1,57 +1,122 @@
 {% extends "base.html" %}
 
-{% block title %}Consulta FIPE | CurVE{% endblock %}
+{% block title %}Consulta Fipe+ | CurVE{% endblock %}
 
 {% block content %}
 <style>
-  .fipe-page{max-width:1120px;margin:0 auto;padding:8px 0 40px}
-  .fipe-hero{border:1px solid #dce7e1;border-radius:28px;background:linear-gradient(135deg,#f0fdf4 0%,#ffffff 70%);box-shadow:0 20px 54px rgba(15,23,42,.06);padding:clamp(24px,4vw,42px);margin-bottom:22px}
-  .fipe-hero h1{margin:0;color:#047857;font-size:clamp(2rem,4vw,3.6rem);line-height:1.03;font-weight:900;letter-spacing:-.055em}
-  .fipe-hero p{margin:12px 0 0;color:#64748b;font-size:1rem;line-height:1.52;max-width:620px}
-  .fipe-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;align-items:start}
-  .fipe-card{border:1px solid #e2e8f0;border-radius:24px;background:#fff;box-shadow:0 16px 38px rgba(15,23,42,.05);padding:22px}
-  .fipe-card h2{margin:0 0 16px;color:#10202b;font-size:1.3rem;font-weight:900;letter-spacing:-.02em}
-  .fipe-type-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:18px}
-  .fipe-type{border:1px solid #dce7e1;border-radius:16px;background:#f8fafc;color:#334155;font-weight:900;padding:12px 10px;cursor:pointer;transition:.16s ease;text-align:center}
+  .fipe-plus-page{max-width:1180px;margin:0 auto;padding:8px 0 42px;color:#10202b}
+  .plus-hero{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;border:1px solid #dce7e1;border-radius:28px;background:linear-gradient(135deg,#f0fdf4 0%,#fff 72%);box-shadow:0 18px 46px rgba(15,23,42,.06);padding:clamp(22px,4vw,38px);margin-bottom:18px}
+  .plus-kicker{display:inline-flex;align-items:center;border:1px solid #bbf7d0;background:#ecfdf5;color:#047857;border-radius:999px;padding:.38rem .7rem;font-size:.7rem;font-weight:900;letter-spacing:.05em;text-transform:uppercase;margin-bottom:10px}
+  .plus-hero h1{margin:0;color:#047857;font-size:clamp(2rem,4vw,3.45rem);line-height:1;font-weight:950;letter-spacing:-.055em}
+  .plus-hero p{margin:10px 0 0;color:#64748b;font-size:.98rem;line-height:1.45;max-width:680px}
+  .plus-hero-badges{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+  .plus-chip{display:inline-flex;align-items:center;gap:.32rem;border:1px solid #e2e8f0;background:#fff;color:#334155;border-radius:999px;padding:.45rem .72rem;font-size:.75rem;font-weight:900;white-space:nowrap}
+  .plus-grid{display:grid;grid-template-columns:minmax(360px,.92fr) minmax(420px,1.08fr);gap:18px;align-items:start}
+  .plus-card{border:1px solid #e2e8f0;border-radius:24px;background:#fff;box-shadow:0 16px 38px rgba(15,23,42,.05);padding:20px;min-width:0}
+  .plus-card h2{margin:0;color:#10202b;font-size:1.14rem;font-weight:950;letter-spacing:-.02em}
+  .plus-card-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+  .plus-mini{color:#64748b;font-size:.78rem;font-weight:800}
+  .fipe-type-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-bottom:16px}
+  .fipe-type{border:1px solid #dce7e1;border-radius:15px;background:#f8fafc;color:#334155;font-weight:950;padding:11px 8px;cursor:pointer;transition:.16s ease;text-align:center}
   .fipe-type:hover{border-color:#86efac;background:#f0fdf4;color:#065f46}
   .fipe-type.active{border-color:#168a4a;background:#ecfdf5;color:#065f46;box-shadow:inset 0 0 0 1px #168a4a}
-  .fipe-field{margin-bottom:14px}
-  .fipe-field label{display:block;font-size:.78rem;font-weight:900;color:#334155;margin-bottom:5px}
-  .fipe-field select{width:100%;border:1px solid #d1d5db;border-radius:14px;background:#fff;color:#0f172a;padding:12px 14px;font-size:.96rem;outline:none;transition:border-color .16s ease,box-shadow .16s ease}
-  .fipe-field select:focus{border-color:#168a4a;box-shadow:0 0 0 4px rgba(22,138,74,.10)}
+  .fipe-field{margin-bottom:12px}
+  .fipe-field label{display:block;font-size:.74rem;font-weight:950;color:#334155;margin-bottom:5px;text-transform:uppercase;letter-spacing:.025em}
+  .fipe-field select,.fipe-field input{width:100%;border:1px solid #d1d5db;border-radius:14px;background:#fff;color:#0f172a;padding:11px 13px;font-size:.95rem;outline:none;transition:border-color .16s ease,box-shadow .16s ease;box-sizing:border-box}
+  .fipe-field select:focus,.fipe-field input:focus{border-color:#168a4a;box-shadow:0 0 0 4px rgba(22,138,74,.10)}
   .fipe-field select:disabled{background:#f8fafc;color:#94a3b8}
-  .fipe-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
-  .fipe-btn{border:1px solid #168a4a;border-radius:999px;background:#168a4a;color:#fff;padding:12px 20px;font-size:.95rem;font-weight:900;cursor:pointer;transition:.16s ease;text-decoration:none;display:inline-flex;align-items:center;justify-content:center}
+  .fipe-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:15px}
+  .fipe-btn{border:1px solid #168a4a;border-radius:999px;background:#168a4a;color:#fff;padding:11px 18px;font-size:.9rem;font-weight:950;cursor:pointer;transition:.16s ease;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:.45rem;line-height:1.1}
   .fipe-btn:hover{background:#0f6b39;border-color:#0f6b39;color:#fff;transform:translateY(-1px)}
-  .fipe-btn.secondary{background:#fff;color:#065f46}
+  .fipe-btn.secondary{background:#fff;color:#065f46;border-color:#bbf7d0}
   .fipe-btn.secondary:hover{background:#f0fdf4;color:#065f46}
-  .fipe-status{margin-top:14px;color:#64748b;font-size:.88rem;min-height:1.25rem}
-  .fipe-status.error{color:#b91c1c;font-weight:800}
-  .fipe-result{display:none;border:1px solid #bbf7d0;border-radius:24px;background:linear-gradient(135deg,#f0fdf4 0%,#ffffff 72%);padding:20px;box-shadow:0 16px 38px rgba(15,23,42,.05)}
-  .fipe-empty{border:1px dashed #cbd5e1;border-radius:24px;background:#f8fafc;padding:28px;color:#64748b;text-align:center;min-height:240px;display:grid;place-items:center}
+  .fipe-btn.ghost{background:#f8fafc;color:#334155;border-color:#e2e8f0;box-shadow:none}
+  .fipe-btn.ghost:hover{background:#f1f5f9;color:#10202b;border-color:#cbd5e1}
+  .fipe-btn:disabled{opacity:.55;cursor:not-allowed;transform:none}
+  .fipe-status{margin-top:12px;color:#64748b;font-size:.82rem;min-height:1.1rem;font-weight:700}
+  .fipe-status.error{color:#b91c1c;font-weight:900}
+  .fipe-empty{border:1px dashed #cbd5e1;border-radius:22px;background:#f8fafc;padding:28px;color:#64748b;text-align:center;min-height:260px;display:grid;place-items:center}
+  .fipe-empty strong{display:block;color:#10202b;margin-bottom:4px;font-size:1rem}
+  .fipe-result{display:none;border:1px solid #bbf7d0;border-radius:22px;background:linear-gradient(135deg,#f0fdf4 0%,#fff 72%);padding:19px}
   .fipe-result.show{display:block}
-  .fipe-result-kicker{font-size:.7rem;font-weight:900;letter-spacing:.04em;text-transform:uppercase;color:#047857;margin-bottom:4px}
-  .fipe-value{font-size:clamp(2.1rem,4vw,3.35rem);line-height:1;font-weight:900;color:#10202b;letter-spacing:-.05em;margin:0 0 8px}
-  .fipe-model{font-size:1.08rem;font-weight:900;color:#10202b;line-height:1.25;margin:0 0 4px}
-  .fipe-meta{margin:0 0 12px;color:#64748b;font-size:.92rem}
-  .fipe-table{width:100%;border-collapse:collapse;margin-top:10px;background:#fff;border-radius:16px;overflow:hidden;border:1px solid #e2e8f0}
-  .fipe-table th,.fipe-table td{padding:9px 11px;border-bottom:1px solid #f1f5f9;text-align:left;font-size:.88rem;vertical-align:top}
-  .fipe-table th{width:38%;color:#64748b;font-weight:800;background:#fbfdff}
-  .fipe-table td{color:#10202b;font-weight:800}
-  .fipe-table tr:last-child th,.fipe-table tr:last-child td{border-bottom:0}
-  .fipe-note{margin-top:12px;font-size:.78rem;color:#64748b;line-height:1.36}
-  @media(max-width:920px){.fipe-grid{grid-template-columns:1fr}.fipe-type-row{grid-template-columns:1fr}.fipe-page{padding:0 0 32px}}
+  .fipe-result-kicker{font-size:.68rem;font-weight:950;letter-spacing:.05em;text-transform:uppercase;color:#047857;margin-bottom:4px}
+  .fipe-value{font-size:clamp(2.05rem,4vw,3.25rem);line-height:1;font-weight:950;color:#10202b;letter-spacing:-.055em;margin:0 0 8px}
+  .fipe-model{font-size:1.08rem;font-weight:950;color:#10202b;line-height:1.25;margin:0 0 4px}
+  .fipe-meta{margin:0;color:#64748b;font-size:.9rem;font-weight:700}
+  .plus-kv{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:14px}
+  .plus-kv-item{border:1px solid #e2e8f0;background:#fff;border-radius:15px;padding:10px 11px;min-width:0}
+  .plus-kv-item small{display:block;color:#64748b;font-size:.68rem;font-weight:950;text-transform:uppercase;letter-spacing:.035em;margin-bottom:2px}
+  .plus-kv-item strong{display:block;color:#10202b;font-size:.92rem;font-weight:900;word-break:break-word;line-height:1.24}
+  .plus-note{margin:10px 0 0;color:#64748b;font-size:.74rem;line-height:1.32;font-weight:650}
+  .plus-result-actions{display:none;gap:8px;flex-wrap:wrap;margin-top:13px}
+  .plus-result-actions.show{display:flex}
+  .plus-enrichment{display:none;grid-template-columns:minmax(360px,.92fr) minmax(420px,1.08fr);gap:18px;margin-top:18px;align-items:start}
+  .plus-enrichment.show{display:grid}
+  .plus-side-stack{display:flex;flex-direction:column;gap:18px;min-width:0}
+  .plus-badge{display:inline-flex;align-items:center;gap:.35rem;border:1px solid #bbf7d0;background:#ecfdf5;color:#047857;border-radius:999px;padding:.32rem .58rem;font-size:.7rem;font-weight:950;white-space:nowrap}
+  .plus-badge.warn{border-color:#fed7aa;background:#fff7ed;color:#9a3412}
+  .plus-badge.neutral{border-color:#e2e8f0;background:#f8fafc;color:#475569}
+  .pbev-logo-btn{border:1px solid #dbe7df;background:#fff;border-radius:12px;padding:5px 7px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transition:.15s ease}
+  .pbev-logo-btn:hover{transform:translateY(-1px);box-shadow:0 10px 22px rgba(15,23,42,.08)}
+  .pbev-logo-btn img{width:42px;height:auto;display:block}
+  .plus-section-title{margin:15px 0 8px;color:#334155;font-size:.72rem;font-weight:950;text-transform:uppercase;letter-spacing:.055em}
+  .plus-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+  .plus-metric{border:1px solid #dbeafe;background:#f8fafc;border-radius:16px;padding:11px;min-width:0}
+  .plus-metric small{display:block;color:#64748b;font-size:.68rem;font-weight:950;text-transform:uppercase;letter-spacing:.025em;margin-bottom:4px;line-height:1.18}
+  .plus-metric strong{display:block;color:#10202b;font-size:1.02rem;line-height:1.08;font-weight:950;letter-spacing:-.015em}
+  .pbev-empty,.revenda-empty{border:1px dashed #cbd5e1;border-radius:18px;background:#f8fafc;color:#64748b;padding:16px;font-size:.88rem;font-weight:750;line-height:1.35}
+  .pbev-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;align-items:center}
+  .revenda-form{display:grid;grid-template-columns:minmax(120px,1fr) auto;gap:10px;align-items:end;margin-top:12px}
+  .revenda-output{margin-top:14px;display:none}
+  .revenda-output.show{display:block}
+  .revenda-valor{font-size:clamp(1.65rem,3vw,2.35rem);font-weight:950;letter-spacing:-.04em;color:#10202b;line-height:1;margin:0 0 6px}
+  .revenda-sub{color:#64748b;font-size:.82rem;font-weight:800;margin:0 0 10px}
+  .revenda-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  .ipva-output{display:none;margin-top:14px}
+  .ipva-output.show{display:block}
+  .ipva-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;justify-content:flex-end}
+  .ipva-list-rows{margin-top:10px;border-top:1px solid #e2e8f0}
+  .ipva-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid #e2e8f0}
+  .ipva-row span{color:#64748b;font-size:.92rem;font-weight:700}
+  .ipva-row strong{color:#10202b;font-size:.98rem;font-weight:900}
+  .ipva-row.total span,.ipva-row.total strong{color:#10202b;font-weight:950}
+  .modal-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .modal-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;padding:14px 17px;border-top:1px solid #e2e8f0;background:#fff}
+  .debug-modal{position:fixed;inset:0;background:rgba(15,23,42,.56);display:none;align-items:center;justify-content:center;padding:20px;z-index:9999}
+  .debug-modal.show{display:flex}
+  .debug-panel{width:min(880px,100%);max-height:min(680px,92vh);background:#fff;border-radius:22px;overflow:hidden;box-shadow:0 32px 80px rgba(0,0,0,.25);display:flex;flex-direction:column}
+  .debug-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px 17px;border-bottom:1px solid #e2e8f0;background:#f8fafc}
+  .debug-head strong{font-size:.96rem;color:#10202b;font-weight:950}
+  .debug-head small{display:block;color:#64748b;font-size:.76rem;font-weight:800;margin-top:2px}
+  .debug-pre{margin:0;padding:16px;background:#020617;color:#bbf7d0;font-size:.74rem;line-height:1.48;white-space:pre-wrap;word-break:break-word;overflow:auto;max-height:540px}
+  @media(max-width:980px){.plus-hero{align-items:flex-start;flex-direction:column}.plus-hero-badges{justify-content:flex-start}.plus-grid,.plus-enrichment{grid-template-columns:1fr}.plus-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  #fipe_result_kv{display:block;margin-top:14px}
+  #fipe_result_kv .plus-kv-item{display:grid;grid-template-columns:150px 1fr;align-items:start;gap:10px;padding:8px 0;border:none;border-bottom:1px solid #dce7e1;border-radius:0;background:transparent}
+  #fipe_result_kv .plus-kv-item:last-child{border-bottom:none;padding-bottom:0}
+  #fipe_result_kv .plus-kv-item small{margin:0;color:#64748b;font-size:.72rem}
+  #fipe_result_kv .plus-kv-item strong{font-size:.95rem}
+  @media(max-width:620px){.fipe-plus-page{padding:0 0 32px}.fipe-type-row,.plus-kv,.revenda-form,.modal-form-grid{grid-template-columns:1fr}.plus-metrics{grid-template-columns:1fr}.plus-card{padding:17px}.plus-hero{border-radius:22px}.fipe-btn{width:100%}#fipe_result_kv .plus-kv-item{grid-template-columns:1fr}}
+  @media print{body{background:#fff!important}.site-header,.navbar,.plus-hero-badges,.fipe-actions,#btn_estimar_revenda,#btn_abrir_ipva,.ipva-actions,.debug-modal{display:none!important}.fipe-plus-page{max-width:none;padding:0;color:#111827}.plus-hero,.plus-card,.fipe-result{box-shadow:none!important;border-color:#cbd5e1!important;background:#fff!important}.plus-grid,.plus-enrichment,.plus-enrichment.show{display:grid!important;grid-template-columns:1fr!important;gap:12px}.fipe-empty,.pbev-empty:empty{display:none!important}.fipe-result.show,.revenda-output.show{display:block!important}.pbev-logo-btn{display:none!important}.revenda-actions{display:none!important}}
 </style>
 
-<section class="fipe-page">
-  <div class="fipe-hero">
-    <h1>Consulta FIPE</h1>
-    <p>Consulte o valor FIPE atual de carros, motos e caminhões.</p>
-  </div>
+<section class="fipe-plus-page">
+  <header class="plus-hero">
+    <div>
+      <span class="plus-kicker">FIPE · Inmetro/PBEV · CurVE</span>
+      <h1>Consulta Fipe+</h1>
+      <p>Valor FIPE, ficha técnica e revenda estimada quando houver dados confiáveis.</p>
+    </div>
+    <div class="plus-hero-badges" aria-label="Ações da consulta">
+      <button type="button" id="btn_imprimir_fipe_plus_topo" class="fipe-btn ghost">Imprimir</button>
+    </div>
+  </header>
 
-  <div class="fipe-grid">
-    <section class="fipe-card" aria-label="Formulário de consulta FIPE">
-      <h2>Dados do veículo</h2>
+  <div class="plus-grid">
+    <section class="plus-card" aria-label="Formulário de consulta FIPE">
+      <div class="plus-card-head">
+        <h2>Veículo</h2>
+        <span class="plus-mini">consulta livre</span>
+      </div>
       <div class="fipe-type-row" role="tablist" aria-label="Tipo de veículo">
         <button type="button" class="fipe-type active" data-tipo="carros">Carros</button>
         <button type="button" class="fipe-type" data-tipo="motos">Motos</button>
@@ -70,17 +135,17 @@
         <select id="fipe_ano" disabled><option value="">Selecione o modelo primeiro</option></select>
       </div>
       <div class="fipe-actions">
-        <button type="button" id="btn_consultar_fipe_publica" class="fipe-btn">Consultar valor</button>
+        <button type="button" id="btn_consultar_fipe_publica" class="fipe-btn">Consultar</button>
         <button type="button" id="btn_limpar_fipe_publica" class="fipe-btn secondary">Limpar</button>
       </div>
       <div id="fipe_status" class="fipe-status" aria-live="polite"></div>
     </section>
 
-    <section aria-label="Resultado da consulta FIPE">
+    <section class="plus-card" aria-label="Resultado da consulta FIPE">
       <div id="fipe_empty" class="fipe-empty">
         <div>
-          <strong>Resultado da FIPE</strong><br>
-          Selecione o veículo para visualizar valor, código FIPE e mês de referência.
+          <strong>Resultado</strong>
+          Selecione o veículo para ver valor, ficha e revenda.
         </div>
       </div>
       <div id="fipe_result" class="fipe-result">
@@ -88,25 +153,111 @@
         <p class="fipe-value" id="fipe_result_valor">R$ 0,00</p>
         <p class="fipe-model" id="fipe_result_modelo">Modelo</p>
         <p class="fipe-meta" id="fipe_result_marca">Marca</p>
-        <table class="fipe-table">
-          <tbody>
-            <tr><th>Código FIPE</th><td id="fipe_result_codigo">—</td></tr>
-            <tr><th>Ano modelo</th><td id="fipe_result_ano">—</td></tr>
-            <tr><th>Combustível</th><td id="fipe_result_combustivel">—</td></tr>
-            <tr><th>Mês de referência</th><td id="fipe_result_referencia">—</td></tr>
-            <tr><th>Data da consulta</th><td id="fipe_result_consulta">—</td></tr>
-          </tbody>
-        </table>
-        <p class="fipe-note">O valor FIPE é referência de mercado. Estado de conservação, quilometragem, região, opcionais e negociação podem alterar o valor comercial real.</p>
+        <div class="plus-kv" id="fipe_result_kv"></div>
+        <p class="plus-note">FIPE é referência de mercado. A negociação real pode variar.</p>
       </div>
     </section>
   </div>
+
+  <div id="plus_enrichment" class="plus-enrichment" aria-label="Dados complementares da Consulta Fipe+">
+    <section class="plus-card" id="pbev_card" aria-label="Dados Inmetro/PBEV">
+      <div class="plus-card-head">
+        <div>
+          <h2>Inmetro/PBEV</h2>
+          <span class="plus-mini" id="pbev_subtitle">dados complementares</span>
+        </div>
+        <span id="pbev_badge" class="plus-badge neutral">aguardando</span>
+      </div>
+      <div id="pbev_body" class="pbev-empty">Consulte um veículo para buscar ficha técnica PBEV.</div>
+    </section>
+
+    <div class="plus-side-stack">
+      <section class="plus-card" id="revenda_card" aria-label="Estimativa de revenda">
+        <div class="plus-card-head">
+          <div>
+            <h2>Revenda</h2>
+            <span class="plus-mini">curva publicada</span>
+          </div>
+          <span id="revenda_badge" class="plus-badge neutral">opcional</span>
+        </div>
+        <div class="fipe-field" style="margin-bottom:0">
+          <label for="fipe_plus_horizonte">Pretende ficar quantos anos?</label>
+          <div class="revenda-form">
+            <input id="fipe_plus_horizonte" type="number" min="1" max="20" step="1" value="5" inputmode="numeric">
+            <button type="button" id="btn_estimar_revenda" class="fipe-btn">Estimar</button>
+          </div>
+        </div>
+        <div id="revenda_status" class="fipe-status" aria-live="polite"></div>
+        <div id="revenda_output" class="revenda-output"></div>
+      </section>
+
+      <section class="plus-card" id="ipva_card" aria-label="Consulta opcional de IPVA">
+        <div class="plus-card-head">
+          <div>
+            <h2>IPVA</h2>
+            <span class="plus-mini" id="ipva_subtitle">consulta opcional</span>
+          </div>
+          <span id="ipva_badge" class="plus-badge neutral">opcional</span>
+        </div>
+        <div id="ipva_body" class="pbev-empty">Consulte o IPVA usando a localização e o valor FIPE atual.</div>
+        <div class="ipva-actions">
+          <button type="button" id="btn_abrir_ipva" class="fipe-btn">Consultar IPVA</button>
+        </div>
+      </section>
+    </div>
+  </div>
 </section>
+
+<div id="pbev_debug_modal" class="debug-modal" aria-hidden="true">
+  <div class="debug-panel" role="dialog" aria-modal="true" aria-labelledby="pbev_debug_title">
+    <div class="debug-head">
+      <div>
+        <strong id="pbev_debug_title">Análise PBEV/Inmetro</strong>
+        <small>Auditoria do matching FIPE × PBEV</small>
+      </div>
+      <button type="button" id="btn_fechar_pbev_debug" class="fipe-btn ghost">Fechar</button>
+    </div>
+    <pre id="pbev_debug_text" class="debug-pre"></pre>
+  </div>
+</div>
+
+<div id="ipva_modal" class="debug-modal" aria-hidden="true">
+  <div class="debug-panel" role="dialog" aria-modal="true" aria-labelledby="ipva_modal_title">
+    <div class="debug-head">
+      <div>
+        <strong id="ipva_modal_title">Consultar IPVA</strong>
+        <small>Informe a localização para estimar o imposto anual.</small>
+      </div>
+      <button type="button" id="btn_fechar_ipva_modal" class="fipe-btn ghost">Fechar</button>
+    </div>
+    <div style="padding:16px 17px">
+      <div class="modal-form-grid">
+        <div class="fipe-field">
+          <label for="ipva_uf">Estado (UF)</label>
+          <select id="ipva_uf"><option value="">Selecione</option></select>
+        </div>
+        <div class="fipe-field">
+          <label for="ipva_municipio">Município</label>
+          <select id="ipva_municipio" disabled><option value="">Selecione a UF</option></select>
+        </div>
+      </div>
+      <div class="fipe-actions" style="margin-top:4px">
+        <button type="button" id="btn_ipva_geolocalizacao" class="fipe-btn ghost">Usar minha localização</button>
+      </div>
+      <div id="ipva_modal_status" class="fipe-status" aria-live="polite"></div>
+    </div>
+    <div class="modal-actions">
+      <button type="button" id="btn_cancelar_ipva" class="fipe-btn ghost">Cancelar</button>
+      <button type="button" id="btn_confirmar_ipva" class="fipe-btn">Calcular IPVA</button>
+    </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
 <script>
 (function(){
+  const INMETRO_LOGO_URL = "{{ url_for('static', filename='img/inmetro-logo.png') }}";
   const selects = {
     marca: document.getElementById('fipe_marca'),
     modelo: document.getElementById('fipe_modelo'),
@@ -117,19 +268,57 @@
   const empty = document.getElementById('fipe_empty');
   const btnConsultar = document.getElementById('btn_consultar_fipe_publica');
   const btnLimpar = document.getElementById('btn_limpar_fipe_publica');
+  const enrichment = document.getElementById('plus_enrichment');
+  const pbevBody = document.getElementById('pbev_body');
+  const pbevBadge = document.getElementById('pbev_badge');
+  const pbevSubtitle = document.getElementById('pbev_subtitle');
+  const btnRevenda = document.getElementById('btn_estimar_revenda');
+  const revendaStatus = document.getElementById('revenda_status');
+  const revendaOutput = document.getElementById('revenda_output');
+  const revendaBadge = document.getElementById('revenda_badge');
+  const ipvaBody = document.getElementById('ipva_body');
+  const ipvaBadge = document.getElementById('ipva_badge');
+  const ipvaSubtitle = document.getElementById('ipva_subtitle');
+  const btnAbrirIpva = document.getElementById('btn_abrir_ipva');
+  const ipvaModal = document.getElementById('ipva_modal');
+  const ipvaUf = document.getElementById('ipva_uf');
+  const ipvaMunicipio = document.getElementById('ipva_municipio');
+  const ipvaModalStatus = document.getElementById('ipva_modal_status');
+  const btnFecharIpvaModal = document.getElementById('btn_fechar_ipva_modal');
+  const btnCancelarIpva = document.getElementById('btn_cancelar_ipva');
+  const btnConfirmarIpva = document.getElementById('btn_confirmar_ipva');
+  const btnIpvaGeo = document.getElementById('btn_ipva_geolocalizacao');
+  const debugModal = document.getElementById('pbev_debug_modal');
+  const debugText = document.getElementById('pbev_debug_text');
+  const btnFecharDebug = document.getElementById('btn_fechar_pbev_debug');
   let tipoAtual = 'carros';
   let seq = 0;
+  let consultaSeq = 0;
   let controller = null;
+  let veiculoAtual = null;
+  let pbevAtual = null;
+  let revendaAtual = null;
+  let ipvaAtual = null;
 
   function status(msg, erro=false){
     statusEl.textContent = msg || '';
     statusEl.classList.toggle('error', !!erro);
+  }
+  function statusRevenda(msg, erro=false){
+    revendaStatus.textContent = msg || '';
+    revendaStatus.classList.toggle('error', !!erro);
   }
   function opt(label, value=''){
     const o = document.createElement('option'); o.value = value; o.textContent = label; return o;
   }
   function resetSelect(sel, label, disabled=true){
     sel.innerHTML = ''; sel.appendChild(opt(label)); sel.disabled = !!disabled;
+  }
+  function selectedText(sel){
+    return sel && sel.selectedIndex >= 0 ? (sel.options[sel.selectedIndex]?.textContent || '').trim() : '';
+  }
+  function codigoAnoFipeZeroKm(codigoAno){
+    return String(codigoAno || '').split('-', 1)[0] === '32000';
   }
   function formatarAnoZeroKm(label){
     const texto = String(label || '');
@@ -139,19 +328,80 @@
     const texto = String(valor ?? '').trim();
     return texto === '32000' ? 'Zero km' : (texto || '—');
   }
+  function anoModeloParaMatchingPbev(codigoAno, anoModeloFipe){
+    if (codigoAnoFipeZeroKm(codigoAno)) return new Date().getFullYear();
+    const n = parseInt(anoModeloFipe, 10);
+    return Number.isFinite(n) && n > 1900 ? n : (anoModeloFipe || '');
+  }
+  function ordenarAnosFipeParaTela(lista){
+    return (Array.isArray(lista) ? [...lista] : []).sort((a, b) => {
+      const aZero = codigoAnoFipeZeroKm(a?.codigo);
+      const bZero = codigoAnoFipeZeroKm(b?.codigo);
+      if (aZero !== bZero) return aZero ? -1 : 1;
+
+      const anoA = anoModeloParaMatchingPbev(a?.codigo, a?.nome || a?.codigo || '');
+      const anoB = anoModeloParaMatchingPbev(b?.codigo, b?.nome || b?.codigo || '');
+      if (anoA !== anoB) return (Number(anoB) || -Infinity) - (Number(anoA) || -Infinity);
+
+      return String(a?.nome || a?.codigo || '').localeCompare(String(b?.nome || b?.codigo || ''), 'pt-BR', { numeric: true, sensitivity: 'base' });
+    });
+  }
+  function esc(valor){
+    return String(valor ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+  function normalizar(valor){
+    return String(valor || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
+  }
+  function primeiroValor(){
+    for (const v of arguments) if (v !== undefined && v !== null && String(v).trim() !== '') return v;
+    return '';
+  }
+  function isFilled(v){
+    return v !== undefined && v !== null && String(v).trim() !== '';
+  }
+  function limparValorMonetario(valor){
+    let txt = String(valor ?? '').replace(/R\$/gi,'').replace(/\s/g,'').trim();
+    if (!txt) return 0;
+    if (txt.includes(',') && txt.includes('.')) txt = txt.replace(/\./g,'').replace(',', '.');
+    else if (txt.includes(',')) txt = txt.replace(/\./g,'').replace(',', '.');
+    const n = Number(txt);
+    return Number.isFinite(n) ? n : 0;
+  }
+  function fmtMoeda(valor){
+    const n = Number(valor || 0);
+    if (!Number.isFinite(n)) return '—';
+    return n.toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
+  }
+  function fmtNum(valor, casas=2){
+    const n = Number(valor);
+    if (!Number.isFinite(n)) return '';
+    return n.toLocaleString('pt-BR', {minimumFractionDigits: casas, maximumFractionDigits: casas});
+  }
+  function fmtValorUnidade(valor, unidade, casas=2){
+    if (!isFilled(valor)) return '';
+    const n = Number(valor);
+    const exibido = Number.isFinite(n) ? fmtNum(n, casas) : String(valor);
+    return `${exibido} ${unidade || ''}`.trim();
+  }
   function requestToken(){
     seq += 1;
     if (controller) controller.abort();
     controller = new AbortController();
     return {seq, signal: controller.signal};
   }
+  function scrollSuave(el, block='start'){
+    if (!el) return;
+    window.setTimeout(() => {
+      try { el.scrollIntoView({behavior:'smooth', block}); }
+      catch(e) { el.scrollIntoView(); }
+    }, 180);
+  }
+
   const CACHE_TTL_CATALOGO_FIPE = 7 * 24 * 60 * 60 * 1000;
   const CACHE_TTL_PRECO_FIPE = 30 * 60 * 1000;
-  function ttlCacheFipe(url){
-    return String(url || '').includes('/preco') ? CACHE_TTL_PRECO_FIPE : CACHE_TTL_CATALOGO_FIPE;
-  }
+  function ttlCacheFipe(url){ return String(url || '').includes('/preco') ? CACHE_TTL_PRECO_FIPE : CACHE_TTL_CATALOGO_FIPE; }
   function lerCacheFipePublica(url){
-    const chave = `plugve:fipe-publica:v31:${url}`;
+    const chave = `plugve:fipe-publica:v40:${url}`;
     try{
       const bruto = localStorage.getItem(chave) || sessionStorage.getItem(chave);
       if(!bruto) return null;
@@ -163,7 +413,7 @@
     }catch(e){ return null; }
   }
   function salvarCacheFipePublica(url, dados){
-    const chave = `plugve:fipe-publica:v31:${url}`;
+    const chave = `plugve:fipe-publica:v40:${url}`;
     const payload = JSON.stringify({salvoEm: Date.now(), dados});
     try{ sessionStorage.setItem(chave, payload); }catch(e){}
     try{ localStorage.setItem(chave, payload); }catch(e){}
@@ -181,22 +431,824 @@
     if (token.seq !== seq) throw new Error('__stale__');
     return data;
   }
+
+  function setBadge(el, texto, tipo='neutral'){
+    el.textContent = texto;
+    el.className = `plus-badge ${tipo || 'neutral'}`;
+  }
+  function renderKv(root, linhas){
+    root.innerHTML = linhas.filter(l => isFilled(l[1])).map(([label, value]) => `
+      <div class="plus-kv-item"><small>${esc(label)}</small><strong>${esc(value)}</strong></div>
+    `).join('');
+  }
+  function metricHtml(label, value){
+    if (!isFilled(value)) return '';
+    return `<div class="plus-metric"><small>${esc(label)}</small><strong>${esc(value)}</strong></div>`;
+  }
+  function resetPbev(){
+    pbevAtual = null;
+    pbevSubtitle.textContent = 'dados complementares';
+    setBadge(pbevBadge, 'aguardando', 'neutral');
+    pbevBody.className = 'pbev-empty';
+    pbevBody.textContent = 'Consulte um veículo para buscar ficha técnica PBEV.';
+  }
+  function resetRevenda(){
+    revendaAtual = null;
+    statusRevenda('');
+    revendaOutput.classList.remove('show');
+    revendaOutput.innerHTML = '';
+    setBadge(revendaBadge, 'opcional', 'neutral');
+    btnRevenda.disabled = false;
+  }
+  function resetIpva(){
+    ipvaAtual = null;
+    if (ipvaSubtitle) ipvaSubtitle.textContent = 'consulta opcional';
+    if (ipvaBadge) setBadge(ipvaBadge, 'opcional', 'neutral');
+    if (ipvaBody) {
+      ipvaBody.className = 'pbev-empty';
+      ipvaBody.textContent = 'Consulte o IPVA usando a localização e o valor FIPE atual.';
+    }
+  }
   function hideResult(){
-    result.classList.remove('show'); empty.style.display = 'grid';
+    consultaSeq += 1;
+    veiculoAtual = null;
+    result.classList.remove('show');
+    empty.style.display = 'grid';
+    enrichment.classList.remove('show');
+    resetPbev();
+    resetRevenda();
+    resetIpva();
+  }
+  function montarVeiculo(data){
+    const marcaCodigo = selects.marca.value;
+    const modeloCodigo = selects.modelo.value;
+    const anoCodigo = selects.ano.value;
+    const id = ++consultaSeq;
+    const anoRaw = String(data.AnoModelo ?? '').trim();
+    const textoAno = selectedText(selects.ano);
+    return {
+      id,
+      tipo_fipe: tipoAtual,
+      codigo_marca: marcaCodigo,
+      codigo_modelo: modeloCodigo,
+      codigo_ano: anoCodigo,
+      marca: data.Marca || selectedText(selects.marca),
+      modelo: data.Modelo || selectedText(selects.modelo),
+      texto_modelo: data.Modelo || selectedText(selects.modelo),
+      ano_modelo: anoRaw,
+      ano_modelo_raw: anoRaw,
+      ano_modelo_pbev: anoModeloParaMatchingPbev(anoCodigo, anoRaw),
+      zero_km: codigoAnoFipeZeroKm(anoCodigo),
+      ano_modelo_label: textoAnoModelo(anoRaw),
+      texto_ano: textoAno,
+      combustivel: data.Combustivel || '',
+      codigo_fipe: data.CodigoFipe || data.CodigoFIPE || '',
+      valor_texto: data.Valor || '',
+      valor_num: limparValorMonetario(data.Valor),
+      mes_referencia: data.MesReferencia || '',
+      data_consulta: new Date().toLocaleString('pt-BR')
+    };
   }
   function showResult(data){
-    empty.style.display = 'none'; result.classList.add('show');
+    veiculoAtual = montarVeiculo(data);
+    empty.style.display = 'none'; result.classList.add('show'); enrichment.classList.add('show');
     const tipoLabel = tipoAtual === 'motos' ? 'Moto' : tipoAtual === 'caminhoes' ? 'Caminhão' : 'Carro';
     document.getElementById('fipe_result_tipo').textContent = `FIPE · ${tipoLabel}`;
-    document.getElementById('fipe_result_valor').textContent = data.Valor || '—';
-    document.getElementById('fipe_result_modelo').textContent = data.Modelo || '—';
-    document.getElementById('fipe_result_marca').textContent = data.Marca || '—';
-    document.getElementById('fipe_result_codigo').textContent = data.CodigoFipe || '—';
-    document.getElementById('fipe_result_ano').textContent = textoAnoModelo(data.AnoModelo);
-    document.getElementById('fipe_result_combustivel').textContent = data.Combustivel || '—';
-    document.getElementById('fipe_result_referencia').textContent = data.MesReferencia || '—';
-    document.getElementById('fipe_result_consulta').textContent = new Date().toLocaleString('pt-BR');
+    document.getElementById('fipe_result_valor').textContent = veiculoAtual.valor_texto || '—';
+    document.getElementById('fipe_result_modelo').textContent = veiculoAtual.modelo || '—';
+    document.getElementById('fipe_result_marca').textContent = veiculoAtual.marca || '—';
+    renderKv(document.getElementById('fipe_result_kv'), [
+      ['Código FIPE', veiculoAtual.codigo_fipe || '—'],
+      ['Ano/modelo', veiculoAtual.ano_modelo_label || '—'],
+      ['Combustível', veiculoAtual.combustivel || '—'],
+      ['Referência', veiculoAtual.mes_referencia || '—'],
+      ['Consulta', veiculoAtual.data_consulta || '—']
+    ]);
+    resetRevenda();
+    resetIpva();
+    buscarPbev(veiculoAtual);
+    scrollSuave(enrichment, 'start');
   }
+
+  function montarPayloadDepreciacao(veiculo, horizonte=5){
+    if (!veiculo) return {};
+    return {
+      tipo: tipoDepreciacaoPreferencial(veiculo),
+      codigo_marca: veiculo.codigo_marca,
+      codigo_modelo: veiculo.codigo_modelo,
+      codigo_ano: veiculo.codigo_ano,
+      codigo_fipe: veiculo.codigo_fipe,
+      marca: veiculo.marca,
+      modelo: veiculo.modelo,
+      ano_modelo: veiculo.ano_modelo,
+      ano_modelo_raw: veiculo.ano_modelo_raw,
+      combustivel: veiculo.combustivel,
+      valor_atual: veiculo.valor_num,
+      horizonte_anos: horizonte,
+      referencia_fipe: veiculo.mes_referencia,
+      mes_referencia: veiculo.mes_referencia,
+      origem_consulta_fipe_plus: true
+    };
+  }
+
+  function prepararLinksAcao(){
+    const linkSimular = document.getElementById('btn_ir_simular');
+    const linkDepreciacao = document.getElementById('btn_ir_depreciacao');
+    if (linkSimular) {
+      linkSimular.onclick = function(){
+        try { sessionStorage.setItem('curve:fipe-plus:veiculo', JSON.stringify({veiculo: veiculoAtual || {}, pbev: pbevAtual || null})); } catch(e) {}
+      };
+    }
+    if (linkDepreciacao) {
+      linkDepreciacao.href = '/depreciacao?bridge=tco&prefixo=atual';
+      linkDepreciacao.onclick = function(){
+        try {
+          const horizonte = Math.max(1, Math.min(20, parseInt(document.getElementById('fipe_plus_horizonte')?.value || '5', 10) || 5));
+          sessionStorage.setItem('plugve_tco_depreciacao_atual', JSON.stringify(montarPayloadDepreciacao(veiculoAtual, horizonte)));
+        } catch(e) {}
+      };
+    }
+  }
+
+  function detectarTipoPbev(veiculo){
+    const txt = normalizar(`${veiculo?.modelo || ''} ${veiculo?.texto_ano || ''} ${veiculo?.combustivel || ''}`);
+    if (/\b(PHEV|PLUG IN|PLUGIN|PLUG-IN|DM I|DMI|RECHARGE|TFSI E|E HYBRID)\b/.test(txt)) return 'PHEV';
+    if (/\b(ELETRICO|ELETRICA|ELECTRIC|BEV|EV)\b/.test(txt)) return 'ELETRICO';
+    if (/\b(HIBRIDO|HIBRIDA|HYBRID|HEV|MHEV)\b/.test(txt)) return 'HIBRIDO';
+    if (/DIESEL/.test(txt)) return 'DIESEL';
+    if (/FLEX|ALCOOL|ETANOL/.test(txt)) return 'FLEX';
+    if (/GASOLINA/.test(txt)) return 'GASOLINA';
+    return '';
+  }
+  function tipoDepreciacaoPreferencial(veiculo){
+    const prop = normalizar(pbevAtual?.candidato?.tipo_propulsao || '');
+    const sugTipo = normalizar(pbevAtual?.sugestoes_consumo?.tipo || '');
+    const texto = normalizar(`${veiculo?.modelo || ''} ${veiculo?.combustivel || ''} ${veiculo?.texto_ano || ''}`);
+    if (/ELETRICO|HIBRIDO|HYBRID|PLUG|PHEV/.test(`${prop} ${sugTipo} ${texto}`)) return 'eletrico';
+    return 'combustao';
+  }
+  function combustivelLegivel(valor){
+    const v = normalizar(valor).replace(/\s+/g,'_');
+    if (v === 'F' || v === 'FLEX') return 'Flex';
+    if (v === 'G' || v === 'GASOLINA') return 'Gasolina';
+    if (v === 'D' || v === 'DIESEL') return 'Diesel';
+    if (v === 'E' || v === 'ELETRICO' || v === 'ELETRICA') return 'Energia elétrica';
+    if (v === 'ETANOL' || v === 'ALCOOL') return 'Etanol';
+    return valor || '';
+  }
+  function combustivelFichaPbev(candidato, sugestao, veiculo, propulsaoTexto){
+    const propNorm = normalizar(`${propulsaoTexto || ''} ${candidato?.tipo_propulsao || ''} ${sugestao?.tipo || ''}`);
+    const combBruto = primeiroValor(candidato?.combustivel_normalizado, candidato?.combustivel, veiculo?.combustivel);
+    const combLegivel = combustivelLegivel(combBruto);
+    if (/ELETRICO|ELETRICA|BEV|EV/.test(propNorm) && !/PHEV|PLUG|HIBRIDO|HIBRIDA/.test(propNorm)) return 'Energia elétrica';
+    if (normalizar(combLegivel).includes('ELETRIC')) return 'Energia elétrica';
+    return combLegivel;
+  }
+  function propulsaoLegivel(valor){
+    const v = normalizar(valor).replace(/\s+/g,'_');
+    if (v === 'PLUG_IN' || v.includes('PHEV')) return 'Híbrido plug-in';
+    if (v === 'ELETRICO' || v === 'ELETRICA') return 'Elétrico';
+    if (v === 'HIBRIDO' || v === 'HIBRIDA') return 'Híbrido';
+    if (v === 'COMBUSTAO') return 'Combustão';
+    return valor || '';
+  }
+  function tipoHibridoLegivel(candidato, sugestao, propulsaoTexto){
+    const txt = normalizar(`${propulsaoTexto || ''} ${candidato?.tipo_propulsao || ''} ${sugestao?.tipo || ''} ${candidato?.versao || ''} ${candidato?.modelo || ''}`);
+    if (/PHEV|PLUG|DM I|DMI|\bDM\b/.test(txt)) return 'Plug-in (PHEV)';
+    if (/HIBRIDO|HYBRID|HEV|MHEV/.test(txt)) return 'Convencional (não plug-in)';
+    return '';
+  }
+  function marchasPorTransmissao(transmissao){
+    const txt = normalizar(transmissao).replace(/\s+/g,'');
+    if (!txt) return '';
+    if (txt.includes('CVT') && !/\d/.test(txt)) return 'CVT';
+    const m = txt.match(/(?:^|[^0-9])([1-9]|1[0-2])(?:MARCHAS|M|A|AT|MT|VEL|V)?$/) || txt.match(/(?:M|A|AT|MT|DCT|CVT)[-]?([1-9]|1[0-2])/);
+    if (m && Number(m[1]) > 0) return `${Number(m[1])} marchas`;
+    return '';
+  }
+  function rotuloGasDiesel(candidato){
+    const comb = normalizar(candidato?.combustivel || '');
+    return comb === 'D' || comb.includes('DIESEL') ? 'Diesel' : 'Gasolina';
+  }
+  function pbevConfiavel(dados){
+    return !!(dados && dados.autopreencher === true && String(dados.nivel_match || '') === 'alto');
+  }
+  async function buscarPbev(veiculo){
+    resetPbev();
+    if (!veiculo) return;
+    if (veiculo.tipo_fipe !== 'carros') {
+      pbevBody.textContent = 'PBEV/Inmetro não aplicado para este tipo de veículo.';
+      setBadge(pbevBadge, 'não aplicado', 'neutral');
+      return;
+    }
+    pbevBody.className = 'pbev-empty';
+    pbevBody.textContent = 'Buscando PBEV/Inmetro...';
+    setBadge(pbevBadge, 'buscando', 'neutral');
+    const payload = {
+      prefixo: 'fipe_plus',
+      marca: veiculo.marca,
+      modelo: veiculo.modelo,
+      texto_modelo: veiculo.texto_modelo,
+      ano: veiculo.ano_modelo_pbev || veiculo.ano_modelo,
+      ano_modelo_fipe: veiculo.ano_modelo_raw,
+      zero_km: !!veiculo.zero_km,
+      texto_ano: veiculo.texto_ano,
+      ano_codigo: veiculo.codigo_ano,
+      combustivel: veiculo.combustivel,
+      tipo_veiculo: detectarTipoPbev(veiculo),
+      codigo_fipe: veiculo.codigo_fipe,
+      codigo_marca: veiculo.codigo_marca,
+      codigo_modelo: veiculo.codigo_modelo,
+      codigo_ano: veiculo.codigo_ano,
+      marca_id: veiculo.codigo_marca,
+      modelo_id: veiculo.codigo_modelo
+    };
+    try{
+      const resp = await fetch('/api/pbev/sugestao_consumo', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json', 'Accept':'application/json'},
+        body: JSON.stringify(payload)
+      });
+      const dados = await resp.json().catch(() => ({}));
+      if (veiculoAtual?.id !== veiculo.id) return;
+      pbevAtual = dados;
+      if (!resp.ok) throw new Error(dados?.erro || 'PBEV indisponível.');
+      renderPbev(dados, veiculo);
+    }catch(e){
+      if (veiculoAtual?.id !== veiculo.id) return;
+      pbevAtual = {nivel_match:'erro', score:0, motivo:e?.message || 'Erro PBEV', diagnostico_terminal:String(e?.message || e)};
+      renderPbevIndisponivel('PBEV indisponível no momento.', pbevAtual);
+    }
+  }
+  function renderPbevIndisponivel(texto, dados){
+    const nivel = dados?.nivel_match || 'sem_match';
+    const score = isFilled(dados?.score) && Number(dados.score) > 0 ? ` · ${dados.score}` : '';
+    setBadge(pbevBadge, nivel === 'erro' ? 'erro' : 'sem match', nivel === 'erro' ? 'warn' : 'neutral');
+    pbevSubtitle.textContent = nivel === 'sem_match' ? 'sem correspondência confiável' : `match ${nivel}${score}`;
+    pbevBody.className = '';
+    pbevBody.innerHTML = `
+      <div class="pbev-empty">${esc(texto || 'Não foi encontrada correspondência confiável na base Inmetro/PBEV.')}</div>
+      <div class="pbev-actions">
+        ${dados?.diagnostico_terminal ? '<button type="button" id="btn_pbev_debug_inline" class="fipe-btn ghost">Ver análise</button>' : ''}
+      </div>`;
+    const btn = document.getElementById('btn_pbev_debug_inline');
+    if (btn) btn.onclick = () => abrirDebugPbev(dados);
+  }
+  function renderPbev(dados, veiculo){
+    if (!pbevConfiavel(dados)) {
+      renderPbevIndisponivel('Não foi encontrada correspondência confiável na base Inmetro/PBEV para este veículo.', dados);
+      return;
+    }
+    const c = dados.candidato || {};
+    const s = dados.sugestoes_consumo || {};
+    const fonte = dados.fonte_oficial || {};
+    const prop = propulsaoLegivel(c.tipo_propulsao || s.tipo);
+    const combustivel = combustivelFichaPbev(c, s, veiculo, prop);
+    const tipoHibrido = tipoHibridoLegivel(c, s, prop);
+    const transmissao = c.transmissao || '';
+    const marchas = marchasPorTransmissao(transmissao);
+    const gasDiesel = rotuloGasDiesel(c);
+    const gasCidade = primeiroValor(s.gasolina_cidade_km_l, s.gasolina_diesel_cidade_km_l);
+    const gasEstrada = primeiroValor(s.gasolina_estrada_km_l, s.gasolina_diesel_estrada_km_l);
+    const propEletricaAplicavel = /ELETRICO|ELETRICA|PHEV|PLUG|HIBRIDO PLUG|DM I|DMI|\bDM\b/.test(normalizar(`${prop} ${c.tipo_propulsao || ''} ${s.tipo || ''} ${c.versao || ''} ${c.modelo || ''}`));
+    const energiaDerivada = propEletricaAplicavel && !isFilled(s.consumo_eletrico_kwh_km) && isFilled(s.consumo_energetico_mj_km) ? (Number(s.consumo_energetico_mj_km) / 3.6) : null;
+    const metrics = [];
+    if (isFilled(gasCidade)) metrics.push(metricHtml(`${gasDiesel} cidade`, fmtValorUnidade(gasCidade, 'km/L', 1)));
+    if (isFilled(gasEstrada)) metrics.push(metricHtml(`${gasDiesel} estrada`, fmtValorUnidade(gasEstrada, 'km/L', 1)));
+    if (isFilled(s.etanol_cidade_km_l)) metrics.push(metricHtml('Etanol cidade', fmtValorUnidade(s.etanol_cidade_km_l, 'km/L', 1)));
+    if (isFilled(s.etanol_estrada_km_l)) metrics.push(metricHtml('Etanol estrada', fmtValorUnidade(s.etanol_estrada_km_l, 'km/L', 1)));
+    if (isFilled(s.diesel_cidade_km_l)) metrics.push(metricHtml('Diesel cidade', fmtValorUnidade(s.diesel_cidade_km_l, 'km/L', 1)));
+    if (isFilled(s.diesel_estrada_km_l)) metrics.push(metricHtml('Diesel estrada', fmtValorUnidade(s.diesel_estrada_km_l, 'km/L', 1)));
+    if (propEletricaAplicavel && (isFilled(s.consumo_eletrico_kwh_km) || isFilled(energiaDerivada))) metrics.push(metricHtml('Energia', fmtValorUnidade(primeiroValor(s.consumo_eletrico_kwh_km, energiaDerivada), 'kWh/km', 3)));
+    if (propEletricaAplicavel && isFilled(s.eficiencia_eletrica_km_kwh)) metrics.push(metricHtml('Eficiência', fmtValorUnidade(s.eficiencia_eletrica_km_kwh, 'km/kWh', 2)));
+    if (propEletricaAplicavel && isFilled(s.autonomia_eletrica_km)) metrics.push(metricHtml('Autonomia', fmtValorUnidade(s.autonomia_eletrica_km, 'km', 0)));
+    if (isFilled(s.consumo_energetico_mj_km)) metrics.push(metricHtml('Consumo energético', fmtValorUnidade(s.consumo_energetico_mj_km, 'MJ/km', 3)));
+
+    const specs = [
+      ['Propulsão', prop],
+      ['Combustível', combustivel],
+      ['Tipo híbrido', tipoHibrido],
+      ['Categoria', c.categoria],
+      ['Transmissão', transmissao],
+      ['Marchas', marchas],
+      ['Motor', c.motor],
+      ['PBE categoria', c.classificacao_pbe_relativa_categoria],
+      ['PBE geral', c.classificacao_pbe_absoluta_geral],
+      ['Selo CONPET', c.selo_conpet],
+      ['CO₂ fóssil', fmtValorUnidade(primeiroValor(c.co2e_fossil_vehp_g_km, c.co2_fossil_gasolina_diesel_g_km, c.co2_fossil_etanol_g_km), 'g/km', 0)],
+      ['Ar-condicionado', c.ar_condicionado],
+      ['Direção assistida', c.direcao_assistida]
+    ];
+    const specHtml = specs.filter(row => isFilled(row[1])).map(([label, value]) => `
+      <div class="plus-kv-item"><small>${esc(label)}</small><strong>${esc(value)}</strong></div>
+    `).join('');
+    setBadge(pbevBadge, `match alto · ${dados.score || 0}`, '');
+    pbevSubtitle.textContent = fonte.ano || c.ano_tabela ? `Tabela ${fonte.ano || c.ano_tabela}` : 'Inmetro/PBEV';
+    pbevBody.className = '';
+    pbevBody.innerHTML = `
+      <div class="plus-section-title">Consumo e energia</div>
+      <div class="plus-metrics">${metrics.join('') || '<div class="pbev-empty">Sem consumo exibível.</div>'}</div>
+      <div class="plus-section-title">Ficha técnica</div>
+      <div class="plus-kv">${specHtml || '<div class="pbev-empty">Ficha técnica indisponível.</div>'}</div>
+      <div class="pbev-actions">
+        <button type="button" id="btn_pbev_inmetro" class="pbev-logo-btn" title="Abrir tabela oficial Inmetro/PBEV"><img src="${esc(INMETRO_LOGO_URL)}" alt="Inmetro"></button>
+      </div>`;
+    document.getElementById('btn_pbev_inmetro')?.addEventListener('click', () => abrirTabelaInmetroPbev(dados, veiculo));
+  }
+  function dadosComprovacaoPbev(dados, veiculo){
+    const candidato = dados?.candidato || {};
+    const sugestao = dados?.sugestoes_consumo || {};
+    const payload = {
+      prefixo: 'fipe_plus',
+      origem: dados?.origem || 'Inmetro/PBEV',
+      nivel_match: dados?.nivel_match || '',
+      score: dados?.score ?? '',
+      ano_tabela_pbev: candidato.ano_tabela || dados?.ano_tabela_pbev || '',
+      criterio_consumo: sugestao.criterio_campo_unico || '',
+      fipe: {
+        marca: veiculo?.marca || '',
+        modelo: veiculo?.modelo || '',
+        texto_modelo: veiculo?.texto_modelo || '',
+        ano: veiculo?.ano_modelo || '',
+        texto_ano: veiculo?.texto_ano || '',
+        ano_codigo: veiculo?.codigo_ano || '',
+        combustivel: veiculo?.combustivel || '',
+        tipo_veiculo: detectarTipoPbev(veiculo),
+        codigo_fipe: veiculo?.codigo_fipe || ''
+      },
+      candidato,
+      sugestoes_consumo: sugestao,
+      fonte_oficial: dados?.fonte_oficial || {}
+    };
+    try{
+      if (dados?.diagnostico_terminal) {
+        const debugKey = `curve_pbev_debug_fipe_plus_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
+        localStorage.setItem(debugKey, dados.diagnostico_terminal);
+        payload.debug_key = debugKey;
+      }
+    }catch(e){}
+    return payload;
+  }
+  function abrirComprovacaoPbev(dados, veiculo){
+    if (!pbevConfiavel(dados)) return;
+    const payload = dadosComprovacaoPbev(dados, veiculo);
+    window.open(`/pbev/comprovacao?dados=${encodeURIComponent(JSON.stringify(payload))}`, '_blank', 'noopener');
+  }
+  function abrirTabelaInmetroPbev(dados, veiculo){
+    if (!pbevConfiavel(dados)) return;
+    const fonte = dados?.fonte_oficial || {};
+    const url = fonte.url || fonte.portal_url || '';
+    if (url) {
+      window.open(url, '_blank', 'noopener');
+      return;
+    }
+    abrirComprovacaoPbev(dados, veiculo);
+  }
+  function abrirDebugPbev(dados){
+    const txt = dados?.diagnostico_terminal || JSON.stringify(dados || {}, null, 2) || 'Sem análise disponível.';
+    debugText.textContent = txt;
+    debugModal.classList.add('show');
+    debugModal.setAttribute('aria-hidden','false');
+  }
+  function fecharDebug(){
+    debugModal.classList.remove('show');
+    debugModal.setAttribute('aria-hidden','true');
+  }
+  btnFecharDebug.addEventListener('click', fecharDebug);
+  debugModal.addEventListener('click', ev => { if (ev.target === debugModal) fecharDebug(); });
+  document.addEventListener('keydown', ev => { if (ev.key === 'Escape') { fecharDebug(); fecharModalIpva(); } });
+
+  function montarMemoriaCalculoRevenda(data, veiculo, horizonte){
+    const vi = Number(veiculo?.valor_num || data?.valor_atual || 0);
+    const vf = Number(primeiroValor(data?.valor_futuro, data?.valor_futuro_base));
+    const h = Math.max(1, Number(horizonte || data?.horizonte_anos || 1));
+    const M = Math.max(1, Math.round(h * 12));
+    const perda = vi > 0 && vf > 0 ? vi - vf : 0;
+    const dTotal = vi > 0 && vf > 0 ? (1 - (vf / vi)) : 0;
+    const ia = vi > 0 && vf > 0 ? (1 - Math.pow(vf / vi, 1 / h)) : 0;
+    const im = vi > 0 && vf > 0 ? (1 - Math.pow(vf / vi, 1 / M)) : 0;
+    const q = vi > 0 && vf > 0 ? Math.pow(vf / vi, 1 / M) : 0;
+    return {
+      valor_inicial_vi: vi,
+      valor_futuro_vf: vf,
+      horizonte_anos: h,
+      horizonte_meses: M,
+      perda_economica: perda,
+      depreciacao_total_percentual: dTotal * 100,
+      taxa_anual_equivalente_percentual: ia * 100,
+      taxa_mensal_equivalente_percentual: im * 100,
+      coeficiente_mensal_q: q,
+      formulas: [
+        'D_total = 1 - (VF / VI)',
+        'P = VI - VF',
+        'i_a = 1 - (VF / VI)^(1 / h)',
+        'i_m = 1 - (VF / VI)^(1 / M)',
+        'V_m = VI × (1 - i_m)^m'
+      ]
+    };
+  }
+
+  function montarResultadoAuditoriaRevenda(data, veiculo, horizonte){
+    const memoria = montarMemoriaCalculoRevenda(data, veiculo, horizonte);
+    const pacote = JSON.parse(JSON.stringify(data || {}));
+    pacote.origem_interface = 'Consulta Fipe+';
+    pacote.memoria_calculo_fipe_plus = memoria;
+    pacote.valor_atual = memoria.valor_inicial_vi || pacote.valor_atual;
+    pacote.valor_futuro = memoria.valor_futuro_vf || pacote.valor_futuro;
+    pacote.valor_futuro_base = memoria.valor_futuro_vf || pacote.valor_futuro_base || pacote.valor_futuro;
+    pacote.horizonte_anos = memoria.horizonte_anos;
+    pacote.horizonte_meses = memoria.horizonte_meses;
+    pacote.depreciacao_percentual = Math.abs(memoria.depreciacao_total_percentual || pacote.depreciacao_percentual || 0);
+    pacote.perda_economica = memoria.perda_economica;
+    pacote.codigo_fipe = veiculo?.codigo_fipe || pacote.codigo_fipe;
+    pacote.marca = veiculo?.marca || pacote.marca;
+    pacote.modelo = veiculo?.modelo || pacote.modelo;
+    pacote.ano_modelo = veiculo?.ano_modelo_label || veiculo?.texto_ano || pacote.ano_modelo;
+    pacote.data_base_fipe = veiculo?.mes_referencia || pacote.data_base_fipe;
+    pacote.detalhes = pacote.detalhes || {};
+    pacote.detalhes.veiculo = Object.assign({}, pacote.detalhes.veiculo || {}, {
+      marca: veiculo?.marca || '',
+      modelo: veiculo?.modelo || '',
+      ano_modelo: veiculo?.ano_modelo_label || veiculo?.texto_ano || '',
+      ano_combustivel: veiculo?.texto_ano || '',
+      combustivel: veiculo?.combustivel || '',
+      codigo_fipe: veiculo?.codigo_fipe || '',
+      valor_atual: memoria.valor_inicial_vi,
+      referencia_fipe: veiculo?.mes_referencia || ''
+    });
+    pacote.detalhes.horizonte_anos = memoria.horizonte_anos;
+    pacote.detalhes.horizonte_meses = memoria.horizonte_meses;
+    pacote.detalhes.memoria_calculo_fipe_plus = memoria;
+    const textoCalculo = [
+      'MEMÓRIA DE CÁLCULO DA REVENDA - CONSULTA FIPE+',
+      `VI = ${fmtMoeda(memoria.valor_inicial_vi)} (valor FIPE atual)`,
+      `VF = ${fmtMoeda(memoria.valor_futuro_vf)} (valor estimado no horizonte)`,
+      `h = ${memoria.horizonte_anos} ano(s)` ,
+      `M = ${memoria.horizonte_meses} meses`,
+      `P = VI - VF = ${fmtMoeda(memoria.perda_economica)}`,
+      `D_total = 1 - (VF / VI) = ${fmtNum(Math.abs(memoria.depreciacao_total_percentual), 2)}%`,
+      `i_a = 1 - (VF / VI)^(1/h) = ${fmtNum(Math.abs(memoria.taxa_anual_equivalente_percentual), 4)}% a.a.`,
+      `i_m = 1 - (VF / VI)^(1/M) = ${fmtNum(Math.abs(memoria.taxa_mensal_equivalente_percentual), 6)}% a.m.`,
+      `q = (VF / VI)^(1/M) = ${Number(memoria.coeficiente_mensal_q || 0).toFixed(8).replace('.', ',')}`
+    ].join('\n');
+    pacote.relatorio_textual = [textoCalculo, pacote.relatorio_textual || pacote.relatorio_tecnico || ''].filter(Boolean).join('\n\n');
+    pacote.relatorio_tecnico = pacote.relatorio_textual;
+    return pacote;
+  }
+
+  function abrirAuditoriaRevenda(){
+    if (!revendaAtual?.resultado?.encontrado) {
+      window.alert('Estime a revenda primeiro para abrir a auditoria.');
+      return;
+    }
+    try{
+      const chave = `aud_fipe_plus_${Date.now()}_${Math.random().toString(36).slice(2,10)}`;
+      const pacote = {
+        gerado_em: new Date().toISOString(),
+        origem: 'CurVE - Consulta Fipe+ / revenda',
+        tipo_auditoria: 'revenda_fipe_plus',
+        resultado: revendaAtual.resultado
+      };
+      localStorage.setItem(`curve_auditoria_depreciacao_${chave}`, JSON.stringify(pacote));
+      window.open(`/depreciacao/auditoria?key=${encodeURIComponent(chave)}`, '_blank', 'noopener');
+    }catch(e){
+      console.error(e);
+      window.alert('Não consegui abrir a auditoria da revenda.');
+    }
+  }
+
+  function exportarPdfFipePlus(){
+    if (!veiculoAtual) {
+      window.alert('Consulte um veículo primeiro.');
+      return;
+    }
+    document.body.classList.add('fipe-plus-print-mode');
+    window.setTimeout(() => {
+      window.print();
+      window.setTimeout(() => document.body.classList.remove('fipe-plus-print-mode'), 500);
+    }, 120);
+  }
+
+  async function estimarRevenda(){
+    const veiculo = veiculoAtual;
+    if (!veiculo) { statusRevenda('Consulte a FIPE primeiro.', true); return; }
+    const horizonte = Math.max(1, Math.min(20, parseInt(document.getElementById('fipe_plus_horizonte').value || '5', 10) || 5));
+    document.getElementById('fipe_plus_horizonte').value = horizonte;
+    btnRevenda.disabled = true;
+    statusRevenda('Buscando curva publicada...');
+    revendaOutput.classList.remove('show');
+    revendaOutput.innerHTML = '';
+    setBadge(revendaBadge, 'buscando', 'neutral');
+    const payload = montarPayloadDepreciacao(veiculo, horizonte);
+    try{
+      const resp = await fetch('/api/depreciacao/resumo', {
+        method:'POST',
+        headers:{'Content-Type':'application/json','Accept':'application/json'},
+        body:JSON.stringify(payload)
+      });
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok) throw new Error(data?.erro || 'Erro ao consultar revenda.');
+      if (veiculoAtual?.id !== veiculo.id) return;
+      renderRevenda(data, veiculo, horizonte);
+    }catch(e){
+      statusRevenda(e?.message || 'Erro ao consultar revenda.', true);
+      setBadge(revendaBadge, 'erro', 'warn');
+    }finally{
+      btnRevenda.disabled = false;
+    }
+  }
+  function renderRevenda(data, veiculo, horizonte){
+    const futuro = Number(primeiroValor(data?.valor_futuro, data?.valor_futuro_base));
+    const atual = Number(veiculo?.valor_num || data?.valor_atual || 0);
+    if (!data?.encontrado || !(futuro > 0)) {
+      statusRevenda('');
+      setBadge(revendaBadge, 'sem curva', 'neutral');
+      revendaAtual = null;
+      revendaOutput.innerHTML = '<div class="revenda-empty">Estimativa indisponível para este veículo.</div>';
+      revendaOutput.classList.add('show');
+      scrollSuave(document.getElementById('revenda_card'), 'center');
+      return;
+    }
+    const perda = atual - futuro;
+    const pct = Number.isFinite(Number(data?.depreciacao_percentual)) ? Number(data.depreciacao_percentual) : (atual > 0 ? (perda / atual) * 100 : 0);
+    const detalhes = data?.detalhes || {};
+    const similaridade = !!(data?.curva_por_similaridade || detalhes.curva_por_similaridade || data?.similaridade_curva || detalhes.similaridade_curva);
+    const propria = !!(data?.curva_propria || detalhes.curva_propria);
+    const tipoCurva = similaridade ? 'Similaridade' : (propria ? 'Própria' : 'Curva salva');
+    const referencia = primeiroValor(data?.modelo_referencia_similaridade, detalhes.modelo_referencia_similaridade, data?.modelo_referencia, detalhes.modelo_referencia, data?.chave_curva_referencia, detalhes.chave_curva_referencia);
+    const variacaoLabel = perda >= 0 ? 'Perda estimada' : 'Ganho estimado';
+    setBadge(revendaBadge, similaridade ? 'similaridade' : 'curva', similaridade ? 'warn' : '');
+    statusRevenda('');
+    const linhas = [
+      ['Valor FIPE atual', fmtMoeda(atual)],
+      [variacaoLabel, fmtMoeda(Math.abs(perda))],
+      ['Variação', `${fmtNum(Math.abs(pct), 2)}%`],
+      ['Horizonte', `${horizonte} ano(s)`],
+      ['Origem', primeiroValor(data?.origem_curva, detalhes.origem_curva, tipoCurva)],
+      ['Tipo', tipoCurva],
+      ['Confiança', primeiroValor(data?.confianca, detalhes.confianca)],
+      ['Referência', referencia]
+    ];
+    const resultadoAuditoria = montarResultadoAuditoriaRevenda(data, veiculo, horizonte);
+    revendaAtual = {resultado: resultadoAuditoria, veiculo, horizonte};
+    revendaOutput.innerHTML = `
+      <p class="revenda-valor">${esc(fmtMoeda(futuro))}</p>
+      <p class="revenda-sub">Valor estimado de revenda</p>
+      <div class="plus-kv">${linhas.filter(l => isFilled(l[1])).map(([label, value]) => `<div class="plus-kv-item"><small>${esc(label)}</small><strong>${esc(value)}</strong></div>`).join('')}</div>
+      <div class="revenda-actions">
+        <button type="button" id="btn_auditoria_revenda" class="fipe-btn secondary">Auditoria</button>
+      </div>
+    `;
+    revendaOutput.classList.add('show');
+    document.getElementById('btn_auditoria_revenda')?.addEventListener('click', abrirAuditoriaRevenda);
+    scrollSuave(document.getElementById('revenda_card'), 'center');
+  }
+
+
+  const UFS_BR = [
+    ['AC','Acre'],['AL','Alagoas'],['AP','Amapá'],['AM','Amazonas'],['BA','Bahia'],['CE','Ceará'],['DF','Distrito Federal'],['ES','Espírito Santo'],['GO','Goiás'],['MA','Maranhão'],['MT','Mato Grosso'],['MS','Mato Grosso do Sul'],['MG','Minas Gerais'],['PA','Pará'],['PB','Paraíba'],['PR','Paraná'],['PE','Pernambuco'],['PI','Piauí'],['RJ','Rio de Janeiro'],['RN','Rio Grande do Norte'],['RS','Rio Grande do Sul'],['RO','Rondônia'],['RR','Roraima'],['SC','Santa Catarina'],['SP','São Paulo'],['SE','Sergipe'],['TO','Tocantins']
+  ];
+  const MAPA_ESTADO_NOME_PARA_UF_IPVA = UFS_BR.reduce((acc, [uf, nome]) => { acc[normalizar(nome)] = uf; return acc; }, {});
+
+  function statusIpvaModal(msg, erro=false){
+    if (!ipvaModalStatus) return;
+    ipvaModalStatus.textContent = msg || '';
+    ipvaModalStatus.classList.toggle('error', !!erro);
+  }
+  function preencherUfsIpva(){
+    if (!ipvaUf || ipvaUf.dataset.carregado === '1') return;
+    ipvaUf.innerHTML = '<option value="">Selecione</option>';
+    UFS_BR.forEach(([uf, nome]) => {
+      const option = document.createElement('option');
+      option.value = uf;
+      option.textContent = `${uf} - ${nome}`;
+      ipvaUf.appendChild(option);
+    });
+    ipvaUf.dataset.carregado = '1';
+  }
+  async function carregarMunicipiosIpva(uf, municipioPreferido=''){
+    if (!ipvaMunicipio) return;
+    ipvaMunicipio.innerHTML = '<option value="">Carregando...</option>';
+    ipvaMunicipio.disabled = true;
+    if (!uf) {
+      ipvaMunicipio.innerHTML = '<option value="">Selecione a UF</option>';
+      return;
+    }
+    try{
+      const resp = await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${encodeURIComponent(uf)}/municipios`);
+      const lista = await resp.json();
+      ipvaMunicipio.innerHTML = '<option value="">Selecione o município</option>';
+      (Array.isArray(lista) ? lista : []).forEach(m => {
+        const option = document.createElement('option');
+        option.value = m.nome;
+        option.textContent = m.nome;
+        ipvaMunicipio.appendChild(option);
+      });
+      ipvaMunicipio.disabled = false;
+      if (municipioPreferido) {
+        const alvo = Array.from(ipvaMunicipio.options).find(opt => normalizar(opt.textContent) === normalizar(municipioPreferido));
+        if (alvo) ipvaMunicipio.value = alvo.value;
+      }
+    }catch(e){
+      ipvaMunicipio.innerHTML = '<option value="">Erro ao carregar municípios</option>';
+      statusIpvaModal('Não consegui carregar municípios. Tente selecionar só a UF.', true);
+    }
+  }
+  function abrirModalIpva(){
+    if (!veiculoAtual) {
+      window.alert('Consulte um veículo primeiro.');
+      return;
+    }
+    preencherUfsIpva();
+    statusIpvaModal('');
+    ipvaModal?.classList.add('show');
+    ipvaModal?.setAttribute('aria-hidden','false');
+  }
+  function fecharModalIpva(){
+    ipvaModal?.classList.remove('show');
+    ipvaModal?.setAttribute('aria-hidden','true');
+  }
+  async function usarMinhaLocalizacaoIpva(){
+    if (!navigator.geolocation) {
+      statusIpvaModal('Seu navegador não permite geolocalização automática.', true);
+      return;
+    }
+    preencherUfsIpva();
+    statusIpvaModal('Identificando localização...');
+    navigator.geolocation.getCurrentPosition(async (pos) => {
+      try{
+        const lat = pos.coords.latitude;
+        const lon = pos.coords.longitude;
+        const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&zoom=10&addressdetails=1`;
+        const resp = await fetch(url, {headers:{'Accept-Language':'pt-BR'}});
+        const data = await resp.json();
+        const address = data.address || {};
+        const estadoNome = address.state || address.region || '';
+        const uf = MAPA_ESTADO_NOME_PARA_UF_IPVA[normalizar(estadoNome)] || String(address.state_code || '').toUpperCase();
+        const municipio = address.city || address.town || address.village || address.municipality || address.county || '';
+        if (!uf) {
+          statusIpvaModal('Não foi possível identificar a UF automaticamente.', true);
+          return;
+        }
+        ipvaUf.value = uf;
+        await carregarMunicipiosIpva(uf, municipio);
+        statusIpvaModal(municipio ? `Localização: ${municipio}/${uf}` : `Localização: ${uf}`);
+      }catch(e){
+        statusIpvaModal('Não foi possível usar a localização automática.', true);
+      }
+    }, () => statusIpvaModal('Permissão de localização negada ou indisponível.', true), {enableHighAccuracy:false, timeout:12000, maximumAge:300000});
+  }
+  function anoFabricacaoIpva(veiculo){
+    if (!veiculo) return new Date().getFullYear();
+    if (veiculo.zero_km) return new Date().getFullYear();
+    const n = parseInt(veiculo.ano_modelo_raw || veiculo.ano_modelo || '', 10);
+    return Number.isFinite(n) && n > 1900 ? n : new Date().getFullYear();
+  }
+  function combustivelParaIpva(veiculo){
+    const prop = propulsaoLegivel(pbevAtual?.candidato?.tipo_propulsao || pbevAtual?.sugestoes_consumo?.tipo || '');
+    const combustivelPbev = combustivelFichaPbev(pbevAtual?.candidato || {}, pbevAtual?.sugestoes_consumo || {}, veiculo || {}, prop);
+    return [prop, combustivelPbev, veiculo?.combustivel || '', veiculo?.texto_ano || ''].filter(Boolean).join(' ');
+  }
+  function tipoPropulsaoParaIpva(){
+    return [
+      pbevAtual?.candidato?.tipo_propulsao,
+      pbevAtual?.candidato?.tipo_propulsao_normalizado,
+      pbevAtual?.sugestoes_consumo?.tipo,
+      tipoHibridoLegivel(pbevAtual?.candidato || {}, pbevAtual?.sugestoes_consumo || {}, '')
+    ].filter(Boolean).join(' ');
+  }
+  function pbevCampoIpva(nome){
+    const c = pbevAtual?.candidato || {};
+    return c?.[nome] || '';
+  }
+  function criterioIpvaLegivel(item){
+    const criterio = String(item?.criterio || '').replaceAll('_', ' ');
+    return item?.regra || criterio || 'Alíquota por UF';
+  }
+  function valorBaseIpvaAno(indice, total){
+    const vi = Number(veiculoAtual?.valor_num || 0);
+    const mem = revendaAtual?.resultado?.memoria_calculo_fipe_plus || {};
+    const vf = Number(mem.valor_futuro_vf || revendaAtual?.resultado?.valor_futuro || 0);
+    const h = Math.max(1, Number(mem.horizonte_anos || revendaAtual?.horizonte || total || 1));
+    if (vi > 0 && vf > 0 && h > 0 && indice > 0) {
+      return vi * Math.pow(vf / vi, indice / h);
+    }
+    return vi;
+  }
+  async function calcularIpvaFipePlus(){
+    if (!veiculoAtual) {
+      statusIpvaModal('Consulte um veículo primeiro.', true);
+      return;
+    }
+    const uf = String(ipvaUf?.value || '').toUpperCase();
+    const municipio = String(ipvaMunicipio?.value || '').trim();
+    if (!uf) {
+      statusIpvaModal('Selecione a UF.', true);
+      return;
+    }
+    fecharModalIpva();
+    setBadge(ipvaBadge, 'calculando', 'neutral');
+    ipvaSubtitle.textContent = municipio ? `${municipio}/${uf}` : uf;
+    ipvaBody.className = 'pbev-empty';
+    ipvaBody.textContent = 'Calculando IPVA...';
+    const anoAtual = new Date().getFullYear();
+    const temRevenda = !!(revendaAtual?.resultado?.encontrado && revendaAtual?.horizonte);
+    const totalAnos = temRevenda ? Math.max(1, Math.min(20, Number(revendaAtual.horizonte) || 1)) : 1;
+    const anoFab = anoFabricacaoIpva(veiculoAtual);
+    const combustivel = combustivelParaIpva(veiculoAtual);
+    const linhas = [];
+    try{
+      for (let i = 0; i < totalAnos; i++) {
+        const anoCalendario = anoAtual + i;
+        const base = valorBaseIpvaAno(i, totalAnos);
+        const params = new URLSearchParams({
+          uf,
+          valor: base.toFixed(2),
+          ano: String(anoFab || ''),
+          ano_calendario: String(anoCalendario),
+          combustivel,
+          tipo_propulsao: tipoPropulsaoParaIpva(),
+          motor: pbevCampoIpva('motor'),
+          categoria: pbevCampoIpva('categoria'),
+          uso: 'particular',
+          ano_aquisicao: String(anoFab || ''),
+          valor_primeira_compra: String(veiculoAtual?.valor_num || base || ''),
+          zero_km: veiculoAtual?.zero_km ? '1' : ''
+        });
+        const resp = await fetch(`/ipva_estimado?${params.toString()}`, {headers:{'Accept':'application/json'}});
+        const data = await resp.json().catch(() => ({}));
+        if (!resp.ok) throw new Error(data?.erro || 'Erro ao consultar IPVA.');
+        linhas.push({
+          ano: anoCalendario,
+          base,
+          ipva: Number(data.ipva || 0),
+          aliquota_percentual: data.aliquota_percentual,
+          criterio: data.criterio,
+          regra: data.regra,
+          observacao: data.observacao,
+          memoria: data.memoria,
+          cilindrada_cc: data.cilindrada_cc,
+          potencia_cv: data.potencia_cv,
+          tecnologia: data.tecnologia,
+          isento: data.isento,
+          isencao_idade: data.isencao_idade,
+          beneficio_tecnologia: data.beneficio_tecnologia,
+          ano_fabricacao: data.ano_fabricacao,
+          idade_veiculo: data.idade_veiculo
+        });
+      }
+      renderIpva({uf, municipio, linhas, temRevenda, anoFabricacao: anoFab});
+    }catch(e){
+      setBadge(ipvaBadge, 'erro', 'warn');
+      ipvaBody.className = 'pbev-empty';
+      ipvaBody.textContent = e?.message || 'Erro ao consultar IPVA.';
+    }
+  }
+  function renderIpva(resultado){
+    ipvaAtual = resultado;
+    setBadge(ipvaBadge, 'calculado', '');
+    ipvaSubtitle.textContent = resultado.municipio ? `${resultado.municipio}/${resultado.uf}` : resultado.uf;
+    const total = resultado.linhas.reduce((acc, item) => acc + Number(item.ipva || 0), 0);
+    const rows = resultado.linhas.map(item => `
+      <div class="ipva-row">
+        <span>IPVA ${esc(item.ano)}</span>
+        <strong>${esc(fmtMoeda(item.ipva))}</strong>
+      </div>
+    `).join('');
+    const totalRow = resultado.linhas.length > 1 ? `
+      <div class="ipva-row total">
+        <span>Total do período</span>
+        <strong>${esc(fmtMoeda(total))}</strong>
+      </div>
+    ` : '';
+    const primeiro = resultado.linhas[0] || {};
+    const aliquotas = [...new Set(resultado.linhas.map(i => isFilled(i.aliquota_percentual) ? `${fmtNum(i.aliquota_percentual, 2)}%` : '').filter(Boolean))];
+    const aliquotaLabel = aliquotas.length === 1 ? aliquotas[0] : (aliquotas.length ? 'varia por ano' : '—');
+    const statusRegra = primeiro.isencao_idade ? 'Isento por idade' : (primeiro.beneficio_tecnologia ? 'Benefício tecnológico' : (primeiro.isento ? 'Isento' : 'Alíquota aplicada'));
+    const infoRows = [
+      ['Local', resultado.municipio ? `${resultado.municipio}/${resultado.uf}` : resultado.uf],
+      ['Status', statusRegra],
+      ['Alíquota', aliquotaLabel],
+      ['Critério', criterioIpvaLegivel(primeiro)],
+      ['Tecnologia', primeiro.tecnologia || '—'],
+      ['Idade', isFilled(primeiro.idade_veiculo) ? `${primeiro.idade_veiculo} ano(s)` : 'não informada'],
+      ['Cilindrada', isFilled(primeiro.cilindrada_cc) ? `${primeiro.cilindrada_cc} cc` : 'não informada'],
+      ['Potência', isFilled(primeiro.potencia_cv) ? `${primeiro.potencia_cv} cv` : 'não informada']
+    ];
+    const nota = primeiro.observacao || (resultado.temRevenda
+      ? 'Anos futuros usam a base de revenda estimada pela CurVE.'
+      : 'Para projetar anos futuros, estime a revenda primeiro.');
+    ipvaBody.className = '';
+    ipvaBody.innerHTML = `
+      <div class="ipva-list-rows">${rows}${totalRow}</div>
+      <div class="ipva-list-rows" style="margin-top:12px">
+        ${infoRows.filter(r => isFilled(r[1])).map(([label, value]) => `<div class="ipva-row"><span>${esc(label)}</span><strong>${esc(value)}</strong></div>`).join('')}
+      </div>
+      <p class="plus-note">${esc(nota)}</p>
+    `;
+    scrollSuave(document.getElementById('ipva_card'), 'center');
+  }
+
   async function carregarMarcas(){
     const token = requestToken();
     resetSelect(selects.marca, 'Carregando marcas...', true);
@@ -233,19 +1285,20 @@
     try{
       const data = await getJSON(`/api/fipe/publica/anos?tipo=${encodeURIComponent(tipoAtual)}&codigo_marca=${encodeURIComponent(marca)}&codigo_modelo=${encodeURIComponent(modelo)}`, token);
       resetSelect(selects.ano, 'Selecione', false);
-      (Array.isArray(data) ? data : []).forEach(a => selects.ano.appendChild(opt(formatarAnoZeroKm(a.nome || 'Ano'), a.codigo || '')));
+      ordenarAnosFipeParaTela(Array.isArray(data) ? data : []).forEach(a => selects.ano.appendChild(opt(formatarAnoZeroKm(a.nome || 'Ano'), a.codigo || '')));
       status('');
     }catch(e){ if(e.message !== '__stale__') { resetSelect(selects.ano,'Não foi possível carregar anos',true); status(e.message,true); } }
   }
   async function consultarPreco(){
     const marca = selects.marca.value, modelo = selects.modelo.value, ano = selects.ano.value;
     if(!marca || !modelo || !ano){ status('Selecione marca, modelo e ano/combustível.', true); return; }
-    const token = requestToken(); status('Consultando valor FIPE atualizado...');
+    const token = requestToken(); status('Consultando FIPE...');
     try{
       const data = await getJSON(`/api/fipe/publica/preco?tipo=${encodeURIComponent(tipoAtual)}&codigo_marca=${encodeURIComponent(marca)}&codigo_modelo=${encodeURIComponent(modelo)}&codigo_ano=${encodeURIComponent(ano)}`, token);
       showResult(data); status('Consulta concluída.');
     }catch(e){ if(e.message !== '__stale__') { hideResult(); status(e.message,true); } }
   }
+
   document.querySelectorAll('.fipe-type').forEach(btn => {
     btn.addEventListener('click', () => {
       tipoAtual = btn.dataset.tipo || 'carros';
@@ -258,6 +1311,15 @@
   selects.ano.addEventListener('change', hideResult);
   btnConsultar.addEventListener('click', consultarPreco);
   btnLimpar.addEventListener('click', () => carregarMarcas());
+  document.getElementById('btn_imprimir_fipe_plus_topo')?.addEventListener('click', exportarPdfFipePlus);
+  btnRevenda.addEventListener('click', estimarRevenda);
+  btnAbrirIpva?.addEventListener('click', abrirModalIpva);
+  btnFecharIpvaModal?.addEventListener('click', fecharModalIpva);
+  btnCancelarIpva?.addEventListener('click', fecharModalIpva);
+  btnConfirmarIpva?.addEventListener('click', calcularIpvaFipePlus);
+  btnIpvaGeo?.addEventListener('click', usarMinhaLocalizacaoIpva);
+  ipvaUf?.addEventListener('change', () => carregarMunicipiosIpva(ipvaUf.value));
+  ipvaModal?.addEventListener('click', ev => { if (ev.target === ipvaModal) fecharModalIpva(); });
   carregarMarcas();
 })();
 </script>

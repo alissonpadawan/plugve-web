@@ -6,6 +6,7 @@
   <title>CurVE | Decisão com dados</title>
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/favicon.png') }}">
   <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/favicon-180.png') }}">
+  <link rel="preload" as="image" href="{{ url_for('static', filename='img/curve-home-main.webp') }}" type="image/webp" fetchpriority="high">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
@@ -76,9 +77,9 @@
       </a>
       <nav class="site-nav" aria-label="Menu principal">
         <a href="/" class="active">Início</a>
-        <a href="/simular">Simular</a>
+        <a href="/simular">Simular TCO</a>
         <a href="/depreciacao">Depreciação</a>
-        <a href="/consulta-fipe">Consulta FIPE</a>
+        <a href="/consulta-fipe">Consulta Fipe+</a>
         <a href="/sobre">Sobre</a>
         <a href="/contato">Contato</a>
       </nav>
@@ -86,7 +87,7 @@
   </header>
   <main class="home-shell">
     <section class="home-hero" aria-label="CurVE — Decisão com dados">
-      <img src="{{ url_for('static', filename='img/curve-home-main.png') }}" alt="CurVE — Decisão com dados para mobilidade e análise veicular" loading="eager" decoding="async">
+      <img src="{{ url_for('static', filename='img/curve-home-main.webp') }}" alt="CurVE — Decisão com dados para mobilidade e análise veicular" width="1600" height="900" loading="eager" decoding="async" fetchpriority="high">
       <div class="hero-actions">
         <a class="btn-start" href="#opcoes">Começar</a>
       </div>
@@ -102,7 +103,7 @@
 
       <div class="home-cards">
         <a class="home-card" href="/simular" aria-label="Abrir simulação de custo total de propriedade">
-          <div class="home-card-media"><img src="{{ url_for('static', filename='img/home-card-tco.png') }}" alt="Comparação de custo total de propriedade entre veículos"></div>
+          <div class="home-card-media"><img src="{{ url_for('static', filename='img/home-card-tco.webp') }}" alt="Comparação de custo total de propriedade entre veículos" width="900" height="507" loading="lazy" decoding="async"></div>
           <div class="home-card-body">
             <h2>Custo Total de Propriedade</h2>
             <p>Descubra o custo real do veículo. Compare energia, combustível, manutenção, impostos, revenda e mais.</p>
@@ -111,7 +112,7 @@
         </a>
 
         <a class="home-card" href="/depreciacao" aria-label="Abrir análise de depreciação veicular">
-          <div class="home-card-media"><img src="{{ url_for('static', filename='img/home-card-depreciacao.png') }}" alt="Depreciação veicular representada por carro e moedas"></div>
+          <div class="home-card-media"><img src="{{ url_for('static', filename='img/home-card-depreciacao.webp') }}" alt="Depreciação veicular representada por carro e moedas" width="900" height="507" loading="lazy" decoding="async"></div>
           <div class="home-card-body">
             <h2>Depreciação Veicular</h2>
             <p>Antecipe a desvalorização. Estime valor futuro e perda econômica com base no histórico FIPE.</p>
@@ -119,12 +120,12 @@
           </div>
         </a>
 
-        <a class="home-card" href="/consulta-fipe" aria-label="Abrir consulta FIPE para carros, motos e caminhões">
-          <div class="home-card-media"><img src="{{ url_for('static', filename='img/home-card-fipe.png') }}" alt="Consulta FIPE para carro, moto e caminhão"></div>
+        <a class="home-card" href="/consulta-fipe" aria-label="Abrir Consulta Fipe+ para carros, motos e caminhões">
+          <div class="home-card-media"><img src="{{ url_for('static', filename='img/home-card-fipe.webp') }}" alt="Consulta FIPE para carro, moto e caminhão" width="900" height="533" loading="lazy" decoding="async"></div>
           <div class="home-card-body">
-            <h2>Consulta FIPE</h2>
-            <p>Consulte preços atualizados de carros, motos e caminhões por marca, modelo e ano.</p>
-            <span class="home-card-action">Consultar FIPE →</span>
+            <h2>Consulta Fipe+</h2>
+            <p>Consulte FIPE, consumo oficial e revenda estimada quando houver dados.</p>
+            <span class="home-card-action">Abrir Fipe+ →</span>
           </div>
         </a>
       </div>
@@ -140,7 +141,7 @@
                 {% for noticia in noticias %}
                   <a class="news-card" href="{{ noticia.url }}" target="_blank" rel="noopener noreferrer">
                     <div class="news-thumb">
-                      <img src="{{ noticia.imagem or url_for('static', filename='img/curve-home-main.png') }}" alt="{{ noticia.titulo }}" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='{{ url_for('static', filename='img/curve-home-main.png') }}';">
+                      <img src="{{ noticia.imagem or url_for('static', filename='img/curve-home-main.webp') }}" alt="{{ noticia.titulo }}" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='{{ url_for('static', filename='img/curve-home-main.webp') }}';">
                       <span class="news-source">{{ noticia.fonte }}</span>
                     </div>
                     <div class="news-body">
