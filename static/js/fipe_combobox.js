@@ -39,14 +39,7 @@
 
   function textoOpcao(option) {
     if (!option) return "";
-    const codigo = String(option.value || "");
-    const visual = limparMarcadorCurva(option.textContent || option.label || "");
-    const original = limparMarcadorCurva(option.dataset.nome || option.dataset.nomeOriginal || visual || "");
-    if (codigo.startsWith("32000")) {
-      const base = visual || original;
-      return String(base || "").replace(/^\s*32000\b/i, "Zero km").replace(/^\s*0\s*km\b/i, "Zero km");
-    }
-    return original;
+    return limparMarcadorCurva(option.dataset.nome || option.dataset.nomeOriginal || option.textContent || option.label || "");
   }
 
   function opcaoSelecionada(select) {
