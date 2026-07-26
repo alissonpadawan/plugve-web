@@ -600,6 +600,7 @@
     .plugve-fuel-compact-row span{white-space:nowrap}
     .plugve-fuel-compact-row span:first-child{color:#166534}
     .plugve-fuel-compact-row span:last-child{color:#991b1b;text-align:right}
+    .plugve-fuel-compact-row span.hidden{display:none!important}
     .plugve-fuel-card[data-fuel-mode="diesel"] .plugve-fuel-compact-row span{color:#78350f}
     .plugve-fuel-card[data-fuel-mode="gasolina"] .plugve-fuel-compact-row span{color:#991b1b}
     .plugve-fuel-card[data-fuel-mode="etanol"] .plugve-fuel-compact-row span{color:#166534}
@@ -646,8 +647,11 @@
     .plugve-pbev-inline-field input{padding-right:2.35rem}
     .plugve-pbev-inline-status{position:absolute;right:.35rem;top:50%;transform:translateY(-50%);display:flex;align-items:center;justify-content:center;z-index:2}
     .plugve-pbev-inline-status.hidden{display:none!important}
-    .plugve-pbev-inline-status .plugve-pbev-proof-btn-main{width:1.7rem;height:1.7rem;border-color:#dbe3ea;background:#fff;padding:.16rem}
+    .plugve-pbev-inline-status .plugve-pbev-proof-btn-main{width:1.7rem;height:1.7rem;border:0;background:transparent;border-radius:0;padding:.16rem;box-shadow:none;transform:none}
     .plugve-pbev-inline-status .plugve-pbev-proof-btn-main img{max-width:1rem;max-height:1rem}
+    .plugve-pbev-field-wrap>.plugve-pbev-status .plugve-pbev-proof-btn-main{width:1.9rem;height:1.9rem;border:0;background:transparent;border-radius:0;padding:.22rem;box-shadow:none;transform:none}
+    .plugve-pbev-inline-status .plugve-pbev-proof-btn-main:hover,.plugve-pbev-field-wrap>.plugve-pbev-status .plugve-pbev-proof-btn-main:hover{border:0;background:transparent;box-shadow:none;transform:none}
+    .plugve-pbev-inline-status .plugve-pbev-proof-btn-main:focus-visible,.plugve-pbev-field-wrap>.plugve-pbev-status .plugve-pbev-proof-btn-main:focus-visible{outline:2px solid #2563eb;outline-offset:2px;border-radius:.2rem}
     .plugve-pbev-clickable{cursor:pointer!important;box-shadow:none!important}
     .plugve-pbev-clickable:hover{border-color:#94a3b8!important;background:#fff!important}
     .plugve-pbev-debug-btn{margin-top:.32rem;display:inline-flex;align-items:center;gap:.35rem;border:1px solid #cbd5e1;background:#f8fafc;color:#334155;border-radius:999px;padding:.28rem .58rem;font-size:.68rem;font-weight:900;line-height:1;cursor:pointer;box-shadow:0 4px 10px rgba(15,23,42,.06)}
@@ -695,12 +699,18 @@
     .plugve-energy-row .plugve-energy-tooltip{max-width:100%}
     .plugve-energy-row .plugve-energy-tooltip-trigger{display:inline-flex;align-items:center;justify-content:flex-end;gap:.25rem;max-width:100%;white-space:nowrap}
     .plugve-energy-row .plugve-energy-tooltip-panel{left:auto;right:0;text-align:left}
-    .plugve-energy-input-wrap{display:flex;align-items:center;gap:.45rem;min-width:9.8rem}
+    .plugve-energy-input-wrap{display:flex;align-items:center;gap:.45rem;min-width:0}
     .plugve-energy-input-wrap .plugve-money-field{flex:1}
     .plugve-energy-input-wrap .plugve-money-prefix{display:block}
     .plugve-energy-input-wrap input{width:100%;border:1px solid #e5e7eb;border-radius:.65rem;background:#fff;padding:.45rem .55rem .45rem 2.05rem;text-align:right;font-weight:900;color:#0f172a;font-variant-numeric:tabular-nums;box-shadow:inset 0 1px 2px rgba(15,23,42,.06)}
+    #plugve_energy_card,#plugve_fuel_card{box-sizing:border-box;min-height:7.85rem;padding:.8rem .9rem}
+    #plugve_energy_card .plugve-fuel-compact-top,#plugve_fuel_card .plugve-fuel-compact-top{display:grid;grid-template-columns:minmax(0,1fr) 9.6rem;align-items:center;gap:.8rem}
+    #plugve_energy_card .plugve-fuel-title small,#plugve_fuel_card .plugve-fuel-title small{white-space:nowrap}
+    #plugve_energy_card .plugve-energy-input-wrap,#plugve_fuel_card .plugve-field-source-wrap{width:9.6rem;min-width:9.6rem;max-width:9.6rem}
+    #plugve_fuel_card .plugve-fuel-money-field{width:100%;max-width:none}
+    #plugve_fuel_card[data-fuel-mode="flex"] .plugve-fuel-compact-top{grid-template-columns:1fr}
 
-    @media(max-width:760px){.plugve-fuel-compact-top{align-items:flex-start;flex-direction:column}.plugve-fuel-compact-price{align-self:flex-end}.plugve-fuel-prices{grid-template-columns:1fr}.plugve-fuel-modal-actions button{flex:1}}
+    @media(max-width:760px){.plugve-fuel-compact-top{align-items:flex-start;flex-direction:column}.plugve-fuel-compact-price{align-self:flex-end}.plugve-fuel-prices{grid-template-columns:1fr}.plugve-fuel-modal-actions button{flex:1}#plugve_energy_card,#plugve_fuel_card{min-height:0}#plugve_energy_card .plugve-fuel-compact-top,#plugve_fuel_card .plugve-fuel-compact-top{grid-template-columns:1fr;align-items:stretch}#plugve_energy_card .plugve-energy-input-wrap,#plugve_fuel_card .plugve-field-source-wrap{width:100%;min-width:0;max-width:none}#plugve_energy_card .plugve-fuel-title small,#plugve_fuel_card .plugve-fuel-title small{white-space:normal}}
 
     /* Fluxo progressivo e perfis de uso por veículo */
     .plugve-veiculos-grid.plugve-etapa-ve-only{max-width:760px;margin-left:auto;margin-right:auto;grid-template-columns:minmax(0,1fr)!important}
@@ -1469,8 +1479,8 @@
                   <div id="fuel_bar_gasolina" class="plugve-fuel-mini-gasolina" style="width:100%"></div>
                 </div>
                 <div class="plugve-fuel-compact-row">
-                  <span id="fuel_compact_left">Gasolina</span>
-                  <span id="fuel_compact_right">R$ 5,80/L</span>
+                  <span id="fuel_compact_left">100% gasolina</span>
+                  <span id="fuel_compact_right" class="hidden" aria-hidden="true"></span>
                 </div>
               </div>
 
@@ -5412,7 +5422,11 @@
         if (barEtanol) barEtanol.style.width = `${etanolPct}%`;
         if (barGasolina) barGasolina.style.width = `${gasolinaPct}%`;
         if (compactLeft) compactLeft.textContent = textoResumoPrecoFlexTCO("etanol", etanolPct, precoEta);
-        if (compactRight) compactRight.textContent = textoResumoPrecoFlexTCO("gasolina", gasolinaPct, precoGas);
+        if (compactRight) {
+          compactRight.classList.remove("hidden");
+          compactRight.removeAttribute("aria-hidden");
+          compactRight.textContent = textoResumoPrecoFlexTCO("gasolina", gasolinaPct, precoGas);
+        }
         setStatusCombustivelTCO("", false);
         if ((PBEV_DEBUG_TCO.icev?.autopreencher === true && PBEV_DEBUG_TCO.icev?.nivel_match === "alto") || (PBEV_DEBUG_TCO.atual?.autopreencher === true && PBEV_DEBUG_TCO.atual?.nivel_match === "alto")) {
           const pref = PBEV_DEBUG_TCO.icev?.autopreencher === true ? "icev" : "atual";
@@ -5429,27 +5443,29 @@
       }
       if (barEtanol) barEtanol.style.width = "0%";
       if (barGasolina) barGasolina.style.width = "100%";
+      if (compactRight) {
+        compactRight.textContent = "";
+        compactRight.classList.add("hidden");
+        compactRight.setAttribute("aria-hidden", "true");
+      }
 
       if (modo === "diesel") {
         if (titulo) titulo.textContent = "Diesel S10";
         if (subtitulo) subtitulo.textContent = subtituloOrigemCombustivelTCO();
         if (icon) icon.textContent = "🛢️";
         if (barGasolina) barGasolina.style.background = "rgba(146,64,14,.72)";
-        if (compactLeft) compactLeft.textContent = "Diesel S10";
-        if (compactRight) compactRight.textContent = formatarPrecoLitroTCO(precoFinal);
+        if (compactLeft) compactLeft.textContent = "100% diesel";
       } else if (modo === "etanol") {
         if (titulo) titulo.textContent = "Etanol";
         if (subtitulo) subtitulo.textContent = subtituloOrigemCombustivelTCO();
         if (icon) icon.textContent = "🍃";
         if (barGasolina) barGasolina.style.background = "rgba(22,163,74,.88)";
-        if (compactLeft) compactLeft.textContent = "Etanol";
-        if (compactRight) compactRight.textContent = formatarPrecoLitroTCO(precoFinal);
+        if (compactLeft) compactLeft.textContent = "100% etanol";
       } else {
         if (titulo) titulo.textContent = "Gasolina";
         if (subtitulo) subtitulo.textContent = subtituloOrigemCombustivelTCO();
         if (icon) icon.textContent = "⛽";
-        if (compactLeft) compactLeft.textContent = "Gasolina";
-        if (compactRight) compactRight.textContent = formatarPrecoLitroTCO(precoFinal);
+        if (compactLeft) compactLeft.textContent = "100% gasolina";
       }
       setStatusCombustivelTCO("", false);
       if ((PBEV_DEBUG_TCO.icev?.autopreencher === true && PBEV_DEBUG_TCO.icev?.nivel_match === "alto") || (PBEV_DEBUG_TCO.atual?.autopreencher === true && PBEV_DEBUG_TCO.atual?.nivel_match === "alto")) {
