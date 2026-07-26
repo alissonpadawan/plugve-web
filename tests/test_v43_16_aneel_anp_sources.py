@@ -33,13 +33,16 @@ class V4316AneelAnpSourceBadgesTests(unittest.TestCase):
         self.assertIn("PIS", self.template)
         self.assertIn("COFINS", self.template)
 
-    def test_touch_keyboard_and_hover_interaction_are_available(self):
+    def test_touch_keyboard_and_logo_only_hover_are_available(self):
         self.assertIn("inicializarTooltipsFontesPlugVE();", self.template)
         self.assertIn('btn.setAttribute("aria-expanded", "false")', self.template)
         self.assertIn('(hover: none), (pointer: coarse)', self.template)
-        self.assertIn('@media(hover:hover) and (pointer:fine)', self.template)
-        self.assertIn('.plugve-aneel-tooltip-trigger:focus-visible + .plugve-energy-tooltip-panel', self.template)
-        self.assertNotIn('.plugve-source-tooltip:focus-within', self.template)
+        self.assertIn('btn.addEventListener("mouseenter", abrirDesktop)', self.template)
+        self.assertIn('btn.addEventListener("mouseleave", fecharDesktop)', self.template)
+        self.assertIn('btn.addEventListener("focus"', self.template)
+        self.assertIn('btn.addEventListener("blur"', self.template)
+        self.assertNotIn('.plugve-source-tooltip:hover > .plugve-energy-tooltip-panel', self.template)
+        self.assertNotIn('.plugve-aneel-tooltip-trigger:focus-visible + .plugve-energy-tooltip-panel', self.template)
 
 
 if __name__ == "__main__":

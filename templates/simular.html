@@ -544,21 +544,22 @@
     @media(max-width:900px){.plugve-finance-form-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
     @media(max-width:560px){.plugve-finance-form-grid{grid-template-columns:1fr}.plugve-finance-footer{align-items:stretch}.plugve-finance-actions{justify-content:stretch}.plugve-finance-actions button{flex:1}}
     .plugve-source-logo{display:inline-flex;align-items:center;justify-content:center;border:0;background:transparent;padding:0;margin:0;line-height:1;box-shadow:none;vertical-align:middle}
+    .plugve-source-logo.hidden,.plugve-field-source.hidden{display:none!important}
     button.plugve-source-logo{cursor:help}
-    .plugve-source-logo img{display:block;width:auto;object-fit:contain}
-    .plugve-source-logo--aneel img{height:1.38rem;max-width:2.55rem}
-    .plugve-source-logo--anp img{height:1rem;max-width:2.85rem}
-    .plugve-source-tooltip{position:relative;display:inline-flex;align-items:center;justify-content:center}
-    .plugve-energy-tooltip-panel{display:none;position:absolute;right:0;left:auto;top:calc(100% + .45rem);z-index:110;width:340px;max-width:min(85vw,340px);background:#fff;border:1px solid #e5e7eb;border-radius:.85rem;box-shadow:0 18px 45px rgba(15,23,42,.18);padding:.85rem;color:#374151;text-align:left}
-    .plugve-source-tooltip.is-open > .plugve-energy-tooltip-panel,
-    .plugve-aneel-tooltip-trigger:focus-visible + .plugve-energy-tooltip-panel{display:block}
-    @media(hover:hover) and (pointer:fine){
-      .plugve-source-tooltip:hover > .plugve-energy-tooltip-panel{display:block}
-    }
-    .plugve-source-tooltip button:focus-visible{outline:2px solid #2563eb;outline-offset:3px;border-radius:.25rem}
-    .plugve-source-field-row{display:flex;align-items:center;justify-content:space-between;gap:.45rem}
-    .plugve-source-field-row label{flex:1 1 auto}
-    .plugve-field-source-wrap{display:flex;align-items:center;justify-content:flex-end;gap:.42rem;min-width:0}
+    .plugve-source-logo img{display:block;width:auto;object-fit:contain;pointer-events:none}
+    .plugve-source-logo--aneel img{height:.96rem;max-width:2rem}
+    .plugve-source-logo--anp img{height:.78rem;max-width:2.15rem}
+    .plugve-money-field--source input{padding-right:3.2rem}
+    .plugve-fuel-money-field:has(> .plugve-field-source) input{padding-right:3.35rem}
+    .plugve-field-source{position:absolute;right:.52rem;top:50%;transform:translateY(-50%);z-index:5;display:inline-flex;align-items:center;justify-content:center;max-width:2.35rem}
+    .plugve-fuel-pill .plugve-field-source,.plugve-fuel-pill .plugve-field-source.plugve-source-logo{display:inline-flex;margin:0;padding:0}
+    .plugve-fuel-pill .plugve-field-source.hidden{display:none!important}
+    .plugve-source-tooltip{display:inline-flex;align-items:center;justify-content:center}
+    .plugve-energy-tooltip-panel{display:none;position:absolute;right:0;left:auto;top:calc(100% + .55rem);z-index:110;width:340px;max-width:min(85vw,340px);background:#fff;border:1px solid #e5e7eb;border-radius:.85rem;box-shadow:0 18px 45px rgba(15,23,42,.18);padding:.85rem;color:#374151;text-align:left;transform:none}
+    .plugve-energy-tooltip-panel[hidden]{display:none!important}
+    .plugve-source-tooltip.is-open > .plugve-energy-tooltip-panel{display:block}
+    .plugve-source-tooltip button:focus-visible{outline:2px solid #2563eb;outline-offset:2px;border-radius:.25rem}
+    .plugve-field-source-wrap{display:flex;align-items:center;justify-content:flex-end;min-width:0}
     .plugve-field-source-wrap .plugve-money-field{flex:1 1 auto;min-width:0}
     .plugve-field-source-wrap:has(.plugve-fuel-single-input.hidden){display:none}
     .plugve-aneel-summary{display:flex;align-items:baseline;justify-content:space-between;gap:.65rem;margin-bottom:.18rem}
@@ -566,8 +567,8 @@
     .plugve-aneel-summary span{font-size:.72rem;font-weight:900;color:#2563eb;white-space:nowrap}
     @media(max-width:560px){
       .plugve-energy-tooltip-panel{position:fixed;left:50%;right:auto;top:50%;transform:translate(-50%,-50%);width:min(340px,calc(100vw - 2rem));max-width:none}
-      .plugve-source-logo--aneel img{height:1.28rem}
-      .plugve-source-logo--anp img{height:.95rem}
+      .plugve-source-logo--aneel img{height:.92rem}
+      .plugve-source-logo--anp img{height:.74rem}
     }
     .plugve-fuel-card{margin-top:.25rem;border:1px solid #e5e7eb;border-radius:1rem;background:#fff;box-shadow:0 10px 24px rgba(15,23,42,.05);padding:.85rem;transition:border-color .18s ease,box-shadow .18s ease,transform .18s ease}
     .plugve-fuel-card:hover{border-color:#94a3b8;box-shadow:0 16px 36px rgba(15,23,42,.10);transform:translateY(-1px)}
@@ -1380,22 +1381,7 @@
                     </div>
                   </div>
                   <div class="plugve-energy-input-wrap" aria-label="Tarifa de energia em reais por kWh">
-                    <span class="plugve-source-tooltip plugve-aneel-tooltip">
-                      <button type="button" class="plugve-source-logo plugve-source-logo--aneel plugve-aneel-tooltip-trigger" aria-label="Ver composição da tarifa de energia da ANEEL" title="Ver composição da tarifa de energia">
-                        <img src="{{ url_for('static', filename='img/fontes/aneel.png') }}" alt="ANEEL">
-                      </button>
-                      <span class="plugve-energy-tooltip-panel plugve-aneel-tooltip-panel" role="tooltip">
-                        <span class="block text-xs font-semibold text-gray-700 mb-1">Composição da tarifa de energia</span>
-                        <span class="plugve-aneel-summary"><strong class="plugve-aneel-distribuidora">ANEEL</strong><span class="plugve-aneel-tarifa">Tarifa residencial</span></span>
-                        <span class="plugve-aneel-descricao block text-[11px] font-semibold text-gray-500 mb-1">Selecione UF e município para consultar a tarifa.</span>
-                        <span class="plugve-aneel-vigencia block text-[11px] text-gray-400 mb-2"></span>
-                        <div class="plugve-aneel-breakdown-wrap mt-2">
-                          <div class="plugve-aneel-bar w-full h-3 rounded overflow-hidden bg-gray-200 flex"></div>
-                          <div class="plugve-aneel-legenda mt-2 space-y-1 text-[11px]"></div>
-                        </div>
-                      </span>
-                    </span>
-                    <div class="plugve-money-field">
+                    <div class="plugve-money-field plugve-money-field--source">
                       <span class="plugve-money-prefix">R$</span>
                       <input
                         type="text"
@@ -1405,6 +1391,21 @@
                         inputmode="decimal"
                         required
                       >
+                      <span class="plugve-field-source plugve-source-tooltip plugve-aneel-tooltip hidden" data-plugve-source-for="energia_input" aria-hidden="true">
+                        <button type="button" class="plugve-source-logo plugve-source-logo--aneel plugve-aneel-tooltip-trigger" aria-label="Ver composição da tarifa de energia da ANEEL" aria-expanded="false" title="Ver composição da tarifa de energia">
+                          <img src="{{ url_for('static', filename='img/fontes/aneel.png') }}" alt="ANEEL">
+                        </button>
+                        <span class="plugve-energy-tooltip-panel plugve-aneel-tooltip-panel" role="tooltip" hidden>
+                          <span class="block text-xs font-semibold text-gray-700 mb-1">Composição da tarifa de energia</span>
+                          <span class="plugve-aneel-summary"><strong class="plugve-aneel-distribuidora">ANEEL</strong><span class="plugve-aneel-tarifa">Tarifa residencial</span></span>
+                          <span class="plugve-aneel-descricao block text-[11px] font-semibold text-gray-500 mb-1">Selecione UF e município para consultar a tarifa.</span>
+                          <span class="plugve-aneel-vigencia block text-[11px] text-gray-400 mb-2"></span>
+                          <div class="plugve-aneel-breakdown-wrap mt-2">
+                            <div class="plugve-aneel-bar w-full h-3 rounded overflow-hidden bg-gray-200 flex"></div>
+                            <div class="plugve-aneel-legenda mt-2 space-y-1 text-[11px]"></div>
+                          </div>
+                        </span>
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -1435,6 +1436,9 @@
               <input type="hidden" name="fuel_consumo_gasolina" id="fuel_consumo_gasolina" value="">
               <input type="hidden" name="fuel_consumo_etanol" id="fuel_consumo_etanol" value="">
               <input type="hidden" name="fuel_preco_editado_usuario" id="fuel_preco_editado_usuario" value="0">
+              <input type="hidden" name="fuel_preco_gasolina_editado_usuario" id="fuel_preco_gasolina_editado_usuario" value="0">
+              <input type="hidden" name="fuel_preco_etanol_editado_usuario" id="fuel_preco_etanol_editado_usuario" value="0">
+              <input type="hidden" name="fuel_preco_diesel_s10_editado_usuario" id="fuel_preco_diesel_s10_editado_usuario" value="0">
               <input type="hidden" name="combustivel" id="combustivel_input" value="5,80">
 
               <div id="plugve_fuel_card" class="plugve-fuel-card plugve-fuel-compact-card" data-fuel-mode="gasolina" role="button" tabindex="0" title="Clique para ajustar quando o veículo for flex.">
@@ -1451,10 +1455,10 @@
                     <div class="plugve-money-field plugve-fuel-money-field">
                       <span class="plugve-money-prefix">R$</span>
                       <input type="text" id="fuel_single_preco_input" class="plugve-fuel-single-input" value="5,80" inputmode="numeric" aria-label="Preço do combustível em reais por litro">
+                      <span class="plugve-field-source plugve-source-logo plugve-source-logo--anp hidden" data-plugve-source-for="fuel_single_preco_input" role="img" aria-label="ANP, fonte dos preços médios de combustível" aria-hidden="true" title="Fonte dos preços médios de combustível: ANP">
+                        <img src="{{ url_for('static', filename='img/fontes/anp.png') }}" alt="ANP">
+                      </span>
                     </div>
-                    <span class="plugve-source-logo plugve-source-logo--anp" role="img" aria-label="ANP, fonte dos preços médios de combustível" title="Fonte dos preços médios de combustível: ANP">
-                      <img src="{{ url_for('static', filename='img/fontes/anp.png') }}" alt="ANP">
-                    </span>
                   </div>
                   
                 </div>
@@ -1475,6 +1479,7 @@
               <input type="hidden" name="phev_consumo_eletrico" id="phev_consumo_eletrico" value="">
               <input type="hidden" name="phev_consumo_combustivel" id="phev_consumo_combustivel" value="">
               <input type="hidden" name="phev_preco_combustivel" id="phev_preco_combustivel" value="">
+              <input type="hidden" name="phev_preco_combustivel_editado_usuario" id="phev_preco_combustivel_editado_usuario" value="0">
 
               <div id="plugve_phev_card" class="plugve-phev-card hidden mt-3" role="button" tabindex="0" title="Clique para ajustar o perfil do híbrido plug-in.">
                 <div class="plugve-fuel-compact-top">
@@ -1603,15 +1608,13 @@
             <div class="plugve-fuel-prices">
               <div id="fuel_box_etanol" class="plugve-fuel-pill">
                 <span>🍃 Etanol</span>
-                <div class="plugve-source-field-row">
-                  <label for="fuel_modal_preco_etanol">Preço (R$/L)</label>
-                  <span class="plugve-source-logo plugve-source-logo--anp" role="img" aria-label="ANP, fonte dos preços médios de combustível" title="Fonte dos preços médios de combustível: ANP">
-                      <img src="{{ url_for('static', filename='img/fontes/anp.png') }}" alt="ANP">
-                    </span>
-                </div>
-                <div class="plugve-money-field">
+                <label for="fuel_modal_preco_etanol">Preço (R$/L)</label>
+                <div class="plugve-money-field plugve-money-field--source">
                   <span class="plugve-money-prefix">R$</span>
                   <input type="text" id="fuel_modal_preco_etanol" inputmode="numeric" placeholder="ex: 4,48">
+                  <span class="plugve-field-source plugve-source-logo plugve-source-logo--anp hidden" data-plugve-source-for="fuel_modal_preco_etanol" role="img" aria-label="ANP, fonte do preço médio de etanol" aria-hidden="true" title="Fonte do preço médio: ANP">
+                    <img src="{{ url_for('static', filename='img/fontes/anp.png') }}" alt="ANP">
+                  </span>
                 </div>
                 <label for="fuel_modal_consumo_etanol">Consumo (km/L)</label>
                 <div class="plugve-pbev-inline-field">
@@ -1621,15 +1624,13 @@
               </div>
               <div id="fuel_box_gasolina" class="plugve-fuel-pill">
                 <span>⛽ Gasolina</span>
-                <div class="plugve-source-field-row">
-                  <label for="fuel_modal_preco_gasolina">Preço (R$/L)</label>
-                  <span class="plugve-source-logo plugve-source-logo--anp" role="img" aria-label="ANP, fonte dos preços médios de combustível" title="Fonte dos preços médios de combustível: ANP">
-                      <img src="{{ url_for('static', filename='img/fontes/anp.png') }}" alt="ANP">
-                    </span>
-                </div>
-                <div class="plugve-money-field">
+                <label for="fuel_modal_preco_gasolina">Preço (R$/L)</label>
+                <div class="plugve-money-field plugve-money-field--source">
                   <span class="plugve-money-prefix">R$</span>
                   <input type="text" id="fuel_modal_preco_gasolina" inputmode="numeric" placeholder="ex: 6,87">
+                  <span class="plugve-field-source plugve-source-logo plugve-source-logo--anp hidden" data-plugve-source-for="fuel_modal_preco_gasolina" role="img" aria-label="ANP, fonte do preço médio de gasolina" aria-hidden="true" title="Fonte do preço médio: ANP">
+                    <img src="{{ url_for('static', filename='img/fontes/anp.png') }}" alt="ANP">
+                  </span>
                 </div>
                 <label for="fuel_modal_consumo_gasolina">Consumo (km/L)</label>
                 <div class="plugve-pbev-inline-field">
@@ -1692,27 +1693,25 @@
             <div class="plugve-fuel-prices">
               <div id="phev_box_eletrico" class="plugve-fuel-pill">
                 <span>⚡ Elétrico</span>
-                <div class="plugve-source-field-row">
-                  <label for="phev_modal_preco_energia">Preço (R$/kWh)</label>
-                  <span class="plugve-source-tooltip plugve-aneel-tooltip">
-                      <button type="button" class="plugve-source-logo plugve-source-logo--aneel plugve-aneel-tooltip-trigger" aria-label="Ver composição da tarifa de energia da ANEEL" title="Ver composição da tarifa de energia">
-                        <img src="{{ url_for('static', filename='img/fontes/aneel.png') }}" alt="ANEEL">
-                      </button>
-                      <span class="plugve-energy-tooltip-panel plugve-aneel-tooltip-panel" role="tooltip">
-                        <span class="block text-xs font-semibold text-gray-700 mb-1">Composição da tarifa de energia</span>
-                        <span class="plugve-aneel-summary"><strong class="plugve-aneel-distribuidora">ANEEL</strong><span class="plugve-aneel-tarifa">Tarifa residencial</span></span>
-                        <span class="plugve-aneel-descricao block text-[11px] font-semibold text-gray-500 mb-1">Selecione UF e município para consultar a tarifa.</span>
-                        <span class="plugve-aneel-vigencia block text-[11px] text-gray-400 mb-2"></span>
-                        <div class="plugve-aneel-breakdown-wrap mt-2">
-                          <div class="plugve-aneel-bar w-full h-3 rounded overflow-hidden bg-gray-200 flex"></div>
-                          <div class="plugve-aneel-legenda mt-2 space-y-1 text-[11px]"></div>
-                        </div>
-                      </span>
-                    </span>
-                </div>
-                <div class="plugve-money-field">
+                <label for="phev_modal_preco_energia">Preço (R$/kWh)</label>
+                <div class="plugve-money-field plugve-money-field--source">
                   <span class="plugve-money-prefix">R$</span>
                   <input type="text" id="phev_modal_preco_energia" inputmode="numeric" placeholder="ex: 0,86">
+                  <span class="plugve-field-source plugve-source-tooltip plugve-aneel-tooltip hidden" data-plugve-source-for="phev_modal_preco_energia" aria-hidden="true">
+                    <button type="button" class="plugve-source-logo plugve-source-logo--aneel plugve-aneel-tooltip-trigger" aria-label="Ver composição da tarifa de energia da ANEEL" aria-expanded="false" title="Ver composição da tarifa de energia">
+                      <img src="{{ url_for('static', filename='img/fontes/aneel.png') }}" alt="ANEEL">
+                    </button>
+                    <span class="plugve-energy-tooltip-panel plugve-aneel-tooltip-panel" role="tooltip" hidden>
+                      <span class="block text-xs font-semibold text-gray-700 mb-1">Composição da tarifa de energia</span>
+                      <span class="plugve-aneel-summary"><strong class="plugve-aneel-distribuidora">ANEEL</strong><span class="plugve-aneel-tarifa">Tarifa residencial</span></span>
+                      <span class="plugve-aneel-descricao block text-[11px] font-semibold text-gray-500 mb-1">Selecione UF e município para consultar a tarifa.</span>
+                      <span class="plugve-aneel-vigencia block text-[11px] text-gray-400 mb-2"></span>
+                      <div class="plugve-aneel-breakdown-wrap mt-2">
+                        <div class="plugve-aneel-bar w-full h-3 rounded overflow-hidden bg-gray-200 flex"></div>
+                        <div class="plugve-aneel-legenda mt-2 space-y-1 text-[11px]"></div>
+                      </div>
+                    </span>
+                  </span>
                 </div>
                 <label for="phev_modal_consumo_eletrico">Consumo (kWh/km)</label>
                 <div class="plugve-pbev-inline-field">
@@ -1722,15 +1721,13 @@
               </div>
               <div id="phev_box_combustivel" class="plugve-fuel-pill">
                 <span>⛽ Combustível</span>
-                <div class="plugve-source-field-row">
-                  <label for="phev_modal_preco_combustivel">Preço (R$/L)</label>
-                  <span class="plugve-source-logo plugve-source-logo--anp" role="img" aria-label="ANP, fonte dos preços médios de combustível" title="Fonte dos preços médios de combustível: ANP">
-                      <img src="{{ url_for('static', filename='img/fontes/anp.png') }}" alt="ANP">
-                    </span>
-                </div>
-                <div class="plugve-money-field">
+                <label for="phev_modal_preco_combustivel">Preço (R$/L)</label>
+                <div class="plugve-money-field plugve-money-field--source">
                   <span class="plugve-money-prefix">R$</span>
                   <input type="text" id="phev_modal_preco_combustivel" inputmode="numeric" placeholder="ex: 6,87">
+                  <span class="plugve-field-source plugve-source-logo plugve-source-logo--anp hidden" data-plugve-source-for="phev_modal_preco_combustivel" role="img" aria-label="ANP, fonte do preço médio de combustível" aria-hidden="true" title="Fonte do preço médio: ANP">
+                    <img src="{{ url_for('static', filename='img/fontes/anp.png') }}" alt="ANP">
+                  </span>
                 </div>
                 <label for="phev_modal_consumo_combustivel">Consumo (km/L)</label>
                 <div class="plugve-pbev-inline-field">
@@ -2474,8 +2471,72 @@
       distribuidora: "",
       vigencia: "",
       tarifaTotal: 0,
-      detalhe: null
+      detalhe: null,
+      fonteOficialAplicada: false
     };
+
+    const plugveFontesAutomaticasTCO = {
+      anp: { gasolina: false, etanol: false, diesel_s10: false }
+    };
+
+    function definirVisibilidadeFonteCampoPlugVE(inputId, visivel) {
+      document.querySelectorAll(`[data-plugve-source-for="${inputId}"]`).forEach(fonte => {
+        fonte.classList.toggle("hidden", !visivel);
+        fonte.setAttribute("aria-hidden", visivel ? "false" : "true");
+        if (!visivel && fonte.classList.contains("plugve-aneel-tooltip")) {
+          fonte.classList.remove("is-open");
+          const painel = fonte.querySelector(".plugve-energy-tooltip-panel");
+          const gatilho = fonte.querySelector(".plugve-aneel-tooltip-trigger");
+          if (painel) painel.hidden = true;
+          gatilho?.setAttribute("aria-expanded", "false");
+        }
+      });
+    }
+
+    function tarifaEnergiaManualPlugVE() {
+      return Boolean(document.getElementById("energia_manual_checkbox")?.checked);
+    }
+
+    function atualizarLogosAneelPlugVE() {
+      const oficial = plugveEnergiaResumoAtual.fonteOficialAplicada === true && !tarifaEnergiaManualPlugVE();
+      definirVisibilidadeFonteCampoPlugVE("energia_input", oficial);
+      const modal = document.getElementById("phev_modal_preco_energia");
+      const modalManual = modal?.dataset.plugveFonteEditada === "1";
+      definirVisibilidadeFonteCampoPlugVE("phev_modal_preco_energia", oficial && !modalManual);
+    }
+
+    function marcarTarifaEnergiaManualPlugVE(editada = true) {
+      const checkbox = document.getElementById("energia_manual_checkbox");
+      if (checkbox) checkbox.checked = !!editada;
+      if (editada) fecharTooltipsAneelPlugVE();
+      atualizarLogosAneelPlugVE();
+    }
+
+    function chaveAnpModoAtualPlugVE() {
+      if (modoCombustivelTCO === "diesel") return "diesel_s10";
+      if (modoCombustivelTCO === "etanol") return "etanol";
+      return "gasolina";
+    }
+
+    function precoAnpEditadoPorChavePlugVE(chave) {
+      return document.getElementById(`fuel_preco_${chave}_editado_usuario`)?.value === "1";
+    }
+
+    function atualizarLogosAnpPlugVE() {
+      const chaveAtual = chaveAnpModoAtualPlugVE();
+      const singleVisivel = modoCombustivelTCO !== "flex" && plugveFontesAutomaticasTCO.anp[chaveAtual] === true && !precoAnpEditadoPorChavePlugVE(chaveAtual);
+      definirVisibilidadeFonteCampoPlugVE("fuel_single_preco_input", singleVisivel);
+      definirVisibilidadeFonteCampoPlugVE("fuel_modal_preco_etanol", plugveFontesAutomaticasTCO.anp.etanol === true && !precoAnpEditadoPorChavePlugVE("etanol"));
+      definirVisibilidadeFonteCampoPlugVE("fuel_modal_preco_gasolina", plugveFontesAutomaticasTCO.anp.gasolina === true && !precoAnpEditadoPorChavePlugVE("gasolina"));
+      const phevManual = document.getElementById("phev_preco_combustivel_editado_usuario")?.value === "1";
+      const phevModalManual = document.getElementById("phev_modal_preco_combustivel")?.dataset.plugveFonteEditada === "1";
+      definirVisibilidadeFonteCampoPlugVE("phev_modal_preco_combustivel", plugveFontesAutomaticasTCO.anp.gasolina === true && !phevManual && !phevModalManual);
+    }
+
+    function atualizarLogosFontesPlugVE() {
+      atualizarLogosAneelPlugVE();
+      atualizarLogosAnpPlugVE();
+    }
 
     function atualizarPaineisAneelPlugVE() {
       const input = document.getElementById("energia_input");
@@ -2503,6 +2564,7 @@
           ? "Ver composição da tarifa de energia da ANEEL"
           : `Ver composição da tarifa de energia da ${distribuidora}`);
       });
+      atualizarLogosAneelPlugVE();
     }
 
     function atualizarCardEnergiaEletricaPlugVE() {
@@ -2538,48 +2600,78 @@
       atualizarCardEnergiaEletricaPlugVE();
     }
 
+    function definirTooltipAneelAbertoPlugVE(wrapper, aberto) {
+      if (!wrapper) return;
+      const gatilho = wrapper.querySelector(".plugve-aneel-tooltip-trigger");
+      const painel = wrapper.querySelector(".plugve-energy-tooltip-panel");
+      const podeAbrir = aberto && !wrapper.classList.contains("hidden") && wrapper.getAttribute("aria-hidden") !== "true";
+      wrapper.classList.toggle("is-open", podeAbrir);
+      if (painel) painel.hidden = !podeAbrir;
+      gatilho?.setAttribute("aria-expanded", podeAbrir ? "true" : "false");
+    }
+
     function fecharTooltipsAneelPlugVE(excecao = null) {
-      document.querySelectorAll(".plugve-aneel-tooltip.is-open").forEach(wrapper => {
+      document.querySelectorAll(".plugve-aneel-tooltip").forEach(wrapper => {
         if (wrapper === excecao) return;
-        wrapper.classList.remove("is-open");
-        wrapper.querySelector(".plugve-aneel-tooltip-trigger")?.setAttribute("aria-expanded", "false");
+        definirTooltipAneelAbertoPlugVE(wrapper, false);
       });
     }
 
     function inicializarTooltipsFontesPlugVE() {
       const usaToque = () => window.matchMedia("(hover: none), (pointer: coarse)").matches;
       document.querySelectorAll(".plugve-aneel-tooltip-trigger").forEach(btn => {
+        if (btn.dataset.plugveTooltipInicializado === "1") return;
+        btn.dataset.plugveTooltipInicializado = "1";
         btn.setAttribute("aria-expanded", "false");
         const wrapper = btn.closest(".plugve-aneel-tooltip");
+        const abrirDesktop = () => {
+          if (usaToque() || !wrapper) return;
+          fecharTooltipsAneelPlugVE(wrapper);
+          definirTooltipAneelAbertoPlugVE(wrapper, true);
+        };
+        const fecharDesktop = () => {
+          if (usaToque()) return;
+          definirTooltipAneelAbertoPlugVE(wrapper, false);
+        };
+        btn.addEventListener("mouseenter", abrirDesktop);
+        btn.addEventListener("mouseleave", fecharDesktop);
+        btn.addEventListener("focus", function () {
+          if (usaToque() || !wrapper) return;
+          fecharTooltipsAneelPlugVE(wrapper);
+          definirTooltipAneelAbertoPlugVE(wrapper, true);
+        });
+        btn.addEventListener("blur", function () {
+          definirTooltipAneelAbertoPlugVE(wrapper, false);
+        });
         btn.addEventListener("click", function (ev) {
           ev.preventDefault();
           ev.stopPropagation();
           if (!wrapper) return;
           if (!usaToque()) {
-            // No desktop, o hover e o foco visível controlam o card.
-            if (ev.detail > 0) this.blur();
+            this.blur();
+            definirTooltipAneelAbertoPlugVE(wrapper, false);
             return;
           }
           const abrir = !wrapper.classList.contains("is-open");
           fecharTooltipsAneelPlugVE(wrapper);
-          wrapper.classList.toggle("is-open", abrir);
-          this.setAttribute("aria-expanded", abrir ? "true" : "false");
-        });
-        wrapper?.addEventListener("mouseleave", function () {
-          if (usaToque()) return;
-          this.classList.remove("is-open");
-          btn.setAttribute("aria-expanded", "false");
+          definirTooltipAneelAbertoPlugVE(wrapper, abrir);
         });
       });
-      document.addEventListener("click", function () {
-        fecharTooltipsAneelPlugVE();
-      });
-      document.addEventListener("keydown", function (ev) {
-        if (ev.key !== "Escape") return;
-        fecharTooltipsAneelPlugVE();
-        document.activeElement?.classList?.contains("plugve-aneel-tooltip-trigger") && document.activeElement.blur();
-      });
+      if (document.documentElement.dataset.plugveTooltipGlobalInicializado !== "1") {
+        document.documentElement.dataset.plugveTooltipGlobalInicializado = "1";
+        document.addEventListener("click", function (ev) {
+          if (ev.target.closest?.(".plugve-aneel-tooltip")) return;
+          fecharTooltipsAneelPlugVE();
+        });
+        document.addEventListener("keydown", function (ev) {
+          if (ev.key !== "Escape") return;
+          fecharTooltipsAneelPlugVE();
+          document.activeElement?.classList?.contains("plugve-aneel-tooltip-trigger") && document.activeElement.blur();
+        });
+      }
+      fecharTooltipsAneelPlugVE();
       atualizarPaineisAneelPlugVE();
+      atualizarLogosFontesPlugVE();
     }
 
     const PLUGVE_TCO_STORAGE_KEY = "plugve_tco_form_state_v26";
@@ -3309,6 +3401,7 @@
     }
 
     function limparEstadoPhevAoTrocarVeiculoTCO() {
+      fecharTooltipsAneelPlugVE();
       setValorInputTCO("phev_configurado", "0");
       setValorInputTCO("phev_prefixo_configurado", "");
       setValorInputTCO("phev_vehicle_key", "");
@@ -3316,6 +3409,8 @@
       setValorInputTCO("phev_consumo_eletrico", "");
       setValorInputTCO("phev_consumo_combustivel", "");
       setValorInputTCO("phev_preco_combustivel", "");
+      setValorInputTCO("phev_preco_combustivel_editado_usuario", "0");
+      limparEdicoesTemporariasFontesPhevPlugVE();
       chavePhevAtivaTCO = "";
       ultimoPhevAutoAbertoTCO = "";
       const slider = document.getElementById("phev_mix_slider");
@@ -3332,6 +3427,7 @@
 
     function limparEstadoCombustivelAoTrocarVeiculoTCO(prefixo) {
       if (prefixo !== "icev" && prefixo !== "atual") return;
+      resetarEdicoesPrecoAnpPlugVE();
       modoCombustivelTCO = "gasolina";
       chaveCombustivelAtivaTCO = "";
       ultimoFlexAutoAbertoTCO = "";
@@ -3361,6 +3457,7 @@
     }
 
     function limparEstadoVeiculoSelecionadoTCO(prefixo) {
+      fecharTooltipsAneelPlugVE();
       const ids = prefixo === "ve"
         ? ["modelo_ve", "preco_ve", "ano_modelo_ve", "combustivel_ve", "tipo_veiculo_ve", "ipva_ve_input", "seguro_ve", "depreciacao_ve"]
         : prefixo === "icev"
@@ -3951,6 +4048,12 @@
     }
 
     function pbevRenderizarSeloComprovacaoTCO(prefixo, dados) {
+      const campo = pbevCampoConsumoPorPrefixoTCO(prefixo);
+      const editado = document.getElementById(`pbev_${prefixo}_editado_usuario`)?.value === "1" || campo?.dataset.pbevEditadoUsuario === "1";
+      if (editado) {
+        pbevDesativarComprovacaoTCO(prefixo);
+        return;
+      }
       if (!dados || dados?.autopreencher !== true || dados?.nivel_match !== "alto") return;
       const slots = pbevSlotsComprovacaoTCO(prefixo, dados);
       slots.forEach(status => {
@@ -3962,11 +4065,16 @@
     }
 
     function pbevAtivarComprovacaoTCO(prefixo, dados) {
+      const campo = pbevCampoConsumoPorPrefixoTCO(prefixo);
+      const editado = document.getElementById(`pbev_${prefixo}_editado_usuario`)?.value === "1" || campo?.dataset.pbevEditadoUsuario === "1";
+      if (editado) {
+        pbevDesativarComprovacaoTCO(prefixo);
+        return;
+      }
       if (!dados || dados?.autopreencher !== true || dados?.nivel_match !== "alto") return;
       PBEV_DEBUG_TCO[prefixo] = dados;
       pbevOcultarBotaoDebugTCO(prefixo);
       pbevRenderizarSeloComprovacaoTCO(prefixo, dados);
-      const campo = pbevCampoConsumoPorPrefixoTCO(prefixo);
       if (campo && (prefixo === "icev" || prefixo === "atual") && modoCombustivelSelecionadoTCO(prefixo) === "flex") {
         ativarEdicaoConsumoFlexTCO(prefixo);
       }
@@ -4177,7 +4285,7 @@
       if (!campo || campo.dataset.pbevAplicando === "1" || campo.dataset.pbevAuto !== "1") return;
       campo.dataset.pbevEditadoUsuario = "1";
       pbevSetHiddenTCO(prefixo, "editado_usuario", "1");
-      pbevAtivarComprovacaoTCO(prefixo, PBEV_DEBUG_TCO[prefixo]);
+      pbevDesativarComprovacaoTCO(prefixo);
     }
 
     function pbevAplicarCampoSimplesTCO(prefixo, valor, dados, detalhe, formato = "combustao") {
@@ -4734,6 +4842,9 @@
       precosCombustivelTCO.gasolina = numeroOuNullCombustivelTCO(dados?.gasolina ?? dados?.preco);
       precosCombustivelTCO.etanol = numeroOuNullCombustivelTCO(dados?.etanol);
       precosCombustivelTCO.diesel_s10 = numeroOuNullCombustivelTCO(dados?.diesel_s10);
+      plugveFontesAutomaticasTCO.anp.gasolina = Number(precosCombustivelTCO.gasolina || 0) > 0;
+      plugveFontesAutomaticasTCO.anp.etanol = Number(precosCombustivelTCO.etanol || 0) > 0;
+      plugveFontesAutomaticasTCO.anp.diesel_s10 = Number(precosCombustivelTCO.diesel_s10 || 0) > 0;
 
       if (!valorNumeroInputTCO("fuel_preco_gasolina") && precosCombustivelTCO.gasolina) {
         setValorInputTCO("fuel_preco_gasolina", formatarPrecoCombustivelInputTCO(precosCombustivelTCO.gasolina));
@@ -4744,6 +4855,7 @@
       if (!valorNumeroInputTCO("fuel_preco_diesel_s10") && precosCombustivelTCO.diesel_s10) {
         setValorInputTCO("fuel_preco_diesel_s10", formatarPrecoCombustivelInputTCO(precosCombustivelTCO.diesel_s10));
       }
+      atualizarLogosAnpPlugVE();
     }
 
     function detectarModoCombustivelTCO(modelo, combustivel) {
@@ -4924,6 +5036,7 @@
     }
 
     function resetarPerfilCombustivelParaVeiculoTCO(prefixo, modo, chave) {
+      resetarEdicoesPrecoAnpPlugVE();
       setValorInputTCO("fuel_tipo_detectado", modo || "gasolina");
       setValorInputTCO("fuel_percent_etanol", "0");
       setValorInputTCO("fuel_flex_configurado", "0");
@@ -4957,6 +5070,7 @@
       const ids = [
         "fuel_percent_etanol", "fuel_flex_configurado", "fuel_flex_perfil_obrigatorio", "fuel_prefixo_configurado", "fuel_vehicle_key",
         "fuel_preco_etanol", "fuel_preco_gasolina", "fuel_consumo_etanol", "fuel_consumo_gasolina",
+        "fuel_preco_editado_usuario", "fuel_preco_gasolina_editado_usuario", "fuel_preco_etanol_editado_usuario", "fuel_preco_diesel_s10_editado_usuario",
         "combustivel_input"
       ];
       const valores = {};
@@ -4996,6 +5110,7 @@
       const slider = document.getElementById("fuel_mix_slider");
       if (slider) slider.value = String(snapshot.valores?.fuel_percent_etanol || "0");
       renderizarCardCombustivelTCO();
+      atualizarLogosAnpPlugVE();
     }
 
     function finalizarEstadoModalCombustivelTCO() {
@@ -5072,6 +5187,7 @@
       });
       atualizarEstadoModalCombustivelTCO();
       configurarObrigatoriedadePerfilFlexTCO(prefixoEdicaoConsumoFlexTCO || prefixoCombustaoPreferencialTCO(), modoEdicaoSomenteConsumoFlexTCO);
+      atualizarLogosAnpPlugVE();
     }
 
     function sugerirConsumoFlexTCO(origem) {
@@ -5171,9 +5287,24 @@
       return document.getElementById("fuel_preco_editado_usuario")?.value === "1";
     }
 
-    function marcarPrecoCombustivelEditadoUsuarioTCO(editado = true) {
-      const el = document.getElementById("fuel_preco_editado_usuario");
-      if (el) el.value = editado ? "1" : "0";
+    function marcarPrecoCombustivelEditadoUsuarioTCO(editado = true, chave = null) {
+      const chaveNormalizada = chave || chaveAnpModoAtualPlugVE();
+      const especifico = document.getElementById(`fuel_preco_${chaveNormalizada}_editado_usuario`);
+      if (especifico) especifico.value = editado ? "1" : "0";
+      const algumEditado = ["gasolina", "etanol", "diesel_s10"].some(item => precoAnpEditadoPorChavePlugVE(item));
+      const geral = document.getElementById("fuel_preco_editado_usuario");
+      if (geral) geral.value = algumEditado ? "1" : "0";
+      atualizarLogosAnpPlugVE();
+    }
+
+    function resetarEdicoesPrecoAnpPlugVE() {
+      ["gasolina", "etanol", "diesel_s10"].forEach(chave => {
+        const el = document.getElementById(`fuel_preco_${chave}_editado_usuario`);
+        if (el) el.value = "0";
+      });
+      const geral = document.getElementById("fuel_preco_editado_usuario");
+      if (geral) geral.value = "0";
+      atualizarLogosAnpPlugVE();
     }
 
     function subtituloOrigemCombustivelTCO() {
@@ -5199,6 +5330,7 @@
 
       const modo = modoCombustivelTCO || "gasolina";
       card.dataset.fuelMode = modo;
+      atualizarLogosAnpPlugVE();
       card.setAttribute("aria-label", modo === "flex" ? "Editar perfil flex de combustível" : "Preço de combustível aplicado");
       card.setAttribute("title", modo === "flex" ? "Clique para ajustar o perfil flex." : (precoCombustivelEditadoUsuarioTCO() ? "Preço ajustado manualmente pelo usuário." : "Edite o preço se quiser ajustar o valor ANP."));
       if (hiddenModo) hiddenModo.value = modo;
@@ -5438,10 +5570,14 @@
           atualizarInterfaceCombustivelPorVeiculo();
           if (typeof atualizarInterfacePhevPorVeiculo === "function") atualizarInterfacePhevPorVeiculo();
         } else {
+          plugveFontesAutomaticasTCO.anp = { gasolina: false, etanol: false, diesel_s10: false };
+          atualizarLogosAnpPlugVE();
           setStatusCombustivelTCO("Valor médio ANP indisponível. Ajuste manualmente se necessário.", true);
         }
       } catch (e) {
         console.error("Erro ao buscar preços de combustível:", e);
+        plugveFontesAutomaticasTCO.anp = { gasolina: false, etanol: false, diesel_s10: false };
+        atualizarLogosAnpPlugVE();
         setStatusCombustivelTCO("Erro ao consultar ANP. Ajuste manualmente se necessário.", true);
       }
     }
@@ -5460,8 +5596,10 @@
           if (id.includes("consumo")) {
             this.dataset.manual = "1";
             delete this.dataset.sugerido;
+            pbevMarcarConsumoEditadoUsuarioTCO(prefixoEdicaoConsumoFlexTCO || prefixoCombustaoPreferencialTCO());
           }
-          if (id.includes("preco")) marcarPrecoCombustivelEditadoUsuarioTCO(true);
+          if (id === "fuel_modal_preco_etanol") marcarPrecoCombustivelEditadoUsuarioTCO(true, "etanol");
+          if (id === "fuel_modal_preco_gasolina") marcarPrecoCombustivelEditadoUsuarioTCO(true, "gasolina");
           atualizarEstadoModalCombustivelTCO();
         });
         el?.addEventListener("blur", function () {
@@ -5529,6 +5667,23 @@
       if (el) el.value = valor ?? "";
     }
 
+    function limparEdicoesTemporariasFontesPhevPlugVE() {
+      ["phev_modal_preco_energia", "phev_modal_preco_combustivel"].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) delete el.dataset.plugveFonteEditada;
+      });
+      atualizarLogosFontesPlugVE();
+    }
+
+    function aplicarEdicoesFontesModalPhevPlugVE() {
+      const energiaModal = document.getElementById("phev_modal_preco_energia");
+      const combustivelModal = document.getElementById("phev_modal_preco_combustivel");
+      if (energiaModal?.dataset.plugveFonteEditada === "1") marcarTarifaEnergiaManualPlugVE(true);
+      const phevManual = document.getElementById("phev_preco_combustivel_editado_usuario");
+      if (phevManual && combustivelModal?.dataset.plugveFonteEditada === "1") phevManual.value = "1";
+      atualizarLogosFontesPlugVE();
+    }
+
     function limparResumoPhevTCO() {
       const resumo = document.getElementById("consumo_ve_resumo_phev");
       const campo = document.getElementById("consumo_ve");
@@ -5575,13 +5730,17 @@
       const consumoEletricoAtual = numeroBRParaFloat(document.getElementById("consumo_ve")?.value || 0);
       setValorPhevTCO("phev_consumo_eletrico", consumoEletricoAtual > 0 ? formatarValorLitroInputTCO(consumoEletricoAtual) : "");
       setValorPhevTCO("phev_consumo_combustivel", "");
+      setValorPhevTCO("phev_preco_combustivel", "");
       setValorPhevTCO("phev_preco_combustivel", formatarPrecoCombustivelInputTCO(precoCombustivelPhevPadraoTCO() || 0));
+      setValorPhevTCO("phev_preco_combustivel_editado_usuario", "0");
+      limparEdicoesTemporariasFontesPhevPlugVE();
       const slider = document.getElementById("phev_mix_slider");
       if (slider) slider.value = "100";
       limparResumoPhevTCO();
     }
 
     function prepararModalPhevTCO() {
+      limparEdicoesTemporariasFontesPhevPlugVE();
       const pct = Number(document.getElementById("phev_percent_eletrico")?.value || 100);
       const slider = document.getElementById("phev_mix_slider");
       if (slider) slider.value = String(Math.max(0, Math.min(100, pct)));
@@ -5592,6 +5751,7 @@
       setValorPhevTCO("phev_modal_preco_combustivel", document.getElementById("phev_preco_combustivel")?.value || formatarPrecoCombustivelInputTCO(precoCombustivelPhevPadraoTCO() || 0));
       setValorPhevTCO("phev_modal_consumo_combustivel", document.getElementById("phev_consumo_combustivel")?.value || "");
       atualizarEstadoModalPhevTCO();
+      atualizarLogosFontesPlugVE();
     }
 
     function atualizarEstadoModalPhevTCO() {
@@ -5630,6 +5790,7 @@
     }
 
     function copiarModalParaHiddenPhevTCO() {
+      aplicarEdicoesFontesModalPhevPlugVE();
       const energiaInput = document.getElementById("energia_input");
       const precoEnergiaModal = document.getElementById("phev_modal_preco_energia")?.value || "";
       if (energiaInput && numeroBRParaFloat(precoEnergiaModal) > 0) {
@@ -5686,6 +5847,7 @@
     }
 
     function fecharModalPhevTCO() {
+      fecharTooltipsAneelPlugVE();
       const modal = document.getElementById("modal_phev_tco");
       if (!modal) return;
       if (modal.classList.contains("plugve-inline-profile")) {
@@ -5717,6 +5879,7 @@
         energiaInput.value = precoEnergiaModal;
         if (typeof atualizarCardEnergiaEletricaPlugVE === "function") atualizarCardEnergiaEletricaPlugVE();
       }
+      aplicarEdicoesFontesModalPhevPlugVE();
       setValorPhevTCO("phev_percent_eletrico", "100");
       setValorPhevTCO("phev_configurado", "1");
       setValorPhevTCO("phev_prefixo_configurado", "ve");
@@ -5762,6 +5925,7 @@
       const chave = chavePhevAtualTCO();
       const chaveSalva = document.getElementById("phev_vehicle_key")?.value || "";
       if (!ativo) {
+        fecharTooltipsAneelPlugVE();
         chavePhevAtivaTCO = "";
         document.getElementById("plugve_phev_card")?.classList.add("hidden");
         limparResumoPhevTCO();
@@ -5789,7 +5953,14 @@
 
       ["phev_modal_preco_energia", "phev_modal_consumo_eletrico", "phev_modal_preco_combustivel", "phev_modal_consumo_combustivel"].forEach(id => {
         const el = document.getElementById(id);
-        el?.addEventListener("input", atualizarEstadoModalPhevTCO);
+        el?.addEventListener("input", function () {
+          if (id === "phev_modal_preco_energia" || id === "phev_modal_preco_combustivel") {
+            this.dataset.plugveFonteEditada = "1";
+            if (id === "phev_modal_preco_energia") fecharTooltipsAneelPlugVE();
+            atualizarLogosFontesPlugVE();
+          }
+          atualizarEstadoModalPhevTCO();
+        });
         el?.addEventListener("blur", function () {
           const n = numeroBRParaFloat(this.value);
           if (n > 0) this.value = id.includes("preco") ? formatarPrecoCombustivelInputTCO(n) : (id.includes("eletrico") ? formatarValorLitroInputTCO(n) : formatarConsumoInputTCO(n));
@@ -6041,11 +6212,14 @@
     function aplicarFallbackEnergiaLocal(uf, motivo) {
       const energiaInput = document.getElementById("energia_input");
       const valor = TARIFA_FALLBACK_JS_UF[String(uf || "").toUpperCase()] || 0.80;
+      plugveEnergiaResumoAtual.fonteOficialAplicada = false;
+      marcarTarifaEnergiaManualPlugVE(false);
       if (energiaInput) energiaInput.value = formatarNumero5(valor);
       atualizarCardEnergiaEletricaPlugVE();
       montarStatusEnergiaPlugVE(`${motivo || "Consulta ANEEL indisponível"}. Estimativa local`, `Fallback ${String(uf || "").toUpperCase()}`, "Estimativa local usada como fallback técnico.");
       renderEnergiaBreakdown(0, null);
       setBreakdownDisabled(true);
+      atualizarLogosAneelPlugVE();
     }
 
     async function atualizarPrecoEnergiaAutomatico() {
@@ -6062,6 +6236,7 @@
         status.textContent = "Modo manual ativo. O valor não será atualizado automaticamente.";
         setBreakdownDisabled(!(plugveEnergiaResumoAtual.detalhe && plugveEnergiaResumoAtual.tarifaTotal > 0));
         atualizarCardEnergiaEletricaPlugVE();
+        atualizarLogosAneelPlugVE();
         return;
       }
 
@@ -6074,6 +6249,8 @@
         const data = await resp.json();
 
         if (data && data.tarifa_kwh !== null && data.tarifa_kwh !== undefined && !isNaN(Number(data.tarifa_kwh))) {
+          plugveEnergiaResumoAtual.fonteOficialAplicada = true;
+          marcarTarifaEnergiaManualPlugVE(false);
           energiaInput.value = formatarNumero5(Number(data.tarifa_kwh));
           atualizarCardEnergiaEletricaPlugVE();
 
@@ -6083,6 +6260,7 @@
           montarStatusEnergiaPlugVE("Tarifa B1 Residencial", data.distribuidora || "Equatorial GO", vigenciaEnergia);
 
           renderEnergiaBreakdown(Number(data.tarifa_kwh), data.detalhe || null);
+          atualizarLogosAneelPlugVE();
 
         } else {
           aplicarFallbackEnergiaLocal(uf, data?.mensagem || "Não foi possível obter a tarifa automática pela ANEEL");
@@ -6208,7 +6386,10 @@
         atualizarPrecoEnergiaAutomatico();
       });
 
-      document.getElementById("energia_input")?.addEventListener("input", atualizarCardEnergiaEletricaPlugVE);
+      document.getElementById("energia_input")?.addEventListener("input", function () {
+        marcarTarifaEnergiaManualPlugVE(true);
+        atualizarCardEnergiaEletricaPlugVE();
+      });
       document.getElementById("energia_input")?.addEventListener("blur", atualizarCardEnergiaEletricaPlugVE);
       atualizarCardEnergiaEletricaPlugVE();
 
