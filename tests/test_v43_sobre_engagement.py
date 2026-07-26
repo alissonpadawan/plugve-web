@@ -182,3 +182,71 @@ class SobreEngagementRoutesTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SobreRepliesServiceTests(unittest.TestCase):
+    def setUp(self):
+        self.tempdir = tempfile.TemporaryDirectory()
+        self.service = SobreEngagementService(Path(self.tempdir.name) / "replies.sqlite3")
+
+    def tearDown(self):
+        self.tempdir.cleanup()
+
+    def test_public_reply_is_nested_and_email_remains_private(self):
+        root = self.service.add_comment(
+            visitor_id="root-browser",
+            name="Pessoa Inicial",
+            email="inicial@example.com",
+            body="Comentário principal para receber respostas.",
+        )
+        reply = self.service.add_comment(
+            visitor_id="reply-browser",
+            name="Outra Pessoa",
+            email="resposta@example.com",
+            body="Esta é uma resposta pública ao comentário.",
+            parent_id=root["id"],
+        )
+        page = self.service.list_comments()
+        self.assertEqual(page["total"], 1)
+        self.assertEqual(page["comments"][0]["replies"][0]["id"], reply["id"])
+        self.assertNotIn("email", page["comments"][0]["replies"][0])
+        self.assertEqual(self.service.get_stats()["comments"], 1)
+
+    def test_reply_to_reply_is_rejected_and_official_reply_is_identified(self):
+        root = self.service.add_comment(
+            visitor_id="root-2",
+            name="Pessoa Inicial",
+            email="inicial2@example.com",
+            body="Outro comentário principal para teste.",
+        )
+        reply = self.service.add_comment(
+            visitor_id="reply-2",
+            name="Pessoa Resposta",
+            email="reply2@example.com",
+            body="Resposta comum publicada por visitante.",
+            parent_id=root["id"],
+        )
+        with self.assertRaises(EngagementValidationError):
+            self.service.add_comment(
+                visitor_id="third-level",
+                name="Terceira Pessoa",
+                email="third@example.com",
+                body="Esta tentativa não pode criar terceiro nível.",
+                parent_id=reply["id"],
+            )
+        official = self.service.add_official_reply(root["id"], "Agradecemos a participação e o retorno enviado.")
+        self.assertTrue(official["is_official"])
+        self.assertEqual(official["name"], "CurVE")
+        page = self.service.list_comments_admin()
+        self.assertTrue(any(item["is_official"] for item in page["comments"]))
+
+    def test_delete_root_also_removes_replies(self):
+        root = self.service.add_comment(
+            visitor_id="root-delete",
+            name="Pessoa Inicial",
+            email="delete@example.com",
+            body="Comentário principal que será excluído.",
+        )
+        self.service.add_official_reply(root["id"], "Resposta oficial vinculada ao comentário.")
+        self.assertTrue(self.service.delete_comment(root["id"]))
+        self.assertEqual(self.service.list_comments_admin()["total"], 0)

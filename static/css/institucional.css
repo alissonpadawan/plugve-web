@@ -1713,3 +1713,76 @@
     margin-left: 0;
   }
 }
+
+/* V43.14 — respostas públicas e respostas oficiais da CurVE */
+.comment-reply-trigger {
+  margin-top: 8px;
+  padding: 3px 0;
+  border: 0;
+  background: transparent;
+  color: var(--primary-dark);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.comment-reply-trigger:hover,
+.comment-reply-trigger:focus-visible {
+  text-decoration: underline;
+}
+
+.comment-replies {
+  display: grid;
+  gap: 10px;
+  margin: 12px 0 0 24px;
+}
+
+.comment-reply {
+  padding: 12px 14px;
+  border-left: 3px solid #d8e5dc;
+  border-radius: 0 10px 10px 0;
+  background: #f8faf9;
+}
+
+.comment-reply--official {
+  border-left-color: var(--primary);
+  background: rgba(22, 138, 74, .07);
+}
+
+.comment-reply .comment-meta {
+  margin-bottom: 4px;
+}
+
+.comment-reply .comment-meta strong {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.official-reply-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(22, 138, 74, .14);
+  color: var(--primary-dark);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+}
+
+.comment-reply-context {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+@media (max-width: 560px) {
+  .comment-replies {
+    margin-left: 10px;
+  }
+}

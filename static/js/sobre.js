@@ -196,13 +196,16 @@
     });
   }
 
-  /* Comentários */
+  /* Comentários e respostas */
   const commentDialog = document.getElementById("comment-about-dialog");
   const commentOpenButton = document.querySelector("[data-open-comment]");
   const commentCloseButton = document.querySelector("[data-close-comment]");
   const commentForm = document.getElementById("sobre-comment-form");
   const commentName = document.getElementById("comment-name");
   const commentBody = document.getElementById("comment-body");
+  const commentParentInput = document.querySelector("[data-comment-parent-id]");
+  const commentDialogTitle = document.querySelector("[data-comment-dialog-title]");
+  const commentReplyContext = document.querySelector("[data-comment-reply-context]");
   const characterCount = document.querySelector("[data-comment-character-count]");
   const commentFeedback = document.querySelector("[data-comment-feedback]");
   const commentsListFeedback = document.querySelector("[data-comments-list-feedback]");
@@ -213,8 +216,20 @@
   const commentsTotal = document.querySelector("[data-comments-total]");
   if (commentsTotal) commentsTotal.textContent = numberFormatter.format(Number(commentsTotal.textContent || 0));
 
-  const openCommentDialog = () => {
+  const configureCommentDialog = (parentId = "", parentName = "") => {
+    if (commentParentInput instanceof HTMLInputElement) commentParentInput.value = String(parentId || "");
+    const replying = Boolean(parentId);
+    if (commentDialogTitle) commentDialogTitle.textContent = replying ? "Responder comentário" : "Deixar seu comentário";
+    if (commentReplyContext instanceof HTMLElement) {
+      commentReplyContext.textContent = replying ? `Resposta para ${parentName || "este comentário"}` : "";
+      commentReplyContext.classList.toggle("is-hidden", !replying);
+    }
+    if (commentSubmit instanceof HTMLButtonElement) commentSubmit.textContent = replying ? "Publicar resposta" : "Publicar comentário";
+  };
+
+  const openCommentDialog = (parentId = "", parentName = "") => {
     if (!(commentDialog instanceof HTMLDialogElement)) return;
+    configureCommentDialog(parentId, parentName);
     setFeedback(commentFeedback, "");
     if (!commentDialog.open) commentDialog.showModal();
     window.setTimeout(() => commentName?.focus(), 40);
@@ -223,10 +238,11 @@
   const closeCommentDialog = () => {
     if (!(commentDialog instanceof HTMLDialogElement) || !commentDialog.open) return;
     commentDialog.close();
+    configureCommentDialog();
     commentOpenButton?.focus();
   };
 
-  commentOpenButton?.addEventListener("click", openCommentDialog);
+  commentOpenButton?.addEventListener("click", () => openCommentDialog());
   commentCloseButton?.addEventListener("click", closeCommentDialog);
   commentDialog?.addEventListener("click", (event) => {
     if (!(commentDialog instanceof HTMLDialogElement)) return;
@@ -235,12 +251,43 @@
     if (outside) closeCommentDialog();
   });
 
+  commentsList?.addEventListener("click", (event) => {
+    const target = event.target instanceof Element ? event.target.closest("[data-reply-comment]") : null;
+    if (!(target instanceof HTMLButtonElement)) return;
+    openCommentDialog(target.dataset.replyComment || "", target.dataset.replyName || "");
+  });
+
   const updateCharacterCount = () => {
     if (!(commentBody instanceof HTMLTextAreaElement) || !characterCount) return;
     characterCount.textContent = String(commentBody.value.length);
   };
   commentBody?.addEventListener("input", updateCharacterCount);
   updateCharacterCount();
+
+  const buildReplyElement = (reply) => {
+    const article = document.createElement("article");
+    article.className = `comment-reply${reply.is_official ? " comment-reply--official" : ""}`;
+    article.dataset.commentId = String(reply.id);
+
+    const meta = document.createElement("div");
+    meta.className = "comment-meta";
+    const name = document.createElement("strong");
+    name.textContent = String(reply.name || "");
+    if (reply.is_official) {
+      const badge = document.createElement("span");
+      badge.className = "official-reply-badge";
+      badge.textContent = "Resposta oficial";
+      name.append(badge);
+    }
+    const time = document.createElement("time");
+    time.textContent = String(reply.date || "");
+    meta.append(name, time);
+
+    const body = document.createElement("p");
+    body.textContent = String(reply.body || "");
+    article.append(meta, body);
+    return article;
+  };
 
   const buildCommentElement = (comment) => {
     const article = document.createElement("article");
@@ -257,7 +304,20 @@
 
     const body = document.createElement("p");
     body.textContent = String(comment.body || "");
-    article.append(meta, body);
+
+    const replyButton = document.createElement("button");
+    replyButton.type = "button";
+    replyButton.className = "comment-reply-trigger";
+    replyButton.dataset.replyComment = String(comment.id);
+    replyButton.dataset.replyName = String(comment.name || "");
+    replyButton.textContent = "Responder";
+
+    const replies = document.createElement("div");
+    replies.className = "comment-replies";
+    replies.dataset.repliesFor = String(comment.id);
+    (Array.isArray(comment.replies) ? comment.replies : []).forEach((reply) => replies.append(buildReplyElement(reply)));
+
+    article.append(meta, body, replyButton, replies);
     return article;
   };
 
@@ -270,15 +330,17 @@
     if (!(commentForm instanceof HTMLFormElement) || !commentForm.reportValidity()) return;
 
     const formData = new FormData(commentForm);
+    const parentId = String(formData.get("parent_id") || "").trim();
     const payload = {
       name: String(formData.get("name") || ""),
       email: String(formData.get("email") || ""),
       comment: String(formData.get("comment") || ""),
       website: String(formData.get("website") || ""),
+      parent_id: parentId || null,
     };
 
     if (commentSubmit instanceof HTMLButtonElement) commentSubmit.disabled = true;
-    setFeedback(commentFeedback, "Publicando...");
+    setFeedback(commentFeedback, parentId ? "Publicando resposta..." : "Publicando...");
 
     try {
       const response = await fetch("/api/sobre/comments", {
@@ -290,24 +352,27 @@
         body: JSON.stringify(payload),
       });
       const result = await response.json();
-      if (!response.ok || !result.ok) throw new Error(result.error || "Não foi possível publicar o comentário.");
+      if (!response.ok || !result.ok) throw new Error(result.error || "Não foi possível publicar.");
 
-      if (commentsList instanceof HTMLElement) {
+      if (parentId) {
+        const replies = commentsList?.querySelector(`[data-replies-for="${parentId}"]`);
+        replies?.append(buildReplyElement(result.comment));
+      } else if (commentsList instanceof HTMLElement) {
         const previousVisible = commentsList.children.length;
         commentsList.prepend(buildCommentElement(result.comment));
         if (previousVisible <= 5 && commentsList.children.length > 5) {
           commentsList.lastElementChild?.remove();
           commentsMore?.classList.remove("is-hidden");
         }
+        updateCommentsTotal(result.stats?.comments || 0);
       }
       commentsEmpty?.classList.add("is-hidden");
-      updateCommentsTotal(result.stats?.comments || 0);
-      if (commentForm instanceof HTMLFormElement) commentForm.reset();
+      commentForm.reset();
       updateCharacterCount();
-      setFeedback(commentFeedback, "Comentário publicado.");
+      setFeedback(commentFeedback, parentId ? "Resposta publicada." : "Comentário publicado.");
       window.setTimeout(closeCommentDialog, 650);
     } catch (error) {
-      setFeedback(commentFeedback, error instanceof Error ? error.message : "Não foi possível publicar o comentário.", true);
+      setFeedback(commentFeedback, error instanceof Error ? error.message : "Não foi possível publicar.", true);
     } finally {
       if (commentSubmit instanceof HTMLButtonElement) commentSubmit.disabled = false;
     }
@@ -326,7 +391,7 @@
       if (!response.ok || !result.ok) throw new Error(result.error || "Não foi possível carregar os comentários.");
 
       if (commentsList instanceof HTMLElement) {
-        const existingIds = new Set(Array.from(commentsList.querySelectorAll("[data-comment-id]")).map((item) => item.getAttribute("data-comment-id")));
+        const existingIds = new Set(Array.from(commentsList.querySelectorAll(":scope > [data-comment-id]")).map((item) => item.getAttribute("data-comment-id")));
         result.comments.forEach((comment) => {
           if (!existingIds.has(String(comment.id))) commentsList.append(buildCommentElement(comment));
         });

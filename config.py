@@ -18,6 +18,7 @@ class Config:
     PERSISTENT_DIR = Path(os.environ.get("PLUGVE_PERSISTENT_DIR", str(_DEFAULT_PERSISTENT_DIR)))
     ARQUIVO_SOBRE_ENGAJAMENTO = PERSISTENT_DIR / "institucional" / "sobre_engagement.sqlite3"
     ARQUIVO_USO_SITE = PERSISTENT_DIR / "institucional" / "site_usage.sqlite3"
+    ARQUIVO_MENSAGENS_CONTATO = PERSISTENT_DIR / "institucional" / "contact_messages.sqlite3"
 
     PERMANENT_SESSION_LIFETIME = timedelta(days=365)
     SESSION_COOKIE_HTTPONLY = True

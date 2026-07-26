@@ -4,8 +4,8 @@ import hashlib
 import re
 import sqlite3
 import unicodedata
-from dataclasses import dataclass
 from contextlib import contextmanager
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
@@ -27,26 +27,10 @@ _EMAIL_IN_COMMENT_RE = re.compile(r"(?i)\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\
 _HTML_RE = re.compile(r"<\s*/?\s*[a-z][^>]*>|javascript\s*:", re.I)
 _PHONE_CANDIDATE_RE = re.compile(r"(?<!\w)\+?\d[\d\s().\-]{6,}\d(?!\w)")
 
-# Lista deliberadamente curta e conservadora para reduzir falsos positivos.
 _BLOCKED_TERMS = {
-    "arrombado",
-    "buceta",
-    "caralho",
-    "cuzao",
-    "desgracado",
-    "fdp",
-    "filho da puta",
-    "foda se",
-    "fodase",
-    "imbecil",
-    "merda",
-    "otario",
-    "piranha",
-    "porra",
-    "puta",
-    "puto",
-    "retardado",
-    "vai tomar no cu",
+    "arrombado", "buceta", "caralho", "cuzao", "desgracado", "fdp",
+    "filho da puta", "foda se", "fodase", "imbecil", "merda", "otario",
+    "piranha", "porra", "puta", "puto", "retardado", "vai tomar no cu",
 }
 
 
@@ -104,7 +88,6 @@ def _validate_comment(value: Any) -> str:
     body = str(value or "").replace("\r\n", "\n").replace("\r", "\n").strip()
     body = re.sub(r"[\t ]+", " ", body)
     body = re.sub(r"\n{3,}", "\n\n", body)
-
     if len(body) < COMMENT_MIN_LENGTH:
         raise EngagementValidationError(f"O comentário deve ter pelo menos {COMMENT_MIN_LENGTH} caracteres.")
     if len(body) > COMMENT_MAX_LENGTH:
@@ -117,15 +100,12 @@ def _validate_comment(value: Any) -> str:
         raise EngagementValidationError("Não inclua e-mails no comentário.")
     if _has_phone(body):
         raise EngagementValidationError("Não inclua números de telefone no comentário.")
-
     normalized = _normalize_for_filter(body)
     padded = f" {normalized} "
     if any(f" {term} " in padded for term in _BLOCKED_TERMS):
         raise EngagementValidationError("O comentário contém linguagem não permitida.")
-
     if re.search(r"(.)\1{7,}", normalized.replace(" ", "")):
         raise EngagementValidationError("Evite repetições excessivas no comentário.")
-
     return body
 
 
@@ -163,19 +143,16 @@ class SobreEngagementService:
                     key TEXT PRIMARY KEY,
                     value INTEGER NOT NULL DEFAULT 0
                 );
-
                 CREATE TABLE IF NOT EXISTS visitors (
                     visitor_hash TEXT PRIMARY KEY,
                     first_seen TEXT NOT NULL,
                     last_seen TEXT NOT NULL
                 );
-
                 CREATE TABLE IF NOT EXISTS votes (
                     visitor_hash TEXT PRIMARY KEY,
                     vote TEXT NOT NULL CHECK (vote IN ('like', 'dislike')),
                     updated_at TEXT NOT NULL
                 );
-
                 CREATE TABLE IF NOT EXISTS comments (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     visitor_hash TEXT NOT NULL,
@@ -186,12 +163,21 @@ class SobreEngagementService:
                     status TEXT NOT NULL DEFAULT 'published'
                         CHECK (status IN ('published', 'hidden'))
                 );
-
                 CREATE INDEX IF NOT EXISTS idx_comments_status_id
                     ON comments(status, id DESC);
                 CREATE INDEX IF NOT EXISTS idx_comments_visitor_created
                     ON comments(visitor_hash, created_at DESC);
                 """
+            )
+            columns = {str(row["name"]) for row in connection.execute("PRAGMA table_info(comments)").fetchall()}
+            if "parent_id" not in columns:
+                connection.execute("ALTER TABLE comments ADD COLUMN parent_id INTEGER REFERENCES comments(id) ON DELETE CASCADE")
+            if "is_official" not in columns:
+                connection.execute("ALTER TABLE comments ADD COLUMN is_official INTEGER NOT NULL DEFAULT 0")
+            if "official_label" not in columns:
+                connection.execute("ALTER TABLE comments ADD COLUMN official_label TEXT NOT NULL DEFAULT ''")
+            connection.execute(
+                "CREATE INDEX IF NOT EXISTS idx_comments_parent_status_id ON comments(parent_id, status, id)"
             )
             connection.execute(
                 "INSERT OR IGNORE INTO engagement_stats(key, value) VALUES ('visitors', 0)"
@@ -211,28 +197,20 @@ class SobreEngagementService:
             )
             is_new = cursor.rowcount == 1
             if is_new:
-                connection.execute(
-                    "UPDATE engagement_stats SET value = value + 1 WHERE key = 'visitors'"
-                )
+                connection.execute("UPDATE engagement_stats SET value = value + 1 WHERE key = 'visitors'")
             else:
-                connection.execute(
-                    "UPDATE visitors SET last_seen = ? WHERE visitor_hash = ?",
-                    (now, visitor_hash),
-                )
+                connection.execute("UPDATE visitors SET last_seen = ? WHERE visitor_hash = ?", (now, visitor_hash))
         return is_new
 
     def get_user_vote(self, visitor_id: str) -> str | None:
         visitor_hash = self.visitor_hash(visitor_id)
         with self._connection() as connection:
-            row = connection.execute(
-                "SELECT vote FROM votes WHERE visitor_hash = ?", (visitor_hash,)
-            ).fetchone()
+            row = connection.execute("SELECT vote FROM votes WHERE visitor_hash = ?", (visitor_hash,)).fetchone()
         return str(row["vote"]) if row else None
 
     def set_vote(self, visitor_id: str, vote: str | None) -> dict[str, Any]:
         if vote not in {"like", "dislike", None}:
             raise EngagementValidationError("Voto inválido.")
-
         visitor_hash = self.visitor_hash(visitor_id)
         now = _utc_now().isoformat()
         with self._connection() as connection:
@@ -241,11 +219,8 @@ class SobreEngagementService:
             else:
                 connection.execute(
                     """
-                    INSERT INTO votes(visitor_hash, vote, updated_at)
-                    VALUES (?, ?, ?)
-                    ON CONFLICT(visitor_hash) DO UPDATE SET
-                        vote = excluded.vote,
-                        updated_at = excluded.updated_at
+                    INSERT INTO votes(visitor_hash, vote, updated_at) VALUES (?, ?, ?)
+                    ON CONFLICT(visitor_hash) DO UPDATE SET vote = excluded.vote, updated_at = excluded.updated_at
                     """,
                     (visitor_hash, vote, now),
                 )
@@ -255,16 +230,11 @@ class SobreEngagementService:
 
     def get_stats(self) -> dict[str, int]:
         with self._connection() as connection:
-            visitor_row = connection.execute(
-                "SELECT value FROM engagement_stats WHERE key = 'visitors'"
-            ).fetchone()
-            vote_rows = connection.execute(
-                "SELECT vote, COUNT(*) AS total FROM votes GROUP BY vote"
-            ).fetchall()
+            visitor_row = connection.execute("SELECT value FROM engagement_stats WHERE key = 'visitors'").fetchone()
+            vote_rows = connection.execute("SELECT vote, COUNT(*) AS total FROM votes GROUP BY vote").fetchall()
             comment_row = connection.execute(
-                "SELECT COUNT(*) AS total FROM comments WHERE status = 'published'"
+                "SELECT COUNT(*) AS total FROM comments WHERE status = 'published' AND parent_id IS NULL"
             ).fetchone()
-
         votes = {str(row["vote"]): int(row["total"]) for row in vote_rows}
         return {
             "visitors": int(visitor_row["value"] if visitor_row else 0),
@@ -277,22 +247,39 @@ class SobreEngagementService:
         offset = max(0, int(offset or 0))
         limit = min(MAX_PAGE_SIZE, max(1, int(limit or PAGE_SIZE)))
         with self._connection() as connection:
-            rows = connection.execute(
+            roots = connection.execute(
                 """
-                SELECT id, name, body, created_at
+                SELECT id, name, body, created_at, parent_id, is_official, official_label
                 FROM comments
-                WHERE status = 'published'
-                ORDER BY id DESC
-                LIMIT ? OFFSET ?
+                WHERE status = 'published' AND parent_id IS NULL
+                ORDER BY id DESC LIMIT ? OFFSET ?
                 """,
                 (limit, offset),
             ).fetchall()
             total_row = connection.execute(
-                "SELECT COUNT(*) AS total FROM comments WHERE status = 'published'"
+                "SELECT COUNT(*) AS total FROM comments WHERE status = 'published' AND parent_id IS NULL"
             ).fetchone()
-
+            root_ids = [int(row["id"]) for row in roots]
+            replies_by_parent: dict[int, list[dict[str, Any]]] = {root_id: [] for root_id in root_ids}
+            if root_ids:
+                placeholders = ",".join("?" for _ in root_ids)
+                reply_rows = connection.execute(
+                    f"""
+                    SELECT id, name, body, created_at, parent_id, is_official, official_label
+                    FROM comments
+                    WHERE status = 'published' AND parent_id IN ({placeholders})
+                    ORDER BY id ASC
+                    """,
+                    root_ids,
+                ).fetchall()
+                for row in reply_rows:
+                    replies_by_parent.setdefault(int(row["parent_id"]), []).append(self._serialize_comment(row))
         total = int(total_row["total"] if total_row else 0)
-        comments = [self._serialize_comment(row) for row in rows]
+        comments = []
+        for row in roots:
+            item = self._serialize_comment(row)
+            item["replies"] = replies_by_parent.get(int(row["id"]), [])
+            comments.append(item)
         return {
             "comments": comments,
             "total": total,
@@ -300,6 +287,22 @@ class SobreEngagementService:
             "limit": limit,
             "has_more": offset + len(comments) < total,
         }
+
+    def _enforce_public_rate_limit(self, connection: sqlite3.Connection, visitor_hash: str, now: datetime) -> None:
+        recent = connection.execute(
+            "SELECT created_at FROM comments WHERE visitor_hash = ? ORDER BY id DESC LIMIT 6",
+            (visitor_hash,),
+        ).fetchall()
+        recent_dates = []
+        for row in recent:
+            try:
+                recent_dates.append(datetime.fromisoformat(str(row["created_at"])))
+            except ValueError:
+                continue
+        if recent_dates and now - recent_dates[0] < timedelta(minutes=2):
+            raise EngagementValidationError("Aguarde dois minutos antes de enviar outro comentário.", 429)
+        if sum(1 for created_at in recent_dates if now - created_at < timedelta(days=1)) >= 5:
+            raise EngagementValidationError("Limite diário de comentários atingido. Tente novamente amanhã.", 429)
 
     def add_comment(
         self,
@@ -309,95 +312,110 @@ class SobreEngagementService:
         email: Any,
         body: Any,
         honeypot: Any = "",
+        parent_id: Any = None,
     ) -> dict[str, Any]:
         if str(honeypot or "").strip():
             raise EngagementValidationError("Não foi possível publicar o comentário.")
-
         clean_name = _validate_name(name)
         clean_email = _validate_email(email)
         clean_body = _validate_comment(body)
+        clean_parent_id: int | None = None
+        if parent_id not in (None, "", 0, "0"):
+            try:
+                clean_parent_id = int(parent_id)
+            except (TypeError, ValueError) as exc:
+                raise EngagementValidationError("Comentário de referência inválido.") from exc
+            if clean_parent_id <= 0:
+                raise EngagementValidationError("Comentário de referência inválido.")
         visitor_hash = self.visitor_hash(visitor_id)
         now = _utc_now()
-
         with self._connection() as connection:
-            recent = connection.execute(
-                """
-                SELECT created_at
-                FROM comments
-                WHERE visitor_hash = ?
-                ORDER BY id DESC
-                LIMIT 6
-                """,
-                (visitor_hash,),
-            ).fetchall()
-
-            recent_dates = []
-            for row in recent:
-                try:
-                    recent_dates.append(datetime.fromisoformat(str(row["created_at"])))
-                except ValueError:
-                    continue
-
-            if recent_dates and now - recent_dates[0] < timedelta(minutes=2):
-                raise EngagementValidationError(
-                    "Aguarde dois minutos antes de enviar outro comentário.", 429
-                )
-            last_day = sum(1 for created_at in recent_dates if now - created_at < timedelta(days=1))
-            if last_day >= 5:
-                raise EngagementValidationError(
-                    "Limite diário de comentários atingido. Tente novamente amanhã.", 429
-                )
-
+            self._enforce_public_rate_limit(connection, visitor_hash, now)
+            if clean_parent_id is not None:
+                parent = connection.execute(
+                    "SELECT id FROM comments WHERE id = ? AND parent_id IS NULL AND status = 'published'",
+                    (clean_parent_id,),
+                ).fetchone()
+                if parent is None:
+                    raise EngagementValidationError("O comentário original não está disponível.", 404)
             cursor = connection.execute(
                 """
-                INSERT INTO comments(visitor_hash, name, email, body, created_at, status)
-                VALUES (?, ?, ?, ?, ?, 'published')
+                INSERT INTO comments(
+                    visitor_hash, name, email, body, created_at, status,
+                    parent_id, is_official, official_label
+                ) VALUES (?, ?, ?, ?, ?, 'published', ?, 0, '')
                 """,
-                (visitor_hash, clean_name, clean_email, clean_body, now.isoformat()),
+                (visitor_hash, clean_name, clean_email, clean_body, now.isoformat(), clean_parent_id),
             )
-            comment_id = int(cursor.lastrowid)
             row = connection.execute(
-                "SELECT id, name, body, created_at FROM comments WHERE id = ?",
-                (comment_id,),
+                """
+                SELECT id, name, body, created_at, parent_id, is_official, official_label
+                FROM comments WHERE id = ?
+                """,
+                (int(cursor.lastrowid),),
             ).fetchone()
+        item = self._serialize_comment(row)
+        if clean_parent_id is None:
+            item["replies"] = []
+        return item
 
+    def add_official_reply(self, parent_comment_id: Any, body: Any, label: str = "CurVE") -> dict[str, Any]:
+        try:
+            parent_comment_id = int(parent_comment_id)
+        except (TypeError, ValueError) as exc:
+            raise EngagementValidationError("Comentário inválido.") from exc
+        if parent_comment_id <= 0:
+            raise EngagementValidationError("Comentário inválido.")
+        clean_body = _validate_comment(body)
+        clean_label = re.sub(r"\s+", " ", str(label or "CurVE").strip())[:40] or "CurVE"
+        now = _utc_now().isoformat()
+        with self._connection() as connection:
+            parent = connection.execute(
+                "SELECT id FROM comments WHERE id = ? AND parent_id IS NULL AND status = 'published'",
+                (parent_comment_id,),
+            ).fetchone()
+            if parent is None:
+                raise EngagementValidationError("O comentário original não está disponível.", 404)
+            cursor = connection.execute(
+                """
+                INSERT INTO comments(
+                    visitor_hash, name, email, body, created_at, status,
+                    parent_id, is_official, official_label
+                ) VALUES (?, ?, '', ?, ?, 'published', ?, 1, ?)
+                """,
+                (self.visitor_hash("official-curve"), clean_label, clean_body, now, parent_comment_id, clean_label),
+            )
+            row = connection.execute(
+                """
+                SELECT id, name, body, created_at, parent_id, is_official, official_label
+                FROM comments WHERE id = ?
+                """,
+                (int(cursor.lastrowid),),
+            ).fetchone()
         return self._serialize_comment(row)
 
-    def list_comments_admin(
-        self,
-        *,
-        offset: int = 0,
-        limit: int = 100,
-        status: str = "all",
-    ) -> dict[str, Any]:
-        """Lista comentários para o Painel Local, incluindo e-mail privado.
-
-        Este método só deve ser exposto por uma rota administrativa protegida.
-        """
+    def list_comments_admin(self, *, offset: int = 0, limit: int = 100, status: str = "all") -> dict[str, Any]:
         offset = max(0, int(offset or 0))
-        limit = min(200, max(1, int(limit or 100)))
+        limit = min(500, max(1, int(limit or 100)))
         status = str(status or "all").strip().lower()
         if status not in {"all", "published", "hidden"}:
             raise EngagementValidationError("Status de comentário inválido.")
-
         where = "" if status == "all" else "WHERE status = ?"
         params: tuple[Any, ...] = () if status == "all" else (status,)
         with self._connection() as connection:
             rows = connection.execute(
                 f"""
-                SELECT id, name, email, body, created_at, status
-                FROM comments
-                {where}
-                ORDER BY id DESC
+                SELECT id, name, email, body, created_at, status,
+                       parent_id, is_official, official_label
+                FROM comments {where}
+                ORDER BY CASE WHEN parent_id IS NULL THEN id ELSE parent_id END DESC,
+                         CASE WHEN parent_id IS NULL THEN 0 ELSE 1 END,
+                         id ASC
                 LIMIT ? OFFSET ?
                 """,
                 (*params, limit, offset),
             ).fetchall()
-            total_row = connection.execute(
-                f"SELECT COUNT(*) AS total FROM comments {where}",
-                params,
-            ).fetchone()
-
+            total_row = connection.execute(f"SELECT COUNT(*) AS total FROM comments {where}", params).fetchone()
         total = int(total_row["total"] if total_row else 0)
         comments = [self._serialize_admin_comment(row) for row in rows]
         return {
@@ -409,52 +427,53 @@ class SobreEngagementService:
         }
 
     def delete_comment(self, comment_id: int) -> bool:
-        """Exclui definitivamente um comentário solicitado pelo Painel Local."""
         try:
             comment_id = int(comment_id)
         except (TypeError, ValueError) as exc:
             raise EngagementValidationError("Comentário inválido.") from exc
         if comment_id <= 0:
             raise EngagementValidationError("Comentário inválido.")
-
         with self._connection() as connection:
-            cursor = connection.execute(
-                "DELETE FROM comments WHERE id = ?",
-                (comment_id,),
-            )
+            connection.execute("DELETE FROM comments WHERE parent_id = ?", (comment_id,))
+            cursor = connection.execute("DELETE FROM comments WHERE id = ?", (comment_id,))
         return cursor.rowcount == 1
 
     @staticmethod
-    def _serialize_admin_comment(row: sqlite3.Row) -> dict[str, Any]:
-        created_at_raw = str(row["created_at"])
+    def _display_date(value: str, *, admin: bool = False) -> str:
         try:
-            created_at = datetime.fromisoformat(created_at_raw)
+            created_at = datetime.fromisoformat(value)
             if created_at.tzinfo is None:
                 created_at = created_at.replace(tzinfo=timezone.utc)
-            display_date = created_at.astimezone(timezone.utc).strftime("%d/%m/%Y %H:%M UTC")
+            return created_at.astimezone(timezone.utc).strftime("%d/%m/%Y %H:%M UTC" if admin else "%d/%m/%Y")
         except ValueError:
-            display_date = created_at_raw
+            return value if admin else ""
+
+    @classmethod
+    def _serialize_admin_comment(cls, row: sqlite3.Row) -> dict[str, Any]:
+        created_at_raw = str(row["created_at"])
         return {
             "id": int(row["id"]),
             "name": str(row["name"]),
             "email": str(row["email"]),
             "body": str(row["body"]),
             "created_at": created_at_raw,
-            "date": display_date,
+            "date": cls._display_date(created_at_raw, admin=True),
             "status": str(row["status"]),
+            "parent_id": int(row["parent_id"]) if row["parent_id"] is not None else None,
+            "is_reply": row["parent_id"] is not None,
+            "is_official": bool(row["is_official"]),
+            "official_label": str(row["official_label"] or ""),
         }
 
-    @staticmethod
-    def _serialize_comment(row: sqlite3.Row) -> dict[str, Any]:
+    @classmethod
+    def _serialize_comment(cls, row: sqlite3.Row) -> dict[str, Any]:
         created_at_raw = str(row["created_at"])
-        try:
-            created_at = datetime.fromisoformat(created_at_raw)
-            display_date = created_at.astimezone(timezone.utc).strftime("%d/%m/%Y")
-        except ValueError:
-            display_date = ""
         return {
             "id": int(row["id"]),
-            "name": str(row["name"]),
+            "name": str(row["official_label"] or row["name"]) if bool(row["is_official"]) else str(row["name"]),
             "body": str(row["body"]),
-            "date": display_date,
+            "date": cls._display_date(created_at_raw),
+            "parent_id": int(row["parent_id"]) if row["parent_id"] is not None else None,
+            "is_official": bool(row["is_official"]),
+            "official_label": str(row["official_label"] or ""),
         }

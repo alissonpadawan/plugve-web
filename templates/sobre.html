@@ -266,6 +266,18 @@
           <time>{{ comment.date }}</time>
         </div>
         <p>{{ comment.body }}</p>
+        <button class="comment-reply-trigger" type="button" data-reply-comment="{{ comment.id }}" data-reply-name="{{ comment.name }}">Responder</button>
+        <div class="comment-replies" data-replies-for="{{ comment.id }}">
+          {% for reply in comment.replies %}
+            <article class="comment-reply{% if reply.is_official %} comment-reply--official{% endif %}" data-comment-id="{{ reply.id }}">
+              <div class="comment-meta">
+                <strong>{{ reply.name }}{% if reply.is_official %}<span class="official-reply-badge">Resposta oficial</span>{% endif %}</strong>
+                <time>{{ reply.date }}</time>
+              </div>
+              <p>{{ reply.body }}</p>
+            </article>
+          {% endfor %}
+        </div>
       </article>
     {% endfor %}
   </div>
@@ -287,12 +299,14 @@
     <div class="comment-dialog-header">
       <div>
         <span class="institutional-card-label">Participação</span>
-        <h2 id="comment-dialog-title">Deixar seu comentário</h2>
+        <h2 id="comment-dialog-title" data-comment-dialog-title>Deixar seu comentário</h2>
+        <p class="comment-reply-context is-hidden" data-comment-reply-context></p>
       </div>
       <button class="comment-dialog-close" type="button" data-close-comment aria-label="Fechar janela de comentário">×</button>
     </div>
 
     <form class="comments-form comments-form--dialog" id="sobre-comment-form" novalidate>
+      <input type="hidden" name="parent_id" value="" data-comment-parent-id>
       <div class="comments-form-grid">
         <div class="field">
           <label for="comment-name">Nome</label>
@@ -328,5 +342,5 @@
 
 {% block scripts %}
   {{ super() }}
-  <script src="{{ url_for('static', filename='js/sobre.js') }}?v=20260725_v43_13"></script>
+  <script src="{{ url_for('static', filename='js/sobre.js') }}?v=20260726_v43_14"></script>
 {% endblock %}

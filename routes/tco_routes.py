@@ -35,6 +35,10 @@ from services.contact_email_service import (
     send_contact_email,
     validate_contact_message,
 )
+from services.contact_inbox_service import (
+    ContactInboxService,
+    ContactInboxValidationError,
+)
 
 tco_bp = Blueprint("tco", __name__)
 
@@ -327,6 +331,7 @@ def sobre_comments():
             email=payload.get("email"),
             body=payload.get("comment"),
             honeypot=payload.get("website"),
+            parent_id=payload.get("parent_id"),
         )
     except EngagementValidationError as exc:
         return jsonify({"ok": False, "error": str(exc)}), exc.status_code
@@ -362,6 +367,24 @@ def sobre_admin_comments():
     return response
 
 
+@tco_bp.route("/api/sobre/admin/comments/<int:comment_id>/official-replies", methods=["POST"])
+def sobre_admin_official_reply(comment_id: int):
+    if not _sobre_admin_token_valido():
+        return _sobre_admin_unauthorized()
+    payload = request.get_json(silent=True) or {}
+    try:
+        reply = _sobre_engagement_service().add_official_reply(
+            comment_id,
+            payload.get("body"),
+            label=str(payload.get("label") or "CurVE"),
+        )
+    except EngagementValidationError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), exc.status_code
+    response = jsonify({"ok": True, "reply": reply})
+    response.headers["Cache-Control"] = "no-store"
+    return response, 201
+
+
 @tco_bp.route("/api/sobre/admin/comments/<int:comment_id>", methods=["DELETE"])
 def sobre_admin_delete_comment(comment_id: int):
     if not _sobre_admin_token_valido():
@@ -382,6 +405,16 @@ def sobre_admin_delete_comment(comment_id: int):
     })
     response.headers["Cache-Control"] = "no-store"
     return response
+
+
+@lru_cache(maxsize=4)
+def _cached_contact_inbox_service(database_path: str) -> ContactInboxService:
+    return ContactInboxService(database_path)
+
+
+def _contact_inbox_service() -> ContactInboxService:
+    database_path = str(current_app.config["ARQUIVO_MENSAGENS_CONTATO"])
+    return _cached_contact_inbox_service(database_path)
 
 
 def _contato_csrf_token() -> str:
@@ -437,8 +470,17 @@ def contato_enviar():
             message=payload.get("mensagem"),
             honeypot=payload.get("website"),
         )
-        send_contact_email(contact_message, current_app.config)
+        inbox_service = _contact_inbox_service()
+        stored_message = inbox_service.create_message(contact_message)
+        # A mensagem já chegou à caixa administrativa; aplica o intervalo mesmo
+        # se o provedor SMTP estiver temporariamente indisponível.
         session["contato_last_sent_at"] = now
+        try:
+            send_contact_email(contact_message, current_app.config)
+        except ContactEmailError as delivery_exc:
+            inbox_service.update_delivery(stored_message["id"], "failed", str(delivery_exc))
+            raise
+        inbox_service.update_delivery(stored_message["id"], "sent")
     except ContactEmailError as exc:
         if isinstance(exc, (ContactEmailConfigurationError, ContactEmailDeliveryError)):
             current_app.logger.warning("Falha controlada no envio de contato: %s", exc)
@@ -448,6 +490,47 @@ def contato_enviar():
         "ok": True,
         "message": "Mensagem enviada. Obrigado pelo contato.",
     }), 201
+
+
+@tco_bp.route("/api/contato/admin/messages", methods=["GET"])
+def contato_admin_messages():
+    if not _sobre_admin_token_valido():
+        return _sobre_admin_unauthorized()
+    try:
+        offset = max(0, int(request.args.get("offset", 0)))
+        limit = max(1, int(request.args.get("limit", 200)))
+        status = str(request.args.get("status", "all") or "all")
+        page = _contact_inbox_service().list_messages(status=status, offset=offset, limit=limit)
+    except (TypeError, ValueError):
+        return jsonify({"ok": False, "error": "Paginação inválida."}), 400
+    except ContactInboxValidationError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), exc.status_code
+    response = jsonify({"ok": True, **page})
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
+
+@tco_bp.route("/api/contato/admin/messages/<int:message_id>", methods=["PATCH", "DELETE"])
+def contato_admin_message(message_id: int):
+    if not _sobre_admin_token_valido():
+        return _sobre_admin_unauthorized()
+    service = _contact_inbox_service()
+    try:
+        if request.method == "DELETE":
+            deleted = service.delete_message(message_id)
+            if not deleted:
+                return jsonify({"ok": False, "error": "Mensagem não encontrada."}), 404
+            response = jsonify({"ok": True, "deleted_id": message_id})
+        else:
+            payload = request.get_json(silent=True) or {}
+            item = service.update_status(message_id, payload.get("status"))
+            if item is None:
+                return jsonify({"ok": False, "error": "Mensagem não encontrada."}), 404
+            response = jsonify({"ok": True, "message": item})
+    except ContactInboxValidationError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), exc.status_code
+    response.headers["Cache-Control"] = "no-store"
+    return response
 
 # ============================================================
 # 4) CÁLCULO TCO + NOVOS CENÁRIOS DE COMPARAÇÃO
