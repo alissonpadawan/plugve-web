@@ -1,0 +1,64 @@
+{
+  "versao": "V45 final — motor geral + integração + confirmação",
+  "regressao_matching": {
+    "aprovados": 31,
+    "total": 31,
+    "positivos_localizados": 29,
+    "positivos_autopreenchidos": 28,
+    "negativos_preservados": 2
+  },
+  "catalogo_pbev": {
+    "registros_utilizaveis_auditados": 10636,
+    "falsos_tokens_tecnicos": 0
+  },
+  "testes": {
+    "pytest_aprovados": 131,
+    "pytest_pulados": 5,
+    "subtestes_aprovados": 10,
+    "testes_confirmacao": 8
+  },
+  "javascript": {
+    "scripts_inline_validados_node_check": 5
+  },
+  "resultados_representativos": {
+    "match_alto_automatico": {
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "requer_confirmacao": false,
+      "opcoes_confirmacao": 0,
+      "criterio_match": "exato",
+      "candidato": "PBEV-2026-0386",
+      "modelo_pbev": "CRETA"
+    },
+    "match_medio_confirmavel": {
+      "nivel_match": "medio",
+      "autopreencher": false,
+      "requer_confirmacao": true,
+      "opcoes_confirmacao": 4,
+      "criterio_match": "aproximacao_com_observacao",
+      "candidato": "PBEV-2016-1061",
+      "modelo_pbev": "Aventador"
+    },
+    "confirmacao_usuario": {
+      "id_solicitado": "PBEV-2016-1061",
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "confirmado_usuario": true,
+      "criterio_match": "confirmacao_usuario",
+      "candidato": "PBEV-2016-1061",
+      "requer_confirmacao": false
+    },
+    "sem_match_real": {
+      "nivel_match": "sem_match",
+      "autopreencher": false,
+      "requer_confirmacao": false,
+      "opcoes_confirmacao": 0,
+      "criterio_match": "sem_match",
+      "candidato": null,
+      "modelo_pbev": null
+    }
+  },
+  "limitacoes_validacao": [
+    "Flask e navegador real indisponíveis no ambiente; renderização Jinja e sintaxe JavaScript foram validadas sem browser."
+  ]
+}

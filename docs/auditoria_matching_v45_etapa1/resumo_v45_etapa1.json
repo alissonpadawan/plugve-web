@@ -1,0 +1,21 @@
+{
+  "versao_site_analisada": "V44.3",
+  "etapa": "V45 Etapa 1 — diagnóstico e harness",
+  "casos_total": 21,
+  "casos_aprovados_meta_v45": 20,
+  "regressoes_protegidas_aprovadas": 20,
+  "falhas_conhecidas": 1,
+  "lacunas_corrigidas": 0,
+  "regressoes_inesperadas": 0,
+  "contratos_localizacao_ou_ausencia_atendidos": 21,
+  "candidatos_positivos_localizados": 19,
+  "ausencias_negativas_preservadas": 2,
+  "classificacoes_falha": {
+    "normalizacao_token_tecnico": 1,
+    "classificacao_token_forte": 1,
+    "resolucao_equivalencia_consumo": 1,
+    "efeito_interface_campo_manual": 1
+  },
+  "arquivos_producao_alterados": [],
+  "observacao": "A Etapa 1 não modifica o motor de matching nem a interface. Falhas conhecidas permanecem visíveis no relatório e não mascaram regressões novas."
+}

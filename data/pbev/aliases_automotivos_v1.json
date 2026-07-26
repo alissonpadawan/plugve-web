@@ -1,0 +1,161 @@
+{
+  "versao": "v1",
+  "descricao": "Aliases automotivos gerais usados pelo motor FIPE x PBEV. Não contém regras por veículo.",
+  "phrase_aliases": [
+    {
+      "pattern": "\\bPICK\\s+UP\\b",
+      "replacement": "PICKUP"
+    },
+    {
+      "pattern": "\\bDISCOVERY\\s+SP\\b",
+      "replacement": "DISCOVERY SPORT"
+    },
+    {
+      "pattern": "\\bX\\s+DYN(?:AMIC)?\\b",
+      "replacement": "X DYNAMIC"
+    },
+    {
+      "pattern": "\\bR\\s+DYN(?:AMIC)?\\b",
+      "replacement": "R DYNAMIC"
+    },
+    {
+      "pattern": "\\bE\\s+(2008|208)\\b",
+      "replacement": "E\\1"
+    },
+    {
+      "pattern": "\\bI\\s+DM\\b",
+      "replacement": "IDM"
+    },
+    {
+      "pattern": "\\bDM\\s+I\\b",
+      "replacement": "DMI"
+    },
+    {
+      "pattern": "\\bULTIM\\s+DARK\\b",
+      "replacement": "ULTIMATE DARK"
+    },
+    {
+      "pattern": "\\bULT\\s+DARK\\b",
+      "replacement": "ULTIMATE DARK"
+    },
+    {
+      "pattern": "\\bDARK\\s+ED\\b",
+      "replacement": "DARK EDITION"
+    },
+    {
+      "pattern": "\\bFIRST\\s+ED\\b",
+      "replacement": "FIRST EDITION"
+    },
+    {
+      "pattern": "CILINRDRI",
+      "replacement": "CILINDRI"
+    }
+  ],
+  "token_aliases": {
+    "TB": [
+      "TURBO"
+    ],
+    "TDI": [
+      "TURBO",
+      "DIESEL"
+    ],
+    "BITURBO": [
+      "TURBO"
+    ],
+    "BI-TURBO": [
+      "TURBO"
+    ],
+    "SPI": [
+      "SPIDER"
+    ],
+    "ULT": [
+      "ULTIMATE"
+    ],
+    "ULTIM": [
+      "ULTIMATE"
+    ],
+    "ULTD": [
+      "ULTIMATE",
+      "DARK"
+    ],
+    "ED": [
+      "EDITION"
+    ],
+    "CONFORT": [
+      "COMFORT"
+    ],
+    "MOMENT": [
+      "MOMENTUM"
+    ],
+    "INSCRIPT": [
+      "INSCRIPTION"
+    ],
+    "AUT": [
+      "AUTO",
+      "AUTOMATICO"
+    ],
+    "AT": [
+      "AUTO",
+      "AUTOMATICO"
+    ],
+    "MEC": [
+      "MANUAL"
+    ],
+    "MT": [
+      "MANUAL"
+    ],
+    "4WD": [
+      "AWD",
+      "4X4"
+    ],
+    "P250F": [
+      "P250",
+      "FLEX"
+    ],
+    "P250FF": [
+      "P250",
+      "FLEX"
+    ],
+    "P240FF": [
+      "P240",
+      "FLEX"
+    ],
+    "TOWNER": [
+      "START"
+    ],
+    "START": [
+      "TOWNER"
+    ]
+  },
+  "technical_prefix_tokens": [
+    "TB",
+    "T",
+    "TDI",
+    "TURBO",
+    "BITURBO",
+    "TSI",
+    "TFSI",
+    "GDI",
+    "MPI",
+    "CRDI",
+    "CDI",
+    "VTEC",
+    "VVT",
+    "VVTIE",
+    "DOHC",
+    "SOHC"
+  ],
+  "trim_tokens": [
+    "ULT",
+    "ULTIM",
+    "ULTIMATE",
+    "DARK",
+    "ED",
+    "EDITION",
+    "BLACK",
+    "SAFETY",
+    "ADVANCE",
+    "LUXURY",
+    "PRESTIGE"
+  ]
+}

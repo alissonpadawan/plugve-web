@@ -1,0 +1,29 @@
+{
+  "etapa": "V45 Etapa 2 — auditoria estrutural do catálogo PBEV",
+  "registros_base": 11975,
+  "registros_utilizaveis_auditados": 10636,
+  "aliases_versao": "v1",
+  "falsos_tokens_comerciais_apenas_tecnicos": 0,
+  "aprovado": true,
+  "cobertura_atributos": {
+    "acabamento": 5232,
+    "carroceria": 886,
+    "cilindrada": 10052,
+    "familia": 10401,
+    "marchas": 9173,
+    "my": 10636,
+    "tracao": 656,
+    "transmissao": 10574,
+    "turbo": 856,
+    "valvulas": 9773
+  },
+  "registros_por_propulsao": {
+    "COMBUSTAO": 8952,
+    "ELETRICO": 582,
+    "HIBRIDO": 629,
+    "PLUG_IN": 473
+  },
+  "marcas_auditadas": 64,
+  "exemplos_falha": [],
+  "observacao": "Esta auditoria valida o parser sobre os registros utilizáveis da base PBEV. Ela não substitui a regressão ponta a ponta com nomenclaturas FIPE."
+}

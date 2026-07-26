@@ -27,14 +27,19 @@ def sugestao_consumo():
     O endpoint é propositalmente conservador: somente retorna autopreencher=true
     quando o backend classifica o match como alto e o registro PBEV não tem flags
     críticas. Match médio/baixo fica disponível para auditoria, mas a interface não
-    deve preencher silenciosamente.
+    deve preencher silenciosamente. Quando o payload traz confirmar_id_pbev, o
+    backend valida novamente a opção antes de autorizar a aplicação.
     """
     payload = _payload_request()
     try:
         resposta = pbev_service.sugerir_consumo(payload)
         resp = jsonify(resposta)
-        # A base PBEV é local/versionada; o resultado por veículo pode ser cacheado por pouco tempo.
-        resp.headers["Cache-Control"] = "public, max-age=3600, stale-while-revalidate=21600"
+        # Confirmação humana não deve ser reaproveitada por cache intermediário.
+        if payload.get("confirmar_id_pbev"):
+            resp.headers["Cache-Control"] = "no-store"
+        else:
+            # A base PBEV é local/versionada; o resultado por veículo pode ser cacheado por pouco tempo.
+            resp.headers["Cache-Control"] = "public, max-age=3600, stale-while-revalidate=21600"
         return resp
     except Exception as exc:  # fallback seguro: a Simular deve continuar manual.
         current_app.logger.exception("Erro na sugestão PBEV/Inmetro: %s", exc)
@@ -48,6 +53,10 @@ def sugestao_consumo():
             "sugestoes_consumo": {},
             "candidato": None,
             "flags": {},
+            "requer_confirmacao": False,
+            "opcoes_confirmacao": [],
+            "confirmado_usuario": False,
+            "motivo_confirmacao": "",
         }), 200
 
 

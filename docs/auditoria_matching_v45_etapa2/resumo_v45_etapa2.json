@@ -1,0 +1,23 @@
+{
+  "versao_site_base": "V44.3",
+  "etapa": "V45 Etapa 2 — motor geral",
+  "casos_total": 31,
+  "casos_aprovados": 31,
+  "falhas": 0,
+  "positivos_localizados": 29,
+  "positivos_autopreenchidos": 28,
+  "negativos_preservados": 2,
+  "lacunas_corrigidas_etapa2": 4,
+  "casos_corrigidos": [
+    "hyundai_creta_comfort_tb12v_zero_km",
+    "toyota_hilux_srv_tdi16v",
+    "ferrari_12cilindri_spider",
+    "volvo_xc60_t8_ultimate_dark_my24"
+  ],
+  "prefiltro_destrutivo_removido": true,
+  "arquivos_producao_alterados": [
+    "services/pbev_service.py",
+    "data/pbev/aliases_automotivos_v1.json"
+  ],
+  "interface_v44_alterada": false
+}

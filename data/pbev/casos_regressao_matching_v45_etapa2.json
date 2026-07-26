@@ -1,0 +1,804 @@
+[
+  {
+    "id": "corolla_cross_xre_zero_km",
+    "consulta": {
+      "prefixo": "icev",
+      "marca": "Toyota",
+      "modelo": "Corolla Cross XRE 2.0 16V Flex Aut.",
+      "texto_modelo": "Corolla Cross XRE 2.0 16V Flex Aut. Zero km Flex",
+      "ano": 32000,
+      "ano_codigo": "32000-5",
+      "texto_ano": "Zero km Flex",
+      "combustivel": "Flex",
+      "tipo_veiculo": "combustao"
+    },
+    "esperado": {
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "ano_tabela_pbev": 2026,
+      "modelo_contem": "COROLLA CROSS"
+    },
+    "origem": "regressao_v42_homologada",
+    "status_v45": "regressao_protegida",
+    "classificacao_falha": [],
+    "falha_conhecida": false
+  },
+  {
+    "id": "song_plus_phev",
+    "consulta": {
+      "prefixo": "ve",
+      "marca": "BYD",
+      "modelo": "Song Plus 1.5 Híbrido Aut.",
+      "texto_modelo": "Song Plus 1.5 Híbrido Aut. Zero km Híbrido",
+      "ano": 32000,
+      "ano_codigo": "32000-1",
+      "texto_ano": "Zero km Híbrido",
+      "combustivel": "Híbrido",
+      "tipo_veiculo": "hibrido"
+    },
+    "esperado": {
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "tipo_consumo": "phev",
+      "modelo_contem": "SONG PLUS"
+    },
+    "origem": "regressao_v42_homologada",
+    "status_v45": "regressao_protegida",
+    "classificacao_falha": [],
+    "falha_conhecida": false
+  },
+  {
+    "id": "hb20_hatch",
+    "consulta": {
+      "prefixo": "icev",
+      "marca": "Hyundai",
+      "modelo": "HB20 Limited 1.0 TB Flex 12V Aut.",
+      "texto_modelo": "HB20 Limited 1.0 TB Flex 12V Aut. Zero km Flex",
+      "ano": 2026,
+      "ano_codigo": "32000-5",
+      "texto_ano": "Zero km Flex",
+      "combustivel": "Flex",
+      "tipo_veiculo": "combustao"
+    },
+    "esperado": {
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "modelo_igual": "HB20",
+      "modelo_nao_contem": "HB20S"
+    },
+    "origem": "regressao_v42_homologada",
+    "status_v45": "regressao_protegida",
+    "classificacao_falha": [],
+    "falha_conhecida": false
+  },
+  {
+    "id": "hb20s_sedan",
+    "consulta": {
+      "prefixo": "icev",
+      "marca": "Hyundai",
+      "modelo": "HB20S Limited 1.0 TB Flex 12V Aut.",
+      "texto_modelo": "HB20S Limited 1.0 TB Flex 12V Aut. Zero km Flex",
+      "ano": 2026,
+      "ano_codigo": "32000-5",
+      "texto_ano": "Zero km Flex",
+      "combustivel": "Flex",
+      "tipo_veiculo": "combustao"
+    },
+    "esperado": {
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "modelo_igual": "HB20S"
+    },
+    "origem": "regressao_v42_homologada",
+    "status_v45": "regressao_protegida",
+    "classificacao_falha": [],
+    "falha_conhecida": false
+  },
+  {
+    "id": "duster_intense_plus",
+    "consulta": {
+      "prefixo": "icev",
+      "marca": "Renault",
+      "modelo": "DUSTER Intense Plus 1.6 16V Flex Mec.",
+      "texto_modelo": "Renault DUSTER Intense Plus 1.6 16V Flex Mec. Zero km Flex",
+      "ano": 2026,
+      "ano_codigo": "32000-5",
+      "texto_ano": "Zero km Flex",
+      "combustivel": "Flex",
+      "tipo_veiculo": "combustao",
+      "zero_km": true
+    },
+    "esperado": {
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "ano_tabela_pbev": 2026,
+      "modelo_contem": "DUSTER",
+      "gasolina_cidade_km_l": 11.2,
+      "etanol_cidade_km_l": 7.6
+    },
+    "origem": "regressao_v42_homologada",
+    "status_v45": "regressao_protegida",
+    "classificacao_falha": [],
+    "falha_conhecida": false
+  },
+  {
+    "id": "jetour_t1",
+    "consulta": {
+      "prefixo": "ve",
+      "marca": "Jetour",
+      "modelo": "T1 Advance 1.5 Híbrido Aut.",
+      "texto_modelo": "T1 Advance 1.5 Híbrido Aut. Zero km Híbrido",
+      "ano": 32000,
+      "ano_codigo": "32000-1",
+      "texto_ano": "Zero km Híbrido",
+      "combustivel": "Híbrido",
+      "tipo_veiculo": "hibrido"
+    },
+    "esperado": {
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "modelo_contem": "T1",
+      "modelo_nao_contem": "T2"
+    },
+    "origem": "regressao_v42_homologada",
+    "status_v45": "regressao_protegida",
+    "classificacao_falha": [],
+    "falha_conhecida": false
+  },
+  {
+    "id": "jetour_s06",
+    "consulta": {
+      "prefixo": "ve",
+      "marca": "Jetour",
+      "modelo": "S06 Advance 1.5 Híbrido Aut.",
+      "texto_modelo": "S06 Advance 1.5 Híbrido Aut. Zero km Híbrido",
+      "ano": 32000,
+      "ano_codigo": "32000-1",
+      "texto_ano": "Zero km Híbrido",
+      "combustivel": "Híbrido",
+      "tipo_veiculo": "hibrido"
+    },
+    "esperado": {
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "modelo_contem": "S06",
+      "modelo_nao_contem": "T1"
+    },
+    "origem": "regressao_v42_homologada",
+    "status_v45": "regressao_protegida",
+    "classificacao_falha": [],
+    "falha_conhecida": false
+  },
+  {
+    "id": "defender_d300",
+    "consulta": {
+      "prefixo": "icev",
+      "marca": "Land Rover",
+      "modelo": "Defender 110 D300 HSE Diesel Aut. Híbrido",
+      "texto_modelo": "Defender 110 D300 HSE Diesel Aut. Híbrido",
+      "ano": 2024,
+      "ano_codigo": "2024-3",
+      "texto_ano": "2024 Diesel",
+      "combustivel": "Diesel",
+      "tipo_veiculo": "hibrido"
+    },
+    "esperado": {
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "modelo_contem": "DEFENDER 110",
+      "tipo_consumo": "diesel"
+    },
+    "origem": "regressao_v42_homologada",
+    "status_v45": "regressao_protegida",
+    "classificacao_falha": [],
+    "falha_conhecida": false
+  },
+  {
+    "id": "discovery_sport_p250",
+    "consulta": {
+      "prefixo": "icev",
+      "marca": "Land Rover",
+      "modelo": "Discovery Sp. Dyn. P250 Flex Aut.",
+      "texto_modelo": "Discovery Sp. Dyn. P250 Flex Aut.",
+      "ano": 2021,
+      "ano_codigo": "2021-3",
+      "texto_ano": "2021 Flex",
+      "combustivel": "Flex",
+      "tipo_veiculo": "combustao"
+    },
+    "esperado": {
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "modelo_contem": "DISCOVERY SPORT"
+    },
+    "origem": "regressao_v42_homologada",
+    "status_v45": "regressao_protegida",
+    "classificacao_falha": [],
+    "falha_conhecida": false
+  },
+  {
+    "id": "towner_pickup",
+    "consulta": {
+      "prefixo": "icev",
+      "marca": "Hafei",
+      "modelo": "Towner Jr. Pick-up Baú 1.0 Gasolina Mec.",
+      "texto_modelo": "Towner Jr. Pick-up Baú 1.0 Gasolina Mec.",
+      "ano": 2014,
+      "ano_codigo": "2014-1",
+      "texto_ano": "2014 Gasolina",
+      "combustivel": "Gasolina",
+      "tipo_veiculo": "combustao"
+    },
+    "esperado": {
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "modelo_contem": "PICKUP",
+      "modelo_nao_contem": "VAN"
+    },
+    "origem": "regressao_v42_homologada",
+    "status_v45": "regressao_protegida",
+    "classificacao_falha": [],
+    "falha_conhecida": false
+  },
+  {
+    "id": "huracan_sterrato",
+    "consulta": {
+      "prefixo": "icev",
+      "marca": "Lamborghini",
+      "modelo": "Huracán Sterrato 5.2 V10 Gasolina Aut.",
+      "texto_modelo": "Huracán Sterrato 5.2 V10 Gasolina Aut.",
+      "ano": 2024,
+      "ano_codigo": "2024-1",
+      "texto_ano": "2024 Gasolina",
+      "combustivel": "Gasolina",
+      "tipo_veiculo": "combustao"
+    },
+    "esperado": {
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "criterio_match": "conservador_por_familia",
+      "modelo_contem": "HURACAN"
+    },
+    "origem": "regressao_v42_homologada",
+    "status_v45": "regressao_protegida",
+    "classificacao_falha": [],
+    "falha_conhecida": false
+  },
+  {
+    "id": "aventador_ano_distante",
+    "consulta": {
+      "prefixo": "icev",
+      "marca": "Lamborghini",
+      "modelo": "Aventador SVJ Roadster 6.5 V12 Gasolina Aut.",
+      "texto_modelo": "Aventador SVJ Roadster 6.5 V12 Gasolina Aut.",
+      "ano": 2021,
+      "ano_codigo": "2021-1",
+      "texto_ano": "2021 Gasolina",
+      "combustivel": "Gasolina",
+      "tipo_veiculo": "combustao"
+    },
+    "esperado": {
+      "nivel_match": "medio",
+      "autopreencher": false,
+      "criterio_match": "aproximacao_com_observacao",
+      "modelo_contem": "AVENTADOR"
+    },
+    "origem": "regressao_v42_homologada",
+    "status_v45": "regressao_protegida",
+    "classificacao_falha": [],
+    "falha_conhecida": false
+  },
+  {
+    "id": "durango_fallback_familia",
+    "consulta": {
+      "prefixo": "icev",
+      "marca": "Dodge",
+      "modelo": "Durango Crew 3.6 24V 4x4 Aut.",
+      "texto_modelo": "Durango Crew 3.6 24V 4x4 Aut. 2013 Gasolina",
+      "ano": 2013,
+      "ano_codigo": "2013-1",
+      "texto_ano": "2013 Gasolina",
+      "combustivel": "Gasolina",
+      "tipo_veiculo": "combustao"
+    },
+    "esperado": {
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "criterio_match": "conservador_por_familia",
+      "modelo_contem": "DURANGO",
+      "modelo_nao_contem": "JOURNEY",
+      "gasolina_cidade_km_l": 6.5
+    },
+    "origem": "regressao_v42_homologada",
+    "status_v45": "regressao_protegida",
+    "classificacao_falha": [],
+    "falha_conhecida": false
+  },
+  {
+    "id": "ram_2500_sem_cobertura",
+    "consulta": {
+      "prefixo": "icev",
+      "marca": "Dodge",
+      "modelo": "Ram 2500 LARAMIE 6.7 TDI CD 4x4 Dies",
+      "texto_modelo": "Ram 2500 LARAMIE 6.7 TDI CD 4x4 Dies 2012 Diesel",
+      "ano": 2012,
+      "ano_codigo": "2012-3",
+      "texto_ano": "2012 Diesel",
+      "combustivel": "Diesel",
+      "tipo_veiculo": "combustao"
+    },
+    "esperado": {
+      "nivel_match": "sem_match",
+      "autopreencher": false,
+      "cobertura_pbev": "ausente"
+    },
+    "origem": "regressao_v42_homologada",
+    "status_v45": "regressao_protegida",
+    "classificacao_falha": [],
+    "falha_conhecida": false
+  },
+  {
+    "id": "sf90_sem_cobertura",
+    "consulta": {
+      "prefixo": "icev",
+      "marca": "Ferrari",
+      "modelo": "SF 90 SPIDER 4.0 V8 Bi-Turbo (Híbrido)",
+      "texto_modelo": "SF 90 SPIDER 4.0 V8 Bi-Turbo (Híbrido) 2023",
+      "ano": 2023,
+      "ano_codigo": "2023-6",
+      "texto_ano": "2023 Híbrido",
+      "combustivel": "Híbrido",
+      "tipo_veiculo": "hibrido"
+    },
+    "esperado": {
+      "nivel_match": "sem_match",
+      "autopreencher": false,
+      "cobertura_pbev": "ausente"
+    },
+    "origem": "regressao_v42_homologada",
+    "status_v45": "regressao_protegida",
+    "classificacao_falha": [],
+    "falha_conhecida": false
+  },
+  {
+    "id": "f8_spider_potencia_secundaria",
+    "consulta": {
+      "prefixo": "icev",
+      "marca": "Ferrari",
+      "modelo": "F8 Spider 3.9 V8 Bi-Turbo 720cv",
+      "texto_modelo": "F8 Spider 3.9 V8 Bi-Turbo 720cv 2022 Gasolina",
+      "ano": 2022,
+      "ano_codigo": "2022-1",
+      "texto_ano": "2022 Gasolina",
+      "combustivel": "Gasolina",
+      "tipo_veiculo": "combustao"
+    },
+    "esperado": {
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "ano_tabela_pbev": 2022,
+      "modelo_versao_contem": "F8 SPIDER",
+      "gasolina_cidade_km_l": 5.6
+    },
+    "origem": "regressao_v42_homologada",
+    "status_v45": "regressao_protegida",
+    "classificacao_falha": [],
+    "falha_conhecida": false
+  },
+  {
+    "id": "ferrari_roma_potencia_secundaria",
+    "consulta": {
+      "prefixo": "icev",
+      "marca": "Ferrari",
+      "modelo": "Roma 3.9 V8 620cv",
+      "texto_modelo": "Roma 3.9 V8 620cv 2024 Gasolina",
+      "ano": 2024,
+      "ano_codigo": "2024-1",
+      "texto_ano": "2024 Gasolina",
+      "combustivel": "Gasolina",
+      "tipo_veiculo": "combustao"
+    },
+    "esperado": {
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "ano_tabela_pbev": 2024,
+      "modelo_contem": "ROMA",
+      "gasolina_cidade_km_l": 6.9
+    },
+    "origem": "regressao_v42_homologada",
+    "status_v45": "regressao_protegida",
+    "classificacao_falha": [],
+    "falha_conhecida": false
+  },
+  {
+    "id": "wey_07_versoes_equivalentes",
+    "consulta": {
+      "prefixo": "icev",
+      "marca": "GWM",
+      "modelo": "Wey 07 Dark Edition 1.5 Turbo AWD",
+      "texto_modelo": "Wey 07 Dark Edition 1.5 Turbo AWD Zero km Híbrido",
+      "ano": 2026,
+      "ano_codigo": "32000-6",
+      "texto_ano": "Zero km Híbrido",
+      "combustivel": "Híbrido",
+      "tipo_veiculo": "hibrido"
+    },
+    "esperado": {
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "ano_tabela_pbev": 2026,
+      "modelo_versao_contem": "WEY 07",
+      "tipo_consumo": "phev"
+    },
+    "origem": "regressao_v42_homologada",
+    "status_v45": "regressao_protegida",
+    "classificacao_falha": [],
+    "falha_conhecida": false
+  },
+  {
+    "id": "volvo_xc40_composto",
+    "consulta": {
+      "prefixo": "icev",
+      "marca": "Volvo",
+      "modelo": "XC 40 T-5 MOMENT FIRST ED. 2.0 252cv AWD",
+      "texto_modelo": "XC 40 T-5 MOMENT FIRST ED. 2.0 252cv AWD 2018 Gasolina",
+      "ano": 2018,
+      "ano_codigo": "2018-1",
+      "texto_ano": "2018 Gasolina",
+      "combustivel": "Gasolina",
+      "tipo_veiculo": "combustao"
+    },
+    "esperado": {
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "ano_tabela_pbev": 2018,
+      "modelo_contem": "XC40",
+      "modelo_nao_contem": "V40"
+    },
+    "origem": "regressao_v42_homologada",
+    "status_v45": "regressao_protegida",
+    "classificacao_falha": [],
+    "falha_conhecida": false
+  },
+  {
+    "id": "volvo_xc60_composto",
+    "consulta": {
+      "prefixo": "icev",
+      "marca": "Volvo",
+      "modelo": "XC 60 T-5 R-DESIGN 2.0 FWD 5p",
+      "texto_modelo": "XC 60 T-5 R-DESIGN 2.0 FWD 5p 2017 Gasolina",
+      "ano": 2017,
+      "ano_codigo": "2017-1",
+      "texto_ano": "2017 Gasolina",
+      "combustivel": "Gasolina",
+      "tipo_veiculo": "combustao"
+    },
+    "esperado": {
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "ano_tabela_pbev": 2017,
+      "modelo_igual": "XC60",
+      "modelo_nao_contem": "V60"
+    },
+    "origem": "regressao_v42_homologada",
+    "status_v45": "regressao_protegida",
+    "classificacao_falha": [],
+    "falha_conhecida": false
+  },
+  {
+    "id": "hyundai_creta_comfort_tb12v_zero_km",
+    "origem": "diagnostico_usuario_v38_6",
+    "status_v45": "lacuna_corrigida_etapa2",
+    "falha_conhecida": false,
+    "classificacao_falha": [],
+    "consulta": {
+      "prefixo": "icev",
+      "marca": "Hyundai",
+      "modelo": "Creta Comfort 1.0 TB 12V Flex Aut.",
+      "texto_modelo": "Creta Comfort 1.0 TB 12V Flex Aut. Zero km Flex",
+      "ano": 2026,
+      "texto_ano": "Zero km Zero km Flex",
+      "ano_codigo": "32000-5",
+      "combustivel": "Flex",
+      "tipo_veiculo": "combustao",
+      "codigo_fipe": "015200-5"
+    },
+    "esperado": {
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "criterio_match": "exato",
+      "cobertura_pbev": "exata",
+      "ano_tabela_pbev": 2026,
+      "modelo_igual": "CRETA",
+      "modelo_versao_contem": "CRETA COMFORT",
+      "tipo_consumo": "flex",
+      "gasolina_cidade_km_l": 12.0,
+      "etanol_cidade_km_l": 8.4
+    },
+    "contrato_localizacao": {
+      "modelo_igual": "CRETA",
+      "modelo_versao_contem": "CRETA COMFORT",
+      "ano_tabela_pbev": 2026,
+      "tipo_consumo": "flex"
+    },
+    "evidencia": {
+      "candidato_pbev": "Hyundai CRETA Comfort 1.0-12V T A-6",
+      "id_pbev": "PBEV-2026-0386",
+      "score_bruto_observado": 118.0,
+      "token_falso_observado": null,
+      "consumos_iguais_com_segundo_candidato": true,
+      "resultado_atual": "alto_com_autopreenchimento"
+    }
+  },
+  {
+    "id": "toyota_yaris_xls_zero_km",
+    "origem": "caso_obrigatorio_v45",
+    "status_v45": "regressao_ampliada_etapa2",
+    "falha_conhecida": false,
+    "classificacao_falha": [],
+    "consulta": {
+      "prefixo": "icev",
+      "marca": "Toyota",
+      "modelo": "Yaris XLS 1.5 Flex 16V 5P Aut.",
+      "texto_modelo": "Yaris XLS 1.5 Flex 16V 5P Aut. Zero km Flex",
+      "ano": 32000,
+      "ano_codigo": "32000-5",
+      "texto_ano": "Zero km Flex",
+      "combustivel": "Flex",
+      "tipo_veiculo": "combustao"
+    },
+    "esperado": {
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "criterio_match": "conservador_por_familia",
+      "ano_tabela_pbev": 2024,
+      "modelo_contem": "YARIS",
+      "modelo_nao_contem": "CROSS",
+      "tipo_consumo": "flex",
+      "gasolina_cidade_km_l": 12.2,
+      "etanol_cidade_km_l": 8.7
+    }
+  },
+  {
+    "id": "toyota_corolla_cross_hybrid",
+    "origem": "caso_obrigatorio_v45",
+    "status_v45": "regressao_ampliada_etapa2",
+    "falha_conhecida": false,
+    "classificacao_falha": [],
+    "consulta": {
+      "prefixo": "ve",
+      "marca": "Toyota",
+      "modelo": "Corolla Cross XRX 1.8 16V Aut. Híbrido",
+      "texto_modelo": "Corolla Cross XRX 1.8 16V Aut. Híbrido Zero km",
+      "ano": 2026,
+      "ano_codigo": "32000-3",
+      "texto_ano": "Zero km Híbrido",
+      "combustivel": "Híbrido",
+      "tipo_veiculo": "hibrido"
+    },
+    "esperado": {
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "criterio_match": "exato",
+      "ano_tabela_pbev": 2026,
+      "modelo_contem": "COROLLA CROSS",
+      "tipo_consumo": "hibrido_flex",
+      "gasolina_cidade_km_l": 16.6,
+      "etanol_cidade_km_l": 11.6
+    }
+  },
+  {
+    "id": "byd_dolphin_mini",
+    "origem": "caso_obrigatorio_v45",
+    "status_v45": "regressao_ampliada_etapa2",
+    "falha_conhecida": false,
+    "classificacao_falha": [],
+    "consulta": {
+      "prefixo": "ve",
+      "marca": "BYD",
+      "modelo": "Dolphin Mini (Elétrico)",
+      "texto_modelo": "Dolphin Mini (Elétrico) Zero km",
+      "ano": 32000,
+      "ano_codigo": "32000-4",
+      "texto_ano": "Zero km Elétrico",
+      "combustivel": "Elétrico",
+      "tipo_veiculo": "eletrico"
+    },
+    "esperado": {
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "modelo_contem": "DOLPHIN MINI",
+      "tipo_consumo": "eletrico",
+      "consumo_eletrico_kwh_km": 0.108333
+    }
+  },
+  {
+    "id": "byd_tan_ev_4x4",
+    "origem": "caso_obrigatorio_v45",
+    "status_v45": "regressao_ampliada_etapa2",
+    "falha_conhecida": false,
+    "classificacao_falha": [],
+    "consulta": {
+      "prefixo": "ve",
+      "marca": "BYD",
+      "modelo": "TAN EV 4x4 (Elétrico)",
+      "texto_modelo": "TAN EV 4x4 (Elétrico) Zero km",
+      "ano": 32000,
+      "ano_codigo": "32000-4",
+      "texto_ano": "Zero km Elétrico",
+      "combustivel": "Elétrico",
+      "tipo_veiculo": "eletrico"
+    },
+    "esperado": {
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "ano_tabela_pbev": 2026,
+      "modelo_contem": "TAN",
+      "tipo_consumo": "eletrico",
+      "consumo_eletrico_kwh_km": 0.202778
+    }
+  },
+  {
+    "id": "toyota_hilux_srv_tdi16v",
+    "origem": "caso_obrigatorio_v45",
+    "status_v45": "lacuna_corrigida_etapa2",
+    "falha_conhecida": false,
+    "classificacao_falha": [],
+    "consulta": {
+      "prefixo": "icev",
+      "marca": "Toyota",
+      "modelo": "Hilux CD SRV 4x4 2.8 TDI 16V Diesel Aut.",
+      "texto_modelo": "Hilux CD SRV 4x4 2.8 TDI 16V Diesel Aut. Zero km",
+      "ano": 2026,
+      "ano_codigo": "32000-3",
+      "texto_ano": "Zero km Diesel",
+      "combustivel": "Diesel",
+      "tipo_veiculo": "combustao"
+    },
+    "esperado": {
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "criterio_match": "exato",
+      "ano_tabela_pbev": 2026,
+      "modelo_versao_contem": "HILUX DIESEL 4X4 AT SRV",
+      "tipo_consumo": "diesel"
+    }
+  },
+  {
+    "id": "peugeot_e2008_gt",
+    "origem": "caso_obrigatorio_v45",
+    "status_v45": "regressao_ampliada_etapa2",
+    "falha_conhecida": false,
+    "classificacao_falha": [],
+    "consulta": {
+      "prefixo": "ve",
+      "marca": "Peugeot",
+      "modelo": "e-2008 GT (Elétrico)",
+      "texto_modelo": "e-2008 GT (Elétrico) Zero km",
+      "ano": 2026,
+      "ano_codigo": "32000-4",
+      "texto_ano": "Zero km Elétrico",
+      "combustivel": "Elétrico",
+      "tipo_veiculo": "eletrico"
+    },
+    "esperado": {
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "criterio_match": "exato",
+      "ano_tabela_pbev": 2026,
+      "modelo_igual": "E2008",
+      "modelo_nao_contem": "E208",
+      "tipo_consumo": "eletrico",
+      "consumo_eletrico_kwh_km": 0.152778
+    }
+  },
+  {
+    "id": "ferrari_12cilindri_spider",
+    "origem": "caso_obrigatorio_v45",
+    "status_v45": "lacuna_corrigida_etapa2",
+    "falha_conhecida": false,
+    "classificacao_falha": [],
+    "consulta": {
+      "prefixo": "icev",
+      "marca": "Ferrari",
+      "modelo": "12Cilindri Spider 6.5 V12 Gasolina Aut.",
+      "texto_modelo": "12Cilindri Spider 6.5 V12 Gasolina Aut. Zero km",
+      "ano": 2026,
+      "ano_codigo": "32000-1",
+      "texto_ano": "Zero km Gasolina",
+      "combustivel": "Gasolina",
+      "tipo_veiculo": "combustao"
+    },
+    "esperado": {
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "criterio_match": "exato",
+      "ano_tabela_pbev": 2026,
+      "modelo_versao_contem": "12CILINDRI SPI",
+      "tipo_consumo": "gasolina",
+      "gasolina_cidade_km_l": 4.6
+    }
+  },
+  {
+    "id": "volvo_xc90_t8_ultra_dark",
+    "origem": "caso_obrigatorio_v45",
+    "status_v45": "regressao_ampliada_etapa2",
+    "falha_conhecida": false,
+    "classificacao_falha": [],
+    "consulta": {
+      "prefixo": "ve",
+      "marca": "Volvo",
+      "modelo": "XC90 T8 Ultra Dark 2.0 AWD Híbrido Aut.",
+      "texto_modelo": "XC90 T8 Ultra Dark 2.0 AWD Híbrido Aut. Zero km",
+      "ano": 2026,
+      "ano_codigo": "32000-1",
+      "texto_ano": "Zero km Híbrido",
+      "combustivel": "Híbrido",
+      "tipo_veiculo": "hibrido"
+    },
+    "esperado": {
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "ano_tabela_pbev": 2026,
+      "modelo_versao_contem": "XC90 T8 AWD ULTD",
+      "tipo_consumo": "phev",
+      "gasolina_diesel_cidade_km_l": 9.4
+    }
+  },
+  {
+    "id": "volvo_xc60_t8_ultimate_dark_my24",
+    "origem": "caso_obrigatorio_v45",
+    "status_v45": "lacuna_corrigida_etapa2",
+    "falha_conhecida": false,
+    "classificacao_falha": [],
+    "consulta": {
+      "prefixo": "ve",
+      "marca": "Volvo",
+      "modelo": "XC 60 T-8 Ultim.Dark 2.0 AWD (Híbrido)",
+      "texto_modelo": "XC 60 T-8 Ultim.Dark 2.0 AWD (Híbrido) 2024",
+      "ano": 2024,
+      "ano_codigo": "2024-3",
+      "texto_ano": "2024 Híbrido",
+      "combustivel": "Híbrido",
+      "tipo_veiculo": "hibrido"
+    },
+    "esperado": {
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "criterio_match": "exato",
+      "ano_tabela_pbev": 2024,
+      "modelo_versao_contem": "XC60 T8 ULT DARK",
+      "tipo_consumo": "phev",
+      "gasolina_diesel_cidade_km_l": 11.1,
+      "consumo_eletrico_kwh_km": 0.205556
+    }
+  },
+  {
+    "id": "jaecoo_7_prestige",
+    "origem": "caso_obrigatorio_v45",
+    "status_v45": "regressao_ampliada_etapa2",
+    "falha_conhecida": false,
+    "classificacao_falha": [],
+    "consulta": {
+      "prefixo": "ve",
+      "marca": "Jaecoo",
+      "modelo": "Jaecoo 7 Prestige 1.5 Híbrido Aut.",
+      "texto_modelo": "Jaecoo 7 Prestige 1.5 Híbrido Aut. Zero km",
+      "ano": 2026,
+      "ano_codigo": "32000-1",
+      "texto_ano": "Zero km Híbrido",
+      "combustivel": "Híbrido",
+      "tipo_veiculo": "hibrido"
+    },
+    "esperado": {
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "criterio_match": "exato",
+      "ano_tabela_pbev": 2026,
+      "modelo_versao_contem": "7 PRESTIGE",
+      "tipo_consumo": "phev",
+      "gasolina_diesel_cidade_km_l": 15.1,
+      "consumo_eletrico_kwh_km": 0.166667
+    }
+  }
+]
