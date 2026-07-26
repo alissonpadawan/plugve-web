@@ -543,26 +543,31 @@
     .plugve-finance-replicar input{accent-color:#059669}
     @media(max-width:900px){.plugve-finance-form-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
     @media(max-width:560px){.plugve-finance-form-grid{grid-template-columns:1fr}.plugve-finance-footer{align-items:stretch}.plugve-finance-actions{justify-content:stretch}.plugve-finance-actions button{flex:1}}
-    .plugve-source-cluster{display:inline-flex;align-items:center;justify-content:flex-end;gap:.48rem;flex:0 0 auto}
     .plugve-source-logo{display:inline-flex;align-items:center;justify-content:center;border:0;background:transparent;padding:0;margin:0;line-height:1;box-shadow:none;vertical-align:middle}
     button.plugve-source-logo{cursor:help}
     .plugve-source-logo img{display:block;width:auto;object-fit:contain}
-    .plugve-source-logo--aneel img{height:1.7rem;max-width:3rem}
-    .plugve-source-logo--anp img{height:1.18rem;max-width:3.35rem}
+    .plugve-source-logo--aneel img{height:1.38rem;max-width:2.55rem}
+    .plugve-source-logo--anp img{height:1rem;max-width:2.85rem}
     .plugve-source-tooltip{position:relative;display:inline-flex;align-items:center;justify-content:center}
     .plugve-energy-tooltip-panel{display:none;position:absolute;right:0;left:auto;top:calc(100% + .45rem);z-index:110;width:340px;max-width:min(85vw,340px);background:#fff;border:1px solid #e5e7eb;border-radius:.85rem;box-shadow:0 18px 45px rgba(15,23,42,.18);padding:.85rem;color:#374151;text-align:left}
-    .plugve-source-tooltip:hover .plugve-energy-tooltip-panel,
-    .plugve-source-tooltip:focus-within .plugve-energy-tooltip-panel,
-    .plugve-source-tooltip.is-open .plugve-energy-tooltip-panel{display:block}
+    .plugve-source-tooltip.is-open > .plugve-energy-tooltip-panel,
+    .plugve-aneel-tooltip-trigger:focus-visible + .plugve-energy-tooltip-panel{display:block}
+    @media(hover:hover) and (pointer:fine){
+      .plugve-source-tooltip:hover > .plugve-energy-tooltip-panel{display:block}
+    }
     .plugve-source-tooltip button:focus-visible{outline:2px solid #2563eb;outline-offset:3px;border-radius:.25rem}
+    .plugve-source-field-row{display:flex;align-items:center;justify-content:space-between;gap:.45rem}
+    .plugve-source-field-row label{flex:1 1 auto}
+    .plugve-field-source-wrap{display:flex;align-items:center;justify-content:flex-end;gap:.42rem;min-width:0}
+    .plugve-field-source-wrap .plugve-money-field{flex:1 1 auto;min-width:0}
+    .plugve-field-source-wrap:has(.plugve-fuel-single-input.hidden){display:none}
     .plugve-aneel-summary{display:flex;align-items:baseline;justify-content:space-between;gap:.65rem;margin-bottom:.18rem}
     .plugve-aneel-summary strong{font-size:.72rem;color:#0f172a}
     .plugve-aneel-summary span{font-size:.72rem;font-weight:900;color:#2563eb;white-space:nowrap}
-    .plugve-fuel-pill-source-row{display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin-bottom:.15rem}
     @media(max-width:560px){
       .plugve-energy-tooltip-panel{position:fixed;left:50%;right:auto;top:50%;transform:translate(-50%,-50%);width:min(340px,calc(100vw - 2rem));max-width:none}
-      .plugve-source-logo--aneel img{height:1.55rem}
-      .plugve-source-logo--anp img{height:1.05rem}
+      .plugve-source-logo--aneel img{height:1.28rem}
+      .plugve-source-logo--anp img{height:.95rem}
     }
     .plugve-fuel-card{margin-top:.25rem;border:1px solid #e5e7eb;border-radius:1rem;background:#fff;box-shadow:0 10px 24px rgba(15,23,42,.05);padding:.85rem;transition:border-color .18s ease,box-shadow .18s ease,transform .18s ease}
     .plugve-fuel-card:hover{border-color:#94a3b8;box-shadow:0 16px 36px rgba(15,23,42,.10);transform:translateY(-1px)}
@@ -1365,8 +1370,6 @@
 
             <div id="campo_energia_global" class="plugve-energy-field">
               <input type="checkbox" id="energia_manual_checkbox" class="hidden" aria-hidden="true" tabindex="-1">
-              <label class="block text-sm font-medium mb-1">Custo energia elétrica (R$/kWh)</label>
-
               <div id="plugve_energy_card" class="plugve-phev-card plugve-energy-card">
                 <div class="plugve-fuel-compact-top">
                   <div class="plugve-fuel-title">
@@ -1375,6 +1378,8 @@
                       <strong>Energia elétrica</strong>
                       <small>Tarifa ANEEL residencial</small>
                     </div>
+                  </div>
+                  <div class="plugve-energy-input-wrap" aria-label="Tarifa de energia em reais por kWh">
                     <span class="plugve-source-tooltip plugve-aneel-tooltip">
                       <button type="button" class="plugve-source-logo plugve-source-logo--aneel plugve-aneel-tooltip-trigger" aria-label="Ver composição da tarifa de energia da ANEEL" title="Ver composição da tarifa de energia">
                         <img src="{{ url_for('static', filename='img/fontes/aneel.png') }}" alt="ANEEL">
@@ -1390,8 +1395,6 @@
                         </div>
                       </span>
                     </span>
-                  </div>
-                  <div class="plugve-energy-input-wrap" aria-label="Tarifa de energia em reais por kWh">
                     <div class="plugve-money-field">
                       <span class="plugve-money-prefix">R$</span>
                       <input
@@ -1442,14 +1445,16 @@
                       <strong id="fuel_titulo">Gasolina</strong>
                       <small id="fuel_subtitulo">Valor médio ANP</small>
                     </div>
+                    </div>
+                  <strong id="fuel_compact_preco" class="plugve-fuel-compact-price"></strong>
+                  <div class="plugve-field-source-wrap">
+                    <div class="plugve-money-field plugve-fuel-money-field">
+                      <span class="plugve-money-prefix">R$</span>
+                      <input type="text" id="fuel_single_preco_input" class="plugve-fuel-single-input" value="5,80" inputmode="numeric" aria-label="Preço do combustível em reais por litro">
+                    </div>
                     <span class="plugve-source-logo plugve-source-logo--anp" role="img" aria-label="ANP, fonte dos preços médios de combustível" title="Fonte dos preços médios de combustível: ANP">
                       <img src="{{ url_for('static', filename='img/fontes/anp.png') }}" alt="ANP">
                     </span>
-                  </div>
-                  <strong id="fuel_compact_preco" class="plugve-fuel-compact-price"></strong>
-                  <div class="plugve-money-field plugve-fuel-money-field">
-                    <span class="plugve-money-prefix">R$</span>
-                    <input type="text" id="fuel_single_preco_input" class="plugve-fuel-single-input" value="5,80" inputmode="numeric" aria-label="Preço do combustível em reais por litro">
                   </div>
                   
                 </div>
@@ -1480,26 +1485,6 @@
                       <small>Clique para ajustar energia x combustível</small>
                     </div>
                   </div>
-                  <span class="plugve-source-cluster">
-                    <span class="plugve-source-tooltip plugve-aneel-tooltip">
-                      <button type="button" class="plugve-source-logo plugve-source-logo--aneel plugve-aneel-tooltip-trigger" aria-label="Ver composição da tarifa de energia da ANEEL" title="Ver composição da tarifa de energia">
-                        <img src="{{ url_for('static', filename='img/fontes/aneel.png') }}" alt="ANEEL">
-                      </button>
-                      <span class="plugve-energy-tooltip-panel plugve-aneel-tooltip-panel" role="tooltip">
-                        <span class="block text-xs font-semibold text-gray-700 mb-1">Composição da tarifa de energia</span>
-                        <span class="plugve-aneel-summary"><strong class="plugve-aneel-distribuidora">ANEEL</strong><span class="plugve-aneel-tarifa">Tarifa residencial</span></span>
-                        <span class="plugve-aneel-descricao block text-[11px] font-semibold text-gray-500 mb-1">Selecione UF e município para consultar a tarifa.</span>
-                        <span class="plugve-aneel-vigencia block text-[11px] text-gray-400 mb-2"></span>
-                        <div class="plugve-aneel-breakdown-wrap mt-2">
-                          <div class="plugve-aneel-bar w-full h-3 rounded overflow-hidden bg-gray-200 flex"></div>
-                          <div class="plugve-aneel-legenda mt-2 space-y-1 text-[11px]"></div>
-                        </div>
-                      </span>
-                    </span>
-                    <span class="plugve-source-logo plugve-source-logo--anp" role="img" aria-label="ANP, fonte dos preços médios de combustível" title="Fonte dos preços médios de combustível: ANP">
-                      <img src="{{ url_for('static', filename='img/fontes/anp.png') }}" alt="ANP">
-                    </span>
-                  </span>
                 </div>
                 <div class="plugve-phev-mini-bar" aria-hidden="true">
                   <div id="phev_bar_eletrico" class="plugve-phev-mini-electric" style="width:100%"></div>
@@ -1613,15 +1598,17 @@
                   <small>Arraste a barra conforme seu perfil de abastecimento.</small>
                 </div>
               </div>
-              <span class="plugve-source-logo plugve-source-logo--anp" role="img" aria-label="ANP, fonte dos preços médios de combustível" title="Fonte dos preços médios de combustível: ANP">
-                      <img src="{{ url_for('static', filename='img/fontes/anp.png') }}" alt="ANP">
-                    </span>
             </div>
 
             <div class="plugve-fuel-prices">
               <div id="fuel_box_etanol" class="plugve-fuel-pill">
                 <span>🍃 Etanol</span>
-                <label for="fuel_modal_preco_etanol">Preço (R$/L)</label>
+                <div class="plugve-source-field-row">
+                  <label for="fuel_modal_preco_etanol">Preço (R$/L)</label>
+                  <span class="plugve-source-logo plugve-source-logo--anp" role="img" aria-label="ANP, fonte dos preços médios de combustível" title="Fonte dos preços médios de combustível: ANP">
+                      <img src="{{ url_for('static', filename='img/fontes/anp.png') }}" alt="ANP">
+                    </span>
+                </div>
                 <div class="plugve-money-field">
                   <span class="plugve-money-prefix">R$</span>
                   <input type="text" id="fuel_modal_preco_etanol" inputmode="numeric" placeholder="ex: 4,48">
@@ -1634,7 +1621,12 @@
               </div>
               <div id="fuel_box_gasolina" class="plugve-fuel-pill">
                 <span>⛽ Gasolina</span>
-                <label for="fuel_modal_preco_gasolina">Preço (R$/L)</label>
+                <div class="plugve-source-field-row">
+                  <label for="fuel_modal_preco_gasolina">Preço (R$/L)</label>
+                  <span class="plugve-source-logo plugve-source-logo--anp" role="img" aria-label="ANP, fonte dos preços médios de combustível" title="Fonte dos preços médios de combustível: ANP">
+                      <img src="{{ url_for('static', filename='img/fontes/anp.png') }}" alt="ANP">
+                    </span>
+                </div>
                 <div class="plugve-money-field">
                   <span class="plugve-money-prefix">R$</span>
                   <input type="text" id="fuel_modal_preco_gasolina" inputmode="numeric" placeholder="ex: 6,87">
@@ -1699,8 +1691,9 @@
 
             <div class="plugve-fuel-prices">
               <div id="phev_box_eletrico" class="plugve-fuel-pill">
-                <div class="plugve-fuel-pill-source-row">
-                  <span>⚡ Elétrico</span>
+                <span>⚡ Elétrico</span>
+                <div class="plugve-source-field-row">
+                  <label for="phev_modal_preco_energia">Preço (R$/kWh)</label>
                   <span class="plugve-source-tooltip plugve-aneel-tooltip">
                       <button type="button" class="plugve-source-logo plugve-source-logo--aneel plugve-aneel-tooltip-trigger" aria-label="Ver composição da tarifa de energia da ANEEL" title="Ver composição da tarifa de energia">
                         <img src="{{ url_for('static', filename='img/fontes/aneel.png') }}" alt="ANEEL">
@@ -1717,7 +1710,6 @@
                       </span>
                     </span>
                 </div>
-                <label for="phev_modal_preco_energia">Preço (R$/kWh)</label>
                 <div class="plugve-money-field">
                   <span class="plugve-money-prefix">R$</span>
                   <input type="text" id="phev_modal_preco_energia" inputmode="numeric" placeholder="ex: 0,86">
@@ -1729,13 +1721,13 @@
                 </div>
               </div>
               <div id="phev_box_combustivel" class="plugve-fuel-pill">
-                <div class="plugve-fuel-pill-source-row">
-                  <span>⛽ Combustível</span>
+                <span>⛽ Combustível</span>
+                <div class="plugve-source-field-row">
+                  <label for="phev_modal_preco_combustivel">Preço (R$/L)</label>
                   <span class="plugve-source-logo plugve-source-logo--anp" role="img" aria-label="ANP, fonte dos preços médios de combustível" title="Fonte dos preços médios de combustível: ANP">
                       <img src="{{ url_for('static', filename='img/fontes/anp.png') }}" alt="ANP">
                     </span>
                 </div>
-                <label for="phev_modal_preco_combustivel">Preço (R$/L)</label>
                 <div class="plugve-money-field">
                   <span class="plugve-money-prefix">R$</span>
                   <input type="text" id="phev_modal_preco_combustivel" inputmode="numeric" placeholder="ex: 6,87">
@@ -2487,8 +2479,10 @@
 
     function atualizarPaineisAneelPlugVE() {
       const input = document.getElementById("energia_input");
-      const valor = numeroBRParaFloat(input?.value || 0);
-      const valorTexto = valor > 0 ? `R$ ${formatarNumero5(valor)}/kWh` : "Tarifa residencial";
+      const valorEditado = numeroBRParaFloat(input?.value || 0);
+      const valorOficial = Number(plugveEnergiaResumoAtual.tarifaTotal || 0);
+      const valorExibido = valorOficial > 0 ? valorOficial : valorEditado;
+      const valorTexto = valorExibido > 0 ? `R$ ${formatarNumero5(valorExibido)}/kWh` : "Tarifa residencial";
       const distribuidora = plugveEnergiaResumoAtual.distribuidora || "ANEEL";
       const texto = plugveEnergiaResumoAtual.texto || "Tarifa residencial";
       const vigencia = plugveEnergiaResumoAtual.vigencia || "";
@@ -2553,24 +2547,37 @@
     }
 
     function inicializarTooltipsFontesPlugVE() {
+      const usaToque = () => window.matchMedia("(hover: none), (pointer: coarse)").matches;
       document.querySelectorAll(".plugve-aneel-tooltip-trigger").forEach(btn => {
         btn.setAttribute("aria-expanded", "false");
+        const wrapper = btn.closest(".plugve-aneel-tooltip");
         btn.addEventListener("click", function (ev) {
           ev.preventDefault();
           ev.stopPropagation();
-          const wrapper = this.closest(".plugve-aneel-tooltip");
           if (!wrapper) return;
+          if (!usaToque()) {
+            // No desktop, o hover e o foco visível controlam o card.
+            if (ev.detail > 0) this.blur();
+            return;
+          }
           const abrir = !wrapper.classList.contains("is-open");
           fecharTooltipsAneelPlugVE(wrapper);
           wrapper.classList.toggle("is-open", abrir);
           this.setAttribute("aria-expanded", abrir ? "true" : "false");
+        });
+        wrapper?.addEventListener("mouseleave", function () {
+          if (usaToque()) return;
+          this.classList.remove("is-open");
+          btn.setAttribute("aria-expanded", "false");
         });
       });
       document.addEventListener("click", function () {
         fecharTooltipsAneelPlugVE();
       });
       document.addEventListener("keydown", function (ev) {
-        if (ev.key === "Escape") fecharTooltipsAneelPlugVE();
+        if (ev.key !== "Escape") return;
+        fecharTooltipsAneelPlugVE();
+        document.activeElement?.classList?.contains("plugve-aneel-tooltip-trigger") && document.activeElement.blur();
       });
       atualizarPaineisAneelPlugVE();
     }
@@ -6052,8 +6059,9 @@
       if (!uf || !municipio) return;
 
       if (manual) {
-        montarStatusEnergiaPlugVE("Modo manual ativo. O valor não será atualizado automaticamente.", "", "");
-        setBreakdownDisabled(true);
+        status.textContent = "Modo manual ativo. O valor não será atualizado automaticamente.";
+        setBreakdownDisabled(!(plugveEnergiaResumoAtual.detalhe && plugveEnergiaResumoAtual.tarifaTotal > 0));
+        atualizarCardEnergiaEletricaPlugVE();
         return;
       }
 

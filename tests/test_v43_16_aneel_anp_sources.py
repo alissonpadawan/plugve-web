@@ -13,7 +13,7 @@ class V4316AneelAnpSourceBadgesTests(unittest.TestCase):
         self.assertTrue((self.root / "static" / "img" / "fontes" / "anp.png").is_file())
 
     def test_source_logos_are_subtle_and_not_external_links(self):
-        self.assertGreaterEqual(self.template.count("img/fontes/aneel.png"), 3)
+        self.assertGreaterEqual(self.template.count("img/fontes/aneel.png"), 2)
         self.assertGreaterEqual(self.template.count("img/fontes/anp.png"), 4)
         self.assertIn(".plugve-source-logo{", self.template)
         self.assertNotIn('href="https://www.gov.br/aneel', self.template.lower())
@@ -33,11 +33,13 @@ class V4316AneelAnpSourceBadgesTests(unittest.TestCase):
         self.assertIn("PIS", self.template)
         self.assertIn("COFINS", self.template)
 
-    def test_touch_and_keyboard_interaction_are_available(self):
+    def test_touch_keyboard_and_hover_interaction_are_available(self):
         self.assertIn("inicializarTooltipsFontesPlugVE();", self.template)
         self.assertIn('btn.setAttribute("aria-expanded", "false")', self.template)
-        self.assertIn('if (ev.key === "Escape") fecharTooltipsAneelPlugVE();', self.template)
-        self.assertIn(".plugve-source-tooltip:focus-within", self.template)
+        self.assertIn('(hover: none), (pointer: coarse)', self.template)
+        self.assertIn('@media(hover:hover) and (pointer:fine)', self.template)
+        self.assertIn('.plugve-aneel-tooltip-trigger:focus-visible + .plugve-energy-tooltip-panel', self.template)
+        self.assertNotIn('.plugve-source-tooltip:focus-within', self.template)
 
 
 if __name__ == "__main__":
