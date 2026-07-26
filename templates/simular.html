@@ -550,6 +550,7 @@
     .plugve-source-logo--aneel img{height:.96rem;max-width:2rem}
     .plugve-source-logo--anp img{height:.78rem;max-width:2.15rem}
     .plugve-money-field--source input{padding-right:3.2rem}
+    .plugve-energy-input-wrap .plugve-money-field--source input{padding-right:4.15rem!important}
     .plugve-fuel-money-field:has(> .plugve-field-source) input{padding-right:3.35rem}
     .plugve-field-source{position:absolute;right:.52rem;top:50%;transform:translateY(-50%);z-index:5;display:inline-flex;align-items:center;justify-content:center;max-width:2.35rem}
     .plugve-fuel-pill .plugve-field-source,.plugve-fuel-pill .plugve-field-source.plugve-source-logo{display:inline-flex;margin:0;padding:0}
@@ -558,6 +559,7 @@
     .plugve-energy-tooltip-panel{display:none;position:absolute;right:0;left:auto;top:calc(100% + .55rem);z-index:110;width:340px;max-width:min(85vw,340px);background:#fff;border:1px solid #e5e7eb;border-radius:.85rem;box-shadow:0 18px 45px rgba(15,23,42,.18);padding:.85rem;color:#374151;text-align:left;transform:none}
     .plugve-energy-tooltip-panel[hidden]{display:none!important}
     .plugve-source-tooltip.is-open > .plugve-energy-tooltip-panel{display:block}
+    .plugve-energy-tooltip-panel.plugve-energy-tooltip-panel--floating{display:block;position:fixed;left:0;right:auto;top:0;z-index:1400;max-width:min(340px,calc(100vw - 1.5rem));transform:none}
     .plugve-source-tooltip button:focus-visible{outline:2px solid #2563eb;outline-offset:2px;border-radius:.25rem}
     .plugve-field-source-wrap{display:flex;align-items:center;justify-content:flex-end;min-width:0}
     .plugve-field-source-wrap .plugve-money-field{flex:1 1 auto;min-width:0}
@@ -689,7 +691,7 @@
     .plugve-energy-card #status_energia{position:absolute!important;width:1px!important;height:1px!important;overflow:hidden!important;clip:rect(0 0 0 0)!important;white-space:nowrap!important}
     .plugve-energy-row span:first-child{color:#1d4ed8}
     .plugve-energy-row span:last-child{color:#1d4ed8;text-align:right}
-    .plugve-energy-row #energia_compact_right{display:flex;justify-content:flex-end;min-width:0}
+    .plugve-energy-row #energia_compact_right{display:none!important}
     .plugve-energy-row .plugve-energy-tooltip{max-width:100%}
     .plugve-energy-row .plugve-energy-tooltip-trigger{display:inline-flex;align-items:center;justify-content:flex-end;gap:.25rem;max-width:100%;white-space:nowrap}
     .plugve-energy-row .plugve-energy-tooltip-panel{left:auto;right:0;text-align:left}
@@ -1415,7 +1417,7 @@
                 </div>
                 <div class="plugve-phev-compact-row plugve-energy-row">
                   <span>100% elétrico</span>
-                  <span id="energia_compact_right">Tarifa ANEEL</span>
+                  <span id="energia_compact_right" class="hidden" aria-hidden="true"></span>
                 </div>
                 <p id="status_energia" class="text-[11px] text-gray-500 mt-1">
                   Selecione UF e município para buscar a tarifa da ANEEL.
@@ -2484,11 +2486,7 @@
         fonte.classList.toggle("hidden", !visivel);
         fonte.setAttribute("aria-hidden", visivel ? "false" : "true");
         if (!visivel && fonte.classList.contains("plugve-aneel-tooltip")) {
-          fonte.classList.remove("is-open");
-          const painel = fonte.querySelector(".plugve-energy-tooltip-panel");
-          const gatilho = fonte.querySelector(".plugve-aneel-tooltip-trigger");
-          if (painel) painel.hidden = true;
-          gatilho?.setAttribute("aria-expanded", "false");
+          definirTooltipAneelAbertoPlugVE(fonte, false);
         }
       });
     }
@@ -2568,14 +2566,8 @@
     }
 
     function atualizarCardEnergiaEletricaPlugVE() {
-      const input = document.getElementById("energia_input");
       const destino = document.getElementById("energia_compact_right");
-      if (!destino) return;
-
-      const valor = numeroBRParaFloat(input?.value || 0);
-      const valorTexto = valor > 0 ? `R$ ${formatarNumero5(valor)}/kWh` : "Tarifa ANEEL";
-      const distribuidora = plugveEnergiaResumoAtual.distribuidora || "";
-      destino.textContent = distribuidora ? `${distribuidora} — ${valorTexto}` : valorTexto;
+      if (destino) destino.textContent = "";
       atualizarPaineisAneelPlugVE();
       if (typeof renderizarCardPhevTCO === "function") renderizarCardPhevTCO();
     }
@@ -2600,13 +2592,72 @@
       atualizarCardEnergiaEletricaPlugVE();
     }
 
+    function obterPainelTooltipAneelPlugVE(wrapper) {
+      if (!wrapper) return null;
+      if (wrapper._plugveAneelTooltipPanel) return wrapper._plugveAneelTooltipPanel;
+      const painel = wrapper.querySelector(".plugve-energy-tooltip-panel");
+      if (painel) wrapper._plugveAneelTooltipPanel = painel;
+      return painel;
+    }
+
+    function restaurarPainelTooltipAneelPlugVE(wrapper) {
+      const painel = obterPainelTooltipAneelPlugVE(wrapper);
+      if (!painel) return;
+      painel.hidden = true;
+      painel.classList.remove("plugve-energy-tooltip-panel--floating");
+      painel.style.removeProperty("left");
+      painel.style.removeProperty("top");
+      painel.style.removeProperty("visibility");
+      if (painel.parentElement !== wrapper) wrapper.appendChild(painel);
+    }
+
+    function posicionarPainelTooltipAneelPlugVE(wrapper) {
+      const painel = obterPainelTooltipAneelPlugVE(wrapper);
+      const gatilho = wrapper?.querySelector(".plugve-aneel-tooltip-trigger");
+      const modalEdicao = wrapper?.closest(".plugve-edit-modal");
+      if (!painel || !gatilho || !modalEdicao) return;
+
+      if (painel.parentElement !== document.body) document.body.appendChild(painel);
+      painel.classList.add("plugve-energy-tooltip-panel--floating");
+      painel.hidden = false;
+      painel.style.visibility = "hidden";
+
+      const margem = 12;
+      const espacamento = 8;
+      const viewportLargura = Math.max(document.documentElement.clientWidth, window.innerWidth || 0);
+      const viewportAltura = Math.max(document.documentElement.clientHeight, window.innerHeight || 0);
+      const gatilhoRect = gatilho.getBoundingClientRect();
+      const painelRect = painel.getBoundingClientRect();
+      const largura = Math.min(painelRect.width || 340, Math.max(0, viewportLargura - (margem * 2)));
+      const altura = painelRect.height || 0;
+
+      let esquerda = gatilhoRect.right - largura;
+      esquerda = Math.max(margem, Math.min(esquerda, viewportLargura - largura - margem));
+
+      let topo = gatilhoRect.bottom + espacamento;
+      if (topo + altura > viewportAltura - margem) {
+        topo = Math.max(margem, viewportAltura - altura - margem);
+      }
+
+      painel.style.left = `${Math.round(esquerda)}px`;
+      painel.style.top = `${Math.round(topo)}px`;
+      painel.style.visibility = "visible";
+    }
+
     function definirTooltipAneelAbertoPlugVE(wrapper, aberto) {
       if (!wrapper) return;
       const gatilho = wrapper.querySelector(".plugve-aneel-tooltip-trigger");
-      const painel = wrapper.querySelector(".plugve-energy-tooltip-panel");
+      const painel = obterPainelTooltipAneelPlugVE(wrapper);
       const podeAbrir = aberto && !wrapper.classList.contains("hidden") && wrapper.getAttribute("aria-hidden") !== "true";
       wrapper.classList.toggle("is-open", podeAbrir);
-      if (painel) painel.hidden = !podeAbrir;
+      if (painel) {
+        if (podeAbrir) {
+          painel.hidden = false;
+          posicionarPainelTooltipAneelPlugVE(wrapper);
+        } else {
+          restaurarPainelTooltipAneelPlugVE(wrapper);
+        }
+      }
       gatilho?.setAttribute("aria-expanded", podeAbrir ? "true" : "false");
     }
 
@@ -2668,6 +2719,8 @@
           fecharTooltipsAneelPlugVE();
           document.activeElement?.classList?.contains("plugve-aneel-tooltip-trigger") && document.activeElement.blur();
         });
+        window.addEventListener("resize", fecharTooltipsAneelPlugVE);
+        document.addEventListener("scroll", fecharTooltipsAneelPlugVE, true);
       }
       fecharTooltipsAneelPlugVE();
       atualizarPaineisAneelPlugVE();
