@@ -71,7 +71,7 @@ class V42UiRegressionTests(unittest.TestCase):
             "preco_ve", "manut_ve", "ipva_ve_input", "seguro_ve",
             "preco_icev", "manut_icev", "ipva_icev_input", "seguro_icev",
             "energia_input", "fuel_single_preco_input", "fuel_modal_preco_etanol",
-            "fuel_modal_preco_gasolina", "phev_modal_preco_combustivel",
+            "fuel_modal_preco_gasolina", "phev_modal_preco_energia", "phev_modal_preco_combustivel",
         ):
             self.assertIn(f'"{field_id}"', html)
         self.assertIn('function aplicarMascaraMonetariaDigitacaoTCO(input)', html)
