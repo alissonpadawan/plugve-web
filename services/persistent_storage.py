@@ -48,6 +48,11 @@ def bootstrap_persistent_storage(app: Flask) -> None:
         if not path.exists():
             path.write_text("{}", encoding="utf-8")
 
+    _copy_if_missing(
+        Path(app.config["DATA_DIR"]) / "fipe_cache" / "catalogo_elegibilidade_fipe_v1.json",
+        persistent_dir / "fipe_cache" / "catalogo_elegibilidade_fipe_v1.json",
+    )
+
     pendencias = persistent_dir / "pendencias_curvas.json"
     if not pendencias.exists():
         pendencias.write_text("[]", encoding="utf-8")

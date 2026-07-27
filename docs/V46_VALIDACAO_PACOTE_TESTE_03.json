@@ -1,0 +1,197 @@
+{
+  "pacote": "V46 pacote de teste 03",
+  "base": "V46 pacote de teste 02 sobre V44 homologada",
+  "gerado_em_utc": "2026-07-27T22:47:22.643818+00:00",
+  "python": "3.13.5",
+  "escopo": {
+    "simular_depreciacao": "somente marcas/modelos com 2012+ ou Zero km; separação VE/PHEV e ICEV/HEV no backend",
+    "fipe_plus": "catálogo integral preservado",
+    "estado_robo": "lido do Persistent Disk e não sobrescrito"
+  },
+  "validacoes": {
+    "compileall": {
+      "ok": true
+    },
+    "pytest": {
+      "aprovados": 134,
+      "ignorados": 5,
+      "subtestes_aprovados": 54,
+      "observacao": "Suíte completa disponível no pacote; 5 testes foram ignorados por ausência do Flask no ambiente de montagem."
+    },
+    "regressoes_reais": {
+      "casos": 44,
+      "aprovados": 44,
+      "reprovados": 0,
+      "decisoes_motor_multivisao": 31,
+      "decisoes_fallback_v44": 13,
+      "latencia_ms": {
+        "primeira_consulta_frio": 3069.806,
+        "media_aquecida": 115.314,
+        "mediana_aquecida": 58.722,
+        "maxima_aquecida": 745.139
+      }
+    },
+    "catalogo_fipe": {
+      "testes_dedicados": 8,
+      "regras_confirmadas": [
+        "marca sem modelo 2012+ ou Zero km oculta",
+        "modelo antigo bloqueado não aparece",
+        "BEV/PHEV separado de combustão/HEV",
+        "anos filtrados no backend",
+        "FIPE+ mantém catálogo integral",
+        "fallback local não libera Cadillac sem evidência contemporânea",
+        "estado do robô não é sobrescrito",
+        "cache antigo é invalidado por catalogo=v46_03"
+      ]
+    },
+    "jinja_parse": {
+      "templates": 15,
+      "ok": true
+    },
+    "node_check": {
+      "scripts_inline_simular": 3,
+      "scripts_estaticos": 7,
+      "ok": true
+    },
+    "chromium_headless": {
+      "initial": {
+        "veBrands": [
+          "Selecione",
+          "BYD"
+        ],
+        "icevBrands": [
+          "Selecione",
+          "GWM"
+        ],
+        "atualBrands": [
+          "Selecione",
+          "GWM"
+        ],
+        "pbevButtons": 0,
+        "ready": "complete"
+      },
+      "ve_models": [
+        "Selecione",
+        "Yuan Pro"
+      ],
+      "ve_years": [
+        "Selecione",
+        "Zero km Zero km Elétrico"
+      ],
+      "icev_models": [
+        "Selecione",
+        "Haval H6 HEV"
+      ],
+      "icev_years": [
+        "Selecione",
+        "2025 Híbrido"
+      ],
+      "page_errors": [],
+      "console_reference_errors": [],
+      "console_errors": [],
+      "browser_errors": [],
+      "catalog_requests": [
+        "/api/fipe/marcas?catalogo=v46_03&contexto=ve",
+        "/api/fipe/marcas?catalogo=v46_03&contexto=icev",
+        "/api/fipe/marcas?contexto=ve",
+        "/api/fipe/modelos?codigo_marca=13&catalogo=v46_03&contexto=ve&nome_marca=BYD",
+        "/api/fipe/anos?codigo_marca=13&codigo_modelo=4&catalogo=v46_03&contexto=ve",
+        "/api/fipe/modelos?codigo_marca=99&catalogo=v46_03&contexto=icev&nome_marca=GWM",
+        "/api/fipe/anos?codigo_marca=99&codigo_modelo=5&catalogo=v46_03&contexto=icev"
+      ],
+      "ok": true
+    },
+    "flask_test_client": {
+      "executado": false,
+      "motivo": "Flask não está instalado no ambiente de montagem; testes unitários usam stubs e as rotas de FIPE foram cobertas por contrato de serviço."
+    },
+    "estado_real_render": {
+      "exportado": false,
+      "motivo": "Ambiente de montagem sem acesso de rede/DNS ao serviço publicado. O código preserva e consome o Persistent Disk existente."
+    }
+  },
+  "arquivos_producao_alterados_nesta_rodada": [
+    {
+      "arquivo": "services/fipe_catalog_classifier.py",
+      "sha256_pacote_03": "15a379f5f29f3329e832f3f7112c83f58d7c106273566dc50667219826bde11e",
+      "sha256_pacote_02": null,
+      "status": "adicionado",
+      "motivo": "Novo classificador determinístico FIPE/PBEV para separar VE/PHEV de ICEV/HEV."
+    },
+    {
+      "arquivo": "services/fipe_service.py",
+      "sha256_pacote_03": "934d635b1e75ed35f9f541648c7572833dc4e71d16cd722c5e87e335a391f5cd",
+      "sha256_pacote_02": "99efc5c9fba6f772e81d14b1ee4f5330f1122cf74a64f1188a79214baf2be64d",
+      "status": "alterado",
+      "motivo": "Recorte de 2012/Zero km, consumo do estado do robô, índice de elegibilidade e filtro no backend."
+    },
+    {
+      "arquivo": "services/tipo_veiculo_service.py",
+      "sha256_pacote_03": "25be7472518f989863cf2f4a9ce2091a89e95669223603e902d87878b6651f08",
+      "sha256_pacote_02": "73f1f855258767d1523532d48d7ac197af45805123f4b1f0f1b07139083b7a5f",
+      "status": "alterado",
+      "motivo": "Novo contexto Depreciação."
+    },
+    {
+      "arquivo": "services/persistent_storage.py",
+      "sha256_pacote_03": "02a3451f2ca7202615aa6f4f81a82cbd6888d6209d60c36843bca3bc80a49163",
+      "sha256_pacote_02": "c336e535ef37c52ddf75748747a639c2edd7c1093306eca2c3e81f3a88cfbe01",
+      "status": "alterado",
+      "motivo": "Bootstrap não destrutivo do índice de elegibilidade."
+    },
+    {
+      "arquivo": "static/js/fipe.js",
+      "sha256_pacote_03": "b8bf175d21dd1ec3e9b6b294ae8573be74ed9eefb083d6f68ee94c164c4a05f7",
+      "sha256_pacote_02": "79a9af3efce9f80a59114cb33bd819706de5effb9e4d6360c4366625f5ab5d0b",
+      "status": "alterado",
+      "motivo": "Depreciação usa catálogo filtrado e versão de cache V46.03."
+    },
+    {
+      "arquivo": "templates/simular.html",
+      "sha256_pacote_03": "10bd182bbf21431253ae18c6b0eeda60c0d62023da08375bfa0a642f8e174085",
+      "sha256_pacote_02": "285ff1214cad889c55d311725b6604db0b823bcf654e2e4275ba95bcfa8aa792",
+      "status": "alterado",
+      "motivo": "Confia no filtro do backend e versiona chamadas do catálogo."
+    },
+    {
+      "arquivo": "data/fipe_cache/catalogo_elegibilidade_fipe_v1.json",
+      "sha256_pacote_03": "4f6ae869ee683d767c331a5781bc5323233a2ca26834ce605dda55684d5be1c6",
+      "sha256_pacote_02": null,
+      "status": "adicionado",
+      "motivo": "Semente versionada do índice de auditoria."
+    }
+  ],
+  "arquivos_protegidos": [
+    {
+      "arquivo": "app.py",
+      "sha256": "bfed8bac9316d89eac49740581324d331e86f3a667d9f47ca629477e61eb6e09",
+      "identico_pacote_02": true
+    },
+    {
+      "arquivo": "routes/pbev_routes.py",
+      "sha256": "33cc7c06617c6de43d9d162c60328d39b3e4a7690885c370d038dcff3299d617",
+      "identico_pacote_02": true
+    },
+    {
+      "arquivo": "services/pbev_service.py",
+      "sha256": "e9e9d08b81569d03da9306d639540eb191591fd029c24f0547a658e3662e027e",
+      "identico_pacote_02": true
+    },
+    {
+      "arquivo": "routes/tco_routes.py",
+      "sha256": "cda580c61d89f96e378bfb73c11f5a7dfaf71247e60f9194f4af12fe69231131",
+      "identico_pacote_02": true
+    },
+    {
+      "arquivo": "services/depreciacao_service.py",
+      "sha256": "278f828fe54ba8dc18a02a4930640d194308b38f9b0e5a765330e1f9705cf208",
+      "identico_pacote_02": true
+    },
+    {
+      "arquivo": "templates/consulta_fipe.html",
+      "sha256": "d02816e3c6d97fa4e6b9f2efeea81f0374d01fa4543a12abef76d19a2da50ed2",
+      "identico_pacote_02": true
+    }
+  ],
+  "conclusao": "Candidato de teste 03 aprovado nas validações disponíveis; o estado real do robô e o comportamento do catálogo devem ser homologados no Render."
+}

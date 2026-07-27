@@ -1,0 +1,786 @@
+{
+  "gerado_em_utc": "2026-07-27T22:43:58.692640+00:00",
+  "pacote": "V46 pacote de teste 02",
+  "base": "V44 homologada",
+  "casos": 44,
+  "aprovados": 44,
+  "reprovados": 0,
+  "taxa_aprovacao": 1.0,
+  "decisoes_motor_multivisao": 31,
+  "decisoes_fallback_v44": 13,
+  "latencia_ms": {
+    "primeira_consulta_frio": 3069.806,
+    "media_aquecida": 115.314,
+    "mediana_aquecida": 58.722,
+    "maxima_aquecida": 745.139
+  },
+  "resultados": [
+    {
+      "id": "corolla_cross_xre_zero_km",
+      "origem_regressao": "casos_regressao_matching_v45_etapa2.json",
+      "ok": true,
+      "falhas": [],
+      "tempo_ms": 3069.806,
+      "motor_matching": "v44_fallback_conservador",
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "score": 100.0,
+      "candidato": {
+        "marca": "TOYOTA",
+        "modelo": "COROLLA CROSS",
+        "versao": "XRE 20",
+        "ano_tabela": 2026
+      },
+      "motivo": "marca compatível; zero km FIPE: ano PBEV mais recente compatível priorizado; família comercial textual compatível: COROLLA; carroceria compatível; designação comercial exata; modelo/família compatível; combustível flex compatível; versão/acabamento compatível; motor compatível; transmissão automática/CVT compatível"
+    },
+    {
+      "id": "song_plus_phev",
+      "origem_regressao": "casos_regressao_matching_v45_etapa2.json",
+      "ok": true,
+      "falhas": [],
+      "tempo_ms": 17.838,
+      "motor_matching": "v46_multivisao",
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "score": 72.38,
+      "candidato": {
+        "marca": "BYD",
+        "modelo": "SONG PLUS",
+        "versao": "PREM DM (MY27)",
+        "ano_tabela": 2026
+      },
+      "motivo": "modelo/família presente de forma inequívoca; cilindrada compatível; família de transmissão compatível; configurações tecnicamente equivalentes resolvidas pelo critério conservador autorizado; candidato dominante sobre o segundo colocado"
+    },
+    {
+      "id": "hb20_hatch",
+      "origem_regressao": "casos_regressao_matching_v45_etapa2.json",
+      "ok": true,
+      "falhas": [],
+      "tempo_ms": 110.431,
+      "motor_matching": "v46_multivisao",
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "score": 100.0,
+      "candidato": {
+        "marca": "Hyundai",
+        "modelo": "HB20",
+        "versao": "Limited",
+        "ano_tabela": 2026
+      },
+      "motivo": "modelo/família presente de forma inequívoca; cilindrada compatível; família de transmissão compatível; válvulas compatíveis; ciclo PBEV do ano-modelo exato priorizado; zero km: ciclo PBEV do ano-modelo priorizado; candidato dominante sobre o segundo colocado"
+    },
+    {
+      "id": "hb20s_sedan",
+      "origem_regressao": "casos_regressao_matching_v45_etapa2.json",
+      "ok": true,
+      "falhas": [],
+      "tempo_ms": 107.29,
+      "motor_matching": "v46_multivisao",
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "score": 100.0,
+      "candidato": {
+        "marca": "Hyundai",
+        "modelo": "HB20S",
+        "versao": "Limited",
+        "ano_tabela": 2026
+      },
+      "motivo": "modelo/família presente de forma inequívoca; cilindrada compatível; família de transmissão compatível; válvulas compatíveis; ciclo PBEV do ano-modelo exato priorizado; zero km: ciclo PBEV do ano-modelo priorizado; candidato dominante sobre o segundo colocado"
+    },
+    {
+      "id": "duster_intense_plus",
+      "origem_regressao": "casos_regressao_matching_v45_etapa2.json",
+      "ok": true,
+      "falhas": [],
+      "tempo_ms": 141.839,
+      "motor_matching": "v46_multivisao",
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "score": 100.0,
+      "candidato": {
+        "marca": "Renault",
+        "modelo": "DUSTER",
+        "versao": "DUSTER INTP MT",
+        "ano_tabela": 2026
+      },
+      "motivo": "modelo/família presente de forma inequívoca; cilindrada compatível; família de transmissão compatível; válvulas compatíveis; aspiração compatível; ciclo PBEV do ano-modelo exato priorizado; zero km: ciclo PBEV do ano-modelo priorizado; candidatos tecnicamente equivalentes possuem o mesmo consumo; candidato dominante sobre o segundo colocado"
+    },
+    {
+      "id": "jetour_t1",
+      "origem_regressao": "casos_regressao_matching_v45_etapa2.json",
+      "ok": true,
+      "falhas": [],
+      "tempo_ms": 6.946,
+      "motor_matching": "v44_fallback_conservador",
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "score": 100.0,
+      "candidato": {
+        "marca": "JETOUR",
+        "modelo": "T1 I-DM",
+        "versao": "ADVANCE",
+        "ano_tabela": 2026
+      },
+      "motivo": "marca compatível; zero km FIPE: ano PBEV mais recente compatível priorizado; token forte de modelo compatível: T1; designação comercial parcialmente compatível; modelo/família compatível; PHEV/plugin compatível; versão/acabamento compatível; motor compatível; transmissão compatível"
+    },
+    {
+      "id": "jetour_s06",
+      "origem_regressao": "casos_regressao_matching_v45_etapa2.json",
+      "ok": true,
+      "falhas": [],
+      "tempo_ms": 6.567,
+      "motor_matching": "v44_fallback_conservador",
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "score": 100.0,
+      "candidato": {
+        "marca": "JETOUR",
+        "modelo": "S06 DM",
+        "versao": "ADVANCE",
+        "ano_tabela": 2026
+      },
+      "motivo": "marca compatível; zero km FIPE: ano PBEV mais recente compatível priorizado; token forte de modelo compatível: S06; designação comercial exata; número/modelo compatível; modelo/família compatível; PHEV/plugin compatível; versão/acabamento compatível; motor compatível; transmissão compatível"
+    },
+    {
+      "id": "defender_d300",
+      "origem_regressao": "casos_regressao_matching_v45_etapa2.json",
+      "ok": true,
+      "falhas": [],
+      "tempo_ms": 193.295,
+      "motor_matching": "v46_multivisao",
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "score": 99.0,
+      "candidato": {
+        "marca": "LAND ROVER",
+        "modelo": "DEFENDER 110",
+        "versao": "HSE",
+        "ano_tabela": 2024
+      },
+      "motivo": "modelo/família presente de forma inequívoca; família de transmissão compatível; ciclo PBEV do ano-modelo exato priorizado; candidatos tecnicamente equivalentes possuem o mesmo consumo; candidato dominante sobre o segundo colocado"
+    },
+    {
+      "id": "discovery_sport_p250",
+      "origem_regressao": "casos_regressao_matching_v45_etapa2.json",
+      "ok": true,
+      "falhas": [],
+      "tempo_ms": 745.139,
+      "motor_matching": "v44_fallback_conservador",
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "score": 100.0,
+      "candidato": {
+        "marca": "LAND ROVER",
+        "modelo": "DISCOVERY SPORT",
+        "versao": "P250FF SERD7",
+        "ano_tabela": 2022
+      },
+      "motivo": "marca compatível; ano PBEV adjacente ao ano-modelo FIPE; família comercial textual parcialmente compatível: DISCOVERY; código técnico compatível: P250; designação comercial parcialmente compatível; modelo/família compatível; combustível flex compatível; versão/acabamento parcialmente compatível; transmissão compatível; candidatos próximos têm o mesmo consumo aplicável; ambiguidade não bloqueia"
+    },
+    {
+      "id": "towner_pickup",
+      "origem_regressao": "casos_regressao_matching_v45_etapa2.json",
+      "ok": true,
+      "falhas": [],
+      "tempo_ms": 17.773,
+      "motor_matching": "v44_fallback_conservador",
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "score": 100.0,
+      "candidato": {
+        "marca": "HAFEI",
+        "modelo": "Start Pickup",
+        "versao": "L",
+        "ano_tabela": 2014
+      },
+      "motivo": "marca compatível; ano PBEV igual ao ano-modelo FIPE; família comercial textual compatível: START, TOWNER; carroceria compatível; designação comercial exata; modelo/família compatível; combustível gasolina compatível; motor compatível; transmissão compatível"
+    },
+    {
+      "id": "huracan_sterrato",
+      "origem_regressao": "casos_regressao_matching_v45_etapa2.json",
+      "ok": true,
+      "falhas": [],
+      "tempo_ms": 10.558,
+      "motor_matching": "v46_multivisao",
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "score": 80.63,
+      "candidato": {
+        "marca": "LAMBORGHINI",
+        "modelo": "HURACAN",
+        "versao": "TECNICA",
+        "ano_tabela": 2024
+      },
+      "motivo": "modelo/família presente de forma inequívoca; cilindrada compatível; família de transmissão compatível; ciclo PBEV do ano-modelo exato priorizado; família técnica compatível, mas acabamento específico ausente na PBEV; candidato dominante sobre o segundo colocado"
+    },
+    {
+      "id": "aventador_ano_distante",
+      "origem_regressao": "casos_regressao_matching_v45_etapa2.json",
+      "ok": true,
+      "falhas": [],
+      "tempo_ms": 33.554,
+      "motor_matching": "v46_multivisao",
+      "nivel_match": "medio",
+      "autopreencher": false,
+      "score": 55.06,
+      "candidato": {
+        "marca": "LAMBORGHINI",
+        "modelo": "Aventador",
+        "versao": "-",
+        "ano_tabela": 2014
+      },
+      "motivo": "modelo/família presente de forma inequívoca; cilindrada compatível; família de transmissão compatível; ano distante (2021 x 2014); confiança insuficiente para autofill"
+    },
+    {
+      "id": "durango_fallback_familia",
+      "origem_regressao": "casos_regressao_matching_v45_etapa2.json",
+      "ok": true,
+      "falhas": [],
+      "tempo_ms": 12.527,
+      "motor_matching": "v44_fallback_conservador",
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "score": 100.0,
+      "candidato": {
+        "marca": "DODGE",
+        "modelo": "Durango",
+        "versao": "Limited",
+        "ano_tabela": 2015
+      },
+      "motivo": "marca compatível; família comercial textual compatível: DURANGO; modelo/família compatível; combustível gasolina compatível; motor compatível; transmissão compatível; ano PBEV próximo aceito por família técnica equivalente; candidatos próximos têm o mesmo consumo aplicável; ambiguidade não bloqueia; ano distante (2013 x 2015); acabamento divergente"
+    },
+    {
+      "id": "ram_2500_sem_cobertura",
+      "origem_regressao": "casos_regressao_matching_v45_etapa2.json",
+      "ok": true,
+      "falhas": [],
+      "tempo_ms": 23.465,
+      "motor_matching": "v46_multivisao",
+      "nivel_match": "sem_match",
+      "autopreencher": false,
+      "score": 0,
+      "candidato": null,
+      "motivo": "Nenhum candidato PBEV passou os bloqueios técnicos e de identidade."
+    },
+    {
+      "id": "sf90_sem_cobertura",
+      "origem_regressao": "casos_regressao_matching_v45_etapa2.json",
+      "ok": true,
+      "falhas": [],
+      "tempo_ms": 66.767,
+      "motor_matching": "v46_multivisao",
+      "nivel_match": "sem_match",
+      "autopreencher": false,
+      "score": 0,
+      "candidato": null,
+      "motivo": "Nenhum candidato PBEV passou os bloqueios técnicos e de identidade."
+    },
+    {
+      "id": "f8_spider_potencia_secundaria",
+      "origem_regressao": "casos_regressao_matching_v45_etapa2.json",
+      "ok": true,
+      "falhas": [],
+      "tempo_ms": 10.395,
+      "motor_matching": "v46_multivisao",
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "score": 96.12,
+      "candidato": {
+        "marca": "FERRARI",
+        "modelo": "F8",
+        "versao": "SPIDER",
+        "ano_tabela": 2022
+      },
+      "motivo": "modelo/família presente de forma inequívoca; cilindrada compatível; ciclo PBEV do ano-modelo exato priorizado; candidato dominante sobre o segundo colocado"
+    },
+    {
+      "id": "ferrari_roma_potencia_secundaria",
+      "origem_regressao": "casos_regressao_matching_v45_etapa2.json",
+      "ok": true,
+      "falhas": [],
+      "tempo_ms": 7.274,
+      "motor_matching": "v46_multivisao",
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "score": 81.97,
+      "candidato": {
+        "marca": "FERRARI",
+        "modelo": "ROMA",
+        "versao": "--",
+        "ano_tabela": 2024
+      },
+      "motivo": "modelo/família presente de forma inequívoca; cilindrada compatível; ciclo PBEV do ano-modelo exato priorizado; família técnica compatível, mas acabamento específico ausente na PBEV; candidato dominante sobre o segundo colocado"
+    },
+    {
+      "id": "wey_07_versoes_equivalentes",
+      "origem_regressao": "casos_regressao_matching_v45_etapa2.json",
+      "ok": true,
+      "falhas": [],
+      "tempo_ms": 22.517,
+      "motor_matching": "v44_fallback_conservador",
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "score": 100.0,
+      "candidato": {
+        "marca": "GWM",
+        "modelo": "WEY",
+        "versao": "07",
+        "ano_tabela": 2026
+      },
+      "motivo": "marca compatível; ano PBEV igual ao ano-modelo FIPE; token forte de modelo compatível: WEY07; modelo/família compatível; PHEV/plugin compatível; motor compatível; candidato dominante por identidade técnica forte; candidatos próximos tecnicamente fracos não bloqueiam; candidatos próximos têm o mesmo consumo aplicável; ambiguidade não bloqueia"
+    },
+    {
+      "id": "volvo_xc40_composto",
+      "origem_regressao": "casos_regressao_matching_v45_etapa2.json",
+      "ok": true,
+      "falhas": [],
+      "tempo_ms": 422.769,
+      "motor_matching": "v44_fallback_conservador",
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "score": 100.0,
+      "candidato": {
+        "marca": "VOLVO",
+        "modelo": "XC40",
+        "versao": "T5 INSCRIPT T5 MOMENTUM T5 R-DESIGN",
+        "ano_tabela": 2018
+      },
+      "motivo": "marca compatível; ano PBEV igual ao ano-modelo FIPE; token forte de modelo compatível: XC40; número/modelo compatível; modelo/família compatível; combustível gasolina compatível; motor compatível; candidatos próximos da mesma família resolvidos por critério conservador de consumo; acabamento divergente"
+    },
+    {
+      "id": "volvo_xc60_composto",
+      "origem_regressao": "casos_regressao_matching_v45_etapa2.json",
+      "ok": true,
+      "falhas": [],
+      "tempo_ms": 511.069,
+      "motor_matching": "v44_fallback_conservador",
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "score": 100.0,
+      "candidato": {
+        "marca": "VOLVO",
+        "modelo": "XC60",
+        "versao": "2.0 T5 Inscription / 2.0 T5 R-Design",
+        "ano_tabela": 2017
+      },
+      "motivo": "marca compatível; ano PBEV igual ao ano-modelo FIPE; token forte de modelo compatível: XC60; designação comercial parcialmente compatível; número/modelo compatível; modelo/família compatível; combustível gasolina compatível; versão/acabamento parcialmente compatível; motor compatível"
+    },
+    {
+      "id": "hyundai_creta_comfort_tb12v_zero_km",
+      "origem_regressao": "casos_regressao_matching_v45_etapa2.json",
+      "ok": true,
+      "falhas": [],
+      "tempo_ms": 109.565,
+      "motor_matching": "v46_multivisao",
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "score": 100.0,
+      "candidato": {
+        "marca": "Hyundai",
+        "modelo": "CRETA",
+        "versao": "Comfort",
+        "ano_tabela": 2026
+      },
+      "motivo": "modelo/família presente de forma inequívoca; cilindrada compatível; família de transmissão compatível; válvulas compatíveis; ciclo PBEV do ano-modelo exato priorizado; zero km: ciclo PBEV do ano-modelo priorizado; candidatos tecnicamente equivalentes possuem o mesmo consumo; candidato dominante sobre o segundo colocado"
+    },
+    {
+      "id": "toyota_yaris_xls_zero_km",
+      "origem_regressao": "casos_regressao_matching_v45_etapa2.json",
+      "ok": true,
+      "falhas": [],
+      "tempo_ms": 104.086,
+      "motor_matching": "v46_multivisao",
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "score": 89.13,
+      "candidato": {
+        "marca": "TOYOTA",
+        "modelo": "YARIS HATCHBACK",
+        "versao": "XLS",
+        "ano_tabela": 2023
+      },
+      "motivo": "modelo/família presente de forma inequívoca; cilindrada compatível; família de transmissão compatível; válvulas compatíveis; aspiração compatível; configurações tecnicamente equivalentes resolvidas pelo critério conservador autorizado; candidato dominante sobre o segundo colocado"
+    },
+    {
+      "id": "toyota_corolla_cross_hybrid",
+      "origem_regressao": "casos_regressao_matching_v45_etapa2.json",
+      "ok": true,
+      "falhas": [],
+      "tempo_ms": 506.52,
+      "motor_matching": "v44_fallback_conservador",
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "score": 100.0,
+      "candidato": {
+        "marca": "TOYOTA",
+        "modelo": "COROLLA CROSS",
+        "versao": "XRX HYBRID",
+        "ano_tabela": 2026
+      },
+      "motivo": "marca compatível; ano PBEV igual ao ano-modelo FIPE; família comercial textual compatível: COROLLA; carroceria compatível; designação comercial exata; modelo/família compatível; híbrido convencional compatível; versão/acabamento compatível; motor compatível; transmissão automática/CVT compatível"
+    },
+    {
+      "id": "byd_dolphin_mini",
+      "origem_regressao": "casos_regressao_matching_v45_etapa2.json",
+      "ok": true,
+      "falhas": [],
+      "tempo_ms": 42.807,
+      "motor_matching": "v44_fallback_conservador",
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "score": 100.0,
+      "candidato": {
+        "marca": "BYD",
+        "modelo": "DOLPHIN MINI",
+        "versao": "GL5EV",
+        "ano_tabela": 2025
+      },
+      "motivo": "marca compatível; zero km FIPE: ano PBEV mais recente compatível priorizado; família comercial textual compatível: DOLPHIN; designação comercial parcialmente compatível; modelo/família compatível; propulsão elétrica compatível; versão/acabamento compatível"
+    },
+    {
+      "id": "byd_tan_ev_4x4",
+      "origem_regressao": "casos_regressao_matching_v45_etapa2.json",
+      "ok": true,
+      "falhas": [],
+      "tempo_ms": 28.73,
+      "motor_matching": "v44_fallback_conservador",
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "score": 100.0,
+      "candidato": {
+        "marca": "BYD",
+        "modelo": "TAN",
+        "versao": "AWD GS 700EV",
+        "ano_tabela": 2026
+      },
+      "motivo": "marca compatível; zero km FIPE: ano PBEV mais recente compatível priorizado; família comercial textual compatível: TAN; modelo/família compatível; propulsão elétrica compatível; acabamento divergente"
+    },
+    {
+      "id": "toyota_hilux_srv_tdi16v",
+      "origem_regressao": "casos_regressao_matching_v45_etapa2.json",
+      "ok": true,
+      "falhas": [],
+      "tempo_ms": 293.697,
+      "motor_matching": "v46_multivisao",
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "score": 100.0,
+      "candidato": {
+        "marca": "TOYOTA",
+        "modelo": "HILUX DIESEL 4X4 AT",
+        "versao": "SRV AT",
+        "ano_tabela": 2026
+      },
+      "motivo": "modelo/família presente de forma inequívoca; cilindrada compatível; família de transmissão compatível; válvulas compatíveis; ciclo PBEV do ano-modelo exato priorizado; zero km: ciclo PBEV do ano-modelo priorizado; candidatos tecnicamente equivalentes possuem o mesmo consumo; candidato dominante sobre o segundo colocado"
+    },
+    {
+      "id": "peugeot_e2008_gt",
+      "origem_regressao": "casos_regressao_matching_v45_etapa2.json",
+      "ok": true,
+      "falhas": [],
+      "tempo_ms": 52.096,
+      "motor_matching": "v46_multivisao",
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "score": 100.0,
+      "candidato": {
+        "marca": "PEUGEOT",
+        "modelo": "E2008",
+        "versao": "GT",
+        "ano_tabela": 2026
+      },
+      "motivo": "modelo/família presente de forma inequívoca; ciclo PBEV do ano-modelo exato priorizado; zero km: ciclo PBEV do ano-modelo priorizado; candidato dominante sobre o segundo colocado"
+    },
+    {
+      "id": "ferrari_12cilindri_spider",
+      "origem_regressao": "casos_regressao_matching_v45_etapa2.json",
+      "ok": true,
+      "falhas": [],
+      "tempo_ms": 12.355,
+      "motor_matching": "v46_multivisao",
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "score": 100.0,
+      "candidato": {
+        "marca": "FERRARI",
+        "modelo": "12CILINDRI",
+        "versao": "SPI",
+        "ano_tabela": 2026
+      },
+      "motivo": "modelo/família presente de forma inequívoca; cilindrada compatível; família de transmissão compatível; ciclo PBEV do ano-modelo exato priorizado; zero km: ciclo PBEV do ano-modelo priorizado; candidato dominante sobre o segundo colocado"
+    },
+    {
+      "id": "volvo_xc90_t8_ultra_dark",
+      "origem_regressao": "casos_regressao_matching_v45_etapa2.json",
+      "ok": true,
+      "falhas": [],
+      "tempo_ms": 185.185,
+      "motor_matching": "v46_multivisao",
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "score": 100.0,
+      "candidato": {
+        "marca": "VOLVO",
+        "modelo": "XC90",
+        "versao": "T8 AWD ULTD",
+        "ano_tabela": 2026
+      },
+      "motivo": "modelo/família presente de forma inequívoca; cilindrada compatível; ciclo PBEV do ano-modelo exato priorizado; zero km: ciclo PBEV do ano-modelo priorizado; candidatos tecnicamente equivalentes possuem o mesmo consumo; candidato dominante sobre o segundo colocado"
+    },
+    {
+      "id": "volvo_xc60_t8_ultimate_dark_my24",
+      "origem_regressao": "casos_regressao_matching_v45_etapa2.json",
+      "ok": true,
+      "falhas": [],
+      "tempo_ms": 146.523,
+      "motor_matching": "v46_multivisao",
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "score": 95.56,
+      "candidato": {
+        "marca": "VOLVO",
+        "modelo": "XC60",
+        "versao": "T8 ULT DARK",
+        "ano_tabela": 2024
+      },
+      "motivo": "modelo/família presente de forma inequívoca; cilindrada compatível; ciclo PBEV do ano-modelo exato priorizado; candidatos tecnicamente equivalentes possuem o mesmo consumo; candidato dominante sobre o segundo colocado"
+    },
+    {
+      "id": "jaecoo_7_prestige",
+      "origem_regressao": "casos_regressao_matching_v45_etapa2.json",
+      "ok": true,
+      "falhas": [],
+      "tempo_ms": 6.127,
+      "motor_matching": "v44_fallback_conservador",
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "score": 100.0,
+      "candidato": {
+        "marca": "JAECOO",
+        "modelo": "7",
+        "versao": "PRESTIGE",
+        "ano_tabela": 2026
+      },
+      "motivo": "marca compatível; ano PBEV igual ao ano-modelo FIPE; modelo/família compatível; PHEV/plugin compatível; versão/acabamento compatível; motor compatível; transmissão compatível"
+    },
+    {
+      "id": "byd_yuan_pro_zero_km_2026",
+      "origem_regressao": "casos_regressao_matching_v2.json",
+      "ok": true,
+      "falhas": [],
+      "tempo_ms": 11.224,
+      "motor_matching": "v46_multivisao",
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "score": 85.85,
+      "candidato": {
+        "marca": "BYD",
+        "modelo": "YUAN PRO",
+        "versao": "GS 290EV",
+        "ano_tabela": 2026
+      },
+      "motivo": "modelo/família presente de forma inequívoca; ciclo PBEV do ano-modelo exato priorizado; zero km: ciclo PBEV do ano-modelo priorizado; família técnica compatível, mas acabamento específico ausente na PBEV; candidato dominante sobre o segundo colocado"
+    },
+    {
+      "id": "jaguar_xkr_nao_virar_ftype",
+      "origem_regressao": "casos_regressao_matching_v2.json",
+      "ok": true,
+      "falhas": [],
+      "tempo_ms": 134.263,
+      "motor_matching": "v46_multivisao",
+      "nivel_match": "sem_match",
+      "autopreencher": false,
+      "score": 0,
+      "candidato": null,
+      "motivo": "Nenhum candidato PBEV passou os bloqueios técnicos e de identidade."
+    },
+    {
+      "id": "jaguar_xfrs_nao_virar_xe_xf",
+      "origem_regressao": "casos_regressao_matching_v2.json",
+      "ok": true,
+      "falhas": [],
+      "tempo_ms": 156.572,
+      "motor_matching": "v46_multivisao",
+      "nivel_match": "sem_match",
+      "autopreencher": false,
+      "score": 0,
+      "candidato": null,
+      "motivo": "Nenhum candidato PBEV passou os bloqueios técnicos e de identidade."
+    },
+    {
+      "id": "hyundai_hb20s_style10_2019",
+      "origem_regressao": "casos_regressao_matching_v2.json",
+      "ok": true,
+      "falhas": [],
+      "tempo_ms": 118.789,
+      "motor_matching": "v46_multivisao",
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "score": 100.0,
+      "candidato": {
+        "marca": "Hyundai",
+        "modelo": "HB20S",
+        "versao": "Unique / Comfort Plus / Style",
+        "ano_tabela": 2019
+      },
+      "motivo": "modelo/família presente de forma inequívoca; cilindrada compatível; família de transmissão compatível; válvulas compatíveis; aspiração compatível; ciclo PBEV do ano-modelo exato priorizado; candidato dominante sobre o segundo colocado"
+    },
+    {
+      "id": "gwm_haval_h6_awd_hev_2024",
+      "origem_regressao": "casos_regressao_matching_v2.json",
+      "ok": true,
+      "falhas": [],
+      "tempo_ms": 11.425,
+      "motor_matching": "v46_multivisao",
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "score": 98.37,
+      "candidato": {
+        "marca": "GWM",
+        "modelo": "HAVAL H6",
+        "versao": "HEV",
+        "ano_tabela": 2024
+      },
+      "motivo": "modelo/família presente de forma inequívoca; cilindrada compatível; ciclo PBEV do ano-modelo exato priorizado; candidatos tecnicamente equivalentes possuem o mesmo consumo; candidato dominante sobre o segundo colocado"
+    },
+    {
+      "id": "gwm_haval_h6_one_hev_2026",
+      "origem_regressao": "casos_regressao_matching_v2.json",
+      "ok": true,
+      "falhas": [],
+      "tempo_ms": 12.002,
+      "motor_matching": "v46_multivisao",
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "score": 99.15,
+      "candidato": {
+        "marca": "GWM",
+        "modelo": "HAVAL H6",
+        "versao": "HEV ONE (MY26)",
+        "ano_tabela": 2026
+      },
+      "motivo": "modelo/família presente de forma inequívoca; cilindrada compatível; ciclo PBEV do ano-modelo exato priorizado; zero km: ciclo PBEV do ano-modelo priorizado; candidatos tecnicamente equivalentes possuem o mesmo consumo; candidato dominante sobre o segundo colocado"
+    },
+    {
+      "id": "citroen_c3_live_plus_6v_2026",
+      "origem_regressao": "casos_regressao_matching_v2.json",
+      "ok": true,
+      "falhas": [],
+      "tempo_ms": 58.249,
+      "motor_matching": "v46_multivisao",
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "score": 100.0,
+      "candidato": {
+        "marca": "CITROEN",
+        "modelo": "C3",
+        "versao": "LIVE PLUS 1.0",
+        "ano_tabela": 2026
+      },
+      "motivo": "modelo/família presente de forma inequívoca; cilindrada compatível; família de transmissão compatível; válvulas compatíveis; aspiração compatível; ciclo PBEV do ano-modelo exato priorizado; zero km: ciclo PBEV do ano-modelo priorizado; candidato dominante sobre o segundo colocado"
+    },
+    {
+      "id": "citroen_c3_you_turbo200_2026",
+      "origem_regressao": "casos_regressao_matching_v2.json",
+      "ok": true,
+      "falhas": [],
+      "tempo_ms": 58.722,
+      "motor_matching": "v46_multivisao",
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "score": 97.04,
+      "candidato": {
+        "marca": "CITROEN",
+        "modelo": "C3",
+        "versao": "YOU 1.0T CVT",
+        "ano_tabela": 2026
+      },
+      "motivo": "modelo/família presente de forma inequívoca; cilindrada compatível; família de transmissão compatível; aspiração compatível; ciclo PBEV do ano-modelo exato priorizado; zero km: ciclo PBEV do ano-modelo priorizado; candidato dominante sobre o segundo colocado"
+    },
+    {
+      "id": "ford_fiesta_titanium_plus_2018",
+      "origem_regressao": "casos_regressao_matching_v2.json",
+      "ok": true,
+      "falhas": [],
+      "tempo_ms": 146.78,
+      "motor_matching": "v46_multivisao",
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "score": 91.65,
+      "candidato": {
+        "marca": "FORD",
+        "modelo": "New Fiesta Sedan",
+        "versao": "SEL / Titanium",
+        "ano_tabela": 2018
+      },
+      "motivo": "modelo/família presente de forma inequívoca; cilindrada compatível; família de transmissão compatível; válvulas compatíveis; aspiração compatível; ciclo PBEV do ano-modelo exato priorizado; configurações tecnicamente equivalentes resolvidas pelo critério conservador autorizado; candidato dominante sobre o segundo colocado"
+    },
+    {
+      "id": "bmw_x7_xdrive40i_2026",
+      "origem_regressao": "casos_regressao_matching_v2.json",
+      "ok": true,
+      "falhas": [],
+      "tempo_ms": 106.358,
+      "motor_matching": "v46_multivisao",
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "score": 100.0,
+      "candidato": {
+        "marca": "BMW",
+        "modelo": "X7",
+        "versao": "xDrive40i",
+        "ano_tabela": 2026
+      },
+      "motivo": "modelo/família presente de forma inequívoca; cilindrada compatível; família de transmissão compatível; ciclo PBEV do ano-modelo exato priorizado; zero km: ciclo PBEV do ano-modelo priorizado; candidato dominante sobre o segundo colocado"
+    },
+    {
+      "id": "gwm_wey07_dark_2027_phev",
+      "origem_regressao": "casos_regressao_matching_v2.json",
+      "ok": true,
+      "falhas": [],
+      "tempo_ms": 12.112,
+      "motor_matching": "v46_multivisao",
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "score": 86.76,
+      "candidato": {
+        "marca": "GWM",
+        "modelo": "WEY",
+        "versao": "07 DARK ED.",
+        "ano_tabela": 2026
+      },
+      "motivo": "modelo/família presente de forma inequívoca; cilindrada compatível"
+    },
+    {
+      "id": "hyundai_creta_comfort_tb12v_2026",
+      "origem_regressao": "casos_regressao_matching_v2.json",
+      "ok": true,
+      "falhas": [],
+      "tempo_ms": 107.519,
+      "motor_matching": "v46_multivisao",
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "score": 100.0,
+      "candidato": {
+        "marca": "Hyundai",
+        "modelo": "CRETA",
+        "versao": "Comfort",
+        "ano_tabela": 2026
+      },
+      "motivo": "modelo/família presente de forma inequívoca; cilindrada compatível; família de transmissão compatível; válvulas compatíveis; ciclo PBEV do ano-modelo exato priorizado; zero km: ciclo PBEV do ano-modelo priorizado; candidatos tecnicamente equivalentes possuem o mesmo consumo; candidato dominante sobre o segundo colocado"
+    },
+    {
+      "id": "ferrari_sf90_sem_falso_positivo",
+      "origem_regressao": "casos_regressao_matching_v2.json",
+      "ok": true,
+      "falhas": [],
+      "tempo_ms": 68.795,
+      "motor_matching": "v46_multivisao",
+      "nivel_match": "sem_match",
+      "autopreencher": false,
+      "score": 0,
+      "candidato": null,
+      "motivo": "Nenhum candidato PBEV passou os bloqueios técnicos e de identidade."
+    }
+  ]
+}

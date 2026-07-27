@@ -3801,6 +3801,7 @@
       try {
         const contexto = contextoFipePorSelectId(selectId);
         const params = new URLSearchParams();
+        params.set("catalogo", "v46_03");
         if (contexto) params.set("contexto", contexto);
         const resp = await fetch(`/api/fipe/marcas${params.toString() ? "?" + params.toString() : ""}`);
         const marcas = await resp.json();
@@ -3837,7 +3838,7 @@
       try {
         const contexto = contextoFipePorSelectId(selectModeloId);
         const nomeMarca = marcaEl.options[marcaEl.selectedIndex]?.text || "";
-        const params = new URLSearchParams({ codigo_marca: marca });
+        const params = new URLSearchParams({ codigo_marca: marca, catalogo: "v46_03" });
         if (contexto) params.set("contexto", contexto);
         if (nomeMarca) params.set("nome_marca", nomeMarca);
         const resp = await fetch(`/api/fipe/modelos?${params.toString()}`);
@@ -3874,7 +3875,7 @@
 
       try {
         const contexto = contextoFipePorSelectId(selectAnoId);
-        const params = new URLSearchParams({ codigo_marca: marca, codigo_modelo: modelo });
+        const params = new URLSearchParams({ codigo_marca: marca, codigo_modelo: modelo, catalogo: "v46_03" });
         if (contexto) params.set("contexto", contexto);
         const resp = await fetch(`/api/fipe/anos?${params.toString()}`);
         const anos = await resp.json();
@@ -3885,8 +3886,7 @@
         const nomeMarcaSelecionada = marcaEl.options[marcaEl.selectedIndex]?.text || "";
         ordenarAnosFipeParaTela(Array.isArray(anos) ? anos : []).forEach(a => {
           if (!anoFipePermitidoRecortePlugVE(a.codigo, a.nome)) return;
-          const tipoAno = classificarTipoVeiculoTCO(nomeModeloSelecionado, a.nome, a.codigo, nomeMarcaSelecionada, prefixoDestino);
-          if (!tipoPermitidoNoBloco(prefixoDestino, tipoAno)) return;
+          const tipoAno = a.tipo_plugve || a.tipo_interface || "";
           const opt = document.createElement("option");
           opt.value = a.codigo;
           opt.textContent = textoAnoFipeParaTela(a.codigo, a.nome);
@@ -7402,6 +7402,7 @@
         try {
           const contexto = contextoFipePorSelectId(selectId);
           const params = new URLSearchParams();
+          params.set("catalogo", "v46_03");
           if (contexto) params.set("contexto", contexto);
           const url = `/api/fipe/marcas${params.toString() ? "?" + params.toString() : ""}`;
           const marcas = await fetchJsonFipePlugVE(url);
@@ -7446,7 +7447,7 @@
         try {
           const contexto = contextoFipePorSelectId(selectModeloId);
           const nomeMarca = marcaEl.options[marcaEl.selectedIndex]?.text || "";
-          const params = new URLSearchParams({ codigo_marca: marca });
+          const params = new URLSearchParams({ codigo_marca: marca, catalogo: "v46_03" });
           if (contexto) params.set("contexto", contexto);
           if (nomeMarca) params.set("nome_marca", nomeMarca);
           const data = await fetchJsonFipePlugVE(`/api/fipe/modelos?${params.toString()}`);
@@ -7507,7 +7508,7 @@
         }
         try {
           const contexto = contextoFipePorSelectId(selectAnoId);
-          const params = new URLSearchParams({ codigo_marca: marca, codigo_modelo: modelo });
+          const params = new URLSearchParams({ codigo_marca: marca, codigo_modelo: modelo, catalogo: "v46_03" });
           if (contexto) params.set("contexto", contexto);
           const anos = await fetchJsonFipePlugVE(`/api/fipe/anos?${params.toString()}`);
 
@@ -7522,8 +7523,7 @@
           const nomeMarcaSelecionada = marcaEl.options[marcaEl.selectedIndex]?.text || "";
           ordenarAnosFipeParaTela(Array.isArray(anos) ? anos : []).forEach(a => {
             if (!anoFipePermitidoRecortePlugVE(a.codigo, a.nome)) return;
-            const tipoAno = classificarTipoVeiculoTCO(nomeModeloSelecionado, a.nome, a.codigo, nomeMarcaSelecionada, prefixoDestino);
-            if (!tipoPermitidoNoBloco(prefixoDestino, tipoAno)) return;
+            const tipoAno = a.tipo_plugve || a.tipo_interface || "";
             const opt = document.createElement("option");
             opt.value = a.codigo;
             opt.textContent = textoAnoFipeParaTela(a.codigo, a.nome);

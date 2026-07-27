@@ -12,6 +12,7 @@ TIPO_COMBUSTAO = "COMBUSTAO"
 
 CONTEXTOS_VE = {"ve", "ev", "eletrico", "elétrico", "electric", "phev", "plugin", "plug-in"}
 CONTEXTOS_ICEV = {"icev", "combustao", "combustão", "termico", "térmico", "atual"}
+CONTEXTOS_DEPRECIACAO = {"depreciacao", "depreciação", "depreciation", "historico", "histórico"}
 CONTEXTOS_AUTO = {"", "auto", "todos", "all", "qualquer"}
 
 # Marcas que, no mercado brasileiro/FIPE, podem ter elétricos puros ou híbridos plug-in.
@@ -82,6 +83,8 @@ def contexto_fipe(valor: object = "", tipo: object = "") -> str:
         return "ve"
     if bruto in {normalizar_texto(x).lower() for x in CONTEXTOS_ICEV}:
         return "icev"
+    if bruto in {normalizar_texto(x).lower() for x in CONTEXTOS_DEPRECIACAO}:
+        return "depreciacao"
     if bruto in {normalizar_texto(x).lower() for x in CONTEXTOS_AUTO}:
         return ""
     return ""
@@ -117,6 +120,8 @@ def marca_permitida_no_contexto(nome_marca: object, contexto: object = "", extra
         return marca_ev_plugin_candidata(nome_marca, extras=extras_ve)
     if ctx == "icev":
         return not marca_apenas_ve_plugin(nome_marca)
+    if ctx == "depreciacao":
+        return True
     return True
 
 
@@ -212,4 +217,6 @@ def tipo_permitido_no_contexto(contexto: object, tipo_veiculo: object) -> bool:
         return tipo in {TIPO_EV_PURO, TIPO_PHEV}
     if ctx == "icev":
         return tipo in {TIPO_COMBUSTAO, TIPO_HEV}
+    if ctx == "depreciacao":
+        return True
     return True

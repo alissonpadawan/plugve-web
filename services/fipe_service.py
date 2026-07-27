@@ -4,6 +4,7 @@ import csv
 import hashlib
 import json
 import os
+import re
 import time
 from datetime import datetime, timedelta, timezone
 from functools import lru_cache
@@ -19,6 +20,7 @@ from services.tipo_veiculo_service import (
     marca_permitida_no_contexto,
     tipo_permitido_no_contexto,
 )
+from services.fipe_catalog_classifier import FipeCatalogPropulsionClassifier
 
 
 class FipeApiError(Exception):
@@ -96,6 +98,9 @@ class FipeService:
     def _modelos_novos_path(self) -> Path:
         return self._json_path("modelos_novos.json")
 
+    def _catalogo_elegibilidade_path(self) -> Path:
+        return self._json_path("catalogo_elegibilidade_fipe_v1.json")
+
     def _ler_json(self, path: Path, padrao):
         if not path.exists():
             return padrao
@@ -106,7 +111,160 @@ class FipeService:
 
     def _salvar_json(self, path: Path, dados) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(dados, ensure_ascii=False, indent=2), encoding="utf-8")
+        temporario = path.with_suffix(path.suffix + ".tmp")
+        temporario.write_text(json.dumps(dados, ensure_ascii=False, indent=2), encoding="utf-8")
+        temporario.replace(path)
+
+    def _catalog_classifier(self) -> FipeCatalogPropulsionClassifier:
+        classifier = getattr(self, "_catalog_propulsion_classifier", None)
+        if classifier is None:
+            classifier = FipeCatalogPropulsionClassifier()
+            self._catalog_propulsion_classifier = classifier
+        return classifier
+
+    def _ler_catalogo_elegibilidade(self) -> dict:
+        dados = self._ler_json(self._catalogo_elegibilidade_path(), {})
+        if not isinstance(dados, dict) or dados.get("schema_version") != "catalogo_elegibilidade_fipe_v1":
+            dados = {
+                "schema_version": "catalogo_elegibilidade_fipe_v1",
+                "modelos": {},
+                "anos": {},
+                "atualizado_em": None,
+            }
+        dados.setdefault("modelos", {})
+        dados.setdefault("anos", {})
+        return dados
+
+    def _salvar_decisao_catalogo(
+        self,
+        *,
+        codigo_marca: str,
+        codigo_modelo: str,
+        decisao: dict,
+        codigo_ano: str | None = None,
+    ) -> None:
+        try:
+            dados = self._ler_catalogo_elegibilidade()
+            marca_key = str(codigo_marca)
+            modelo_key = str(codigo_modelo)
+            if codigo_ano:
+                dados.setdefault("anos", {}).setdefault(marca_key, {}).setdefault(modelo_key, {})[str(codigo_ano)] = decisao
+            else:
+                dados.setdefault("modelos", {}).setdefault(marca_key, {})[modelo_key] = decisao
+            dados["atualizado_em"] = self._agora_iso()
+            self._salvar_json(self._catalogo_elegibilidade_path(), dados)
+        except Exception:
+            # O índice é cache/auditoria. Uma falha de persistência não pode
+            # derrubar a consulta FIPE.
+            return
+
+    def _salvar_decisoes_catalogo_lote(
+        self,
+        *,
+        codigo_marca: str,
+        modelos: dict[str, dict] | None = None,
+        anos: dict[str, dict[str, dict]] | None = None,
+    ) -> None:
+        if not modelos and not anos:
+            return
+        try:
+            dados = self._ler_catalogo_elegibilidade()
+            marca_key = str(codigo_marca)
+            if modelos:
+                destino_modelos = dados.setdefault("modelos", {}).setdefault(marca_key, {})
+                destino_modelos.update({str(k): v for k, v in modelos.items()})
+            if anos:
+                destino_anos_marca = dados.setdefault("anos", {}).setdefault(marca_key, {})
+                for modelo_key, decisoes_anos in anos.items():
+                    destino_anos_marca.setdefault(str(modelo_key), {}).update(
+                        {str(k): v for k, v in (decisoes_anos or {}).items()}
+                    )
+            dados["atualizado_em"] = self._agora_iso()
+            self._salvar_json(self._catalogo_elegibilidade_path(), dados)
+        except Exception:
+            return
+
+    @staticmethod
+    def _ano_catalogo(codigo: Any, nome: Any = "") -> tuple[int | None, bool]:
+        texto_codigo = str(codigo or "").strip()
+        texto_nome = str(nome or "").strip()
+        zero_km = bool(
+            re.search(r"(^|\D)32000($|\D)", texto_codigo)
+            or re.search(r"\bZERO\s*KM\b|\b0\s*KM\b", texto_nome, flags=re.IGNORECASE)
+        )
+        if zero_km:
+            return None, True
+        for texto in (texto_codigo, texto_nome):
+            match = re.search(r"\b(19\d{2}|20\d{2})\b", texto)
+            if match:
+                return int(match.group(1)), False
+        return None, False
+
+    @classmethod
+    def _ano_elegivel_catalogo(cls, item: dict) -> bool:
+        ano, zero_km = cls._ano_catalogo(item.get("codigo"), item.get("nome"))
+        return bool(zero_km or (ano is not None and ano >= 2012))
+
+    def _estado_varredura_temporal(self) -> dict[str, Any]:
+        varridas = self._ler_marcas_varridas()
+        bloqueadas = self._ler_marcas_bloqueadas()
+        return {
+            "pronto": bool(varridas or bloqueadas),
+            "varridas": varridas if isinstance(varridas, dict) else {},
+            "bloqueadas": bloqueadas if isinstance(bloqueadas, dict) else {},
+        }
+
+    @staticmethod
+    def _marca_varrida_tem_modelos_validos(entrada: Any) -> bool:
+        if not isinstance(entrada, dict):
+            return True
+        if "modelos_validos" not in entrada:
+            return True
+        try:
+            return int(entrada.get("modelos_validos") or 0) > 0
+        except (TypeError, ValueError):
+            return True
+
+    def _marca_temporal_permitida(self, codigo_marca: str, *, nome_marca: str = "", estrito: bool = True) -> bool:
+        estado = self._estado_varredura_temporal()
+        codigo = str(codigo_marca)
+        if codigo in estado["bloqueadas"]:
+            return False
+        if not estrito:
+            return True
+        entrada = estado["varridas"].get(codigo)
+        if entrada is not None:
+            return self._marca_varrida_tem_modelos_validos(entrada)
+        # Fallback versionado/local: a PBEV contém ciclos desde 2012. Quando o
+        # JSON do robô não está disponível para uma marca, presença na base
+        # PBEV é uma evidência conservadora de catálogo pós-2012.
+        if nome_marca:
+            return bool(self._catalog_classifier().brand_contexts(nome_marca))
+        return not estado["pronto"]
+
+    def _modelo_temporal_permitido(
+        self,
+        codigo_marca: str,
+        codigo_modelo: str,
+        *,
+        nome_marca: str = "",
+        nome_modelo: str = "",
+        estrito: bool = True,
+    ) -> bool:
+        marca_key = str(codigo_marca)
+        modelo_key = str(codigo_modelo)
+        if self.modelo_bloqueado(marca_key, modelo_key):
+            return False
+        if self.modelo_tem_zero_km_salvo(marca_key, modelo_key):
+            return True
+        estado = self._estado_varredura_temporal()
+        if not estrito:
+            return True
+        if marca_key in estado["varridas"]:
+            return self._marca_varrida_tem_modelos_validos(estado["varridas"].get(marca_key))
+        if nome_marca and nome_modelo:
+            return bool(self._catalog_classifier().model_evidence(nome_marca, nome_modelo).get("found"))
+        return not estado["pronto"]
 
     def _ler_marcas_varridas(self) -> dict:
         return self._ler_json(self._marcas_varridas_path(), {})
@@ -775,6 +933,8 @@ class FipeService:
         modelos_zero_km = self._ler_modelos_zero_km()
         modelos_novos = self._ler_modelos_novos()
         progresso_varredura = self._ler_json(self._progresso_varredura_path(), {})
+        catalogo_elegibilidade = self._ler_catalogo_elegibilidade()
+        estado_temporal = self._estado_varredura_temporal()
 
         return {
             "ok": True,
@@ -790,6 +950,7 @@ class FipeService:
                 "modelos_zero_km": "fipe_cache/modelos_zero_km.json",
                 "modelos_novos": "fipe_cache/modelos_novos.json",
                 "progresso_varredura": "fipe_cache/progresso_varredura.json",
+                "catalogo_elegibilidade": "fipe_cache/catalogo_elegibilidade_fipe_v1.json",
             },
             "resumo": {
                 "marcas_varridas": len(marcas_varridas) if isinstance(marcas_varridas, dict) else 0,
@@ -798,6 +959,15 @@ class FipeService:
                 "modelos_zero_km": self._contar_itens_aninhados(modelos_zero_km),
                 "modelos_novos": self._contar_itens_aninhados(modelos_novos),
                 "marcas_com_progresso": len(progresso_varredura) if isinstance(progresso_varredura, dict) else 0,
+                "catalogo_temporal_pronto": bool(estado_temporal.get("pronto")),
+                "modelos_com_contexto": self._contar_itens_aninhados(catalogo_elegibilidade.get("modelos", {})),
+                "anos_com_contexto": sum(
+                    len(anos or {})
+                    for modelos in (catalogo_elegibilidade.get("anos", {}) or {}).values()
+                    if isinstance(modelos, dict)
+                    for anos in modelos.values()
+                    if isinstance(anos, dict)
+                ),
             },
             "marcas_varridas": marcas_varridas if isinstance(marcas_varridas, dict) else {},
             "marcas_bloqueadas": marcas_bloqueadas if isinstance(marcas_bloqueadas, dict) else {},
@@ -805,6 +975,7 @@ class FipeService:
             "modelos_zero_km": modelos_zero_km if isinstance(modelos_zero_km, dict) else {},
             "modelos_novos": modelos_novos if isinstance(modelos_novos, dict) else {},
             "progresso_varredura": progresso_varredura if isinstance(progresso_varredura, dict) else {},
+            "catalogo_elegibilidade": catalogo_elegibilidade,
         }
 
     def exportar_catalogo_estado(self) -> dict:
@@ -934,18 +1105,32 @@ class FipeService:
         marcas = self._normalizar_marcas(self._get_json("marcas"))
         bloqueadas = self._ler_marcas_bloqueadas()
         varridas = self._ler_marcas_varridas()
+        estado_temporal = self._estado_varredura_temporal()
+        aplicar_recorte_temporal = ctx in {"ve", "icev", "depreciacao"}
         marcas_ev_extras = self._marcas_com_curvas_eletricas() if ctx == "ve" else set()
+        classifier = self._catalog_classifier() if ctx in {"ve", "icev"} else None
         resultado = []
         for marca in marcas:
             codigo = str(marca.get("codigo"))
             nome = marca.get("nome", "")
             if codigo in bloqueadas:
                 continue
-            if ctx and not marca_permitida_no_contexto(nome, ctx, extras_ve=marcas_ev_extras):
+            if aplicar_recorte_temporal and not self._marca_temporal_permitida(codigo, nome_marca=nome, estrito=True):
                 continue
+            if classifier is None and ctx and not marca_permitida_no_contexto(nome, ctx, extras_ve=marcas_ev_extras):
+                continue
+            if classifier is not None:
+                contextos_pbev = set(classifier.brand_contexts(nome))
+                if ctx == "ve" and "ve" not in contextos_pbev:
+                    continue
+                # Uma marca exclusivamente elétrica/plugin não deve aparecer no
+                # bloco de combustão. Marcas mistas permanecem disponíveis.
+                if ctx == "icev" and contextos_pbev == {"ve"}:
+                    continue
             item = dict(marca)
             item["marca_varrida"] = codigo in varridas
             item["contexto_fipe"] = ctx or "auto"
+            item["catalogo_temporal_pronto"] = bool(estado_temporal.get("pronto"))
             resultado.append(item)
         return resultado
 
@@ -955,6 +1140,15 @@ class FipeService:
         marca_nome = nome_marca or self._nome_marca_por_codigo(str(codigo_marca))
         if not filtrar_bloqueados and not ctx:
             return data
+        aplicar_recorte_temporal = ctx in {"ve", "icev", "depreciacao"}
+        estado_temporal = self._estado_varredura_temporal()
+        if aplicar_recorte_temporal and not self._marca_temporal_permitida(str(codigo_marca), nome_marca=marca_nome, estrito=True):
+            data["modelos"] = []
+            data["marca_varrida"] = str(codigo_marca) in estado_temporal.get("varridas", {})
+            data["catalogo_temporal_pronto"] = bool(estado_temporal.get("pronto"))
+            data["catalogo_incompleto"] = not bool(estado_temporal.get("pronto"))
+            data["motivo_catalogo"] = "marca_sem_modelo_2012_ou_zero_km"
+            return data
         bloqueados = self._ler_bloqueados().get(str(codigo_marca), {}) if filtrar_bloqueados else {}
         modelos = data.get("modelos", [])
         zero_km = self._ler_modelos_zero_km().get(str(codigo_marca), {})
@@ -963,16 +1157,43 @@ class FipeService:
         modelos_filtrados = []
         ocultos_bloqueados = 0
         ocultos_contexto = 0
+        ocultos_temporais = 0
+        classifier = self._catalog_classifier() if ctx in {"ve", "icev"} else None
+        decisoes_modelos_persistir: dict[str, dict] = {}
         for modelo in modelos:
             codigo_modelo = str(modelo.get("codigo"))
             if codigo_modelo in bloqueados:
                 ocultos_bloqueados += 1
                 continue
+            if aplicar_recorte_temporal and not self._modelo_temporal_permitido(
+                str(codigo_marca),
+                codigo_modelo,
+                nome_marca=marca_nome,
+                nome_modelo=str(modelo.get("nome") or ""),
+                estrito=True,
+            ):
+                ocultos_temporais += 1
+                continue
             item = dict(modelo)
-            tipo_modelo = classificar_tipo_veiculo(item.get("nome", ""), marca=marca_nome)
-            item["tipo_plugve"] = tipo_modelo
+            if classifier is not None:
+                decisao = classifier.classify(marca_nome, item.get("nome", ""))
+                decisao_dict = decisao.as_dict()
+                tipo_modelo = decisao.tipo_plugve
+                item.update(decisao_dict)
+                decisoes_modelos_persistir[codigo_modelo] = {
+                    **decisao_dict,
+                    "marca": marca_nome,
+                    "modelo": item.get("nome", ""),
+                    "atualizado_em": self._agora_iso(),
+                }
+            else:
+                tipo_modelo = classificar_tipo_veiculo(item.get("nome", ""), marca=marca_nome)
+                item["tipo_plugve"] = tipo_modelo
             item["contexto_fipe"] = ctx or "auto"
-            if ctx and not tipo_permitido_no_contexto(ctx, tipo_modelo):
+            if classifier is not None and ctx not in set(item.get("contextos") or []):
+                ocultos_contexto += 1
+                continue
+            if classifier is None and ctx and not tipo_permitido_no_contexto(ctx, tipo_modelo):
                 ocultos_contexto += 1
                 continue
             if codigo_modelo in zero_km:
@@ -981,11 +1202,19 @@ class FipeService:
                 item["modelo_novo"] = True
             item["marca_varrida"] = str(codigo_marca) in varridas
             modelos_filtrados.append(item)
+        if decisoes_modelos_persistir:
+            self._salvar_decisoes_catalogo_lote(
+                codigo_marca=str(codigo_marca),
+                modelos=decisoes_modelos_persistir,
+            )
         data["modelos"] = modelos_filtrados
         data["marca_varrida"] = str(codigo_marca) in varridas
         data["contexto_fipe"] = ctx or "auto"
         data["modelos_bloqueados_ocultos"] = ocultos_bloqueados
         data["modelos_ocultos_contexto"] = ocultos_contexto
+        data["modelos_ocultos_temporais"] = ocultos_temporais
+        data["catalogo_temporal_pronto"] = bool(estado_temporal.get("pronto"))
+        data["catalogo_incompleto"] = aplicar_recorte_temporal and not bool(estado_temporal.get("pronto"))
         if filtrar_bloqueados and modelos and not data["modelos"] and bloqueados and not ctx:
             nome_marca = marca_nome
             try:
@@ -1003,10 +1232,88 @@ class FipeService:
     def listar_anos(self, codigo_marca: str, codigo_modelo: str, contexto: str | None = None):
         anos = self._normalizar_anos(self._get_json(f"marcas/{codigo_marca}/modelos/{codigo_modelo}/anos"))
         ctx = contexto_fipe(contexto or "")
-        if ctx:
-            for ano in anos:
-                ano["contexto_fipe"] = ctx
-        return anos
+        if ctx not in {"ve", "icev", "depreciacao"}:
+            return anos
+
+        marca_nome = self._nome_marca_por_codigo(str(codigo_marca))
+        modelo_nome = ""
+        try:
+            modelos_data = self._normalizar_modelos(self._get_json(f"marcas/{codigo_marca}/modelos"))
+            for modelo in modelos_data.get("modelos", []):
+                if str(modelo.get("codigo")) == str(codigo_modelo):
+                    modelo_nome = str(modelo.get("nome") or "")
+                    break
+        except Exception:
+            modelo_nome = ""
+
+        anos_temporais = [item for item in anos if self._ano_elegivel_catalogo(item)]
+        if anos_temporais:
+            if any(self._ano_catalogo(item.get("codigo"), item.get("nome"))[1] for item in anos_temporais):
+                self.marcar_modelo_zero_km(
+                    str(codigo_marca),
+                    str(codigo_modelo),
+                    nome_marca=marca_nome,
+                    nome_modelo=modelo_nome,
+                )
+        elif anos:
+            # Autocorreção segura também na Simular: se a FIPE respondeu e todos
+            # os anos são anteriores a 2012, persiste o mesmo bloqueio produzido
+            # pelo robô de varredura. Na próxima abertura o modelo já não aparece.
+            self.bloquear_modelo_antigo(
+                str(codigo_marca),
+                str(codigo_modelo),
+                nome_marca=marca_nome,
+                nome_modelo=modelo_nome,
+                motivo="sem_ano_2012_ou_zero_km_confirmado_backend",
+            )
+            try:
+                modelos_data = self._normalizar_modelos(self._get_json(f"marcas/{codigo_marca}/modelos"))
+                bloqueados_marca = self._ler_bloqueados().get(str(codigo_marca), {})
+                modelos_ids = {str(item.get("codigo")) for item in modelos_data.get("modelos", [])}
+                if modelos_ids and modelos_ids <= set(map(str, bloqueados_marca.keys())):
+                    self.bloquear_marca_antiga(
+                        str(codigo_marca),
+                        marca_nome,
+                        motivo="sem_modelos_2012_ou_zero_km_confirmado_backend",
+                    )
+            except Exception:
+                pass
+            return []
+
+        resultado: list[dict] = []
+        classifier = self._catalog_classifier() if ctx in {"ve", "icev"} else None
+        decisoes_anos_persistir: dict[str, dict] = {}
+        for ano_item in anos_temporais:
+            item = dict(ano_item)
+            item["contexto_fipe"] = ctx
+            if classifier is not None:
+                ano_numero, zero_km = self._ano_catalogo(item.get("codigo"), item.get("nome"))
+                # Zero km não é ano: o classificador usa o ciclo mais recente da
+                # base PBEV ao receber year=None.
+                decisao = classifier.classify(
+                    marca_nome,
+                    modelo_nome,
+                    year=None if zero_km else ano_numero,
+                    fuel=item.get("nome", ""),
+                )
+                decisao_dict = decisao.as_dict()
+                item.update(decisao_dict)
+                if ctx not in decisao.contexts:
+                    continue
+                decisoes_anos_persistir[str(item.get("codigo") or "")] = {
+                    **decisao_dict,
+                    "marca": marca_nome,
+                    "modelo": modelo_nome,
+                    "ano_fipe": item.get("nome", ""),
+                    "atualizado_em": self._agora_iso(),
+                }
+            resultado.append(item)
+        if decisoes_anos_persistir:
+            self._salvar_decisoes_catalogo_lote(
+                codigo_marca=str(codigo_marca),
+                anos={str(codigo_modelo): decisoes_anos_persistir},
+            )
+        return resultado
 
     def consultar_preco(self, codigo_marca: str, codigo_modelo: str, codigo_ano: str):
         return self._normalizar_preco(self._get_json(f"marcas/{codigo_marca}/modelos/{codigo_modelo}/anos/{codigo_ano}"))

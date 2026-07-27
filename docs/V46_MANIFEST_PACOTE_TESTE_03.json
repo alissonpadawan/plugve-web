@@ -1,0 +1,137 @@
+{
+  "pacote": "V46 pacote de teste 03",
+  "base_comparacao": "V46 pacote de teste 02",
+  "arquivos_diferentes": [
+    {
+      "arquivo": "data/_runtime/combustao/curvas_depreciacao_v18.csv",
+      "status": "removido",
+      "sha256_pacote_02": "349f981c417d72eb5c0092df6e936dde9272d57b9aad28acac5007eb4eb9cfb6",
+      "bytes_pacote_02": 11246
+    },
+    {
+      "arquivo": "data/_runtime/eletrico/curvas_depreciacao_ev_v20.csv",
+      "status": "removido",
+      "sha256_pacote_02": "eba1cbc3fcf29e5423a04727dfc0178f737ee6da386bc743e26031c137a6981a",
+      "bytes_pacote_02": 2670
+    },
+    {
+      "arquivo": "data/_runtime/fipe_cache/marcas_bloqueadas.json",
+      "status": "removido",
+      "sha256_pacote_02": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "bytes_pacote_02": 2
+    },
+    {
+      "arquivo": "data/_runtime/fipe_cache/marcas_varridas.json",
+      "status": "removido",
+      "sha256_pacote_02": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "bytes_pacote_02": 2
+    },
+    {
+      "arquivo": "data/_runtime/fipe_cache/modelos_bloqueados.json",
+      "status": "removido",
+      "sha256_pacote_02": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "bytes_pacote_02": 2
+    },
+    {
+      "arquivo": "data/_runtime/fipe_cache/modelos_zero_km.json",
+      "status": "removido",
+      "sha256_pacote_02": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "bytes_pacote_02": 2
+    },
+    {
+      "arquivo": "data/_runtime/fipe_cache/progresso_varredura.json",
+      "status": "removido",
+      "sha256_pacote_02": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "bytes_pacote_02": 2
+    },
+    {
+      "arquivo": "data/_runtime/fipe_cache/requisicoes_fipe.json",
+      "status": "removido",
+      "sha256_pacote_02": "6a589aa57050f954ec38280919b04e122efb27c61cb604b861b27189ef4fff1e",
+      "bytes_pacote_02": 749
+    },
+    {
+      "arquivo": "data/fipe_cache/catalogo_elegibilidade_fipe_v1.json",
+      "status": "adicionado",
+      "sha256_pacote_03": "4f6ae869ee683d767c331a5781bc5323233a2ca26834ce605dda55684d5be1c6",
+      "bytes_pacote_03": 113
+    },
+    {
+      "arquivo": "docs/V46_MATRIZ_JS_PACOTE_TESTE_03.md",
+      "status": "adicionado",
+      "sha256_pacote_03": "35cb51bfbe4e5e97832039843739ab3634e4ef195b1b30a640fbfe51cc6135d8",
+      "bytes_pacote_03": 2842
+    },
+    {
+      "arquivo": "docs/V46_PACOTE_TESTE_03.md",
+      "status": "adicionado",
+      "sha256_pacote_03": "9c08bf6e9c1e8aeab2643a67d84b5e487eddb582da0fde93b5e4df1474d51c7c",
+      "bytes_pacote_03": 7125
+    },
+    {
+      "arquivo": "docs/V46_RELATORIO_REGRESSAO_PACOTE_TESTE_03.json",
+      "status": "adicionado",
+      "sha256_pacote_03": "917254fe468147c7bd70b6f5da9f943cead215ab475409ffc8d05d38e81c91a1",
+      "bytes_pacote_03": 31458
+    },
+    {
+      "arquivo": "docs/V46_VALIDACAO_PACOTE_TESTE_03.json",
+      "status": "adicionado",
+      "sha256_pacote_03": "3b933f41a08aee90a4421e37a1ce3ee500d8f12a1517708e9999f55d39044ed6",
+      "bytes_pacote_03": 7193
+    },
+    {
+      "arquivo": "services/fipe_catalog_classifier.py",
+      "status": "adicionado",
+      "sha256_pacote_03": "15a379f5f29f3329e832f3f7112c83f58d7c106273566dc50667219826bde11e",
+      "bytes_pacote_03": 14352
+    },
+    {
+      "arquivo": "services/fipe_service.py",
+      "status": "alterado",
+      "sha256_pacote_03": "934d635b1e75ed35f9f541648c7572833dc4e71d16cd722c5e87e335a391f5cd",
+      "bytes_pacote_03": 63463,
+      "sha256_pacote_02": "99efc5c9fba6f772e81d14b1ee4f5330f1122cf74a64f1188a79214baf2be64d",
+      "bytes_pacote_02": 49184
+    },
+    {
+      "arquivo": "services/persistent_storage.py",
+      "status": "alterado",
+      "sha256_pacote_03": "02a3451f2ca7202615aa6f4f81a82cbd6888d6209d60c36843bca3bc80a49163",
+      "bytes_pacote_03": 2773,
+      "sha256_pacote_02": "c336e535ef37c52ddf75748747a639c2edd7c1093306eca2c3e81f3a88cfbe01",
+      "bytes_pacote_02": 2572
+    },
+    {
+      "arquivo": "services/tipo_veiculo_service.py",
+      "status": "alterado",
+      "sha256_pacote_03": "25be7472518f989863cf2f4a9ce2091a89e95669223603e902d87878b6651f08",
+      "bytes_pacote_03": 6634,
+      "sha256_pacote_02": "73f1f855258767d1523532d48d7ac197af45805123f4b1f0f1b07139083b7a5f",
+      "bytes_pacote_02": 6544
+    },
+    {
+      "arquivo": "static/js/fipe.js",
+      "status": "alterado",
+      "sha256_pacote_03": "b8bf175d21dd1ec3e9b6b294ae8573be74ed9eefb083d6f68ee94c164c4a05f7",
+      "bytes_pacote_03": 32540,
+      "sha256_pacote_02": "79a9af3efce9f80a59114cb33bd819706de5effb9e4d6360c4366625f5ab5d0b",
+      "bytes_pacote_02": 32363
+    },
+    {
+      "arquivo": "templates/simular.html",
+      "status": "alterado",
+      "sha256_pacote_03": "10bd182bbf21431253ae18c6b0eeda60c0d62023da08375bfa0a642f8e174085",
+      "bytes_pacote_03": 425858,
+      "sha256_pacote_02": "285ff1214cad889c55d311725b6604db0b823bcf654e2e4275ba95bcfa8aa792",
+      "bytes_pacote_02": 425964
+    },
+    {
+      "arquivo": "tests/test_v46_03_fipe_catalog.py",
+      "status": "adicionado",
+      "sha256_pacote_03": "313998472ed1268b97d629fc324e5dc0184bff3e055b5b9263380ced977de8a1",
+      "bytes_pacote_03": 9441
+    }
+  ],
+  "quantidade": 20
+}
