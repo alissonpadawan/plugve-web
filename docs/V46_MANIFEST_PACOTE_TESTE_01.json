@@ -1,0 +1,114 @@
+{
+  "pacote": "curve-v46-pacote-teste-01",
+  "arquivos_totais": 264,
+  "bytes_totais": 63180266,
+  "arquivos_principais": {
+    ".env.example": {
+      "sha256": "075040e054d4b6c0c35930743405ae23fdcba819c6732570a89f26f13d834c3e",
+      "bytes": 1288
+    },
+    "services/pbev_service.py": {
+      "sha256": "e9e9d08b81569d03da9306d639540eb191591fd029c24f0547a658e3662e027e",
+      "bytes": 121430
+    },
+    "services/pbev_matching_v46/__init__.py": {
+      "sha256": "3707f814b36e02b14db3abda8eb6492dc8a8c0c66a435f7092a1a968097984fd",
+      "bytes": 329
+    },
+    "services/pbev_matching_v46/models.py": {
+      "sha256": "9caeb398d872405ae38c1f285c11f05145653afeac4851aee4be8f654ec14886",
+      "bytes": 1688
+    },
+    "services/pbev_matching_v46/normalizer.py": {
+      "sha256": "351bdf0c23268da13ad9c57b201a4d4e683334557c76e02028402773b3b32a7f",
+      "bytes": 11581
+    },
+    "services/pbev_matching_v46/matcher.py": {
+      "sha256": "70b07f4e8d98bba1592c9e6c3fcb41130b0e271d3e86128a430d5ab8047a6846",
+      "bytes": 37860
+    },
+    "data/pbev/casos_regressao_matching_v46.json": {
+      "sha256": "ee577e27a5190ecea15b501798bf26e143fd9d9d8016158d39e43e09074dc142",
+      "bytes": 29538
+    },
+    "scripts/auditar_matching_v46.py": {
+      "sha256": "57279f1a15d613b49c93fd74f94c6ecf69195a54b2a7c52477a0783906204818",
+      "bytes": 6089
+    },
+    "tests/test_pbev_matching_v46.py": {
+      "sha256": "99f81c52af3f1a83cedc2a14fe1389a7715f32dd110b0779bf1a0ea6a5e5ea5d",
+      "bytes": 6378
+    },
+    "docs/V46_PACOTE_TESTE_01.md": {
+      "sha256": "380e72514d489290e1680bdfbede822c4b286b63f14f8bf382cd60edc2e8de1e",
+      "bytes": 3652
+    },
+    "docs/V46_RELATORIO_REGRESSAO_PACOTE_TESTE_01.json": {
+      "sha256": "33838a70a6d7ec4d4a74d61eeb242a7320a0768c877f5631b1558723c2e3660a",
+      "bytes": 31453
+    },
+    "docs/V46_VALIDACAO_PACOTE_TESTE_01.json": {
+      "sha256": "b666b27bfbbb61cddfc1fab13bc3057a82dbdec26f18babf982cf6247728a4d7",
+      "bytes": 3346
+    }
+  },
+  "alterados_em_relacao_v44": [
+    ".env.example",
+    "services/pbev_service.py"
+  ],
+  "adicionados_em_relacao_v44": [
+    "data/pbev/casos_regressao_matching_v46.json",
+    "docs/V46_MANIFEST_PACOTE_TESTE_01.json",
+    "docs/V46_PACOTE_TESTE_01.md",
+    "docs/V46_RELATORIO_REGRESSAO_PACOTE_TESTE_01.json",
+    "docs/V46_VALIDACAO_PACOTE_TESTE_01.json",
+    "scripts/auditar_matching_v46.py",
+    "services/pbev_matching_v46/__init__.py",
+    "services/pbev_matching_v46/matcher.py",
+    "services/pbev_matching_v46/models.py",
+    "services/pbev_matching_v46/normalizer.py",
+    "tests/test_pbev_matching_v46.py"
+  ],
+  "residuos_historicos_v45_v2_removidos": [
+    "data/pbev/casos_regressao_matching_v2.json",
+    "data/pbev/casos_regressao_matching_v45_etapa1.json",
+    "data/pbev/casos_regressao_matching_v45_etapa2.json",
+    "docs/auditoria_matching_v2/benchmark_matching_pbev_v2.json",
+    "docs/auditoria_matching_v2/benchmark_matching_pbev_v2.md",
+    "docs/auditoria_matching_v2/diagnostico_matching_pbev_v2.md",
+    "docs/auditoria_matching_v2/hashes_arquivos_protegidos.txt",
+    "docs/auditoria_matching_v2/manifest_entrega_motor_v2.json",
+    "docs/auditoria_matching_v2/regressao_legada_v45_etapa2/diagnostico_matching_pbev_v45_etapa2.md",
+    "docs/auditoria_matching_v2/regressao_legada_v45_etapa2/matriz_regressao_v45_etapa2.csv",
+    "docs/auditoria_matching_v2/regressao_legada_v45_etapa2/matriz_regressao_v45_etapa2.json",
+    "docs/auditoria_matching_v2/regressao_legada_v45_etapa2/resumo_v45_etapa2.json",
+    "docs/auditoria_matching_v2/regressoes_reais_matching_v2.json",
+    "docs/auditoria_matching_v2/regressoes_reais_matching_v2.md",
+    "docs/auditoria_matching_v2/resumo_regressoes_reais_matching_v2.json",
+    "docs/auditoria_matching_v2/validacao_entrega_motor_v2.md",
+    "docs/auditoria_matching_v45_etapa1/diagnostico_matching_pbev_v45.md",
+    "docs/auditoria_matching_v45_etapa1/matriz_regressao_v45_etapa1.csv",
+    "docs/auditoria_matching_v45_etapa1/matriz_regressao_v45_etapa1.json",
+    "docs/auditoria_matching_v45_etapa1/resumo_v45_etapa1.json",
+    "docs/auditoria_matching_v45_etapa1/validacao_entrega_v45_etapa1.md",
+    "docs/auditoria_matching_v45_etapa2/README.md",
+    "docs/auditoria_matching_v45_etapa2/auditoria_identidade_catalogo_pbev_v45.json",
+    "docs/auditoria_matching_v45_etapa2/auditoria_identidade_catalogo_pbev_v45.md",
+    "docs/auditoria_matching_v45_etapa2/diagnostico_matching_pbev_v45_etapa2.md",
+    "docs/auditoria_matching_v45_etapa2/matriz_regressao_v45_etapa2.csv",
+    "docs/auditoria_matching_v45_etapa2/matriz_regressao_v45_etapa2.json",
+    "docs/auditoria_matching_v45_etapa2/resumo_v45_etapa2.json",
+    "docs/auditoria_matching_v45_etapa2/validacao_entrega_v45_etapa2.md",
+    "docs/auditoria_matching_v45_final/README.md",
+    "docs/auditoria_matching_v45_final/resumo_v45_final.json",
+    "docs/auditoria_matching_v45_final/validacao_entrega_v45_final.md",
+    "services/pbev_matching_v2/__init__.py",
+    "services/pbev_matching_v2/identity.py",
+    "services/pbev_matching_v2/matcher.py",
+    "services/pbev_matching_v2/normalizer.py",
+    "tests/test_pbev_matching_v2_parser.py",
+    "tests/test_pbev_matching_v2_regressions.py",
+    "tests/test_pbev_matching_v45_diagnostico.py"
+  ],
+  "observacao": "A interface, as rotas e app.py permanecem da V44. Os casos úteis da V45 foram consolidados como regressões, sem reutilizar seu motor de produção."
+}

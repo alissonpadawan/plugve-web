@@ -1,0 +1,111 @@
+{
+  "pacote": "V46 pacote de teste 01",
+  "base": "V44 homologada",
+  "python": "3.13.5",
+  "validacoes": {
+    "compileall": {
+      "ok": true
+    },
+    "pytest": {
+      "aprovados": 121,
+      "ignorados": 5,
+      "subtestes_aprovados": 54,
+      "observacao": "Os 5 testes ignorados dependem de Flask, indisponível no ambiente de montagem."
+    },
+    "regressoes_reais": {
+      "casos": 44,
+      "aprovados": 44,
+      "reprovados": 0,
+      "decisoes_motor_multivisao": 31,
+      "decisoes_fallback_v44": 13,
+      "latencia_ms": {
+        "primeira_consulta_frio": 3003.432,
+        "media_aquecida": 115.18,
+        "mediana_aquecida": 59.16,
+        "maxima_aquecida": 744.256
+      }
+    },
+    "jinja_parse": {
+      "templates": 15,
+      "ok": true
+    },
+    "node_check": {
+      "scripts_inline_simular": 3,
+      "scripts_estaticos": 7,
+      "ok": true
+    },
+    "chromium_headless": {
+      "success": {
+        "resultado": {
+          "mode": "success",
+          "domContentLoaded": true,
+          "pbevDebugButtons": 3,
+          "pbevDebugModal": true,
+          "locationControlsPresent": true,
+          "municipiosAfterUf": [
+            "Selecione o município",
+            "Goiânia",
+            "Anápolis"
+          ],
+          "localizacaoValidaAfterSelect": true,
+          "ufAfterGeolocation": "GO",
+          "municipioAfterGeolocation": "Goiânia",
+          "errors": [],
+          "alerts": [],
+          "referenceErrors": [],
+          "ok": true
+        },
+        "excecoes_cdp": [],
+        "resultado_encontrado": true
+      },
+      "deny": {
+        "resultado": {
+          "mode": "deny",
+          "domContentLoaded": true,
+          "pbevDebugButtons": 3,
+          "pbevDebugModal": true,
+          "locationControlsPresent": true,
+          "municipiosAfterUf": [
+            "Selecione o município",
+            "Goiânia",
+            "Anápolis"
+          ],
+          "localizacaoValidaAfterSelect": true,
+          "ufAfterGeolocation": "GO",
+          "municipioAfterGeolocation": "Goiânia",
+          "errors": [],
+          "alerts": [
+            "Permita o acesso à localização no navegador para usar este recurso."
+          ],
+          "referenceErrors": [],
+          "ok": true
+        },
+        "excecoes_cdp": [],
+        "resultado_encontrado": true
+      }
+    },
+    "flask_test_client": {
+      "executado": false,
+      "motivo": "O pacote Flask não está instalado no ambiente de montagem e o índice interno de pacotes não o disponibilizou. As rotas e app.py permanecem byte a byte iguais à V44."
+    }
+  },
+  "arquivos_protegidos": {
+    "app.py": {
+      "sha256": "bfed8bac9316d89eac49740581324d331e86f3a667d9f47ca629477e61eb6e09",
+      "identico_v44": true
+    },
+    "routes/pbev_routes.py": {
+      "sha256": "33cc7c06617c6de43d9d162c60328d39b3e4a7690885c370d038dcff3299d617",
+      "identico_v44": true
+    },
+    "templates/simular.html": {
+      "sha256": "4c9b4d37173dd7202a834fa3a52d42bf23342b7258bbcf772c0342d34d4e5834",
+      "identico_v44": true
+    },
+    "templates/consulta_fipe.html": {
+      "sha256": "d02816e3c6d97fa4e6b9f2efeea81f0374d01fa4543a12abef76d19a2da50ed2",
+      "identico_v44": true
+    }
+  },
+  "conclusao": "Candidato de teste aprovado nas validações disponíveis; homologação final deve ocorrer no Render."
+}

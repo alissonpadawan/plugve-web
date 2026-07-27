@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import threading
 import unicodedata
@@ -1869,7 +1870,7 @@ class PbevService:
             return "baixo", False
         return "sem_match", False
 
-    def sugerir_consumo(self, consulta: dict[str, Any]) -> dict[str, Any]:
+    def _sugerir_consumo_v44(self, consulta: dict[str, Any]) -> dict[str, Any]:
         entrada_debug = {
             "prefixo": consulta.get("prefixo"),
             "marca": consulta.get("marca"),
@@ -2313,3 +2314,73 @@ class PbevService:
         resposta["debug"] = debug
         resposta["diagnostico_terminal"] = self._montar_terminal_debug(debug, resposta)
         return resposta
+
+    def sugerir_consumo(self, consulta: dict[str, Any]) -> dict[str, Any]:
+        """Fachada compatível com a Simular para o pacote de teste V46.
+
+        O motor multivisão é o decisor preferencial. A implementação homologada
+        da V44 permanece inteira e é chamada somente como fallback quando o novo
+        motor encontra erro ou ainda não possui confiança suficiente.
+        """
+        engine = str(os.getenv("PBEV_MATCHING_ENGINE", "v46") or "v46").strip().lower()
+        if engine in {"v44", "legacy", "atual"}:
+            resposta = self._sugerir_consumo_v44(consulta)
+            resposta["motor_matching"] = "v44"
+            resposta.setdefault("diagnostico", {})["motor_matching"] = "v44"
+            return resposta
+
+        try:
+            from services.pbev_matching_v46 import PbevMultiviewMatcher
+
+            matcher = getattr(self, "_matcher_v46", None)
+            if matcher is None:
+                matcher = PbevMultiviewMatcher(self)
+                self._matcher_v46 = matcher
+            resposta_v46 = matcher.suggest(consulta)
+        except Exception as exc:
+            resposta_v44 = self._sugerir_consumo_v44(consulta)
+            resposta_v44["motor_matching"] = "v44_fallback_erro_v46"
+            diagnostico = resposta_v44.setdefault("diagnostico", {})
+            diagnostico["motor_matching"] = "v44_fallback_erro_v46"
+            diagnostico["erro_motor_v46"] = f"{type(exc).__name__}: {exc}"
+            resposta_v44["motivo"] = (
+                str(resposta_v44.get("motivo") or "")
+                + "; motor multivisão indisponível nesta consulta, V44 preservada como fallback"
+            ).strip("; ")
+            return resposta_v44
+
+        diag_v46 = resposta_v46.get("diagnostico") or {}
+
+        # Quando o novo motor alcança autofill seguro, não executa o legado.
+        if resposta_v46.get("autopreencher"):
+            resposta_v46["fallback_v44_disponivel"] = True
+            return resposta_v46
+
+        # A V44 só é calculada quando realmente necessária como piso de segurança.
+        resposta_v44 = self._sugerir_consumo_v44(consulta)
+        if resposta_v44.get("autopreencher"):
+            resposta_v44["motor_matching"] = "v44_fallback_conservador"
+            diagnostico = resposta_v44.setdefault("diagnostico", {})
+            diagnostico["motor_matching"] = "v44_fallback_conservador"
+            diagnostico["comparacao_v46"] = {
+                "nivel_match": resposta_v46.get("nivel_match"),
+                "score": resposta_v46.get("score"),
+                "candidato": resposta_v46.get("candidato"),
+                "motivo": resposta_v46.get("motivo"),
+            }
+            return resposta_v44
+
+        # Uma ausência protegida por identidade forte (por exemplo, SF90/XKR
+        # inexistente na base) não pode ser substituída por candidato aproximado.
+        if resposta_v46.get("nivel_match") == "sem_match" and diag_v46.get("decisao_protegida_sem_match"):
+            resposta_v46["fallback_v44_disponivel"] = True
+            return resposta_v46
+
+        resposta_v46["fallback_v44_disponivel"] = True
+        resposta_v46.setdefault("diagnostico", {})["comparacao_v44"] = {
+            "nivel_match": resposta_v44.get("nivel_match"),
+            "score": resposta_v44.get("score"),
+            "candidato": resposta_v44.get("candidato"),
+        }
+        return resposta_v46
+
