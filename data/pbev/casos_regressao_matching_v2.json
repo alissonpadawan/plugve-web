@@ -1,0 +1,290 @@
+[
+  {
+    "id": "byd_yuan_pro_zero_km_2026",
+    "consulta": {
+      "prefixo": "ve",
+      "marca": "BYD",
+      "modelo": "Yuan Pro (Elétrico)",
+      "texto_modelo": "Yuan Pro (Elétrico) Zero km",
+      "ano": 2026,
+      "texto_ano": "Zero km Zero km Elétrico",
+      "ano_codigo": "32000-4",
+      "combustivel": "Elétrico",
+      "tipo_veiculo": "eletrico",
+      "codigo_fipe": "095015-7"
+    },
+    "esperado": {
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "modelo_versao_contem": "YUAN PRO",
+      "tipo_consumo": "eletrico",
+      "consumo_eletrico_kwh_km": 0.141667
+    }
+  },
+  {
+    "id": "jaguar_xkr_nao_virar_ftype",
+    "consulta": {
+      "prefixo": "icev",
+      "marca": "Jaguar",
+      "modelo": "XKR Coupe  4.2/5.0 32V",
+      "texto_modelo": "XKR Coupe 4.2/5.0 32V 2015 Gasolina",
+      "ano": 2015,
+      "texto_ano": "2015 Gasolina",
+      "ano_codigo": "2015-1",
+      "combustivel": "Gasolina",
+      "tipo_veiculo": "combustao",
+      "codigo_fipe": "016021-0"
+    },
+    "esperado": {
+      "nivel_match": "sem_match",
+      "autopreencher": false,
+      "candidato_ausente": true
+    }
+  },
+  {
+    "id": "jaguar_xfrs_nao_virar_xe_xf",
+    "consulta": {
+      "prefixo": "icev",
+      "marca": "Jaguar",
+      "modelo": "XFR-S Supercharged 5.0 V8 550cv Aut.",
+      "texto_modelo": "XFR-S Supercharged 5.0 V8 550cv Aut. 2015 Gasolina",
+      "ano": 2015,
+      "texto_ano": "2015 Gasolina",
+      "ano_codigo": "2015-1",
+      "combustivel": "Gasolina",
+      "tipo_veiculo": "combustao",
+      "codigo_fipe": "016036-9"
+    },
+    "esperado": {
+      "nivel_match": "sem_match",
+      "autopreencher": false,
+      "candidato_ausente": true
+    }
+  },
+  {
+    "id": "hyundai_hb20s_style10_2019",
+    "consulta": {
+      "prefixo": "icev",
+      "marca": "Hyundai",
+      "modelo": "HB20S C.Plus/C.Style1.0 Flex 12V Mec. 4P",
+      "texto_modelo": "HB20S C.Plus/C.Style1.0 Flex 12V Mec. 4P 2019 Flex",
+      "ano": 2019,
+      "texto_ano": "2019 Flex",
+      "ano_codigo": "2019-5",
+      "combustivel": "Flex",
+      "tipo_veiculo": "combustao",
+      "codigo_fipe": "015099-1"
+    },
+    "esperado": {
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "modelo_igual": "HB20S",
+      "tipo_consumo": "flex",
+      "gasolina_cidade_km_l": 12.0,
+      "etanol_cidade_km_l": 8.5
+    }
+  },
+  {
+    "id": "gwm_haval_h6_awd_hev_2024",
+    "consulta": {
+      "prefixo": "icev",
+      "marca": "GWM",
+      "modelo": "Haval H6 1.5 AWD (Hibrido)",
+      "texto_modelo": "Haval H6 1.5 AWD (Hibrido) 2024 Híbrido",
+      "ano": 2024,
+      "texto_ano": "2024 Híbrido",
+      "ano_codigo": "2024-6",
+      "combustivel": "Híbrido",
+      "tipo_veiculo": "hibrido",
+      "codigo_fipe": "096004-7"
+    },
+    "esperado": {
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "modelo_contem": "H6",
+      "tipo_consumo": "hibrido",
+      "gasolina_cidade_km_l": 13.8,
+      "candidato_nao_contem": "PHEV"
+    }
+  },
+  {
+    "id": "gwm_haval_h6_one_hev_2026",
+    "consulta": {
+      "prefixo": "icev",
+      "marca": "GWM",
+      "modelo": "Haval H6 ONE 1.5 (Hibrido)",
+      "texto_modelo": "Haval H6 ONE 1.5 (Hibrido) Zero km Híbrido",
+      "ano": 2026,
+      "texto_ano": "Zero km Zero km Híbrido",
+      "ano_codigo": "32000-6",
+      "combustivel": "Híbrido",
+      "tipo_veiculo": "hibrido",
+      "codigo_fipe": "096010-1"
+    },
+    "esperado": {
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "modelo_versao_contem": "H6 HEV ONE",
+      "tipo_consumo": "hibrido",
+      "gasolina_cidade_km_l": 14.7,
+      "candidato_nao_contem": "PHEV"
+    }
+  },
+  {
+    "id": "citroen_c3_live_plus_6v_2026",
+    "consulta": {
+      "prefixo": "icev",
+      "marca": "Citroën",
+      "modelo": "C3 Live Plus 1.0 6V 5p Mec.",
+      "texto_modelo": "C3 Live Plus 1.0 6V 5p Mec. Zero km Flex",
+      "ano": 2026,
+      "texto_ano": "Zero km Zero km Flex",
+      "ano_codigo": "32000-5",
+      "combustivel": "Flex",
+      "tipo_veiculo": "combustao",
+      "codigo_fipe": "011250-0"
+    },
+    "esperado": {
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "modelo_versao_contem": "C3 LIVE PLUS",
+      "tipo_consumo": "flex",
+      "gasolina_cidade_km_l": 13.4,
+      "etanol_cidade_km_l": 9.5
+    }
+  },
+  {
+    "id": "citroen_c3_you_turbo200_2026",
+    "consulta": {
+      "prefixo": "icev",
+      "marca": "Citroën",
+      "modelo": "C3 YOU! 1.0 Flex Turbo 200 Aut.",
+      "texto_modelo": "C3 YOU! 1.0 Flex Turbo 200 Aut. Zero km Flex",
+      "ano": 2026,
+      "texto_ano": "Zero km Zero km Flex",
+      "ano_codigo": "32000-5",
+      "combustivel": "Flex",
+      "tipo_veiculo": "combustao",
+      "codigo_fipe": "011237-2"
+    },
+    "esperado": {
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "modelo_versao_contem": "C3 YOU",
+      "tipo_consumo": "flex",
+      "gasolina_cidade_km_l": 11.5,
+      "etanol_cidade_km_l": 8.1
+    }
+  },
+  {
+    "id": "ford_fiesta_titanium_plus_2018",
+    "consulta": {
+      "prefixo": "icev",
+      "marca": "Ford",
+      "modelo": "Fiesta TIT./TIT.Plus 1.6 16V Flex Aut.",
+      "texto_modelo": "Fiesta TIT./TIT.Plus 1.6 16V Flex Aut. 2018 Flex",
+      "ano": 2018,
+      "texto_ano": "2018 Flex",
+      "ano_codigo": "2018-5",
+      "combustivel": "Flex",
+      "tipo_veiculo": "combustao",
+      "codigo_fipe": "003390-1"
+    },
+    "esperado": {
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "modelo_versao_contem": "FIESTA",
+      "tipo_consumo": "flex",
+      "gasolina_cidade_km_l": 11.1,
+      "etanol_cidade_km_l": 7.6
+    }
+  },
+  {
+    "id": "bmw_x7_xdrive40i_2026",
+    "consulta": {
+      "prefixo": "icev",
+      "marca": "BMW",
+      "modelo": "X7 XDRIVE 40i M Sport 3.0 V6 Turbo Aut.",
+      "texto_modelo": "X7 XDRIVE 40i M Sport 3.0 V6 Turbo Aut. Zero km Híbrido",
+      "ano": 2026,
+      "texto_ano": "Zero km Zero km Híbrido",
+      "ano_codigo": "32000-6",
+      "combustivel": "Híbrido",
+      "tipo_veiculo": "hibrido",
+      "codigo_fipe": "009328-9"
+    },
+    "esperado": {
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "modelo_versao_contem": "X7 XDRIVE40I",
+      "tipo_consumo": "hibrido",
+      "gasolina_cidade_km_l": 8.0,
+      "candidato_nao_contem": "X6"
+    }
+  },
+  {
+    "id": "gwm_wey07_dark_2027_phev",
+    "consulta": {
+      "prefixo": "ve",
+      "marca": "GWM",
+      "modelo": "Wey 07 Dark Edition 1.5 Turbo AWD",
+      "texto_modelo": "Wey 07 Dark Edition 1.5 Turbo AWD 2027 Híbrido",
+      "ano": 2027,
+      "texto_ano": "2027 Híbrido",
+      "ano_codigo": "2027-6",
+      "combustivel": "Híbrido",
+      "tipo_veiculo": "hibrido",
+      "codigo_fipe": "096017-9"
+    },
+    "esperado": {
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "modelo_versao_contem": "WEY 07 DARK",
+      "tipo_consumo": "phev",
+      "gasolina_diesel_cidade_km_l": 10.8,
+      "consumo_eletrico_kwh_km": 0.230556
+    }
+  },
+  {
+    "id": "hyundai_creta_comfort_tb12v_2026",
+    "consulta": {
+      "prefixo": "icev",
+      "marca": "Hyundai",
+      "modelo": "Creta Comfort 1.0 TB 12V Flex Aut.",
+      "texto_modelo": "Creta Comfort 1.0 TB 12V Flex Aut. Zero km Flex",
+      "ano": 2026,
+      "texto_ano": "Zero km Zero km Flex",
+      "ano_codigo": "32000-5",
+      "combustivel": "Flex",
+      "tipo_veiculo": "combustao",
+      "codigo_fipe": "015200-5"
+    },
+    "esperado": {
+      "nivel_match": "alto",
+      "autopreencher": true,
+      "modelo_versao_contem": "CRETA COMFORT",
+      "tipo_consumo": "flex",
+      "gasolina_cidade_km_l": 12.0,
+      "etanol_cidade_km_l": 8.4
+    }
+  },
+  {
+    "id": "ferrari_sf90_sem_falso_positivo",
+    "consulta": {
+      "prefixo": "ve",
+      "marca": "Ferrari",
+      "modelo": "SF 90 SPIDER 4.0 V8 Bi-Turbo (Híbrido)",
+      "texto_modelo": "SF 90 SPIDER 4.0 V8 Bi-Turbo (Híbrido) 2023 Híbrido",
+      "ano": 2023,
+      "texto_ano": "2023 Híbrido",
+      "ano_codigo": "2023-6",
+      "combustivel": "Híbrido",
+      "tipo_veiculo": "hibrido"
+    },
+    "esperado": {
+      "nivel_match": "sem_match",
+      "autopreencher": false,
+      "candidato_ausente": true
+    }
+  }
+]

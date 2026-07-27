@@ -1,0 +1,116 @@
+{
+  "versao": "CurVE V45 Motor PBEV V2",
+  "data": "2026-07-26",
+  "base": "curve-v45-matching-pbev-final.zip",
+  "regressoes_reais": {
+    "motor": "V2",
+    "casos_total": 13,
+    "casos_aprovados": 13,
+    "falhas": 0,
+    "autofills": 10,
+    "confirmacoes_manuais": 0
+  },
+  "regressoes_legadas": {
+    "versao_site_base": "V44.3",
+    "etapa": "V45 Etapa 2 — motor geral",
+    "casos_total": 31,
+    "casos_aprovados": 31,
+    "falhas": 0,
+    "positivos_localizados": 29,
+    "positivos_autopreenchidos": 28,
+    "negativos_preservados": 2,
+    "lacunas_corrigidas_etapa2": 4,
+    "casos_corrigidos": [
+      "hyundai_creta_comfort_tb12v_zero_km",
+      "toyota_hilux_srv_tdi16v",
+      "ferrari_12cilindri_spider",
+      "volvo_xc60_t8_ultimate_dark_my24"
+    ],
+    "prefiltro_destrutivo_removido": true,
+    "arquivos_producao_alterados": [
+      "services/pbev_service.py",
+      "data/pbev/aliases_automotivos_v1.json"
+    ],
+    "interface_v44_alterada": false
+  },
+  "benchmark_sintetico": {
+    "registros_pbev_utilizaveis": 10636,
+    "registros_amostrados": 500,
+    "consultas_sinteticas": 1500,
+    "recall_at_1": 0.992,
+    "recall_at_3": 0.996,
+    "recall_at_5": 0.996,
+    "decisoes_finais_avaliadas": 200,
+    "autofills": 181,
+    "autofills_corretos": 181,
+    "falsos_autofills": 0,
+    "precisao_autofill": 1.0,
+    "cobertura_autofill_sintetica": 0.905,
+    "latencia_media_ms": 5.842677458640537,
+    "latencia_p95_ms": 9.634276999349822
+  },
+  "arquivos_protegidos": [
+    {
+      "arquivo": "app.py",
+      "sha256_base": "bfed8bac9316d89eac49740581324d331e86f3a667d9f47ca629477e61eb6e09",
+      "sha256_motor_v2": "bfed8bac9316d89eac49740581324d331e86f3a667d9f47ca629477e61eb6e09",
+      "identico": true
+    },
+    {
+      "arquivo": "routes/tco_routes.py",
+      "sha256_base": "cda580c61d89f96e378bfb73c11f5a7dfaf71247e60f9194f4af12fe69231131",
+      "sha256_motor_v2": "cda580c61d89f96e378bfb73c11f5a7dfaf71247e60f9194f4af12fe69231131",
+      "identico": true
+    },
+    {
+      "arquivo": "routes/depreciacao_routes.py",
+      "sha256_base": "f029b12bd4fe27fedae21c025a71138aea9a9790527c159303d4cc67802d9a0b",
+      "sha256_motor_v2": "f029b12bd4fe27fedae21c025a71138aea9a9790527c159303d4cc67802d9a0b",
+      "identico": true
+    },
+    {
+      "arquivo": "services/combustivel_service.py",
+      "sha256_base": "da4e54d722ba9c135b082d397106e775907bd83ff3f00aafdd184cabdf37e003",
+      "sha256_motor_v2": "da4e54d722ba9c135b082d397106e775907bd83ff3f00aafdd184cabdf37e003",
+      "identico": true
+    },
+    {
+      "arquivo": "services/energia_service.py",
+      "sha256_base": "7dcc85357aa3bc5340c4bbdc00366b854446808e82264e8b92232a5336295710",
+      "sha256_motor_v2": "7dcc85357aa3bc5340c4bbdc00366b854446808e82264e8b92232a5336295710",
+      "identico": true
+    },
+    {
+      "arquivo": "services/depreciacao_service.py",
+      "sha256_base": "278f828fe54ba8dc18a02a4930640d194308b38f9b0e5a765330e1f9705cf208",
+      "sha256_motor_v2": "278f828fe54ba8dc18a02a4930640d194308b38f9b0e5a765330e1f9705cf208",
+      "identico": true
+    },
+    {
+      "arquivo": "services/fipe_service.py",
+      "sha256_base": "99efc5c9fba6f772e81d14b1ee4f5330f1122cf74a64f1188a79214baf2be64d",
+      "sha256_motor_v2": "99efc5c9fba6f772e81d14b1ee4f5330f1122cf74a64f1188a79214baf2be64d",
+      "identico": true
+    },
+    {
+      "arquivo": "core/motor_combustao_web.py",
+      "sha256_base": "ff38bd9871df6e68f76319c12cc57aeb445c2de8572219c72798765263610d2c",
+      "sha256_motor_v2": "ff38bd9871df6e68f76319c12cc57aeb445c2de8572219c72798765263610d2c",
+      "identico": true
+    },
+    {
+      "arquivo": "templates/depreciacao.html",
+      "sha256_base": "08e1356808966d1d9540cf0bb1a7e055d4b9ee9b0c149b67a9614d04320b1381",
+      "sha256_motor_v2": "08e1356808966d1d9540cf0bb1a7e055d4b9ee9b0c149b67a9614d04320b1381",
+      "identico": true
+    },
+    {
+      "arquivo": "templates/relatorio_pdf.html",
+      "sha256_base": "536fb39de45e7a95ab42c985cd50a2b2aa4a949d7eaab65143840dea4de7b215",
+      "sha256_motor_v2": "536fb39de45e7a95ab42c985cd50a2b2aa4a949d7eaab65143840dea4de7b215",
+      "identico": true
+    }
+  ],
+  "confirmacao_manual_removida": true,
+  "filtro_modelos_sem_ano_valido_fora_do_escopo": true
+}

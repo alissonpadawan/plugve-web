@@ -163,7 +163,6 @@
     addKv(regRoot, 'CO₂ etanol', cand.co2_fossil_etanol_g_km ? cand.co2_fossil_etanol_g_km + ' g/km' : '');
     addKv(regRoot, 'Critério de consumo', sug.criterio_campo_unico || d.criterio_consumo || '-');
     addKv(regRoot, 'Critério de matching', d.criterio_match || '-');
-    if (d.confirmado_usuario === true) addKv(regRoot, 'Confirmação', 'Configuração selecionada pelo usuário');
     if (sug.criterio_conservador_descricao) addKv(regRoot, 'Critério conservador', sug.criterio_conservador_descricao);
     if (Array.isArray(sug.versoes_pbev_consideradas) && sug.versoes_pbev_consideradas.length) {
       addKv(regRoot, 'Versões PBEV consideradas', sug.versoes_pbev_consideradas.join(' | '));

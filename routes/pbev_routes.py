@@ -25,21 +25,16 @@ def sugestao_consumo():
     """Sugere consumo/eficiência PBEV para um veículo FIPE selecionado.
 
     O endpoint é propositalmente conservador: somente retorna autopreencher=true
-    quando o backend classifica o match como alto e o registro PBEV não tem flags
-    críticas. Match médio/baixo fica disponível para auditoria, mas a interface não
-    deve preencher silenciosamente. Quando o payload traz confirmar_id_pbev, o
-    backend valida novamente a opção antes de autorizar a aplicação.
+    quando o Motor V2 resolve automaticamente uma identidade técnica defensável e
+    o registro PBEV não tem flags críticas. Match médio/baixo permanece apenas na
+    auditoria; não existe seleção manual de configuração pelo usuário.
     """
     payload = _payload_request()
     try:
         resposta = pbev_service.sugerir_consumo(payload)
         resp = jsonify(resposta)
-        # Confirmação humana não deve ser reaproveitada por cache intermediário.
-        if payload.get("confirmar_id_pbev"):
-            resp.headers["Cache-Control"] = "no-store"
-        else:
-            # A base PBEV é local/versionada; o resultado por veículo pode ser cacheado por pouco tempo.
-            resp.headers["Cache-Control"] = "public, max-age=3600, stale-while-revalidate=21600"
+        # A base PBEV é local/versionada; o resultado por veículo pode ser cacheado por pouco tempo.
+        resp.headers["Cache-Control"] = "public, max-age=3600, stale-while-revalidate=21600"
         return resp
     except Exception as exc:  # fallback seguro: a Simular deve continuar manual.
         current_app.logger.exception("Erro na sugestão PBEV/Inmetro: %s", exc)

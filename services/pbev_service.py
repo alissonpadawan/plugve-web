@@ -10,6 +10,8 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
+from services.pbev_matching_v2 import PbevMatcherV2, build_query_identity
+
 try:
     from flask import current_app
 except Exception:  # permite testes locais sem Flask instalado
@@ -1990,8 +1992,8 @@ class PbevService:
         resposta = resposta or {}
         linhas: list[str] = []
         add = linhas.append
-        add("=== DIAGNÓSTICO PBEV / INMETRO — V45 ===")
-        add("Motor geral auditável de matching FIPE × PBEV.")
+        add("=== DIAGNÓSTICO PBEV / INMETRO — V45 / MOTOR V2 ===")
+        add("Normalização profunda, recuperação lexical e decisão técnica automática.")
         add("")
 
         entrada = debug.get("entrada_fipe") or {}
@@ -2026,6 +2028,8 @@ class PbevService:
             "sem_sugestao_consumo",
             "descartados_score_baixo",
             "descartados_prefiltro_identidade",
+            "descartados_recuperacao",
+            "candidatos_recuperados",
             "candidatos_busca_principal",
             "candidatos_busca_resgate",
             "busca_resgate_acionada",
@@ -2072,9 +2076,6 @@ class PbevService:
         add(f"- encontrou: {self._fmt_debug_val(resposta.get('encontrou'))}")
         add(f"- nível: {self._fmt_debug_val(resposta.get('nivel_match'))}")
         add(f"- autopreencher: {self._fmt_debug_val(resposta.get('autopreencher'))}")
-        add(f"- requer confirmação: {self._fmt_debug_val(resposta.get('requer_confirmacao'))}")
-        add(f"- opções de confirmação: {len(resposta.get('opcoes_confirmacao') or [])}")
-        add(f"- confirmado pelo usuário: {self._fmt_debug_val(resposta.get('confirmado_usuario'))}")
         add(f"- score exibido: {self._fmt_debug_val(resposta.get('score'))}")
         if resposta.get("score_bruto") not in (None, ""):
             add(f"- score bruto: {self._fmt_debug_val(resposta.get('score_bruto'))}")
@@ -2087,12 +2088,7 @@ class PbevService:
 
         add("[6] Ação aplicada na Simular")
         if resposta.get("autopreencher") and resposta.get("nivel_match") == "alto":
-            if resposta.get("confirmado_usuario"):
-                add("- A interface deve aplicar a configuração confirmada pelo usuário nos campos editáveis.")
-            else:
-                add("- A interface deve aplicar automaticamente a sugestão nos campos de consumo editáveis.")
-        elif resposta.get("requer_confirmacao"):
-            add("- O veículo foi localizado; a interface deve apresentar as configurações para confirmação.")
+            add("- A interface deve aplicar automaticamente a sugestão nos campos de consumo editáveis.")
         else:
             add("- Nenhum valor deve ser colocado automaticamente. O consumo fica manual.")
         add("- O fluxo PBEV não altera TCO, depreciação ou painel local.")
@@ -2335,7 +2331,403 @@ class PbevService:
             }
         return resposta
 
+
     def sugerir_consumo(self, consulta: dict[str, Any]) -> dict[str, Any]:
+        """Executa o motor V2 determinístico de record linkage FIPE × PBEV.
+
+        O V2 separa recuperação lexical de decisão técnica, filtra propulsão pelo
+        lado da Simular antes do ranking e nunca solicita confirmação humana.
+        """
+        entrada_debug = {
+            "prefixo": consulta.get("prefixo"),
+            "marca": consulta.get("marca"),
+            "modelo": consulta.get("modelo"),
+            "texto_modelo": consulta.get("texto_modelo"),
+            "ano": consulta.get("ano"),
+            "texto_ano": consulta.get("texto_ano"),
+            "ano_codigo": consulta.get("ano_codigo"),
+            "combustivel": consulta.get("combustivel"),
+            "tipo_veiculo": consulta.get("tipo_veiculo"),
+            "codigo_fipe": consulta.get("codigo_fipe"),
+            "codigo_marca": consulta.get("codigo_marca") or consulta.get("marca_id"),
+            "codigo_modelo": consulta.get("codigo_modelo") or consulta.get("modelo_id"),
+        }
+        query_identity = build_query_identity(consulta)
+        marca_key = self._marca_key(consulta.get("marca"))
+        marca_keys_busca = self._marca_keys_busca(consulta)
+        debug: dict[str, Any] = {
+            "entrada_fipe": entrada_debug,
+            "normalizacao": {
+                "motor": "V2",
+                "marca_key": marca_key,
+                "marca_keys_busca": marca_keys_busca,
+                "combustivel_detectado": query_identity.fuel or query_identity.propulsion,
+                "texto_normalizado": query_identity.normalized.normalized,
+                "tokens_modelo": sorted(query_identity.semantic_tokens)[:80],
+                "tokens_fortes_modelo": sorted(query_identity.model_alnum_anchors),
+                "ano_resolvido": {
+                    "ano_modelo": query_identity.year,
+                    "zero_km_contexto": query_identity.zero_km,
+                },
+                "identidade_fipe": query_identity.audit_dict(),
+            },
+            "filtros": {},
+            "candidatos_top": [],
+        }
+
+        def _empty_response(motivo: str, *, erro_base: bool = False) -> dict[str, Any]:
+            resposta = {
+                "encontrou": False,
+                "nivel_match": "sem_match",
+                "score": 0.0,
+                "score_bruto": 0.0,
+                "motivo": motivo,
+                "autopreencher": False,
+                "criterio_match": "sem_match",
+                "cobertura_pbev": "ausente",
+                "origem": "Inmetro/PBEV",
+                "ano_tabela_pbev": None,
+                "sugestoes_consumo": {},
+                "candidato": None,
+                "flags": {},
+                "fonte_oficial": None,
+                "motivo_decisao": [],
+                "motivo_nao_preenchimento": [motivo],
+                "candidatos_equivalentes": [],
+                "diagnostico": {
+                    "motor_matching": "V2",
+                    "dominante": False,
+                    "ambiguidade_proxima": False,
+                    "identidade_tecnica_forte": False,
+                    "tecnica_suficiente_para_consumo": False,
+                },
+                "valor_autopreenchido": False,
+                "requer_confirmacao": False,
+                "opcoes_confirmacao": [],
+                "confirmado_usuario": False,
+                "motivo_confirmacao": "",
+            }
+            if erro_base:
+                debug["filtros"] = {"registros_base": 0, "marcas_indexadas": 0, "registros_marca": 0}
+            resposta["debug"] = debug
+            resposta["diagnostico_terminal"] = self._montar_terminal_debug(debug, resposta)
+            return resposta
+
+        try:
+            cache = self.carregar_base_pbev()
+        except Exception as exc:
+            return _empty_response(f"Base PBEV indisponível: {exc}", erro_base=True)
+
+        debug["filtros"].update({
+            "registros_base": len(cache.registros),
+            "marcas_indexadas": len(cache.indice_marca),
+        })
+        if not marca_key:
+            return _empty_response("Marca FIPE ausente para busca PBEV.")
+
+        registros_marca: list[dict[str, Any]] = []
+        vistos: set[int] = set()
+        for chave in marca_keys_busca or [marca_key]:
+            for registro in cache.indice_marca.get(chave, []):
+                rid = id(registro)
+                if rid not in vistos:
+                    vistos.add(rid)
+                    registros_marca.append(registro)
+        debug["filtros"]["registros_marca"] = len(registros_marca)
+        if not registros_marca:
+            return _empty_response("Nenhum registro PBEV foi localizado para a marca informada.")
+
+        matcher = PbevMatcherV2(
+            registros_marca,
+            suggestion_builder=self.montar_sugestao_consumo,
+            flags_validator=self.validar_flags_autofill,
+        )
+        ranking = matcher.rank(consulta)
+        debug["filtros"].update(ranking.counts)
+        debug["filtros"].update({
+            "descartados_score_baixo": sum(1 for item in ranking.all_evaluated if item.score < 35 and not item.hard_blocks),
+            "descartados_prefiltro_identidade": 0,
+            "candidatos_busca_principal": len(ranking.all_evaluated),
+            "candidatos_busca_resgate": 0,
+            "busca_resgate_acionada": False,
+        })
+
+        def _avaliacao(item: Any) -> dict[str, Any]:
+            ident = item.identity
+            q = ranking.query
+            relation = item.features.get("year_relation") or "indefinido"
+            year_diff = item.features.get("year_diff")
+            return {
+                "score": item.public_score,
+                "score_bruto": item.score,
+                "ok_flags": item.flags_ok,
+                "fuel_ok": bool(item.features.get("fuel_ok")),
+                "modelo_score": round(item.model_score, 2),
+                "ano_req": q.year,
+                "ano_cand": ident.year,
+                "ano_diff": year_diff,
+                "ano_relacao": relation,
+                "ano_exato": relation == "exato",
+                "ano_compativel_fipe_pbev": bool(item.features.get("year_compatible")),
+                "zero_km_contexto": q.zero_km,
+                "identidade_tecnica_forte": bool(item.features.get("model_confident")),
+                "tecnica_suficiente_para_consumo": bool(item.features.get("technical_confident")),
+                "token_forte_divergente": any("identificador alfanumérico" in b for b in item.hard_blocks),
+                "familia_textual_divergente": any("família/modelo" in b or "código comercial" in b for b in item.hard_blocks),
+                "nivel_identidade_modelo": 3 if item.features.get("model_confident") else 1,
+                "designacao_exata": bool(q.commercial_power & ident.commercial_power),
+                "fallback_familia_tecnica": relation not in {"exato", "adjacente"},
+                "req_fuel": q.fuel,
+                "motivos": list(item.reasons),
+                "penalidades": list(item.penalties) + list(item.hard_blocks),
+                "bloqueios_flags": list(item.flag_blocks),
+                "bloqueios_duros_identidade": list(item.hard_blocks),
+                "identidade_fipe": q.audit_dict(),
+                "identidade_pbev": ident.audit_dict(),
+                "compatibilidade_identidade": dict(item.features),
+                "tokens_fortes_fipe": sorted(q.model_alnum_anchors),
+                "tokens_fortes_pbev": sorted(ident.model_alnum_anchors),
+                "carroceria_fipe": [q.body] if q.body else [],
+                "carroceria_pbev": [ident.body] if ident.body else [],
+                "acabamento_exato": bool(q.trim_tokens & ident.trim_tokens),
+                "acabamento_parcial": bool((q.semantic_tokens & ident.trim_tokens) or (q.trim_tokens & ident.semantic_tokens)),
+                "acabamento_divergente": False,
+            }
+
+        # O terminal mostra também os candidatos bloqueados mais próximos, o que
+        # torna visível por que XKR não virou F-Type ou SF90 não virou outro Ferrari.
+        debug_items: list[dict[str, Any]] = []
+        for item in ranking.all_evaluated[:40]:
+            debug_items.append({
+                "registro": item.record,
+                "score": item.score,
+                "score_publico": item.public_score,
+                "avaliacao": _avaliacao(item),
+                "sugestao": item.suggestion,
+                "faixa_busca": "principal" if not item.hard_blocks else "bloqueado_v2",
+            })
+        debug_items.sort(key=lambda x: (not bool((x.get("avaliacao") or {}).get("bloqueios_duros_identidade")), float(x.get("score") or 0)), reverse=True)
+        debug["candidatos_top"] = [self._debug_candidato_item(item, idx + 1) for idx, item in enumerate(debug_items[:12])]
+
+        utilizaveis = ranking.ranked
+        if not utilizaveis:
+            resposta = _empty_response("Nenhum candidato PBEV tecnicamente defensável foi localizado.")
+            resposta["debug"] = debug
+            resposta["diagnostico_terminal"] = self._montar_terminal_debug(debug, resposta)
+            return resposta
+
+        top = utilizaveis[0]
+        top_eval = _avaliacao(top)
+        year_relation = str(top.features.get("year_relation") or "indefinido")
+
+        # Ano exato (ou o ciclo mais recente no zero km sem ano real) é comparado
+        # primeiro contra candidatos do mesmo ciclo. Registros de anos adjacentes
+        # não criam falsa ambiguidade quando existe cobertura no ano correto.
+        comparison_pool = list(utilizaveis[1:])
+        if year_relation in {"exato", "zero_km_mais_recente"} and top.identity.year:
+            comparison_pool = [item for item in comparison_pool if item.identity.year == top.identity.year]
+        second = comparison_pool[0] if comparison_pool else None
+        score_second = float(second.score) if second else None
+        margin = float(top.score - second.score) if second else None
+        margin_required = 5.0
+        if second is not None:
+            top_trim_cov = float(top.features.get("query_trim_coverage") or 0.0)
+            second_trim_cov = float(second.features.get("query_trim_coverage") or 0.0)
+            if top_trim_cov >= 0.99 and top_trim_cov > second_trim_cov:
+                margin_required = 2.5
+            # Quando a FIPE não cita turbo e o primeiro candidato é aspirado,
+            # uma versão concorrente explicitamente turbo não deve forçar
+            # agrupamento conservador. A ausência é evidência contextual porque
+            # a FIPE costuma incluir TURBO/TB nas versões sobrealimentadas.
+            if (
+                ranking.query.turbo is None
+                and top.identity.turbo is None
+                and second.identity.turbo is True
+            ):
+                margin_required = min(margin_required, 2.5)
+        dominant = second is None or (margin is not None and margin >= margin_required)
+
+        # Só resolve por grupo quando há ambiguidade real no mesmo universo de
+        # comparação. Um candidato já dominante conserva seu consumo próprio.
+        near = [
+            item for item in comparison_pool[:20]
+            if item.score >= top.score - 10.0
+            and PbevMatcherV2.technically_equivalent(ranking.query, top, item)
+        ]
+        group = [top] + near
+        signatures = {self._assinatura_sugestao(item.suggestion) for item in group if item.suggestion}
+        same_consumption = bool(not dominant and len(group) > 1 and len(signatures) == 1)
+        conservative_applied = False
+        selected_suggestion = top.suggestion
+        if not dominant and len(group) > 1 and not same_consumption:
+            conservative_items = [
+                {"registro": item.record, "sugestao": item.suggestion, "avaliacao": _avaliacao(item)}
+                for item in group
+            ]
+            conservative = self.aplicar_criterio_conservador(conservative_items)
+            if conservative:
+                selected_suggestion = conservative
+                conservative_applied = True
+
+        model_confident = bool(top.features.get("model_confident"))
+        technical_confident = bool(top.features.get("technical_confident"))
+        year_acceptable = year_relation in {"exato", "adjacente", "zero_km_tabela_anterior", "zero_km_mais_recente"}
+        forward_family_fallback = bool(
+            year_relation == "familia_tecnica_proxima"
+            and ranking.query.year and top.identity.year
+            and top.identity.year > ranking.query.year
+            and abs(top.identity.year - ranking.query.year) <= 2
+            and top.score >= 80.0
+        )
+        year_acceptable = year_acceptable or forward_family_fallback
+        resolved_automatically = same_consumption or conservative_applied
+        if resolved_automatically:
+            dominant = True
+
+        # Critério de autofill V2: modelo e técnica defensáveis, ano aceitável,
+        # consumo presente e candidato dominante OU ambiguidade resolvida de modo
+        # automático. Um token comercial secundário ausente nunca derruba sozinho.
+        autopreencher = bool(
+            selected_suggestion
+            and top.flags_ok
+            and model_confident
+            and technical_confident
+            and year_acceptable
+            and top.score >= 70.0
+            and (dominant or resolved_automatically)
+        )
+
+        if autopreencher:
+            nivel = "alto"
+        elif model_confident and technical_confident and top.score >= 58.0:
+            nivel = "medio"
+        elif top.score >= 45.0:
+            nivel = "baixo"
+        else:
+            nivel = "sem_match"
+
+        unmatched_specific_trim = bool(
+            ranking.query.trim_tokens
+            and not (ranking.query.trim_tokens & (top.identity.trim_tokens | top.identity.semantic_tokens))
+        )
+        if conservative_applied or forward_family_fallback or (unmatched_specific_trim and autopreencher):
+            criterio_match = "conservador_por_familia"
+        elif year_relation in {"exato", "zero_km_mais_recente"}:
+            criterio_match = "exato"
+        elif same_consumption:
+            criterio_match = "versoes_equivalentes"
+        elif year_relation in {"adjacente", "zero_km_tabela_anterior", "zero_km_mais_recente"}:
+            criterio_match = "ano_modelo_adjacente"
+        else:
+            criterio_match = "aproximacao_com_observacao"
+
+        if criterio_match == "conservador_por_familia" and selected_suggestion:
+            marked = dict(selected_suggestion)
+            marked.setdefault("criterio_conservador_versoes_compativeis", True)
+            marked.setdefault(
+                "criterio_conservador_descricao",
+                "Correspondência automática pela família/configuração técnica compatível; consumo mantido com observação conservadora.",
+            )
+            marked.setdefault(
+                "versoes_pbev_consideradas",
+                [
+                    " ".join(str(item.record.get(k) or "") for k in ("modelo", "versao_corrigida", "ano_tabela")).strip()
+                    for item in (group or [top])
+                ],
+            )
+            selected_suggestion = marked
+
+        motivos = list(top.reasons)
+        penalidades = list(top.penalties)
+        if same_consumption:
+            motivos.append("candidatos tecnicamente equivalentes possuem o mesmo consumo; decisão automática")
+        if conservative_applied:
+            motivos.append("candidatos tecnicamente equivalentes resolvidos pelo critério conservador autorizado")
+        if dominant:
+            motivos.append("candidato dominante sobre o segundo colocado")
+        if not autopreencher:
+            if not model_confident:
+                penalidades.append("identidade comercial insuficiente para autofill")
+            if not technical_confident:
+                penalidades.append("compatibilidade técnica insuficiente para autofill")
+            if not year_acceptable:
+                penalidades.append("relação de ano insuficiente para autofill")
+            if not dominant and not resolved_automatically:
+                penalidades.append("candidatos próximos representam configurações diferentes; consumo mantido manual")
+
+        score_return = max(0.0, min(100.0, top.public_score))
+        if nivel == "medio":
+            score_return = min(score_return, 89.0)
+        elif nivel == "baixo":
+            score_return = min(score_return, 69.0)
+        elif nivel == "sem_match":
+            score_return = 0.0
+
+        motivo_txt = "; ".join(motivos + penalidades) or "Matching V2 avaliado."
+        resposta = {
+            "encontrou": nivel != "sem_match",
+            "nivel_match": nivel,
+            "score": round(score_return, 2),
+            "score_bruto": round(top.score, 2),
+            "motivo": motivo_txt,
+            "autopreencher": autopreencher,
+            "criterio_match": criterio_match,
+            "cobertura_pbev": self._cobertura_por_criterio(criterio_match, autopreencher=autopreencher),
+            "origem": "Inmetro/PBEV",
+            "ano_tabela_pbev": top.record.get("ano_tabela"),
+            "candidato": self._candidato_publico(top.record),
+            "sugestoes_consumo": selected_suggestion or {},
+            "flags": self._flags_publicas(top.record),
+            "fonte_oficial": self._fonte_oficial_por_ano(top.record.get("ano_tabela")),
+            "motivo_decisao": motivos,
+            "motivo_nao_preenchimento": [] if autopreencher else penalidades,
+            "candidatos_equivalentes": [self._candidato_publico(item.record) for item in group],
+            "diagnostico": {
+                "motor_matching": "V2",
+                "score_segundo_candidato": round(score_second, 2) if score_second is not None else None,
+                "diferenca_para_segundo": round(margin, 2) if margin is not None else None,
+                "dominante": dominant,
+                "candidatos_considerados": len(ranking.all_evaluated),
+                "candidatos_utilizaveis": len(utilizaveis),
+                "candidatos_bloqueados": ranking.counts.get("candidatos_bloqueados_flags", 0),
+                "ano_exato": year_relation == "exato",
+                "ano_diff": top.features.get("year_diff"),
+                "ano_relacao": year_relation,
+                "ano_compativel_fipe_pbev": year_acceptable,
+                "zero_km_contexto": ranking.query.zero_km,
+                "identidade_tecnica_forte": model_confident,
+                "tecnica_suficiente_para_consumo": technical_confident,
+                "ambiguidade_proxima": bool(not dominant and not resolved_automatically),
+                "dominancia_resolvida_por_identidade_tecnica": bool(dominant and model_confident),
+                "ambiguidade_resolvida_por_consumo": same_consumption,
+                "ambiguidade_resolvida_por_criterio_conservador": conservative_applied,
+                "candidatos_conservador": len(group) if conservative_applied else 0,
+                "modelo_score": round(top.model_score, 2),
+                "combustivel_detectado_fipe": ("PLUG_IN" if ranking.query.propulsion == "PHEV" else ranking.query.fuel),
+                "criterio_match": criterio_match,
+                "tokens_fortes_fipe": sorted(ranking.query.model_alnum_anchors),
+                "tokens_fortes_pbev": sorted(top.identity.model_alnum_anchors),
+                "carroceria_fipe": [ranking.query.body] if ranking.query.body else [],
+                "carroceria_pbev": [top.identity.body] if top.identity.body else [],
+                "acabamento_exato": bool(ranking.query.trim_tokens & top.identity.trim_tokens),
+                "acabamento_parcial": bool((ranking.query.semantic_tokens & top.identity.trim_tokens) or (ranking.query.trim_tokens & top.identity.semantic_tokens)),
+                "acabamento_divergente": False,
+                "identidade_fipe": ranking.query.audit_dict(),
+                "identidade_pbev": top.identity.audit_dict(),
+                "compatibilidade_identidade": dict(top.features),
+                "bloqueios_duros_identidade": list(top.hard_blocks),
+            },
+            "valor_autopreenchido": autopreencher,
+            "requer_confirmacao": False,
+            "opcoes_confirmacao": [],
+            "confirmado_usuario": False,
+            "motivo_confirmacao": "",
+            "debug": debug,
+        }
+        resposta["diagnostico_terminal"] = self._montar_terminal_debug(debug, resposta)
+        return resposta
+
+    def _sugerir_consumo_legacy(self, consulta: dict[str, Any]) -> dict[str, Any]:
         entrada_debug = {
             "prefixo": consulta.get("prefixo"),
             "marca": consulta.get("marca"),

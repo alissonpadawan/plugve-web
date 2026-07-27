@@ -125,6 +125,13 @@
     ],
     "START": [
       "TOWNER"
+    ],
+    "INT": [
+      "INTENSE"
+    ],
+    "INTP": [
+      "INTENSE",
+      "PLUS"
     ]
   },
   "technical_prefix_tokens": [

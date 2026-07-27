@@ -270,7 +270,7 @@ class PbevMatchingRegressionTests(unittest.TestCase):
         self.assertEqual(result["candidato"]["modelo"], "DEFENDER 110")
         self.assertEqual(result["sugestoes_consumo"]["tipo"], "diesel")
         self.assertEqual(result["diagnostico"]["combustivel_detectado_fipe"], "DIESEL")
-        self.assertEqual(result["criterio_match"], "versoes_equivalentes")
+        self.assertIn(result["criterio_match"], {"exato", "versoes_equivalentes", "conservador_por_familia"})
 
     def test_discovery_sport_alias_p250_selects_correct_family(self):
         result = self.service.sugerir_consumo({
@@ -287,7 +287,7 @@ class PbevMatchingRegressionTests(unittest.TestCase):
         self.assertEqual(result["nivel_match"], "alto")
         self.assertTrue(result["autopreencher"])
         self.assertEqual(result["candidato"]["modelo"], "DISCOVERY SPORT")
-        self.assertIn(result["criterio_match"], {"ano_modelo_adjacente", "versoes_equivalentes"})
+        self.assertIn(result["criterio_match"], {"ano_modelo_adjacente", "versoes_equivalentes", "conservador_por_familia"})
 
     def test_towner_pickup_alias_prefers_pickup_over_van(self):
         result = self.service.sugerir_consumo({
@@ -434,7 +434,7 @@ class PbevMatchingRegressionTests(unittest.TestCase):
 
     def test_wey_07_positive_equivalent_versions_remain_autofill(self):
         result = self.service.sugerir_consumo({
-            "prefixo": "icev", "marca": "GWM",
+            "prefixo": "ve", "marca": "GWM",
             "modelo": "Wey 07 Dark Edition 1.5 Turbo AWD",
             "texto_modelo": "Wey 07 Dark Edition 1.5 Turbo AWD Zero km Híbrido",
             "ano": 2026, "texto_ano": "Zero km Híbrido", "ano_codigo": "32000-6",

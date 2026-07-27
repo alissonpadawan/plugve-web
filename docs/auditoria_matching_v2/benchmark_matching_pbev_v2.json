@@ -1,0 +1,186 @@
+{
+  "motor": "V2",
+  "seed": 4502,
+  "registros_pbev_total": 11975,
+  "registros_pbev_utilizaveis": 10636,
+  "registros_amostrados": 500,
+  "variacoes_por_registro": 3,
+  "consultas_sinteticas": 1500,
+  "recall_at_1": 0.992,
+  "recall_at_3": 0.996,
+  "recall_at_5": 0.996,
+  "decisoes_finais_avaliadas": 200,
+  "autofills": 181,
+  "autofills_corretos": 181,
+  "falsos_autofills": 0,
+  "precisao_autofill": 1.0,
+  "cobertura_autofill_sintetica": 0.905,
+  "falhas_decisao_amostra": [],
+  "tempo_total_s": 17.728590157001236,
+  "latencia_media_ms": 5.842677458640537,
+  "latencia_p95_ms": 9.634276999349822,
+  "por_variante": {
+    "abreviado": {
+      "consultas": 500,
+      "recall_at_1": 0.996,
+      "recall_at_3": 0.998,
+      "recall_at_5": 0.998
+    },
+    "colado": {
+      "consultas": 500,
+      "recall_at_1": 0.99,
+      "recall_at_3": 0.996,
+      "recall_at_5": 0.996
+    },
+    "reordenado_sem_secundario": {
+      "consultas": 500,
+      "recall_at_1": 0.99,
+      "recall_at_3": 0.994,
+      "recall_at_5": 0.994
+    }
+  },
+  "falhas_top5_amostra": [
+    {
+      "id_origem": "PBEV-2025-0192",
+      "marca": "NETA",
+      "nome_origem": "X 500 COMFORT ELÉTRICO A",
+      "variante": "colado",
+      "consulta": "X500 COMFORT ELÉTRICO A",
+      "top5": []
+    },
+    {
+      "id_origem": "PBEV-2019-0084",
+      "marca": "NISSAN",
+      "nome_origem": "NEW VERSA 16 SV / 16 SL / 16 UNIQUE 1.6 - 16V CVT",
+      "variante": "colado",
+      "consulta": "NEW VERSA16 SV/16 SL/16 UNIQUE1.6-16V CVT",
+      "top5": []
+    },
+    {
+      "id_origem": "PBEV-2021-1087",
+      "marca": "MINI",
+      "nome_origem": "Hatch JCW 3P 2.0 - 16v A-8",
+      "variante": "abreviado",
+      "consulta": "Hatch JCW 3P 2.0-16v A-8",
+      "top5": [
+        {
+          "id": "PBEV-2021-1090",
+          "nome": "JCW 3 Portas 2.0 - 16V A-8",
+          "score": 101.2987,
+          "bloqueios": []
+        },
+        {
+          "id": "PBEV-2022-0023",
+          "nome": "JCW Hatch 3P 2.0 - 16V A-8",
+          "score": 99.7752,
+          "bloqueios": []
+        },
+        {
+          "id": "PBEV-2023-0026",
+          "nome": "JCW Hatch 3P 2.0 - 16V A-8",
+          "score": 93.7752,
+          "bloqueios": []
+        },
+        {
+          "id": "PBEV-2024-0033",
+          "nome": "JCW Hatch 3P 2.0 - 16V A-8",
+          "score": 87.7752,
+          "bloqueios": []
+        },
+        {
+          "id": "PBEV-2023-0029",
+          "nome": "JCW (06/23) Hatch 3P 2.0 - 16V A-8",
+          "score": 83.7425,
+          "bloqueios": []
+        }
+      ]
+    },
+    {
+      "id_origem": "PBEV-2021-1087",
+      "marca": "MINI",
+      "nome_origem": "Hatch JCW 3P 2.0 - 16v A-8",
+      "variante": "reordenado_sem_secundario",
+      "consulta": "Hatch JCW 3P 2.0-16v A-8",
+      "top5": [
+        {
+          "id": "PBEV-2021-1090",
+          "nome": "JCW 3 Portas 2.0 - 16V A-8",
+          "score": 101.2987,
+          "bloqueios": []
+        },
+        {
+          "id": "PBEV-2022-0023",
+          "nome": "JCW Hatch 3P 2.0 - 16V A-8",
+          "score": 99.7752,
+          "bloqueios": []
+        },
+        {
+          "id": "PBEV-2023-0026",
+          "nome": "JCW Hatch 3P 2.0 - 16V A-8",
+          "score": 93.7752,
+          "bloqueios": []
+        },
+        {
+          "id": "PBEV-2024-0033",
+          "nome": "JCW Hatch 3P 2.0 - 16V A-8",
+          "score": 87.7752,
+          "bloqueios": []
+        },
+        {
+          "id": "PBEV-2023-0029",
+          "nome": "JCW (06/23) Hatch 3P 2.0 - 16V A-8",
+          "score": 83.7425,
+          "bloqueios": []
+        }
+      ]
+    },
+    {
+      "id_origem": "PBEV-2022-0059",
+      "marca": "CHEVROLET",
+      "nome_origem": "ONIX PLUS 10MT LT2 MY 22/22 1.0 - 12 V M-6",
+      "variante": "reordenado_sem_secundario",
+      "consulta": "ONIX 10MT V M-6 LT2 MY 22/22 1.0-12",
+      "top5": [
+        {
+          "id": "PBEV-2022-0046",
+          "nome": "ONIX 10MT LT1 MY 22/22 1.0 - 12 V M-6",
+          "score": 92.9066,
+          "bloqueios": []
+        },
+        {
+          "id": "PBEV-2022-0045",
+          "nome": "ONIX 10MT HB MY 22/22 1.0 - 12 V M-6",
+          "score": 92.8549,
+          "bloqueios": []
+        },
+        {
+          "id": "PBEV-2022-0047",
+          "nome": "ONIX 10MT LT2 22/22 1.0 - 12 V M-6",
+          "score": 92.7555,
+          "bloqueios": []
+        },
+        {
+          "id": "PBEV-2022-0050",
+          "nome": "ONIX 10MT LT2 MY 22/23 1.0 - 12 V M-9",
+          "score": 88.6206,
+          "bloqueios": []
+        },
+        {
+          "id": "PBEV-2022-0049",
+          "nome": "ONIX 10MT LT1 MY 22/23 1.0 - 12 V M-8",
+          "score": 87.5158,
+          "bloqueios": []
+        }
+      ]
+    },
+    {
+      "id_origem": "PBEV-2017-0431",
+      "marca": "Mercedes-Benz",
+      "nome_origem": "AMG GLE 43 sport 3.0 - 24V A 9",
+      "variante": "reordenado_sem_secundario",
+      "consulta": "AMG GLE A 9 43 sport 3.0-24V",
+      "top5": []
+    }
+  ],
+  "observacao": "Benchmark sintético: o registro PBEV de origem ou outro registro tecnicamente equivalente com o mesmo consumo é aceito como correto. Não substitui validação com pares FIPE reais."
+}

@@ -4,7 +4,7 @@ from pathlib import Path
 from services.pbev_service import PbevService
 
 
-class PbevConfirmationFlowV45Tests(unittest.TestCase):
+class PbevAutomaticDecisionV2Tests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         root = Path(__file__).resolve().parents[1]
@@ -25,41 +25,24 @@ class PbevConfirmationFlowV45Tests(unittest.TestCase):
             "tipo_veiculo": "combustao",
         }
 
-    def test_medium_match_exposes_safe_confirmation_options(self):
+    def test_medium_match_never_requests_manual_confirmation(self):
         result = self.service.sugerir_consumo(dict(self.aventador))
         self.assertEqual(result["nivel_match"], "medio")
         self.assertFalse(result["autopreencher"])
-        self.assertTrue(result["requer_confirmacao"])
-        self.assertGreaterEqual(len(result["opcoes_confirmacao"]), 1)
-        self.assertLessEqual(len(result["opcoes_confirmacao"]), 6)
-        for option in result["opcoes_confirmacao"]:
-            self.assertTrue(option["id_pbev"])
-            self.assertTrue(option["candidato"])
-            self.assertTrue(option["sugestoes_consumo"])
-            self.assertTrue(option["confirmavel"])
+        self.assertFalse(result["requer_confirmacao"])
+        self.assertEqual(result["opcoes_confirmacao"], [])
+        self.assertFalse(result["confirmado_usuario"])
 
-    def test_confirmed_medium_candidate_returns_auditable_high_match(self):
-        initial = self.service.sugerir_consumo(dict(self.aventador))
-        chosen_id = initial["opcoes_confirmacao"][0]["id_pbev"]
-        confirmed = self.service.sugerir_consumo({**self.aventador, "confirmar_id_pbev": chosen_id})
-        self.assertEqual(confirmed["nivel_match"], "alto")
-        self.assertTrue(confirmed["autopreencher"])
-        self.assertTrue(confirmed["confirmado_usuario"])
-        self.assertFalse(confirmed["requer_confirmacao"])
-        self.assertEqual(confirmed["criterio_match"], "confirmacao_usuario")
-        self.assertEqual(confirmed["candidato"]["id_pbev"], chosen_id)
-        self.assertTrue(confirmed["sugestoes_consumo"])
-        self.assertIn("confirmada pelo usuário", confirmed["motivo"].lower())
-        self.assertTrue(confirmed["diagnostico"]["confirmacao_usuario"])
+    def test_confirmation_identifier_is_ignored_by_motor_v2(self):
+        baseline = self.service.sugerir_consumo(dict(self.aventador))
+        attempted = self.service.sugerir_consumo({**self.aventador, "confirmar_id_pbev": "PBEV-INEXISTENTE"})
+        self.assertEqual(attempted["nivel_match"], baseline["nivel_match"])
+        self.assertEqual(attempted["autopreencher"], baseline["autopreencher"])
+        self.assertFalse(attempted["requer_confirmacao"])
+        self.assertEqual(attempted["opcoes_confirmacao"], [])
+        self.assertFalse(attempted["confirmado_usuario"])
 
-    def test_invalid_confirmation_id_never_autofills(self):
-        result = self.service.sugerir_consumo({**self.aventador, "confirmar_id_pbev": "PBEV-INEXISTENTE"})
-        self.assertFalse(result["autopreencher"])
-        self.assertFalse(result.get("confirmado_usuario", False))
-        self.assertTrue(result["requer_confirmacao"])
-        self.assertIn("não pertence", result["motivo_confirmacao"].lower())
-
-    def test_high_match_does_not_request_confirmation(self):
+    def test_high_match_is_automatic(self):
         result = self.service.sugerir_consumo({
             "prefixo": "icev",
             "marca": "Hyundai",
@@ -76,7 +59,7 @@ class PbevConfirmationFlowV45Tests(unittest.TestCase):
         self.assertFalse(result["requer_confirmacao"])
         self.assertEqual(result["opcoes_confirmacao"], [])
 
-    def test_true_absence_does_not_offer_confirmation(self):
+    def test_true_absence_stays_manual_without_confirmation(self):
         result = self.service.sugerir_consumo({
             "prefixo": "icev",
             "marca": "Ferrari",
@@ -89,31 +72,32 @@ class PbevConfirmationFlowV45Tests(unittest.TestCase):
             "tipo_veiculo": "hibrido",
         })
         self.assertEqual(result["nivel_match"], "sem_match")
+        self.assertFalse(result["autopreencher"])
         self.assertFalse(result["requer_confirmacao"])
         self.assertEqual(result["opcoes_confirmacao"], [])
 
-    def test_simular_contains_confirmation_flow_without_removing_provenance_rules(self):
+    def test_simular_has_no_manual_pbev_confirmation_ui(self):
         html = (self.root / "templates" / "simular.html").read_text(encoding="utf-8")
-        self.assertIn("confirmar_id_pbev", html)
-        self.assertIn("plugve-pbev-confirm-modal", html)
-        self.assertIn("Confirmar versão Inmetro", html)
+        self.assertNotIn("confirmar_id_pbev", html)
+        self.assertNotIn("plugve-pbev-confirm-modal", html)
+        self.assertNotIn("Confirmar versão Inmetro", html)
         self.assertIn("pbevAplicarSugestaoConsumoTCO", html)
         self.assertIn("pbevDesativarComprovacaoTCO", html)
 
-
-    def test_endpoint_and_proof_keep_confirmation_auditable(self):
+    def test_endpoint_is_automatic_and_cacheable(self):
         route = (self.root / "routes" / "pbev_routes.py").read_text(encoding="utf-8")
         proof = (self.root / "templates" / "pbev_comprovacao.html").read_text(encoding="utf-8")
-        self.assertIn('payload.get("confirmar_id_pbev")', route)
-        self.assertIn('Cache-Control"] = "no-store"', route)
-        self.assertIn("Configuração selecionada pelo usuário", proof)
+        self.assertNotIn('payload.get("confirmar_id_pbev")', route)
+        self.assertNotIn('Cache-Control"] = "no-store"', route)
+        self.assertIn("não existe seleção manual", route)
+        self.assertNotIn("Configuração selecionada pelo usuário", proof)
         self.assertIn("criterio_match", proof)
 
-    def test_fipe_plus_exposes_confirmation_options(self):
+    def test_fipe_plus_has_no_manual_pbev_confirmation_ui(self):
         html = (self.root / "templates" / "consulta_fipe.html").read_text(encoding="utf-8")
-        self.assertIn("confirmar_id_pbev", html)
-        self.assertIn("confirmarOpcaoPbev", html)
-        self.assertIn("Configurações compatíveis encontradas", html)
+        self.assertNotIn("confirmar_id_pbev", html)
+        self.assertNotIn("confirmarOpcaoPbev", html)
+        self.assertNotIn("Configurações compatíveis encontradas", html)
 
 
 if __name__ == "__main__":
