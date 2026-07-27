@@ -6,7 +6,6 @@ import threading
 import unicodedata
 from dataclasses import dataclass
 from difflib import SequenceMatcher
-from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -37,16 +36,10 @@ TRANS_TOKENS = {
     "M", "MT", "MANUAL", "MEC", "MECANICO", "MECANICA",
 }
 ENGINE_TOKENS = {"8V", "10V", "12V", "16V", "20V", "24V", "32V", "40V", "48V", "60V"}
-ENGINE_DESCRIPTOR_TOKENS = {
-    "TB", "T", "TDI", "TURBO", "BITURBO", "TSI", "TFSI", "GDI", "MPI",
-    "CRDI", "CDI", "VTEC", "VVT", "VVTIE", "DOHC", "SOHC",
-}
-TRACTION_TOKENS = {"AWD", "4WD", "4X4", "4X2", "2WD", "FWD", "RWD"}
 GENERIC_TOKENS = {
     "DE", "DO", "DA", "DOS", "DAS", "E", "COM", "SEM", "PARA", "THE", "OF", "BY",
     "NOVO", "NOVA", "NEW", "ZERO", "KM", "MY", "MODELO", "VERSAO", "VERSÃO",
-    "PORTA", "PORTAS", "P", "CV", "HP", "PS", "KW", "TURBO", "T", "TB", "TDI", "BITURBO",
-    "TSI", "TFSI", "GDI", "MPI", "CRDI", "CDI", "VTEC",
+    "PORTA", "PORTAS", "P", "CV", "HP", "PS", "KW", "TURBO", "T", "TSI", "TFSI", "GDI", "MPI",
     "VVT", "VVTIE", "VVT I", "DOHC", "SOHC", "VALV", "VALVULAS", "VALVULAS",
 }
 POWER_TOKEN_RE = re.compile(r"^\d{2,4}(?:CV|HP|PS|KW)$")
@@ -72,24 +65,24 @@ TOKEN_ALIAS_MAP: dict[str, set[str]] = {
     "RDYN": {"R", "DYNAMIC"},
     "XDY": {"X", "DYNAMIC"},
     "HSEXD": {"HSE", "X", "DYNAMIC"},
+    "P250F": {"P250", "FLEX"},
+    "P250FF": {"P250", "FLEX"},
+    "P240FF": {"P240", "FLEX"},
     "DIE": {"DIESEL"},
     "IDM": {"PHEV", "PLUGIN"},
     "DMI": {"PHEV", "PLUGIN"},
+    "TOWNER": {"START"},
+    "START": {"TOWNER"},
 }
 
 AUTOMOTIVE_PHRASE_ALIASES: tuple[tuple[str, str], ...] = (
     (r"\bPICK\s+UP\b", "PICKUP"),
+    (r"\bDISCOVERY\s+SP\b", "DISCOVERY SPORT"),
     (r"\bX\s+DYN(?:AMIC)?\b", "X DYNAMIC"),
     (r"\bR\s+DYN(?:AMIC)?\b", "R DYNAMIC"),
-    (r"\bE\s+(\d{2,5})\b", r"E\1"),
+    (r"\bE\s+(2008|208)\b", r"E\1"),
     (r"\bI\s+DM\b", "IDM"),
     (r"\bDM\s+I\b", "DMI"),
-)
-
-ALIASES_AUTOMOTIVOS_FILENAME = "aliases_automotivos_v1.json"
-TECHNICAL_COMPOSITE_RE = re.compile(
-    r"^(?:TB|T|TDI|TURBO|BITURBO|TSI|TFSI|GDI|MPI|CRDI|CDI|VTEC|VVT|VVTIE|DOHC|SOHC)"
-    r"(?:8V|10V|12V|16V|20V|24V|32V|40V|48V|60V)$"
 )
 
 STRONG_TOKEN_TECH_SUFFIXES = ("PHEV", "HEV", "IDM", "DMI", "DM", "FLEX", "FF", "EV")
@@ -101,8 +94,7 @@ TRIM_TOKENS_IMPORTANTES = {
     "LT", "LTZ", "LS", "RS", "SS", "MID", "HC", "Z71", "EX", "EXL", "EXL", "LX", "ELX", "HLX",
     "LIMITED", "LONGITUDE", "TRAILHAWK", "SPORT", "SERIE", "SERIES", "S", "PREMIUM", "PRESTIGE",
     "PLATINUM", "ELITE", "ADVANCE", "ADVANCED", "AUDACE", "IMPETUS", "IMPETUS", "ICONIC",
-    "PLUS", "MINI", "PRO", "MAX", "ULTRA", "ULT", "ULTIM", "ULTIMATE", "DARK", "BLACK",
-    "COMFORT", "COMFORTLINE", "HIGHLINE", "TRENDLINE", "SAFETY",
+    "PLUS", "MINI", "PRO", "MAX", "ULTRA", "COMFORT", "COMFORTLINE", "HIGHLINE", "TRENDLINE",
     "EXCLUSIVE", "INTENSE", "ZEN", "TROPHY", "FEEL", "SHINE", "LIVE", "TITANIUM", "TREMOR", "RANCH", "WILDTRAK",
     "HSE", "HSEL", "DYNAMIC", "STERRATO", "SVJ", "ROADSTER", "TECNICA", "EVO", "CREW",
     "ED", "EDITION", "FIRST", "MOMENT", "MOMENTUM", "INSCRIPT", "INSCRIPTION", "RDESIGN",
@@ -154,8 +146,6 @@ class PbevService:
 
     _lock = threading.RLock()
     _cache: _BasePbevCache | None = None
-    _aliases_lock = threading.RLock()
-    _aliases_cache: dict[str, Any] | None = None
 
     def __init__(self, base_path: str | Path | None = None, manifest_path: str | Path | None = None):
         self.base_path = Path(base_path) if base_path else None
@@ -177,62 +167,23 @@ class PbevService:
         return re.sub(r"\s+", " ", texto).strip()
 
     @classmethod
-    def _carregar_aliases_automotivos(cls) -> dict[str, Any]:
-        """Carrega aliases gerais versionados, com fallback seguro embutido."""
-        if cls._aliases_cache is not None:
-            return cls._aliases_cache
-        with cls._aliases_lock:
-            if cls._aliases_cache is not None:
-                return cls._aliases_cache
-            config: dict[str, Any] = {
-                "phrase_aliases": [],
-                "token_aliases": {},
-                "technical_prefix_tokens": [],
-                "trim_tokens": [],
-            }
-            caminho = Path(__file__).resolve().parents[1] / "data" / "pbev" / ALIASES_AUTOMOTIVOS_FILENAME
-            try:
-                carregado = json.loads(caminho.read_text(encoding="utf-8"))
-                if isinstance(carregado, dict):
-                    config.update(carregado)
-            except (OSError, ValueError, TypeError):
-                pass
-            aliases_frase: list[tuple[str, str]] = list(AUTOMOTIVE_PHRASE_ALIASES)
-            for item in config.get("phrase_aliases") or []:
-                if isinstance(item, dict) and item.get("pattern") and item.get("replacement") is not None:
-                    aliases_frase.append((str(item["pattern"]), str(item["replacement"])))
-            aliases_tokens: dict[str, set[str]] = {k: set(v) for k, v in TOKEN_ALIAS_MAP.items()}
-            for token, aliases in (config.get("token_aliases") or {}).items():
-                aliases_tokens.setdefault(str(token).upper(), set()).update(str(a).upper() for a in aliases or [])
-            config["_phrase_aliases_runtime"] = tuple(aliases_frase)
-            config["_token_aliases_runtime"] = {
-                token: tuple(sorted(valores)) for token, valores in aliases_tokens.items()
-            }
-            cls._aliases_cache = config
-            return config
-
-    @classmethod
-    @lru_cache(maxsize=65536)
-    def _normalizar_aliases_texto(cls, texto: str) -> str:
-        config = cls._carregar_aliases_automotivos()
-        for padrao, substituicao in config.get("_phrase_aliases_runtime") or AUTOMOTIVE_PHRASE_ALIASES:
-            texto = re.sub(padrao, substituicao, texto)
-
-        aliases_tokens = config.get("_token_aliases_runtime") or {}
-        # Mantém o token original para auditoria e acrescenta equivalências gerais.
-        saida: list[str] = []
-        for token in texto.split():
-            saida.append(token)
-            saida.extend(aliases_tokens.get(token, ()))
-        return re.sub(r"\s+", " ", " ".join(saida)).strip()
-
-    @classmethod
     def normalizar_aliases_automotivos(cls, valor: Any) -> str:
         """Normaliza grafias FIPE/PBEV sem depender de marca ou modelo específico."""
         texto = cls.normalizar_texto(valor)
         if not texto:
             return ""
-        return cls._normalizar_aliases_texto(texto)
+        for padrao, substituicao in AUTOMOTIVE_PHRASE_ALIASES:
+            texto = re.sub(padrao, substituicao, texto)
+        # Abreviações coladas de acabamento/propulsão são expandidas como termos.
+        saida: list[str] = []
+        for token in texto.split():
+            aliases = TOKEN_ALIAS_MAP.get(token)
+            if aliases:
+                saida.append(token)
+                saida.extend(sorted(aliases))
+            else:
+                saida.append(token)
+        return re.sub(r"\s+", " ", " ".join(saida)).strip()
 
     @classmethod
     def _tokens(cls, valor: Any, *, remover_genericos: bool = True) -> set[str]:
@@ -259,6 +210,10 @@ class PbevService:
 
             # Alias comerciais/técnicos recorrentes na PBEV.
             extras |= TOKEN_ALIAS_MAP.get(token, set())
+
+            # Ferrari: a FIPE pode vir com erro de grafia; PBEV usa 12CILINDRI.
+            if "CILINRDRI" in token:
+                extras.add(token.replace("CILINRDRI", "CILINDRI"))
 
             # PBEV abrevia Spider como SPI em alguns registros.
             if token == "SPI":
@@ -516,164 +471,6 @@ class PbevService:
             return "MANUAL"
         return ""
 
-    @staticmethod
-    def _transmissao_marchas_signature(*partes: Any) -> int | None:
-        texto = PbevService.normalizar_texto(" ".join(str(p or "") for p in partes))
-        padroes = (
-            r"\b(?:DCT|DHT|CVT|AT|MT|MTA|A|M)\s+(\d{1,2})\b",
-            r"\b(\d{1,2})\s*(?:AT|MT)\b",
-        )
-        for padrao in padroes:
-            m = re.search(padrao, texto)
-            if m:
-                valor = int(m.group(1))
-                if 1 <= valor <= 12:
-                    return valor
-        return None
-
-    @staticmethod
-    def _tracao_signature(*partes: Any) -> str:
-        texto = PbevService.normalizar_aliases_automotivos(" ".join(str(p or "") for p in partes))
-        tokens = set(texto.split())
-        if tokens & {"AWD", "4WD", "4X4"}:
-            return "AWD"
-        if "RWD" in tokens:
-            return "RWD"
-        if "FWD" in tokens:
-            return "FWD"
-        if tokens & {"4X2", "2WD"}:
-            return "2WD"
-        return ""
-
-    @staticmethod
-    def _turbo_signature(*partes: Any) -> bool | None:
-        texto = PbevService.normalizar_aliases_automotivos(" ".join(str(p or "") for p in partes))
-        tokens = set(texto.split())
-        if tokens & {"TB", "T", "TDI", "TURBO", "BITURBO", "TSI", "TFSI", "CRDI", "CDI"}:
-            return True
-        if tokens & {"ASPIRADO", "ASPIRADA", "NA", "NATURALMENTE"}:
-            return False
-        return None
-
-    @staticmethod
-    def _my_signature(*partes: Any) -> int | None:
-        texto_bruto = " ".join(str(p or "") for p in partes).upper()
-        m = re.search(r"\bMY\s*[-/]?\s*(20\d{2}|\d{2})\b", texto_bruto)
-        if not m:
-            m = re.search(r"\b(20\d{2}|\d{2})\s*/\s*(20\d{2}|\d{2})\b", texto_bruto)
-            if m:
-                valor = m.group(2)
-            else:
-                return None
-        else:
-            valor = m.group(1)
-        ano = int(valor)
-        return 2000 + ano if ano < 100 else ano
-
-    @classmethod
-    def extrair_identidade_tecnica(cls, texto: Any, metadados: dict[str, Any] | None = None) -> dict[str, Any]:
-        """Extrai identidade automotiva estruturada e auditável.
-
-        A função separa família comercial de motor, transmissão, tração, carroceria
-        e ano-modelo. Ela é deliberadamente determinística para que cada decisão
-        possa ser reproduzida na auditoria e nos testes.
-        """
-        metadados = metadados or {}
-        partes = [texto]
-        for chave in (
-            "marca", "modelo", "texto_modelo", "versao", "versao_corrigida",
-            "motor", "motor_corrigido", "transmissao", "combustivel",
-            "tipo_veiculo", "tipo_propulsao", "texto_ano",
-        ):
-            if metadados.get(chave) not in (None, ""):
-                partes.append(metadados.get(chave))
-        combinado = " ".join(str(p or "") for p in partes)
-        normalizado = cls.normalizar_aliases_automotivos(combinado)
-        tokens = set(normalizado.split())
-        modelo_texto = " ".join(
-            str(metadados.get(k) or "") for k in ("modelo", "texto_modelo", "versao", "versao_corrigida")
-        ).strip() or str(texto or "")
-        fortes = cls.extrair_tokens_fortes_modelo(modelo_texto)
-        familia = {t for t in fortes if not cls._token_forte_tecnico(t)}
-        palavras = cls._palavras_familia_modelo(modelo_texto)
-        trims = cls._trim_tokens_contextual(modelo_texto)
-        my_detectado = cls._my_signature(combinado)
-        if my_detectado is None:
-            ano_meta = cls._parse_ano(metadados.get("ano"))
-            if ano_meta and ano_meta != 32000:
-                my_detectado = ano_meta
-        return {
-            "texto_normalizado": normalizado,
-            "tokens": sorted(tokens),
-            "tokens_fortes_modelo": sorted(fortes),
-            "tokens_familia": sorted(familia),
-            "palavras_familia": sorted(palavras),
-            "acabamentos": sorted(trims),
-            "cilindrada": cls._displacement_signature(combinado),
-            "valvulas": cls._valvulas_signature(combinado),
-            "turbo": cls._turbo_signature(combinado),
-            "transmissao": cls._transmissao_signature(combinado),
-            "marchas": cls._transmissao_marchas_signature(combinado),
-            "tracao": cls._tracao_signature(combinado),
-            "carroceria": sorted(cls.classificar_carroceria(combinado)),
-            "my": my_detectado,
-        }
-
-    @classmethod
-    def comparar_identidades_tecnicas(cls, fipe: dict[str, Any], pbev: dict[str, Any]) -> dict[str, Any]:
-        """Compara atributos explícitos sem transformar ausência em divergência."""
-        ajuste = 0.0
-        motivos: list[str] = []
-        penalidades: list[str] = []
-        bloqueios: list[str] = []
-
-        turbo_f, turbo_p = fipe.get("turbo"), pbev.get("turbo")
-        if turbo_f is not None and turbo_p is not None:
-            if turbo_f == turbo_p:
-                ajuste += 4
-                motivos.append("turbo compatível")
-            else:
-                ajuste -= 10
-                penalidades.append("sobrealimentação divergente")
-                bloqueios.append("sobrealimentação explicitamente divergente")
-
-        tracao_f, tracao_p = str(fipe.get("tracao") or ""), str(pbev.get("tracao") or "")
-        if tracao_f and tracao_p:
-            if tracao_f == tracao_p or {tracao_f, tracao_p} <= {"FWD", "RWD", "2WD"}:
-                ajuste += 5
-                motivos.append("tração compatível")
-            else:
-                ajuste -= 14
-                penalidades.append(f"tração divergente ({tracao_f} x {tracao_p})")
-                bloqueios.append("tração explicitamente divergente")
-
-        marchas_f, marchas_p = fipe.get("marchas"), pbev.get("marchas")
-        trans_f, trans_p = str(fipe.get("transmissao") or ""), str(pbev.get("transmissao") or "")
-        if marchas_f and marchas_p and trans_f and trans_p and (trans_f == trans_p or {trans_f, trans_p} <= {"AUTO", "CVT"}):
-            if marchas_f == marchas_p:
-                ajuste += 2
-                motivos.append("número de marchas compatível")
-            elif trans_f != "CVT" and trans_p != "CVT":
-                ajuste -= 4
-                penalidades.append(f"número de marchas divergente ({marchas_f} x {marchas_p})")
-
-        my_f, my_p = fipe.get("my"), pbev.get("my")
-        if my_f and my_p:
-            if my_f == my_p:
-                ajuste += 4
-                motivos.append("ano-modelo MY compatível")
-            else:
-                ajuste -= 10
-                penalidades.append(f"ano-modelo MY divergente ({my_f} x {my_p})")
-                bloqueios.append("ano-modelo MY explicitamente divergente")
-
-        return {
-            "ajuste": ajuste,
-            "motivos": motivos,
-            "penalidades": penalidades,
-            "bloqueios": bloqueios,
-        }
-
     @classmethod
     def _texto_consulta(cls, consulta: dict[str, Any]) -> str:
         return " ".join(
@@ -767,24 +564,6 @@ class PbevService:
         )
 
     @classmethod
-    def _tokens_tecnicos_configurados(cls) -> set[str]:
-        config = cls._carregar_aliases_automotivos()
-        return ENGINE_DESCRIPTOR_TOKENS | {str(t).upper() for t in (config.get("technical_prefix_tokens") or [])}
-
-    @classmethod
-    def _token_composto_apenas_tecnico(cls, token: Any) -> bool:
-        """Impede que motor/valvulas virem modelo, como TB12V ou TDI16V."""
-        canon = cls.normalizar_texto(token).replace(" ", "")
-        if not canon:
-            return False
-        if TECHNICAL_COMPOSITE_RE.fullmatch(canon):
-            return True
-        for prefixo in sorted(cls._tokens_tecnicos_configurados(), key=len, reverse=True):
-            if canon.startswith(prefixo) and canon[len(prefixo):] in ENGINE_TOKENS:
-                return True
-        return False
-
-    @classmethod
     def _tokens_compostos_modelo(cls, texto: Any) -> set[str]:
         """Monta identificadores comerciais separados na FIPE/PBEV.
 
@@ -797,16 +576,11 @@ class PbevService:
         compostos: set[str] = set()
         ignorar_prefixo = (
             FUEL_TOKENS | TRANS_TOKENS | ENGINE_TOKENS | GENERIC_TOKENS
-            | cls._tokens_tecnicos_configurados()
             | TRIM_TOKENS_IMPORTANTES | HARD_BODY_TOKENS | SOFT_BODY_TOKENS
             | {"BAU", "FURGAO", "CABRIO", "CABRIOLET"}
         )
         for idx, (primeiro, segundo) in enumerate(zip(tokens, tokens[1:])):
-            if (
-                primeiro in ignorar_prefixo
-                or segundo in ENGINE_TOKENS
-                or cls._token_secundario_identidade(segundo)
-            ):
+            if primeiro in ignorar_prefixo or cls._token_secundario_identidade(segundo):
                 continue
             if re.fullmatch(r"[A-Z]{1,3}", primeiro) and re.fullmatch(r"\d{1,5}[A-Z]{0,3}", segundo):
                 if YEAR_TOKEN_RE.fullmatch(segundo):
@@ -821,9 +595,7 @@ class PbevService:
                     proximo = tokens[idx + 2] if idx + 2 < len(tokens) else ""
                     if re.fullmatch(r"\d", proximo):
                         continue
-                composto = f"{primeiro}{segundo}"
-                if not cls._token_composto_apenas_tecnico(composto):
-                    compostos.add(composto)
+                compostos.add(f"{primeiro}{segundo}")
         return compostos
 
     @classmethod
@@ -873,7 +645,7 @@ class PbevService:
         norm = cls.normalizar_aliases_automotivos(texto)
         tokens = norm.split()
         fortes: set[str] = set(cls._tokens_compostos_modelo(norm))
-        ignorar = FUEL_TOKENS | TRANS_TOKENS | ENGINE_TOKENS | GENERIC_TOKENS | cls._tokens_tecnicos_configurados() | {
+        ignorar = FUEL_TOKENS | TRANS_TOKENS | ENGINE_TOKENS | GENERIC_TOKENS | {
             "4X4", "4X2", "AWD", "FWD", "RWD", "2WD",
         }
         for token in tokens:
@@ -886,7 +658,7 @@ class PbevService:
                     if re.fullmatch(r"[A-Z]{1,8}\d{1,5}[A-Z]{0,3}", base):
                         canon = base
                         break
-            if cls._token_secundario_identidade(canon) or cls._token_composto_apenas_tecnico(canon):
+            if cls._token_secundario_identidade(canon):
                 continue
             if re.fullmatch(r"[A-Z]{1,8}\d{1,5}[A-Z]{0,4}", canon) or re.fullmatch(r"\d{1,5}[A-Z]{1,4}", canon):
                 fortes.add(canon)
@@ -1064,14 +836,7 @@ class PbevService:
 
     @classmethod
     def _trim_tokens_contextual(cls, texto: Any) -> set[str]:
-        configurados = {
-            str(token).upper()
-            for token in (cls._carregar_aliases_automotivos().get("trim_tokens") or [])
-        }
-        return {
-            token for token in cls._tokens(texto)
-            if token in TRIM_TOKENS_IMPORTANTES or token in configurados
-        }
+        return {token for token in cls._tokens(texto) if token in TRIM_TOKENS_IMPORTANTES}
 
     @classmethod
     def _family_descriptor_tokens_contextual(cls, tokens_all: set[str], trim_tokens: set[str]) -> set[str]:
@@ -1139,14 +904,8 @@ class PbevService:
         penalidades: list[str], motor_fipe: str, motor_pbev: str,
         transmissao_fipe: str, transmissao_pbev: str,
         token_forte_compativel: bool = False,
-        bloqueios_duros: list[str] | None = None,
     ) -> dict[str, Any]:
         leves_consumo = {"ACABAMENTO DIVERGENTE"}
-        prefixos_leves = (
-            "CARROCERIA EXPLICITA DA FIPE AUSENTE NO PBEV",
-            "CODIGO TECNICO DA FIPE AUSENTE NO PBEV",
-            "NUMERO DE MARCHAS DIVERGENTE",
-        )
         ignorar_ano = {"ANO FIPE AUSENTE PARA SCORE"}
         penalidades_tecnicas: list[str] = []
         for p in penalidades:
@@ -1156,21 +915,15 @@ class PbevService:
             if norm.startswith("CODIGO TECNICO DA FIPE AUSENTE NO PBEV"):
                 continue
             penalidades_tecnicas.append(p)
-        bloqueantes = [
-            p for p in penalidades_tecnicas
-            if cls.normalizar_texto(p) not in leves_consumo
-            and not cls.normalizar_texto(p).startswith(prefixos_leves)
-        ]
-        bloqueios_duros = list(bloqueios_duros or [])
+        bloqueantes = [p for p in penalidades_tecnicas if cls.normalizar_texto(p) not in leves_consumo]
         motor_ok = not motor_fipe or not motor_pbev or motor_fipe == motor_pbev
         trans_ok = not transmissao_fipe or not transmissao_pbev or transmissao_fipe == transmissao_pbev or {transmissao_fipe, transmissao_pbev} <= {"AUTO", "CVT"}
         modelo_ok = modelo_score >= 30 or (token_forte_compativel and modelo_score >= 24)
-        identidade_forte = fuel_ok and ok_flags and modelo_ok and not penalidades_tecnicas and not bloqueios_duros and motor_ok and trans_ok
-        suficiente = fuel_ok and ok_flags and modelo_ok and not bloqueantes and not bloqueios_duros and motor_ok and trans_ok
+        identidade_forte = fuel_ok and ok_flags and modelo_ok and not penalidades_tecnicas and motor_ok and trans_ok
+        suficiente = fuel_ok and ok_flags and modelo_ok and not bloqueantes and motor_ok and trans_ok
         return {
             "penalidades_tecnicas": penalidades_tecnicas,
             "penalidades_bloqueantes_consumo": bloqueantes,
-            "bloqueios_duros_identidade": bloqueios_duros,
             "identidade_tecnica_forte": identidade_forte,
             "tecnica_suficiente_para_consumo": suficiente,
         }
@@ -1242,22 +995,12 @@ class PbevService:
         query_model_core = self._modelo_core_tokens(query_modelo_norm)
         query_all_tokens = self._tokens(query_all_norm)
         query_trim_tokens = self._trim_tokens_contextual(query_all_norm)
-        identidade_fipe = self.extrair_identidade_tecnica(query_modelo_norm, consulta)
 
         cand_model_norm = self.normalizar_aliases_automotivos(registro.get("modelo_normalizado") or registro.get("modelo"))
         cand_version_norm = self.normalizar_aliases_automotivos(registro.get("versao_normalizada") or registro.get("versao_corrigida") or registro.get("versao"))
         cand_motor_norm = self.normalizar_aliases_automotivos(registro.get("motor_normalizado") or registro.get("motor_corrigido") or registro.get("motor"))
         cand_trans_norm = self.normalizar_aliases_automotivos(registro.get("transmissao_normalizada") or registro.get("transmissao"))
         cand_all_norm = self.normalizar_aliases_automotivos(f"{cand_model_norm} {cand_version_norm} {cand_motor_norm} {cand_trans_norm}")
-        identidade_pbev = self.extrair_identidade_tecnica(cand_all_norm, {
-            "marca": registro.get("marca_normalizada") or registro.get("marca"),
-            "modelo": registro.get("modelo_normalizado") or registro.get("modelo"),
-            "versao": registro.get("versao_normalizada") or registro.get("versao_corrigida") or registro.get("versao"),
-            "motor": registro.get("motor_normalizado") or registro.get("motor_corrigido") or registro.get("motor"),
-            "transmissao": registro.get("transmissao_normalizada") or registro.get("transmissao"),
-            "combustivel": registro.get("combustivel_normalizado") or registro.get("combustivel"),
-            "tipo_propulsao": registro.get("tipo_propulsao_normalizado") or registro.get("tipo_propulsao"),
-        })
 
         cand_model_tokens = self._tokens(cand_model_norm)
         cand_model_core = self._modelo_core_tokens(cand_model_norm)
@@ -1443,16 +1186,6 @@ class PbevService:
                 score -= 8
                 penalidades.append("transmissão divergente")
 
-        compatibilidade_estruturada = self.comparar_identidades_tecnicas(identidade_fipe, identidade_pbev)
-        score += float(compatibilidade_estruturada.get("ajuste") or 0)
-        motivos.extend(compatibilidade_estruturada.get("motivos") or [])
-        penalidades.extend(compatibilidade_estruturada.get("penalidades") or [])
-        bloqueios_identidade = list(compatibilidade_estruturada.get("bloqueios") or [])
-        if identificador_comercial_divergente:
-            bloqueios_identidade.append("identificador comercial explicitamente divergente")
-        if not fuel_ok:
-            bloqueios_identidade.append("combustível ou propulsão incompatível")
-
         ok_flags, bloqueios = self.validar_flags_autofill(registro)
         if not ok_flags:
             score -= 100
@@ -1468,7 +1201,6 @@ class PbevService:
             transmissao_fipe=trans_q,
             transmissao_pbev=trans_c,
             token_forte_compativel=bool(score_modelo_geral["token_forte_compativel"]),
-            bloqueios_duros=bloqueios_identidade,
         )
         penalidades_tecnicas = identidade["penalidades_tecnicas"]
         penalidades_bloqueantes_consumo = identidade["penalidades_bloqueantes_consumo"]
@@ -1483,7 +1215,6 @@ class PbevService:
             and ano_req and ano_cand and 0 < ano_diff <= limite_ano_fallback
             and int(score_modelo_geral.get("nivel_identidade_modelo") or 0) >= 3
             and fuel_ok and ok_flags and tecnica_suficiente_para_consumo
-            and not any(self.normalizar_texto(p).startswith("CARROCERIA EXPLICITA DA FIPE AUSENTE NO PBEV") for p in penalidades)
             and (not motor_q or not motor_c or motor_q == motor_c)
             and (not trans_q or not trans_c or trans_q == trans_c or {trans_q, trans_c} <= {"AUTO", "CVT"})
         )
@@ -1534,10 +1265,6 @@ class PbevService:
             "tecnica_suficiente_para_consumo": tecnica_suficiente_para_consumo,
             "penalidades_bloqueantes_consumo": penalidades_bloqueantes_consumo,
             "penalidades_tecnicas": penalidades_tecnicas,
-            "bloqueios_duros_identidade": identidade.get("bloqueios_duros_identidade") or [],
-            "identidade_fipe": identidade_fipe,
-            "identidade_pbev": identidade_pbev,
-            "compatibilidade_identidade": compatibilidade_estruturada,
         }
 
     # ------------------------------------------------------------------
@@ -1967,11 +1694,6 @@ class PbevService:
             "motivos": list(avaliacao.get("motivos") or []),
             "penalidades": list(avaliacao.get("penalidades") or []),
             "bloqueios_flags": list(avaliacao.get("bloqueios_flags") or []),
-            "bloqueios_duros_identidade": list(avaliacao.get("bloqueios_duros_identidade") or []),
-            "faixa_busca": item.get("faixa_busca") or "principal",
-            "identidade_fipe": avaliacao.get("identidade_fipe") or {},
-            "identidade_pbev": avaliacao.get("identidade_pbev") or {},
-            "compatibilidade_identidade": avaliacao.get("compatibilidade_identidade") or {},
             "candidato": self._candidato_publico(registro),
             "sugestao_consumo": self._resumo_sugestao_debug(sugestao),
         }
@@ -1990,8 +1712,8 @@ class PbevService:
         resposta = resposta or {}
         linhas: list[str] = []
         add = linhas.append
-        add("=== DIAGNÓSTICO PBEV / INMETRO — V45 ===")
-        add("Motor geral auditável de matching FIPE × PBEV.")
+        add("=== DIAGNÓSTICO PBEV / INMETRO — V38.6 ===")
+        add("Ferramenta provisória para calibrar o matching FIPE × PBEV.")
         add("")
 
         entrada = debug.get("entrada_fipe") or {}
@@ -2007,12 +1729,6 @@ class PbevService:
         add(f"- texto normalizado: {self._fmt_debug_val(normalizacao.get('texto_normalizado'))}")
         tokens = normalizacao.get("tokens_modelo") or []
         add(f"- tokens do modelo: {', '.join(tokens[:40]) if tokens else '-'}")
-        identidade_fipe = normalizacao.get("identidade_fipe") or {}
-        if identidade_fipe:
-            add(f"- família extraída: {', '.join(identidade_fipe.get('tokens_familia') or identidade_fipe.get('palavras_familia') or []) or '-'}")
-            add(f"- acabamento extraído: {', '.join(identidade_fipe.get('acabamentos') or []) or '-'}")
-            add(f"- motor extraído: cilindrada={self._fmt_debug_val(identidade_fipe.get('cilindrada'))}; válvulas={self._fmt_debug_val(identidade_fipe.get('valvulas'))}; turbo={self._fmt_debug_val(identidade_fipe.get('turbo'))}")
-            add(f"- transmissão/tração: {self._fmt_debug_val(identidade_fipe.get('transmissao'))} {self._fmt_debug_val(identidade_fipe.get('marchas'))}; {self._fmt_debug_val(identidade_fipe.get('tracao'))}")
         add("")
 
         filtros = debug.get("filtros") or {}
@@ -2025,10 +1741,6 @@ class PbevService:
             "com_sugestao_consumo",
             "sem_sugestao_consumo",
             "descartados_score_baixo",
-            "descartados_prefiltro_identidade",
-            "candidatos_busca_principal",
-            "candidatos_busca_resgate",
-            "busca_resgate_acionada",
             "candidatos_considerados",
             "candidatos_utilizaveis",
             "candidatos_bloqueados_flags",
@@ -2048,7 +1760,7 @@ class PbevService:
                 add(f"   Ano PBEV: {self._fmt_debug_val(cpub.get('ano_tabela') or cand.get('ano_pbev'))} | Score: {self._fmt_debug_val(cand.get('score'))} | Score público: {self._fmt_debug_val(cand.get('score_publico'))}")
                 add(f"   Status: {self._fmt_debug_val(cpub.get('status_registro'))} | Flags OK: {self._fmt_debug_val(cand.get('flags_ok'))} | Sugestão consumo: {self._fmt_debug_val(cand.get('tem_sugestao_consumo'))}")
                 add(f"   Ano relação: {self._fmt_debug_val(cand.get('ano_relacao'))} | Diferença ano: {self._fmt_debug_val(cand.get('ano_diff'))} | Identidade técnica forte: {self._fmt_debug_val(cand.get('identidade_tecnica_forte'))}")
-                add(f"   Técnica suficiente para consumo: {self._fmt_debug_val(cand.get('tecnica_suficiente_para_consumo'))} | Faixa de busca: {self._fmt_debug_val(cand.get('faixa_busca'))}")
+                add(f"   Técnica suficiente para consumo: {self._fmt_debug_val(cand.get('tecnica_suficiente_para_consumo'))}")
                 motivos = cand.get("motivos") or []
                 penalidades = cand.get("penalidades") or []
                 bloqueios = cand.get("bloqueios_flags") or []
@@ -2072,9 +1784,6 @@ class PbevService:
         add(f"- encontrou: {self._fmt_debug_val(resposta.get('encontrou'))}")
         add(f"- nível: {self._fmt_debug_val(resposta.get('nivel_match'))}")
         add(f"- autopreencher: {self._fmt_debug_val(resposta.get('autopreencher'))}")
-        add(f"- requer confirmação: {self._fmt_debug_val(resposta.get('requer_confirmacao'))}")
-        add(f"- opções de confirmação: {len(resposta.get('opcoes_confirmacao') or [])}")
-        add(f"- confirmado pelo usuário: {self._fmt_debug_val(resposta.get('confirmado_usuario'))}")
         add(f"- score exibido: {self._fmt_debug_val(resposta.get('score'))}")
         if resposta.get("score_bruto") not in (None, ""):
             add(f"- score bruto: {self._fmt_debug_val(resposta.get('score_bruto'))}")
@@ -2087,15 +1796,10 @@ class PbevService:
 
         add("[6] Ação aplicada na Simular")
         if resposta.get("autopreencher") and resposta.get("nivel_match") == "alto":
-            if resposta.get("confirmado_usuario"):
-                add("- A interface deve aplicar a configuração confirmada pelo usuário nos campos editáveis.")
-            else:
-                add("- A interface deve aplicar automaticamente a sugestão nos campos de consumo editáveis.")
-        elif resposta.get("requer_confirmacao"):
-            add("- O veículo foi localizado; a interface deve apresentar as configurações para confirmação.")
+            add("- A interface deve aplicar a sugestão nos campos de consumo editáveis.")
         else:
             add("- Nenhum valor deve ser colocado automaticamente. O consumo fica manual.")
-        add("- O fluxo PBEV não altera TCO, depreciação ou painel local.")
+        add("- Esta janela é provisória de auditoria do matching; não altera TCO, depreciação ou painel local.")
         return "\n".join(linhas)
 
     # ------------------------------------------------------------------
@@ -2165,176 +1869,6 @@ class PbevService:
             return "baixo", False
         return "sem_match", False
 
-    @staticmethod
-    def _id_pbev_registro(registro: dict[str, Any]) -> str:
-        return str(registro.get("id_pbev_preliminar") or registro.get("id_pbev") or "").strip()
-
-    def _candidato_confirmavel(self, item: dict[str, Any], *, score_top: float | None = None) -> bool:
-        """Valida se um candidato pode ser apresentado para confirmação humana.
-
-        Confirmação não relaxa restrições técnicas: o registro precisa ter consumo,
-        flags liberadas, combustível/propulsão compatíveis, família defensável e
-        nenhum bloqueio duro de identidade. Ela apenas resolve incertezas que a FIPE
-        não detalha, como ano distante ou acabamento ausente.
-        """
-        registro = item.get("registro") or {}
-        avaliacao = item.get("avaliacao") or {}
-        if not self._id_pbev_registro(registro) or not item.get("sugestao"):
-            return False
-        if not avaliacao.get("ok_flags") or not avaliacao.get("fuel_ok"):
-            return False
-        if avaliacao.get("bloqueios_duros_identidade"):
-            return False
-        if avaliacao.get("token_forte_divergente") or avaliacao.get("familia_textual_divergente"):
-            return False
-        if float(avaliacao.get("modelo_score") or 0) < 30:
-            return False
-        if not avaliacao.get("tecnica_suficiente_para_consumo"):
-            return False
-        if int(avaliacao.get("nivel_identidade_modelo") or 0) < 2:
-            return False
-        if score_top is not None and float(item.get("score") or 0) < max(55.0, score_top - 18.0):
-            return False
-        return True
-
-    def _opcao_confirmacao_publica(self, item: dict[str, Any], posicao: int) -> dict[str, Any]:
-        registro = item.get("registro") or {}
-        avaliacao = item.get("avaliacao") or {}
-        return {
-            "id_pbev": self._id_pbev_registro(registro),
-            "posicao": posicao,
-            "confirmavel": True,
-            "score": round(float(item.get("score_publico", item.get("score") or 0)), 2),
-            "score_bruto": round(float(item.get("score") or 0), 2),
-            "ano_relacao": avaliacao.get("ano_relacao"),
-            "ano_compativel_fipe_pbev": bool(avaliacao.get("ano_compativel_fipe_pbev")),
-            "identidade_tecnica_forte": bool(avaliacao.get("identidade_tecnica_forte")),
-            "candidato": self._candidato_publico(registro),
-            "sugestoes_consumo": dict(item.get("sugestao") or {}),
-            "flags": self._flags_publicas(registro),
-            "fonte_oficial": self._fonte_oficial_por_ano(registro.get("ano_tabela")),
-            "motivos": list(avaliacao.get("motivos") or [])[:8],
-            "observacoes": list(avaliacao.get("penalidades") or [])[:8],
-        }
-
-    def _montar_opcoes_confirmacao(
-        self,
-        utilizaveis: list[dict[str, Any]],
-        top: dict[str, Any],
-        *,
-        nivel_match: str,
-        limite: int = 6,
-    ) -> list[dict[str, Any]]:
-        """Monta opções auditáveis somente para match médio tecnicamente plausível."""
-        if nivel_match != "medio" or not utilizaveis:
-            return []
-        top_score = float(top.get("score") or 0)
-        top_av = top.get("avaliacao") or {}
-        top_nivel = int(top_av.get("nivel_identidade_modelo") or 0)
-        top_registro = top.get("registro") or {}
-        top_modelo = tuple(sorted(self._modelo_core_tokens(
-            self.normalizar_texto(top_registro.get("modelo_normalizado") or top_registro.get("modelo"))
-        )))
-        escolhidas: list[dict[str, Any]] = []
-        chaves_vistas: set[tuple[Any, ...]] = set()
-        ids_vistos: set[str] = set()
-        for item in utilizaveis:
-            if not self._candidato_confirmavel(item, score_top=top_score):
-                continue
-            av = item.get("avaliacao") or {}
-            if int(av.get("nivel_identidade_modelo") or 0) < max(2, top_nivel - 1):
-                continue
-            registro = item.get("registro") or {}
-            modelo_core = tuple(sorted(self._modelo_core_tokens(
-                self.normalizar_texto(registro.get("modelo_normalizado") or registro.get("modelo"))
-            )))
-            if top_modelo and modelo_core and modelo_core != top_modelo:
-                continue
-            id_pbev = self._id_pbev_registro(registro)
-            if not id_pbev or id_pbev in ids_vistos:
-                continue
-            chave_grupo = (
-                self._assinatura_tecnica_registro(registro),
-                self._assinatura_sugestao(item.get("sugestao")),
-            )
-            if chave_grupo in chaves_vistas:
-                continue
-            chaves_vistas.add(chave_grupo)
-            ids_vistos.add(id_pbev)
-            escolhidas.append(self._opcao_confirmacao_publica(item, len(escolhidas) + 1))
-            if len(escolhidas) >= limite:
-                break
-        if not escolhidas and self._candidato_confirmavel(top):
-            escolhidas.append(self._opcao_confirmacao_publica(top, 1))
-        return escolhidas
-
-    def _aplicar_confirmacao_usuario(
-        self,
-        resposta: dict[str, Any],
-        consulta: dict[str, Any],
-        opcoes: list[dict[str, Any]],
-    ) -> dict[str, Any]:
-        solicitado = str(consulta.get("confirmar_id_pbev") or "").strip()
-        resposta.setdefault("confirmado_usuario", False)
-        resposta.setdefault("motivo_confirmacao", "")
-        resposta["opcoes_confirmacao"] = list(opcoes)
-        resposta["requer_confirmacao"] = bool(opcoes and resposta.get("nivel_match") == "medio")
-        if not solicitado:
-            return resposta
-
-        selecionada = next((op for op in opcoes if str(op.get("id_pbev") or "") == solicitado), None)
-        if not selecionada:
-            resposta["motivo_confirmacao"] = (
-                "A configuração solicitada não pertence às opções PBEV tecnicamente plausíveis desta consulta."
-            )
-            return resposta
-
-        nivel_original = resposta.get("nivel_match")
-        criterio_original = resposta.get("criterio_match")
-        candidato = dict(selecionada.get("candidato") or {})
-        sugestao = dict(selecionada.get("sugestoes_consumo") or {})
-        motivo = "Configuração PBEV confirmada pelo usuário entre candidatos tecnicamente plausíveis."
-        diagnostico = dict(resposta.get("diagnostico") or {})
-        diagnostico.update({
-            "confirmacao_usuario": True,
-            "id_pbev_confirmado": solicitado,
-            "nivel_match_original": nivel_original,
-            "criterio_match_original": criterio_original,
-        })
-        resposta.update({
-            "encontrou": True,
-            "nivel_match": "alto",
-            "score": selecionada.get("score", resposta.get("score", 0)),
-            "score_bruto": selecionada.get("score_bruto", resposta.get("score_bruto", 0)),
-            "motivo": motivo,
-            "autopreencher": True,
-            "criterio_match": "confirmacao_usuario",
-            "cobertura_pbev": "confirmada_usuario",
-            "ano_tabela_pbev": candidato.get("ano_tabela"),
-            "candidato": candidato,
-            "sugestoes_consumo": sugestao,
-            "flags": dict(selecionada.get("flags") or {}),
-            "fonte_oficial": dict(selecionada.get("fonte_oficial") or {}),
-            "motivo_decisao": [motivo],
-            "motivo_nao_preenchimento": [],
-            "candidatos_equivalentes": [candidato],
-            "diagnostico": diagnostico,
-            "valor_autopreenchido": True,
-            "confirmado_usuario": True,
-            "motivo_confirmacao": motivo,
-            "requer_confirmacao": False,
-            "opcoes_confirmacao": [],
-        })
-        debug = resposta.get("debug")
-        if isinstance(debug, dict):
-            debug["confirmacao_usuario"] = {
-                "aplicada": True,
-                "id_pbev": solicitado,
-                "nivel_match_original": nivel_original,
-                "criterio_match_original": criterio_original,
-            }
-        return resposta
-
     def sugerir_consumo(self, consulta: dict[str, Any]) -> dict[str, Any]:
         entrada_debug = {
             "prefixo": consulta.get("prefixo"),
@@ -2349,7 +1883,6 @@ class PbevService:
             "codigo_fipe": consulta.get("codigo_fipe"),
             "codigo_marca": consulta.get("codigo_marca") or consulta.get("marca_id"),
             "codigo_modelo": consulta.get("codigo_modelo") or consulta.get("modelo_id"),
-            "confirmar_id_pbev": consulta.get("confirmar_id_pbev"),
         }
         texto_normalizado = self.normalizar_aliases_automotivos(self._texto_consulta(consulta))
         marca_key = self._marca_key(consulta.get("marca"))
@@ -2364,11 +1897,6 @@ class PbevService:
                 "tokens_modelo": sorted(self._tokens(" ".join(str(consulta.get(k) or "") for k in ("modelo", "texto_modelo"))))[:80],
                 "tokens_fortes_modelo": sorted(self.extrair_tokens_fortes_modelo(" ".join(str(consulta.get(k) or "") for k in ("modelo", "texto_modelo")))),
                 "ano_resolvido": self.resolver_ano_fipe_para_matching(consulta),
-                "identidade_fipe": self.extrair_identidade_tecnica(
-                    " ".join(str(consulta.get(k) or "") for k in ("modelo", "texto_modelo")),
-                    consulta,
-                ),
-                "aliases_versao": self._carregar_aliases_automotivos().get("versao"),
             },
             "filtros": {},
             "candidatos_top": [],
@@ -2392,10 +1920,6 @@ class PbevService:
                 "motivo_decisao": [],
                 "motivo_nao_preenchimento": [f"Base PBEV indisponível: {exc}"],
                 "candidatos_equivalentes": [],
-                "requer_confirmacao": False,
-                "opcoes_confirmacao": [],
-                "confirmado_usuario": False,
-                "motivo_confirmacao": "",
                 "diagnostico": {},
             }
             debug["filtros"] = {"registros_base": 0, "marcas_indexadas": 0, "registros_marca": 0}
@@ -2424,10 +1948,6 @@ class PbevService:
                 "motivo_decisao": [],
                 "motivo_nao_preenchimento": ["Marca FIPE ausente para busca PBEV."],
                 "candidatos_equivalentes": [],
-                "requer_confirmacao": False,
-                "opcoes_confirmacao": [],
-                "confirmado_usuario": False,
-                "motivo_confirmacao": "",
                 "diagnostico": {},
             }
             debug["filtros"].update({"registros_marca": 0, "registros_avaliados_marca": 0})
@@ -2450,8 +1970,6 @@ class PbevService:
         com_sugestao_consumo = 0
         descartados_score_baixo = 0
         descartados_prefiltro_identidade = 0
-        candidatos_busca_principal = 0
-        candidatos_busca_resgate = 0
 
         texto_modelo_consulta = " ".join(str(consulta.get(k) or "") for k in ("modelo", "texto_modelo"))
         fortes_consulta = {
@@ -2460,81 +1978,50 @@ class PbevService:
         }
         palavras_consulta = self._palavras_familia_modelo(texto_modelo_consulta)
 
-        def _faixa_busca_identidade(registro: dict[str, Any]) -> str:
-            """Classifica a busca sem eliminar candidatos silenciosamente.
-
-            A faixa principal concentra sobreposição comercial. A faixa de resgate
-            mantém candidatos da mesma marca para que abreviações ou grafias inéditas
-            ainda cheguem ao score técnico e à auditoria.
-            """
+        def _passa_prefiltro_identidade(registro: dict[str, Any]) -> bool:
             texto_candidato = " ".join(str(registro.get(k) or "") for k in ("modelo", "versao_corrigida", "versao"))
             fortes_candidato = {
                 token for token in self.extrair_tokens_fortes_modelo(texto_candidato)
                 if not self._token_forte_tecnico(token)
             }
             palavras_candidato = self._palavras_familia_modelo(texto_candidato)
-            if fortes_consulta and fortes_candidato and (fortes_consulta & fortes_candidato):
-                return "principal"
-            if palavras_consulta and palavras_candidato and (palavras_consulta & palavras_candidato):
-                return "principal"
-            return "resgate"
+            if fortes_consulta:
+                if fortes_candidato and not (fortes_consulta & fortes_candidato):
+                    return False
+                if not fortes_candidato and palavras_consulta and palavras_candidato and not (palavras_consulta & palavras_candidato):
+                    return False
+            elif palavras_consulta and palavras_candidato and not (palavras_consulta & palavras_candidato):
+                return False
+            return True
 
-        registros_principais: list[tuple[dict[str, Any], str]] = []
-        registros_resgate: list[tuple[dict[str, Any], str]] = []
         for registro in registros_marca:
-            faixa_busca = _faixa_busca_identidade(registro)
-            if faixa_busca == "principal":
-                candidatos_busca_principal += 1
-                registros_principais.append((registro, faixa_busca))
+            if not _passa_prefiltro_identidade(registro):
+                descartados_prefiltro_identidade += 1
+                continue
+            avaliacao = self.calcular_score_match(registro, consulta)
+            sugestao = self.montar_sugestao_consumo(registro)
+            item = {
+                "registro": registro,
+                "score": float(avaliacao.get("score_bruto", avaliacao["score"])),
+                "score_publico": float(avaliacao["score"]),
+                "avaliacao": avaliacao,
+                "sugestao": sugestao,
+            }
+            # Guarda candidatos com algum sinal mínimo para o terminal, inclusive bloqueados/sem consumo.
+            if avaliacao["score"] >= 25 or avaliacao.get("bloqueios_flags") or sugestao:
+                debug_items.append(item)
+            if not sugestao:
+                sem_sugestao_consumo += 1
             else:
-                candidatos_busca_resgate += 1
-                registros_resgate.append((registro, faixa_busca))
-
-        registros_avaliados = 0
-
-        def _avaliar_lote(lote: list[tuple[dict[str, Any], str]]) -> None:
-            nonlocal registros_avaliados, sem_sugestao_consumo, com_sugestao_consumo
-            nonlocal descartados_score_baixo, candidatos_bloqueados
-            for registro, faixa_busca in lote:
-                registros_avaliados += 1
-                avaliacao = self.calcular_score_match(registro, consulta)
-                sugestao = self.montar_sugestao_consumo(registro)
-                item = {
-                    "registro": registro,
-                    "score": float(avaliacao.get("score_bruto", avaliacao["score"])),
-                    "score_publico": float(avaliacao["score"]),
-                    "avaliacao": avaliacao,
-                    "sugestao": sugestao,
-                    "faixa_busca": faixa_busca,
-                }
-                # Guarda candidatos com algum sinal mínimo para o terminal, inclusive bloqueados/sem consumo.
-                if avaliacao["score"] >= 25 or avaliacao.get("bloqueios_flags") or sugestao:
-                    debug_items.append(item)
-                if not sugestao:
-                    sem_sugestao_consumo += 1
-                else:
-                    com_sugestao_consumo += 1
-                if avaliacao["score"] < 35 and not avaliacao.get("bloqueios_flags"):
-                    descartados_score_baixo += 1
-                    continue
-                if not sugestao:
-                    continue
-                if not avaliacao.get("ok_flags"):
-                    candidatos_bloqueados += 1
-                candidatos.append(item)
-
-        _avaliar_lote(registros_principais)
-        principal_defensavel = any(
-            (item.get("avaliacao") or {}).get("ok_flags")
-            and (item.get("avaliacao") or {}).get("fuel_ok")
-            and (item.get("avaliacao") or {}).get("tecnica_suficiente_para_consumo")
-            and float((item.get("avaliacao") or {}).get("modelo_score") or 0) >= 30
-            and item.get("sugestao")
-            for item in candidatos
-        )
-        resgate_acionado = not principal_defensavel
-        if resgate_acionado:
-            _avaliar_lote(registros_resgate)
+                com_sugestao_consumo += 1
+            if avaliacao["score"] < 35 and not avaliacao.get("bloqueios_flags"):
+                descartados_score_baixo += 1
+                continue
+            if not sugestao:
+                continue
+            if not avaliacao.get("ok_flags"):
+                candidatos_bloqueados += 1
+            candidatos.append(item)
 
         def _ordem_candidato(c: dict[str, Any]) -> tuple[Any, ...]:
             avaliacao = c.get("avaliacao") or {}
@@ -2597,14 +2084,11 @@ class PbevService:
 
         debug["filtros"].update({
             "registros_marca": len(registros_marca),
-            "registros_avaliados_marca": registros_avaliados,
+            "registros_avaliados_marca": len(registros_marca),
             "com_sugestao_consumo": com_sugestao_consumo,
             "sem_sugestao_consumo": sem_sugestao_consumo,
             "descartados_score_baixo": descartados_score_baixo,
             "descartados_prefiltro_identidade": descartados_prefiltro_identidade,
-            "candidatos_busca_principal": candidatos_busca_principal,
-            "candidatos_busca_resgate": candidatos_busca_resgate,
-            "busca_resgate_acionada": resgate_acionado,
             "candidatos_considerados": len(candidatos),
             "candidatos_utilizaveis": len(utilizaveis),
             "candidatos_bloqueados_flags": candidatos_bloqueados,
@@ -2638,10 +2122,6 @@ class PbevService:
                 "motivo_decisao": [],
                 "motivo_nao_preenchimento": [motivo],
                 "candidatos_equivalentes": [],
-                "requer_confirmacao": False,
-                "opcoes_confirmacao": [],
-                "confirmado_usuario": False,
-                "motivo_confirmacao": "",
                 "diagnostico": {
                     "candidatos_bloqueados": candidatos_bloqueados,
                     "candidatos_bloqueados_relevantes": len(bloqueados_relevantes),
@@ -2827,21 +2307,9 @@ class PbevService:
                 "acabamento_exato": avaliacao_top.get("acabamento_exato"),
                 "acabamento_parcial": avaliacao_top.get("acabamento_parcial"),
                 "acabamento_divergente": avaliacao_top.get("acabamento_divergente"),
-                "identidade_fipe": avaliacao_top.get("identidade_fipe"),
-                "identidade_pbev": avaliacao_top.get("identidade_pbev"),
-                "compatibilidade_identidade": avaliacao_top.get("compatibilidade_identidade"),
-                "bloqueios_duros_identidade": avaliacao_top.get("bloqueios_duros_identidade") or [],
             },
             "valor_autopreenchido": autopreencher,
-            "requer_confirmacao": False,
-            "opcoes_confirmacao": [],
-            "confirmado_usuario": False,
-            "motivo_confirmacao": "",
         }
-        opcoes_confirmacao = self._montar_opcoes_confirmacao(
-            utilizaveis, top, nivel_match=nivel
-        )
         resposta["debug"] = debug
-        resposta = self._aplicar_confirmacao_usuario(resposta, consulta, opcoes_confirmacao)
         resposta["diagnostico_terminal"] = self._montar_terminal_debug(debug, resposta)
         return resposta

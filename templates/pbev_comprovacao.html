@@ -82,7 +82,7 @@
       <p class="pbev-proof-note">Os valores de consumo são referências oficiais obtidas a partir da base PBEV/Inmetro saneada da CurVE. O consumo real pode variar conforme uso, trânsito, relevo, carga, manutenção, temperatura e estilo de condução.</p>
 
       <details id="pbevDebugBox" class="pbev-proof-debug" style="display:none">
-        <summary>Auditoria técnica do matching</summary>
+        <summary>Auditoria técnica provisória do matching</summary>
         <pre id="pbevDebugTerminal"></pre>
       </details>
     </div>
@@ -161,9 +161,7 @@
     addKv(regRoot, 'Direção assistida', cand.direcao_assistida);
     addKv(regRoot, 'CO₂ gasolina/diesel', cand.co2_fossil_gasolina_diesel_g_km ? cand.co2_fossil_gasolina_diesel_g_km + ' g/km' : '');
     addKv(regRoot, 'CO₂ etanol', cand.co2_fossil_etanol_g_km ? cand.co2_fossil_etanol_g_km + ' g/km' : '');
-    addKv(regRoot, 'Critério de consumo', sug.criterio_campo_unico || d.criterio_consumo || '-');
-    addKv(regRoot, 'Critério de matching', d.criterio_match || '-');
-    if (d.confirmado_usuario === true) addKv(regRoot, 'Confirmação', 'Configuração selecionada pelo usuário');
+    addKv(regRoot, 'Critério aplicado', sug.criterio_campo_unico || d.criterio_consumo || '-');
     if (sug.criterio_conservador_descricao) addKv(regRoot, 'Critério conservador', sug.criterio_conservador_descricao);
     if (Array.isArray(sug.versoes_pbev_consideradas) && sug.versoes_pbev_consideradas.length) {
       addKv(regRoot, 'Versões PBEV consideradas', sug.versoes_pbev_consideradas.join(' | '));
