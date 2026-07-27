@@ -1,0 +1,146 @@
+{
+  "pacote": "V46 pacote de teste 02",
+  "base": "V46 pacote de teste 01 sobre V44 homologada",
+  "gerado_em_utc": "2026-07-27T21:37:51.935674+00:00",
+  "python": "3.13.5",
+  "validacoes": {
+    "compileall": {
+      "ok": true
+    },
+    "pytest": {
+      "aprovados": 126,
+      "ignorados": 5,
+      "subtestes_aprovados": 54,
+      "observacao": "Os 5 testes ignorados dependem de Flask, indisponível no ambiente de montagem."
+    },
+    "regressoes_reais": {
+      "casos": 44,
+      "aprovados": 44,
+      "reprovados": 0,
+      "decisoes_motor_multivisao": 31,
+      "decisoes_fallback_v44": 13,
+      "latencia_ms": {
+        "primeira_consulta_frio": 3087.464,
+        "media_aquecida": 118.214,
+        "mediana_aquecida": 61.356,
+        "maxima_aquecida": 745.589
+      }
+    },
+    "jinja_parse": {
+      "templates": 15,
+      "ok": true
+    },
+    "node_check": {
+      "scripts_inline_simular": 3,
+      "scripts_estaticos": 7,
+      "ok": true
+    },
+    "chromium_headless": {
+      "ok": true,
+      "location_select": {
+        "uf": "GO",
+        "municipio": "Goiânia",
+        "valida": true,
+        "pbevButtons": 3,
+        "pbevModal": true
+      },
+      "location_geolocation_permitida": {
+        "uf": "GO",
+        "municipio": "Goiânia",
+        "valida": true
+      },
+      "location_geolocation_negada": {
+        "alerts": [
+          "Permita o acesso à localização no navegador para usar este recurso."
+        ]
+      },
+      "fipe_pendente": {
+        "fipeVisible": true,
+        "fipeText": "⚠Consultando valor FIPE…",
+        "priceReadonly": true,
+        "financeDisabled": true,
+        "consumptionReadonly": true,
+        "flexConsEtaReadonly": true,
+        "flexConsGasReadonly": true,
+        "pbevCount": 0,
+        "fipeCount": 1
+      },
+      "pbev_pendente": {
+        "fipeHidden": true,
+        "pbevVisible": true,
+        "pbevText": "⚠Consultando consumo no Inmetro…",
+        "priceReadonly": false,
+        "consumptionReadonly": true,
+        "flexConsEtaReadonly": true,
+        "flexConsGasReadonly": true,
+        "flexSliderDisabled": true,
+        "flexSaveDisabled": true,
+        "modalStatusVisible": true
+      },
+      "apos_pbev": {
+        "pbevHidden": true,
+        "consumptionReadonly": false,
+        "flexConsEtaReadonly": false,
+        "flexConsGasReadonly": false,
+        "modalStatusHidden": true
+      },
+      "cancelamento_resposta_antiga": {
+        "oldAborted": true,
+        "total": 3,
+        "visible": true
+      },
+      "resultado_selecao_nova": {
+        "price": "R$ 50.000,00",
+        "year": "2015",
+        "fipeHidden": true
+      },
+      "bloqueio_phev": {
+        "main": true,
+        "electric": true,
+        "fuel": true,
+        "slider": true,
+        "save": true,
+        "status": true,
+        "unlockedMain": true,
+        "unlockedElectric": true,
+        "unlockedFuel": true,
+        "statusHidden": true
+      },
+      "page_errors": [],
+      "console_reference_errors": [],
+      "observacao": "HTML renderizado por Jinja e executado no Chromium real com scripts locais incorporados e respostas externas controladas."
+    },
+    "flask_test_client": {
+      "executado": false,
+      "motivo": "Flask não está instalado no ambiente de montagem. app.py e rotas permaneceram byte a byte iguais ao pacote 01."
+    }
+  },
+  "arquivos_producao_alterados_nesta_rodada": [
+    {
+      "arquivo": "templates/simular.html",
+      "sha256_pacote_02": "285ff1214cad889c55d311725b6604db0b823bcf654e2e4275ba95bcfa8aa792",
+      "sha256_pacote_01": "4c9b4d37173dd7202a834fa3a52d42bf23342b7258bbcf772c0342d34d4e5834",
+      "alterado": true,
+      "motivo": "Indicadores de carregamento FIPE/PBEV, bloqueio temporário e cancelamento de respostas obsoletas."
+    }
+  ],
+  "arquivos_protegidos": {
+    "app.py": {
+      "sha256": "bfed8bac9316d89eac49740581324d331e86f3a667d9f47ca629477e61eb6e09",
+      "identico_pacote_01": true
+    },
+    "routes/pbev_routes.py": {
+      "sha256": "33cc7c06617c6de43d9d162c60328d39b3e4a7690885c370d038dcff3299d617",
+      "identico_pacote_01": true
+    },
+    "templates/consulta_fipe.html": {
+      "sha256": "d02816e3c6d97fa4e6b9f2efeea81f0374d01fa4543a12abef76d19a2da50ed2",
+      "identico_pacote_01": true
+    },
+    "services/pbev_service.py": {
+      "sha256": "e9e9d08b81569d03da9306d639540eb191591fd029c24f0547a658e3662e027e",
+      "identico_pacote_01": true
+    }
+  },
+  "conclusao": "Candidato de teste 02 aprovado nas validações disponíveis; homologação final deve ocorrer no Render."
+}

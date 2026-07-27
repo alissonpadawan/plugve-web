@@ -1,0 +1,55 @@
+{
+  "pacote": "V46 pacote de teste 02",
+  "base_comparacao": "V46 pacote de teste 01",
+  "arquivos_diferentes": [
+    {
+      "arquivo": "docs/V46_PACOTE_TESTE_02.md",
+      "status": "adicionado",
+      "sha256_pacote_02": "d6cb3134fe5f9c86d558062bd1654190d89c29e3ec932733302ee0ec987b9f54",
+      "bytes_pacote_02": 4360
+    },
+    {
+      "arquivo": "docs/V46_RELATORIO_REGRESSAO_PACOTE_TESTE_02.json",
+      "status": "adicionado",
+      "sha256_pacote_02": "808024772bd0d0e442a7e26f337a932a34774db575ead80ba9b2d344f8d61523",
+      "bytes_pacote_02": 31453
+    },
+    {
+      "arquivo": "docs/V46_VALIDACAO_PACOTE_TESTE_02.json",
+      "status": "adicionado",
+      "sha256_pacote_02": "83dbf0045c819436420e99127d3f9a4de6b6358f7eb535a71875f3c359c79685",
+      "bytes_pacote_02": 4572
+    },
+    {
+      "arquivo": "scripts/auditar_matching_v46.py",
+      "status": "alterado",
+      "sha256_pacote_02": "6731d2443f4e9604e9e857c9201056a981e2716868a6b3b354641c0eaad461de",
+      "bytes_pacote_02": 6089,
+      "sha256_pacote_01": "57279f1a15d613b49c93fd74f94c6ecf69195a54b2a7c52477a0783906204818",
+      "bytes_pacote_01": 6089
+    },
+    {
+      "arquivo": "templates/simular.html",
+      "status": "alterado",
+      "sha256_pacote_02": "285ff1214cad889c55d311725b6604db0b823bcf654e2e4275ba95bcfa8aa792",
+      "bytes_pacote_02": 425964,
+      "sha256_pacote_01": "4c9b4d37173dd7202a834fa3a52d42bf23342b7258bbcf772c0342d34d4e5834",
+      "bytes_pacote_01": 411591
+    },
+    {
+      "arquivo": "tests/test_pbev_matching_v46.py",
+      "status": "alterado",
+      "sha256_pacote_02": "1cbbb41eef0bfb2f5c7d72d4af3b6f3b934393dd3a64c9788752eca87f23a337",
+      "bytes_pacote_02": 7089,
+      "sha256_pacote_01": "99f81c52af3f1a83cedc2a14fe1389a7715f32dd110b0779bf1a0ea6a5e5ea5d",
+      "bytes_pacote_01": 6378
+    },
+    {
+      "arquivo": "tests/test_v46_02_async_loading.py",
+      "status": "adicionado",
+      "sha256_pacote_02": "f32cdb884dcf9f37facc1ae4620a6de7fefaed3533b9ed49336cbf4e08c1e7b7",
+      "bytes_pacote_02": 2037
+    }
+  ],
+  "quantidade": 7
+}

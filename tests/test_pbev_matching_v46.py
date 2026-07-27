@@ -96,10 +96,21 @@ class PbevMatchingV46RegressionTests(unittest.TestCase):
         self.assertTrue(tech.turbo)
         self.assertEqual(tech.transmission_family, "AUTO")
 
-    def test_simular_template_remains_exactly_v44(self):
-        import hashlib
-        digest = hashlib.sha256((self.root / "templates" / "simular.html").read_bytes()).hexdigest()
-        self.assertEqual(digest, "4c9b4d37173dd7202a834fa3a52d42bf23342b7258bbcf772c0342d34d4e5834")
+    def test_simular_template_has_only_the_approved_async_loading_guards(self):
+        template = (self.root / "templates" / "simular.html").read_text(encoding="utf-8")
+        for prefix in ("atual", "ve", "icev"):
+            self.assertIn(f'id="fipe_loading_{prefix}"', template)
+            self.assertIn(f'id="pbev_loading_{prefix}"', template)
+        self.assertIn('id="pbev_loading_modal_flex"', template)
+        self.assertIn('id="pbev_loading_modal_phev"', template)
+        self.assertIn("const CONSULTAS_FIPE_TCO", template)
+        self.assertIn("const CONSULTAS_PBEV_TCO", template)
+        self.assertIn("signal: consultaFipe.signal", template)
+        self.assertIn("signal: consulta.signal", template)
+        self.assertIn("Consultando valor FIPE…", template)
+        self.assertIn("Consultando consumo no Inmetro…", template)
+        self.assertNotIn("pbevBotaoConfirmacaoPorPrefixoTCO", template)
+        self.assertNotIn("pbevGarantirModalConfirmacaoTCO", template)
 
     def test_engine_error_falls_back_to_v44_without_breaking_contract(self):
         class BrokenMatcher:

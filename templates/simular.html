@@ -633,6 +633,18 @@
     .plugve-pbev-field-input{padding-right:2.55rem}
     .plugve-pbev-status{display:flex;align-items:center;gap:.35rem;margin-top:.34rem;line-height:1}
     .plugve-pbev-status.hidden{display:none!important}
+    .plugve-async-status{display:flex;align-items:center;gap:.48rem;width:fit-content;max-width:100%;margin:.42rem 0 .52rem;padding:.38rem .62rem;border:1px solid #bfdbfe;border-radius:.7rem;background:#eff6ff;color:#1e3a8a;font-size:.73rem;font-weight:800;line-height:1.25;box-shadow:0 4px 12px rgba(15,23,42,.04)}
+    .plugve-async-status.hidden{display:none!important}
+    .plugve-async-status--pbev{border-color:#a7f3d0;background:#ecfdf5;color:#065f46}
+    .plugve-async-status.is-warning{border-color:#fde68a;background:#fffbeb;color:#92400e}
+    .plugve-async-spinner{display:inline-block;flex:0 0 auto;width:1rem;height:1rem;border:.16rem solid currentColor;border-right-color:transparent;border-radius:999px;animation:plugveAsyncSpin .72s linear infinite}
+    .plugve-async-status.is-warning .plugve-async-spinner{display:none}
+    .plugve-async-status-icon{display:none;flex:0 0 auto;font-size:.9rem;line-height:1}
+    .plugve-async-status.is-warning .plugve-async-status-icon{display:inline-block}
+    .plugve-async-field-loading{background:#f8fafc!important;color:#64748b!important;cursor:wait!important}
+    .plugve-async-control-loading{cursor:wait!important;opacity:.72}
+    @keyframes plugveAsyncSpin{to{transform:rotate(360deg)}}
+    @media (prefers-reduced-motion:reduce){.plugve-async-spinner{animation-duration:1.6s}}
     .plugve-pbev-field-wrap>.plugve-pbev-status{position:absolute;right:.45rem;top:1.95rem;margin-top:0;z-index:2}
     .plugve-pbev-select-slot{display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin-bottom:.5rem}
     .plugve-pbev-select-slot .plugve-pbev-status{margin-top:0;flex-shrink:0}
@@ -1094,6 +1106,7 @@
 
                 <div>
                   <label class="block text-sm font-medium">Preço atual do veículo (R$)</label>
+                  <div id="fipe_loading_atual" class="plugve-async-status hidden" role="status" aria-live="polite" aria-atomic="true"></div>
                   <div class="plugve-price-finance-field">
                     <div class="plugve-price-row">
                       <input type="text" name="preco_atual" id="preco_atual" class="w-full plugve-price-input" placeholder="ex: 65000">
@@ -1117,6 +1130,7 @@
 
                 <div class="plugve-pbev-field-wrap">
                   <label class="block text-sm font-medium">Consumo atual (km/L)</label>
+                  <div id="pbev_loading_atual" class="plugve-async-status plugve-async-status--pbev hidden" role="status" aria-live="polite" aria-atomic="true"></div>
                   <input type="text" name="consumo_atual" id="consumo_atual" class="mt-1 p-2 border rounded w-full plugve-pbev-field-input" placeholder="ex: 12,5">
                   <p id="consumo_atual_resumo_flex" class="plugve-consumo-resumo hidden"></p>
                   <p id="pbev_status_atual" class="plugve-pbev-status hidden"></p>
@@ -1205,6 +1219,7 @@
 
               <div class="plugve-align-pair" data-plugve-align="preco">
                 <label class="block text-sm font-medium">Preço do VE</label>
+                  <div id="fipe_loading_ve" class="plugve-async-status hidden" role="status" aria-live="polite" aria-atomic="true"></div>
                 <div class="plugve-price-finance-field">
                   <div class="plugve-price-row">
                     <input type="text" name="preco_ve" id="preco_ve" class="w-full plugve-price-input" placeholder="ex: 150000">
@@ -1228,6 +1243,7 @@
 
               <div class="plugve-pbev-field-wrap plugve-align-pair" data-plugve-align="consumo">
                 <label class="block text-sm font-medium">Consumo VE (kWh/km)</label>
+                  <div id="pbev_loading_ve" class="plugve-async-status plugve-async-status--pbev hidden" role="status" aria-live="polite" aria-atomic="true"></div>
                 <input type="text" name="consumo_ve" id="consumo_ve" class="mt-1 p-2 border rounded w-full plugve-pbev-field-input" placeholder="ex: 0,15">
                 <p id="consumo_ve_resumo_phev" class="plugve-phev-resumo hidden"></p>
                 <p id="pbev_status_ve" class="plugve-pbev-status hidden"></p>
@@ -1314,6 +1330,7 @@
 
               <div class="plugve-align-pair" data-plugve-align="preco">
                 <label class="block text-sm font-medium">Preço do ICEV</label>
+                  <div id="fipe_loading_icev" class="plugve-async-status hidden" role="status" aria-live="polite" aria-atomic="true"></div>
                 <div class="plugve-price-finance-field">
                   <div class="plugve-price-row">
                     <input type="text" name="preco_icev" id="preco_icev" class="w-full plugve-price-input" placeholder="ex: 85000">
@@ -1337,6 +1354,7 @@
 
               <div class="plugve-pbev-field-wrap plugve-align-pair" data-plugve-align="consumo">
                 <label class="block text-sm font-medium">Consumo ICEV (km/L)</label>
+                  <div id="pbev_loading_icev" class="plugve-async-status plugve-async-status--pbev hidden" role="status" aria-live="polite" aria-atomic="true"></div>
                 <input type="text" name="consumo_icev" id="consumo_icev" class="mt-1 p-2 border rounded w-full plugve-pbev-field-input" placeholder="ex: 13,5">
                 <p id="consumo_icev_resumo_flex" class="plugve-consumo-resumo hidden"></p>
                 <p id="pbev_status_icev" class="plugve-pbev-status hidden"></p>
@@ -1617,6 +1635,8 @@
               </div>
             </div>
 
+            <div id="pbev_loading_modal_flex" class="plugve-async-status plugve-async-status--pbev hidden" role="status" aria-live="polite" aria-atomic="true"></div>
+
             <div class="plugve-fuel-prices">
               <div id="fuel_box_etanol" class="plugve-fuel-pill">
                 <span>🍃 Etanol</span>
@@ -1701,6 +1721,8 @@
                 </div>
               </div>
             </div>
+
+            <div id="pbev_loading_modal_phev" class="plugve-async-status plugve-async-status--pbev hidden" role="status" aria-live="polite" aria-atomic="true"></div>
 
             <div class="plugve-fuel-prices">
               <div id="phev_box_eletrico" class="plugve-fuel-pill">
@@ -3521,6 +3543,10 @@
 
     function limparEstadoVeiculoSelecionadoTCO(prefixo) {
       fecharTooltipsAneelPlugVE();
+      if (typeof CONSULTAS_FIPE_TCO !== "undefined") cancelarConsultaControladaTCO(CONSULTAS_FIPE_TCO, prefixo);
+      if (typeof CONSULTAS_PBEV_TCO !== "undefined") cancelarConsultaControladaTCO(CONSULTAS_PBEV_TCO, prefixo);
+      if (typeof definirEstadoConsultaFipeTCO === "function") definirEstadoConsultaFipeTCO(prefixo, false);
+      if (typeof definirEstadoConsultaPbevTCO === "function") definirEstadoConsultaPbevTCO(prefixo, false);
       const ids = prefixo === "ve"
         ? ["modelo_ve", "preco_ve", "ano_modelo_ve", "combustivel_ve", "tipo_veiculo_ve", "ipva_ve_input", "seguro_ve", "depreciacao_ve"]
         : prefixo === "icev"
@@ -3939,6 +3965,202 @@
       return document.getElementById(`preco_${prefixo}`);
     }
 
+    const CONSULTAS_FIPE_TCO = {
+      atual: { sequencia: 0, controller: null, timer: null },
+      ve: { sequencia: 0, controller: null, timer: null },
+      icev: { sequencia: 0, controller: null, timer: null },
+    };
+    const CONSULTAS_PBEV_TCO = {
+      atual: { sequencia: 0, controller: null, timer: null },
+      ve: { sequencia: 0, controller: null, timer: null },
+      icev: { sequencia: 0, controller: null, timer: null },
+    };
+    const FIPE_CARREGANDO_TCO = { atual: false, ve: false, icev: false };
+    const PBEV_CARREGANDO_TCO = { atual: false, ve: false, icev: false };
+
+    function iniciarConsultaControladaTCO(registro, prefixo, timeoutMs) {
+      const estado = registro[prefixo];
+      if (!estado) return null;
+      estado.sequencia += 1;
+      if (estado.timer) clearTimeout(estado.timer);
+      if (estado.controller) {
+        try { estado.controller.abort(); } catch (_) {}
+      }
+      const controller = new AbortController();
+      const sequencia = estado.sequencia;
+      estado.controller = controller;
+      estado.timer = setTimeout(() => {
+        if (estado.sequencia === sequencia && estado.controller === controller) {
+          try { controller.abort(); } catch (_) {}
+        }
+      }, timeoutMs);
+      return { sequencia, controller, signal: controller.signal };
+    }
+
+    function consultaControladaAtualTCO(registro, prefixo, consulta) {
+      const estado = registro[prefixo];
+      return !!(estado && consulta && estado.sequencia === consulta.sequencia && estado.controller === consulta.controller);
+    }
+
+    function finalizarConsultaControladaTCO(registro, prefixo, consulta) {
+      const estado = registro[prefixo];
+      if (!consultaControladaAtualTCO(registro, prefixo, consulta)) return false;
+      if (estado.timer) clearTimeout(estado.timer);
+      estado.timer = null;
+      estado.controller = null;
+      return true;
+    }
+
+    function cancelarConsultaControladaTCO(registro, prefixo) {
+      const estado = registro[prefixo];
+      if (!estado) return;
+      estado.sequencia += 1;
+      if (estado.timer) clearTimeout(estado.timer);
+      estado.timer = null;
+      if (estado.controller) {
+        try { estado.controller.abort(); } catch (_) {}
+      }
+      estado.controller = null;
+    }
+
+    function renderizarStatusAssincronoTCO(id, texto = "", tipo = "loading") {
+      const status = document.getElementById(id);
+      if (!status) return;
+      status.classList.remove("is-warning");
+      if (!texto) {
+        status.replaceChildren();
+        status.classList.add("hidden");
+        return;
+      }
+      const spinner = document.createElement("span");
+      spinner.className = "plugve-async-spinner";
+      spinner.setAttribute("aria-hidden", "true");
+      const icone = document.createElement("span");
+      icone.className = "plugve-async-status-icon";
+      icone.textContent = "⚠";
+      icone.setAttribute("aria-hidden", "true");
+      const rotulo = document.createElement("span");
+      rotulo.textContent = texto;
+      status.replaceChildren(spinner, icone, rotulo);
+      status.classList.toggle("is-warning", tipo === "warning");
+      status.classList.remove("hidden");
+    }
+
+    function definirEstadoConsultaFipeTCO(prefixo, ativo) {
+      FIPE_CARREGANDO_TCO[prefixo] = !!ativo;
+      const preco = campoPrecoFipePorPrefixoTCO(prefixo);
+      const botaoFin = document.querySelector(`.btn_financiamento_tco[data-fin-prefix="${prefixo}"]`);
+      const box = document.getElementById(prefixo === "atual" ? "dados_carro_atual_box" : `dados_${prefixo}_box`);
+      if (preco) {
+        preco.readOnly = !!ativo;
+        preco.classList.toggle("plugve-async-field-loading", !!ativo);
+        preco.setAttribute("aria-busy", ativo ? "true" : "false");
+      }
+      if (botaoFin) {
+        botaoFin.disabled = !!ativo;
+        botaoFin.classList.toggle("plugve-async-control-loading", !!ativo);
+      }
+      if (box) box.setAttribute("aria-busy", ativo ? "true" : "false");
+      renderizarStatusAssincronoTCO(`fipe_loading_${prefixo}`, ativo ? "Consultando valor FIPE…" : "");
+      atualizarBloqueioCampoConsumoTCO(prefixo);
+      atualizarBloqueioPbevPerfisTCO();
+    }
+
+    function mostrarFalhaConsultaFipeTCO(prefixo, texto) {
+      definirEstadoConsultaFipeTCO(prefixo, false);
+      const preco = campoPrecoFipePorPrefixoTCO(prefixo);
+      if (preco) preco.placeholder = "Digite o preço manualmente";
+      renderizarStatusAssincronoTCO(`fipe_loading_${prefixo}`, texto, "warning");
+    }
+
+    function consultaVeiculoPendenteTCO(prefixo) {
+      return !!(FIPE_CARREGANDO_TCO[prefixo] || PBEV_CARREGANDO_TCO[prefixo]);
+    }
+
+    function atualizarBloqueioCampoConsumoTCO(prefixo) {
+      const bloqueado = consultaVeiculoPendenteTCO(prefixo);
+      const campo = pbevCampoConsumoPorPrefixoTCO(prefixo);
+      if (!campo) return;
+      campo.readOnly = bloqueado;
+      campo.classList.toggle("plugve-async-field-loading", bloqueado);
+      campo.setAttribute("aria-busy", bloqueado ? "true" : "false");
+    }
+
+    function reaplicarBloqueioPbevPerfisTCO() {
+      const combustaoCarregando = consultaVeiculoPendenteTCO("atual") || consultaVeiculoPendenteTCO("icev");
+      const phevCarregando = consultaVeiculoPendenteTCO("ve");
+      ["fuel_modal_consumo_etanol", "fuel_modal_consumo_gasolina"].forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        if (combustaoCarregando) el.readOnly = true;
+        el.classList.toggle("plugve-async-field-loading", combustaoCarregando);
+        el.setAttribute("aria-busy", combustaoCarregando ? "true" : "false");
+      });
+      const fuelSlider = document.getElementById("fuel_mix_slider");
+      const fuelSalvar = document.getElementById("btn_salvar_combustivel_tco");
+      if (combustaoCarregando) {
+        if (fuelSlider) fuelSlider.disabled = true;
+        if (fuelSalvar) {
+          fuelSalvar.disabled = true;
+          fuelSalvar.classList.add("plugve-fuel-save-disabled", "plugve-async-control-loading");
+        }
+      }
+      ["phev_modal_consumo_eletrico", "phev_modal_consumo_combustivel"].forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        if (phevCarregando) el.readOnly = true;
+        el.classList.toggle("plugve-async-field-loading", phevCarregando);
+        el.setAttribute("aria-busy", phevCarregando ? "true" : "false");
+      });
+      const phevSlider = document.getElementById("phev_mix_slider");
+      const phevSalvar = document.getElementById("btn_salvar_phev_tco");
+      if (phevCarregando) {
+        if (phevSlider) phevSlider.disabled = true;
+        if (phevSalvar) {
+          phevSalvar.disabled = true;
+          phevSalvar.classList.add("plugve-phev-save-disabled", "plugve-async-control-loading");
+        }
+      }
+    }
+
+    function atualizarBloqueioPbevPerfisTCO() {
+      const combustaoCarregando = consultaVeiculoPendenteTCO("atual") || consultaVeiculoPendenteTCO("icev");
+      const phevCarregando = consultaVeiculoPendenteTCO("ve");
+      if (!combustaoCarregando) {
+        ["fuel_modal_consumo_etanol", "fuel_modal_consumo_gasolina"].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) { el.readOnly = false; el.classList.remove("plugve-async-field-loading"); el.setAttribute("aria-busy", "false"); }
+        });
+        document.getElementById("btn_salvar_combustivel_tco")?.classList.remove("plugve-async-control-loading");
+        if (typeof atualizarEstadoModalCombustivelTCO === "function") atualizarEstadoModalCombustivelTCO();
+      }
+      if (!phevCarregando) {
+        ["phev_modal_consumo_eletrico", "phev_modal_consumo_combustivel"].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) { el.readOnly = false; el.classList.remove("plugve-async-field-loading"); el.setAttribute("aria-busy", "false"); }
+        });
+        document.getElementById("btn_salvar_phev_tco")?.classList.remove("plugve-async-control-loading");
+        if (typeof atualizarEstadoModalPhevTCO === "function") atualizarEstadoModalPhevTCO();
+      }
+      const combustaoPbevCarregando = PBEV_CARREGANDO_TCO.atual || PBEV_CARREGANDO_TCO.icev;
+      const phevPbevCarregando = PBEV_CARREGANDO_TCO.ve;
+      renderizarStatusAssincronoTCO("pbev_loading_modal_flex", combustaoPbevCarregando ? "Consultando consumo no Inmetro…" : "");
+      renderizarStatusAssincronoTCO("pbev_loading_modal_phev", phevPbevCarregando ? "Consultando consumo no Inmetro…" : "");
+      reaplicarBloqueioPbevPerfisTCO();
+    }
+
+    function definirEstadoConsultaPbevTCO(prefixo, ativo) {
+      PBEV_CARREGANDO_TCO[prefixo] = !!ativo;
+      atualizarBloqueioCampoConsumoTCO(prefixo);
+      renderizarStatusAssincronoTCO(`pbev_loading_${prefixo}`, ativo ? "Consultando consumo no Inmetro…" : "");
+      atualizarBloqueioPbevPerfisTCO();
+    }
+
+    function mostrarFalhaConsultaPbevTCO(prefixo, texto) {
+      definirEstadoConsultaPbevTCO(prefixo, false);
+      renderizarStatusAssincronoTCO(`pbev_loading_${prefixo}`, texto, "warning");
+    }
+
     function aplicarSelecaoFipeRapidaTCO(prefixo) {
       const marcaSelect = document.getElementById(`${prefixo}_marca`);
       const modeloSelect = document.getElementById(`${prefixo}_modelo`);
@@ -4279,6 +4501,7 @@
     }
 
     function pbevLimparEstadoConsumoTCO(prefixo) {
+      renderizarStatusAssincronoTCO(`pbev_loading_${prefixo}`, "");
       const campo = pbevCampoConsumoPorPrefixoTCO(prefixo);
       if (campo) {
         campo.classList.remove("plugve-consumo-pbev");
@@ -4476,26 +4699,41 @@
       const campo = pbevCampoConsumoPorPrefixoTCO(prefixo);
       if (campo?.dataset?.pbevEditadoUsuario === "1") return;
       const payload = { ...(contexto || {}), prefixo };
+      const consulta = iniciarConsultaControladaTCO(CONSULTAS_PBEV_TCO, prefixo, 30000);
+      definirEstadoConsultaPbevTCO(prefixo, true);
+      let falha = "";
       try {
         const resp = await fetch("/api/pbev/sugestao_consumo", {
           method: "POST",
           headers: { "Content-Type": "application/json", Accept: "application/json" },
           body: JSON.stringify(payload),
+          signal: consulta.signal,
         });
         const dados = await resp.json();
+        if (!consultaControladaAtualTCO(CONSULTAS_PBEV_TCO, prefixo, consulta) || !pbevSelecaoAindaAtualTCO(prefixo, contexto)) return;
         pbevAtualizarBotaoDebugTCO(prefixo, dados);
         if (!resp.ok) throw new Error(dados?.erro || "Erro ao consultar PBEV.");
         pbevAplicarSugestaoConsumoTCO(prefixo, dados, contexto);
       } catch (e) {
+        if (!consultaControladaAtualTCO(CONSULTAS_PBEV_TCO, prefixo, consulta)) return;
+        const expirou = e?.name === "AbortError";
+        falha = expirou
+          ? "A consulta ao Inmetro demorou demais. Digite o consumo manualmente."
+          : "Consulta Inmetro indisponível. Digite o consumo manualmente.";
         console.warn("Sugestão PBEV indisponível; consumo manual mantido.", e);
         pbevAtualizarBotaoDebugTCO(prefixo, {
           encontrou: false,
-          nivel_match: "erro",
+          nivel_match: expirou ? "timeout" : "erro",
           score: 0,
           autopreencher: false,
-          motivo: e?.message || "Erro ao consultar PBEV.",
-          diagnostico_terminal: `=== DIAGNÓSTICO PBEV / INMETRO ===\nErro ao consultar a API PBEV.\n\nPrefixo: ${prefixo}\nMotivo: ${e?.message || e}`
+          motivo: expirou ? "Tempo limite da consulta PBEV excedido." : (e?.message || "Erro ao consultar PBEV."),
+          diagnostico_terminal: `=== DIAGNÓSTICO PBEV / INMETRO ===\nErro ao consultar a API PBEV.\n\nPrefixo: ${prefixo}\nMotivo: ${expirou ? "tempo limite excedido" : (e?.message || e)}`
         });
+      } finally {
+        if (finalizarConsultaControladaTCO(CONSULTAS_PBEV_TCO, prefixo, consulta)) {
+          if (falha) mostrarFalhaConsultaPbevTCO(prefixo, falha);
+          else definirEstadoConsultaPbevTCO(prefixo, false);
+        }
       }
     }
 
@@ -4537,11 +4775,15 @@
       if (selecaoRapida?.bloqueado) return;
 
       const precoCampo = campoPrecoFipePorPrefixoTCO(prefixo);
+      const consultaFipe = iniciarConsultaControladaTCO(CONSULTAS_FIPE_TCO, prefixo, 45000);
+      definirEstadoConsultaFipeTCO(prefixo, true);
+      let falhaFipe = "";
 
       try {
         const params = new URLSearchParams({ codigo_marca: marca, codigo_modelo: modelo, codigo_ano: ano });
-        const resp = await fetch(`/api/fipe/preco?${params.toString()}`, { headers: { Accept: "application/json" } });
+        const resp = await fetch(`/api/fipe/preco?${params.toString()}`, { headers: { Accept: "application/json" }, signal: consultaFipe.signal });
         const data = await resp.json();
+        if (!consultaControladaAtualTCO(CONSULTAS_FIPE_TCO, prefixo, consultaFipe)) return;
         if (!resp.ok) throw new Error(data?.erro || "Erro ao consultar FIPE.");
 
         if (marcaSelect.value !== marca || modeloSelect.value !== modelo || anoSelect.value !== ano) return;
@@ -4584,6 +4826,9 @@
           document.getElementById("combustivel_atual").value = combustivelStr;
         }
 
+        finalizarConsultaControladaTCO(CONSULTAS_FIPE_TCO, prefixo, consultaFipe);
+        definirEstadoConsultaFipeTCO(prefixo, false);
+
         atualizarSeguroAutomatico(prefixo);
         atualizarIpva(prefixo);
         atualizarInterfaceCombustivelPorVeiculo(prefixo, true);
@@ -4611,14 +4856,23 @@
           console.error("Erro ao consultar depreciação em segundo plano:", e);
         });
       } catch (e) {
+        if (!consultaControladaAtualTCO(CONSULTAS_FIPE_TCO, prefixo, consultaFipe)) return;
+        const expirou = e?.name === "AbortError";
+        falhaFipe = expirou
+          ? "A consulta FIPE demorou demais. Você pode informar o preço manualmente."
+          : "Não foi possível consultar a FIPE. Informe o preço manualmente.";
         if (precoCampo) {
           delete precoCampo.dataset.fipePrecoPendente;
           precoCampo.value = "";
-          precoCampo.placeholder = "";
         }
         if (typeof window.atualizarDetalhesProgressivosPlugVE === "function") window.atualizarDetalhesProgressivosPlugVE();
         console.error("Erro ao buscar preço FIPE:", e);
-        alert(e?.message || "Erro ao consultar FIPE.");
+        if (!expirou) alert(e?.message || "Erro ao consultar FIPE.");
+      } finally {
+        if (finalizarConsultaControladaTCO(CONSULTAS_FIPE_TCO, prefixo, consultaFipe)) {
+          if (falhaFipe) mostrarFalhaConsultaFipeTCO(prefixo, falhaFipe);
+          else definirEstadoConsultaFipeTCO(prefixo, false);
+        }
       }
     }
 
@@ -5333,6 +5587,7 @@
         btnSalvar.disabled = !valido;
         btnSalvar.classList.toggle("plugve-fuel-save-disabled", !valido);
       }
+      if (typeof reaplicarBloqueioPbevPerfisTCO === "function") reaplicarBloqueioPbevPerfisTCO();
     }
 
     function copiarModalParaHiddenCombustivelTCO() {
@@ -5856,6 +6111,7 @@
         btnSalvar.disabled = !valido;
         btnSalvar.classList.toggle("plugve-phev-save-disabled", !valido);
       }
+      if (typeof reaplicarBloqueioPbevPerfisTCO === "function") reaplicarBloqueioPbevPerfisTCO();
     }
 
     function copiarModalParaHiddenPhevTCO() {

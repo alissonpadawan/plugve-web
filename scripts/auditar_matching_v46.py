@@ -73,7 +73,7 @@ def main() -> int:
     parser.add_argument(
         "--output",
         type=Path,
-        default=ROOT / "docs" / "V46_RELATORIO_REGRESSAO_PACOTE_TESTE_01.json",
+        default=ROOT / "docs" / "V46_RELATORIO_REGRESSAO_PACOTE_TESTE_02.json",
     )
     args = parser.parse_args()
 
@@ -119,7 +119,7 @@ def main() -> int:
     warm = durations[1:] if len(durations) > 1 else durations
     report = {
         "gerado_em_utc": datetime.now(timezone.utc).isoformat(),
-        "pacote": "V46 pacote de teste 01",
+        "pacote": "V46 pacote de teste 02",
         "base": "V44 homologada",
         "casos": len(rows),
         "aprovados": passed,
