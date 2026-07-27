@@ -66,6 +66,14 @@
   .plus-metric strong{display:block;color:#10202b;font-size:1.02rem;line-height:1.08;font-weight:950;letter-spacing:-.015em}
   .pbev-empty,.revenda-empty{border:1px dashed #cbd5e1;border-radius:18px;background:#f8fafc;color:#64748b;padding:16px;font-size:.88rem;font-weight:750;line-height:1.35}
   .pbev-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;align-items:center}
+  .pbev-confirm-list{display:grid;gap:9px;margin-top:12px}
+  .pbev-confirm-option{width:100%;text-align:left;border:1px solid #dbe7df;border-radius:15px;background:#fff;padding:12px 13px;cursor:pointer;transition:.15s ease}
+  .pbev-confirm-option:hover,.pbev-confirm-option:focus-visible{border-color:#22c55e;background:#f0fdf4;box-shadow:0 8px 20px rgba(15,118,72,.08);outline:none}
+  .pbev-confirm-option:disabled{opacity:.6;cursor:wait}
+  .pbev-confirm-option strong{display:block;color:#10202b;font-size:.9rem;font-weight:950;line-height:1.25}
+  .pbev-confirm-option span{display:block;color:#64748b;font-size:.76rem;font-weight:750;line-height:1.35;margin-top:3px}
+  .pbev-confirm-option em{display:block;color:#047857;font-size:.74rem;font-style:normal;font-weight:900;line-height:1.35;margin-top:4px}
+  .pbev-confirm-error{color:#b91c1c;font-size:.78rem;font-weight:900;line-height:1.35;margin-top:9px}
   .revenda-form{display:grid;grid-template-columns:minmax(120px,1fr) auto;gap:10px;align-items:end;margin-top:12px}
   .revenda-output{margin-top:14px;display:none}
   .revenda-output.show{display:block}
@@ -683,6 +691,78 @@
       renderPbevIndisponivel('PBEV indisponível no momento.', pbevAtual);
     }
   }
+  function resumoConsumoOpcaoPbev(sugestao){
+    const s = sugestao || {};
+    const partes = [];
+    const add = (rotulo, valor, unidade, casas=1) => {
+      if (isFilled(valor) && Number(valor) > 0) partes.push(`${rotulo}${rotulo ? ' ' : ''}${fmtValorUnidade(valor, unidade, casas)}`);
+    };
+    add('', s.consumo_eletrico_kwh_km, 'kWh/km', 3);
+    add('Gasolina', s.gasolina_cidade_km_l, 'km/L', 1);
+    add('Etanol', s.etanol_cidade_km_l, 'km/L', 1);
+    add('Diesel', s.diesel_cidade_km_l, 'km/L', 1);
+    if (!partes.length) add('', s.gasolina_diesel_cidade_km_l, 'km/L', 1);
+    return partes.join(' · ') || 'Consumo disponível na tabela PBEV';
+  }
+  function renderPbevConfirmacao(dados, veiculo){
+    const opcoes = Array.isArray(dados?.opcoes_confirmacao) ? dados.opcoes_confirmacao : [];
+    if (!opcoes.length) {
+      renderPbevIndisponivel('Não foi encontrada correspondência confiável na base Inmetro/PBEV para este veículo.', dados);
+      return;
+    }
+    const score = isFilled(dados?.score) && Number(dados.score) > 0 ? ` · ${dados.score}` : '';
+    setBadge(pbevBadge, 'confirmar versão', 'warn');
+    pbevSubtitle.textContent = `match médio${score}`;
+    pbevBody.className = '';
+    pbevBody.innerHTML = `
+      <div class="pbev-empty"><strong>Configurações compatíveis encontradas</strong>Confirme qual configuração corresponde ao veículo selecionado.</div>
+      <div class="pbev-confirm-list">
+        ${opcoes.map(op => {
+          const c = op?.candidato || {};
+          const titulo = [c.marca, c.modelo, c.versao].filter(Boolean).join(' ').replace(/\s+/g,' ').trim();
+          const tecnica = [c.ano_tabela ? `Tabela ${c.ano_tabela}` : '', c.motor, c.transmissao, c.tipo_propulsao].filter(Boolean).join(' · ');
+          return `<button type="button" class="pbev-confirm-option" data-pbev-confirmar="${esc(op.id_pbev)}">
+            <strong>${esc(titulo || 'Configuração PBEV')}</strong>
+            <span>${esc(tecnica)}</span>
+            <em>${esc(resumoConsumoOpcaoPbev(op.sugestoes_consumo))}</em>
+          </button>`;
+        }).join('')}
+      </div>
+      <div id="pbev_confirm_error" class="pbev-confirm-error" hidden></div>
+      <div class="pbev-actions">
+        ${dados?.diagnostico_terminal ? '<button type="button" id="btn_pbev_debug_inline" class="fipe-btn ghost">Ver análise</button>' : ''}
+      </div>`;
+    pbevBody.querySelectorAll('[data-pbev-confirmar]').forEach(btn => {
+      btn.addEventListener('click', () => confirmarOpcaoPbev(btn.dataset.pbevConfirmar || '', veiculo));
+    });
+    const btnDebug = document.getElementById('btn_pbev_debug_inline');
+    if (btnDebug) btnDebug.onclick = () => abrirDebugPbev(dados);
+  }
+  async function confirmarOpcaoPbev(idPbev, veiculo){
+    if (!idPbev || !pbevConsultaAtual || !veiculo || veiculoAtual?.id !== veiculo.id) return;
+    const botoes = Array.from(pbevBody.querySelectorAll('[data-pbev-confirmar]'));
+    const erro = document.getElementById('pbev_confirm_error');
+    botoes.forEach(btn => { btn.disabled = true; });
+    if (erro) { erro.hidden = true; erro.textContent = ''; }
+    try{
+      const resp = await fetch('/api/pbev/sugestao_consumo', {
+        method:'POST',
+        headers:{'Content-Type':'application/json','Accept':'application/json'},
+        body:JSON.stringify({...pbevConsultaAtual, confirmar_id_pbev:idPbev})
+      });
+      const dados = await resp.json().catch(() => ({}));
+      if (veiculoAtual?.id !== veiculo.id) return;
+      if (!resp.ok || dados?.confirmado_usuario !== true || !pbevConfiavel(dados)) {
+        throw new Error(dados?.motivo_confirmacao || dados?.erro || 'Não foi possível confirmar esta configuração.');
+      }
+      pbevAtual = dados;
+      renderPbev(dados, veiculo);
+    }catch(e){
+      if (erro) { erro.textContent = e?.message || 'Não foi possível confirmar esta configuração.'; erro.hidden = false; }
+    }finally{
+      botoes.forEach(btn => { btn.disabled = false; });
+    }
+  }
   function renderPbevIndisponivel(texto, dados){
     const nivel = dados?.nivel_match || 'sem_match';
     const score = isFilled(dados?.score) && Number(dados.score) > 0 ? ` · ${dados.score}` : '';
@@ -699,7 +779,11 @@
   }
   function renderPbev(dados, veiculo){
     if (!pbevConfiavel(dados)) {
-      renderPbevIndisponivel('Não foi encontrada correspondência confiável na base Inmetro/PBEV para este veículo.', dados);
+      if (dados?.requer_confirmacao === true && Array.isArray(dados?.opcoes_confirmacao) && dados.opcoes_confirmacao.length) {
+        renderPbevConfirmacao(dados, veiculo);
+      } else {
+        renderPbevIndisponivel('Não foi encontrada correspondência confiável na base Inmetro/PBEV para este veículo.', dados);
+      }
       return;
     }
     const c = dados.candidato || {};
@@ -767,6 +851,7 @@
       nivel_match: dados?.nivel_match || '',
       score: dados?.score ?? '',
       criterio_match: dados?.criterio_match || '',
+      confirmado_usuario: dados?.confirmado_usuario === true,
       ano_tabela_pbev: candidato.ano_tabela || dados?.ano_tabela_pbev || '',
       criterio_consumo: sugestao.criterio_campo_unico || '',
       fipe: {

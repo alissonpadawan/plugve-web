@@ -657,6 +657,26 @@
     .plugve-pbev-debug-btn{margin-top:.32rem;display:inline-flex;align-items:center;gap:.35rem;border:1px solid #cbd5e1;background:#f8fafc;color:#334155;border-radius:999px;padding:.28rem .58rem;font-size:.68rem;font-weight:900;line-height:1;cursor:pointer;box-shadow:0 4px 10px rgba(15,23,42,.06)}
     .plugve-pbev-debug-btn:hover{background:#eef2ff;border-color:#93c5fd;color:#1d4ed8}
     .plugve-pbev-debug-btn.hidden{display:none!important}
+    .plugve-pbev-confirm-btn{margin-top:.42rem;display:inline-flex;align-items:center;justify-content:center;gap:.38rem;border:1px solid #86efac;background:#f0fdf4;color:#047857;border-radius:999px;padding:.38rem .7rem;font-size:.72rem;font-weight:900;line-height:1.1;cursor:pointer;box-shadow:0 4px 12px rgba(15,118,72,.08);transition:background .15s ease,border-color .15s ease,transform .15s ease}
+    .plugve-pbev-confirm-btn:hover{background:#dcfce7;border-color:#22c55e;transform:translateY(-1px)}
+    .plugve-pbev-confirm-btn.hidden{display:none!important}
+    .plugve-pbev-confirm-modal{position:fixed;inset:0;z-index:10020;background:rgba(15,23,42,.62);display:flex;align-items:center;justify-content:center;padding:1rem}
+    .plugve-pbev-confirm-modal.hidden{display:none!important}
+    .plugve-pbev-confirm-panel{width:min(720px,96vw);max-height:88vh;background:#fff;border:1px solid #dbe7df;border-radius:1.1rem;box-shadow:0 30px 90px rgba(0,0,0,.28);overflow:hidden;display:flex;flex-direction:column;color:#0f172a}
+    .plugve-pbev-confirm-head{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;padding:1rem 1.05rem;border-bottom:1px solid #e2e8f0;background:#f8fafc}
+    .plugve-pbev-confirm-head strong{display:block;font-size:1rem;color:#0f172a}
+    .plugve-pbev-confirm-head small{display:block;color:#64748b;font-size:.76rem;font-weight:700;line-height:1.35;margin-top:.2rem}
+    .plugve-pbev-confirm-close{border:1px solid #cbd5e1;background:#fff;color:#334155;border-radius:.65rem;padding:.42rem .7rem;font-size:.75rem;font-weight:900;cursor:pointer;flex-shrink:0}
+    .plugve-pbev-confirm-body{padding:1rem;overflow:auto;background:#fff}
+    .plugve-pbev-confirm-intro{margin:0 0 .75rem;color:#475569;font-size:.82rem;font-weight:700;line-height:1.45}
+    .plugve-pbev-confirm-list{display:grid;gap:.62rem}
+    .plugve-pbev-confirm-option{width:100%;text-align:left;border:1px solid #dbe7df;background:#fff;border-radius:.9rem;padding:.78rem .85rem;cursor:pointer;transition:border-color .15s ease,background .15s ease,box-shadow .15s ease}
+    .plugve-pbev-confirm-option:hover,.plugve-pbev-confirm-option:focus-visible{border-color:#22c55e;background:#f0fdf4;box-shadow:0 8px 20px rgba(15,118,72,.08);outline:none}
+    .plugve-pbev-confirm-option:disabled{opacity:.6;cursor:wait}
+    .plugve-pbev-confirm-option strong{display:block;color:#0f172a;font-size:.86rem;font-weight:950;line-height:1.3}
+    .plugve-pbev-confirm-option span{display:block;color:#64748b;font-size:.75rem;font-weight:750;line-height:1.35;margin-top:.22rem}
+    .plugve-pbev-confirm-option em{display:block;color:#047857;font-size:.72rem;font-style:normal;font-weight:900;margin-top:.28rem}
+    .plugve-pbev-confirm-error{margin-top:.7rem;color:#b91c1c;font-size:.78rem;font-weight:850;line-height:1.35}
     .plugve-pbev-debug-modal{position:fixed;inset:0;z-index:9999;background:rgba(2,6,23,.68);display:flex;align-items:center;justify-content:center;padding:1rem}
     .plugve-pbev-debug-modal.hidden{display:none!important}
     .plugve-pbev-debug-panel{width:min(980px,96vw);max-height:88vh;background:#020617;color:#d1fae5;border:1px solid rgba(148,163,184,.45);border-radius:1rem;box-shadow:0 30px 90px rgba(0,0,0,.45);overflow:hidden;display:flex;flex-direction:column}
@@ -4008,11 +4028,174 @@
     const PBEV_DEBUG_TCO = { atual: null, ve: null, icev: null };
     const PBEV_INMETRO_LOGO_URL = "{{ url_for('static', filename='img/inmetro-logo.png') }}";
 
-    // O Motor V2 decide automaticamente. Não existe seleção manual de
-    // configuração PBEV; estas funções permanecem como no-op para limpar
-    // estados de chamadas assíncronas sem alterar o restante do fluxo.
-    function pbevCancelarConfirmacaoTCO(prefixo) {}
-    function pbevAtualizarConfirmacaoTCO(prefixo, dados, contexto) {}
+    const PBEV_CONFIRM_TCO = { atual: null, ve: null, icev: null };
+    let PBEV_CONFIRM_MODAL_PREFIXO = "";
+
+    function pbevEscaparHtmlTCO(valor) {
+      return String(valor ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function pbevBotaoConfirmacaoPorPrefixoTCO(prefixo) {
+      let btn = document.getElementById(`pbev_confirm_btn_${prefixo}`);
+      if (btn) return btn;
+      const campo = pbevCampoConsumoPorPrefixoTCO(prefixo);
+      const wrap = campo?.closest?.(".plugve-pbev-field-wrap");
+      if (!wrap) return null;
+      btn = document.createElement("button");
+      btn.type = "button";
+      btn.id = `pbev_confirm_btn_${prefixo}`;
+      btn.className = "plugve-pbev-confirm-btn hidden";
+      btn.textContent = "Confirmar versão Inmetro";
+      btn.addEventListener("click", function (ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        pbevAbrirModalConfirmacaoTCO(prefixo);
+      });
+      wrap.appendChild(btn);
+      return btn;
+    }
+
+    function pbevCancelarConfirmacaoTCO(prefixo) {
+      PBEV_CONFIRM_TCO[prefixo] = null;
+      const btn = pbevBotaoConfirmacaoPorPrefixoTCO(prefixo);
+      btn?.classList.add("hidden");
+      if (PBEV_CONFIRM_MODAL_PREFIXO === prefixo) pbevFecharModalConfirmacaoTCO();
+    }
+
+    function pbevAtualizarConfirmacaoTCO(prefixo, dados, contexto) {
+      const opcoes = Array.isArray(dados?.opcoes_confirmacao) ? dados.opcoes_confirmacao : [];
+      const deveConfirmar = dados?.requer_confirmacao === true && String(dados?.nivel_match || "") === "medio" && opcoes.length > 0;
+      const btn = pbevBotaoConfirmacaoPorPrefixoTCO(prefixo);
+      if (!deveConfirmar) {
+        PBEV_CONFIRM_TCO[prefixo] = null;
+        btn?.classList.add("hidden");
+        return;
+      }
+      PBEV_CONFIRM_TCO[prefixo] = { dados, contexto: { ...(contexto || {}) } };
+      if (btn) {
+        btn.textContent = opcoes.length > 1 ? "Confirmar versão Inmetro" : "Confirmar dados Inmetro";
+        btn.classList.remove("hidden");
+      }
+    }
+
+    function pbevResumoConsumoOpcaoTCO(sugestao) {
+      const s = sugestao || {};
+      const partes = [];
+      const numero = (v, unidade) => {
+        const n = Number(v || 0);
+        return Number.isFinite(n) && n > 0 ? `${n.toLocaleString("pt-BR", { maximumFractionDigits: 3 })} ${unidade}` : "";
+      };
+      if (s.consumo_eletrico_kwh_km) partes.push(numero(s.consumo_eletrico_kwh_km, "kWh/km"));
+      if (s.gasolina_cidade_km_l) partes.push(`Gasolina ${numero(s.gasolina_cidade_km_l, "km/L")}`);
+      if (s.etanol_cidade_km_l) partes.push(`Etanol ${numero(s.etanol_cidade_km_l, "km/L")}`);
+      if (s.diesel_cidade_km_l) partes.push(`Diesel ${numero(s.diesel_cidade_km_l, "km/L")}`);
+      if (!partes.length && s.gasolina_diesel_cidade_km_l) partes.push(numero(s.gasolina_diesel_cidade_km_l, "km/L"));
+      return partes.filter(Boolean).join(" · ") || "Consumo disponível na tabela PBEV";
+    }
+
+    function pbevGarantirModalConfirmacaoTCO() {
+      let modal = document.getElementById("modal_pbev_confirmacao_tco");
+      if (modal) return modal;
+      modal = document.createElement("div");
+      modal.id = "modal_pbev_confirmacao_tco";
+      modal.className = "plugve-pbev-confirm-modal hidden";
+      modal.innerHTML = `
+        <div class="plugve-pbev-confirm-panel" role="dialog" aria-modal="true" aria-labelledby="pbev_confirm_titulo_tco">
+          <div class="plugve-pbev-confirm-head">
+            <div>
+              <strong id="pbev_confirm_titulo_tco">Confirme a versão do Inmetro</strong>
+              <small>O veículo foi localizado, mas a FIPE não trouxe detalhes suficientes para escolher sozinho.</small>
+            </div>
+            <button type="button" class="plugve-pbev-confirm-close" id="btn_fechar_pbev_confirmacao_tco">Fechar</button>
+          </div>
+          <div class="plugve-pbev-confirm-body">
+            <p class="plugve-pbev-confirm-intro">Selecione a configuração que corresponde ao veículo. O consumo continuará editável.</p>
+            <div id="pbev_confirm_lista_tco" class="plugve-pbev-confirm-list"></div>
+            <p id="pbev_confirm_erro_tco" class="plugve-pbev-confirm-error hidden"></p>
+          </div>
+        </div>`;
+      document.body.appendChild(modal);
+      modal.addEventListener("click", ev => { if (ev.target === modal) pbevFecharModalConfirmacaoTCO(); });
+      modal.querySelector("#btn_fechar_pbev_confirmacao_tco")?.addEventListener("click", pbevFecharModalConfirmacaoTCO);
+      document.addEventListener("keydown", ev => {
+        if (ev.key === "Escape" && !modal.classList.contains("hidden")) pbevFecharModalConfirmacaoTCO();
+      });
+      return modal;
+    }
+
+    function pbevAbrirModalConfirmacaoTCO(prefixo) {
+      const estado = PBEV_CONFIRM_TCO[prefixo];
+      const opcoes = Array.isArray(estado?.dados?.opcoes_confirmacao) ? estado.dados.opcoes_confirmacao : [];
+      if (!estado || !opcoes.length) return;
+      const modal = pbevGarantirModalConfirmacaoTCO();
+      const lista = modal.querySelector("#pbev_confirm_lista_tco");
+      const erro = modal.querySelector("#pbev_confirm_erro_tco");
+      PBEV_CONFIRM_MODAL_PREFIXO = prefixo;
+      if (erro) { erro.textContent = ""; erro.classList.add("hidden"); }
+      if (lista) {
+        lista.innerHTML = opcoes.map(op => {
+          const c = op?.candidato || {};
+          const titulo = [c.marca, c.modelo, c.versao].filter(Boolean).join(" ").replace(/\s+/g, " ").trim();
+          const tecnica = [c.ano_tabela ? `Tabela ${c.ano_tabela}` : "", c.motor, c.transmissao, c.tipo_propulsao].filter(Boolean).join(" · ");
+          return `<button type="button" class="plugve-pbev-confirm-option" data-pbev-id="${pbevEscaparHtmlTCO(op.id_pbev)}">
+            <strong>${pbevEscaparHtmlTCO(titulo || "Configuração PBEV")}</strong>
+            <span>${pbevEscaparHtmlTCO(tecnica)}</span>
+            <em>${pbevEscaparHtmlTCO(pbevResumoConsumoOpcaoTCO(op.sugestoes_consumo))}</em>
+          </button>`;
+        }).join("");
+        lista.querySelectorAll("[data-pbev-id]").forEach(btn => {
+          btn.addEventListener("click", () => pbevConfirmarOpcaoTCO(prefixo, btn.dataset.pbevId || ""));
+        });
+      }
+      modal.classList.remove("hidden");
+    }
+
+    function pbevFecharModalConfirmacaoTCO() {
+      document.getElementById("modal_pbev_confirmacao_tco")?.classList.add("hidden");
+      PBEV_CONFIRM_MODAL_PREFIXO = "";
+    }
+
+    async function pbevConfirmarOpcaoTCO(prefixo, idPbev) {
+      const estado = PBEV_CONFIRM_TCO[prefixo];
+      if (!estado || !idPbev) return;
+      const modal = pbevGarantirModalConfirmacaoTCO();
+      const erro = modal.querySelector("#pbev_confirm_erro_tco");
+      const botoes = Array.from(modal.querySelectorAll(".plugve-pbev-confirm-option"));
+      botoes.forEach(btn => { btn.disabled = true; });
+      if (erro) { erro.textContent = ""; erro.classList.add("hidden"); }
+      try {
+        const payload = { ...(estado.contexto || {}), prefixo, confirmar_id_pbev: idPbev };
+        const resp = await fetch("/api/pbev/sugestao_consumo", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const dados = await resp.json();
+        if (!resp.ok || dados?.confirmado_usuario !== true || dados?.autopreencher !== true) {
+          throw new Error(dados?.motivo_confirmacao || dados?.erro || "Não foi possível confirmar esta configuração.");
+        }
+        if (!pbevSelecaoAindaAtualTCO(prefixo, estado.contexto)) {
+          pbevFecharModalConfirmacaoTCO();
+          return;
+        }
+        pbevAtualizarBotaoDebugTCO(prefixo, dados);
+        pbevAtualizarConfirmacaoTCO(prefixo, dados, estado.contexto);
+        pbevFecharModalConfirmacaoTCO();
+        pbevAplicarSugestaoConsumoTCO(prefixo, dados, estado.contexto);
+      } catch (e) {
+        if (erro) {
+          erro.textContent = e?.message || "Não foi possível confirmar esta configuração.";
+          erro.classList.remove("hidden");
+        }
+      } finally {
+        botoes.forEach(btn => { btn.disabled = false; });
+      }
+    }
 
     function pbevStatusPorPrefixoTCO(prefixo) {
       return document.getElementById(`pbev_status_${prefixo}`);
@@ -4082,6 +4265,7 @@
         nivel_match: dados?.nivel_match || "",
         score: dados?.score ?? "",
         criterio_match: dados?.criterio_match || "",
+        confirmado_usuario: dados?.confirmado_usuario === true,
         ano_tabela_pbev: candidato.ano_tabela || dados?.ano_tabela_pbev || "",
         criterio_consumo: sugestao.criterio_campo_unico || "",
         fipe: {
@@ -4358,7 +4542,7 @@
     function pbevMarcarConsumoEditadoUsuarioTCO(prefixo) {
       const campo = pbevCampoConsumoPorPrefixoTCO(prefixo);
       if (!campo || campo.dataset.pbevAplicando === "1") return;
-      pbevCancelarConfirmacaoTCO(prefixo);
+      if (PBEV_CONFIRM_TCO[prefixo]) pbevCancelarConfirmacaoTCO(prefixo);
       if (campo.dataset.pbevAuto !== "1") return;
       campo.dataset.pbevEditadoUsuario = "1";
       pbevSetHiddenTCO(prefixo, "editado_usuario", "1");

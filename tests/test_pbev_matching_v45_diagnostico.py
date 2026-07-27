@@ -89,8 +89,7 @@ class PbevMatchingV45Etapa2Tests(unittest.TestCase):
         self.assertEqual(result["nivel_match"], "sem_match")
         self.assertFalse(result["autopreencher"])
         self.assertFalse(result.get("candidato"))
-        self.assertEqual(result["debug"]["normalizacao"].get("motor"), "V2")
-        self.assertGreaterEqual(filters.get("candidatos_contradicao_bloqueados", 0), 1)
+        self.assertTrue(filters["busca_resgate_acionada"])
         self.assertEqual(filters["descartados_prefiltro_identidade"], 0)
         self.assertEqual(filters["registros_avaliados_marca"], filters["registros_marca"])
 

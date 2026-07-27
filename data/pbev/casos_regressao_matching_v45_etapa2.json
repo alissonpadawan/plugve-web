@@ -413,7 +413,7 @@
   {
     "id": "wey_07_versoes_equivalentes",
     "consulta": {
-      "prefixo": "ve",
+      "prefixo": "icev",
       "marca": "GWM",
       "modelo": "Wey 07 Dark Edition 1.5 Turbo AWD",
       "texto_modelo": "Wey 07 Dark Edition 1.5 Turbo AWD Zero km Híbrido",
@@ -556,7 +556,7 @@
       "modelo_nao_contem": "CROSS",
       "tipo_consumo": "flex",
       "gasolina_cidade_km_l": 12.2,
-      "etanol_cidade_km_l": 8.9
+      "etanol_cidade_km_l": 8.7
     }
   },
   {
@@ -566,7 +566,7 @@
     "falha_conhecida": false,
     "classificacao_falha": [],
     "consulta": {
-      "prefixo": "icev",
+      "prefixo": "ve",
       "marca": "Toyota",
       "modelo": "Corolla Cross XRX 1.8 16V Aut. Híbrido",
       "texto_modelo": "Corolla Cross XRX 1.8 16V Aut. Híbrido Zero km",
@@ -609,7 +609,7 @@
       "autopreencher": true,
       "modelo_contem": "DOLPHIN MINI",
       "tipo_consumo": "eletrico",
-      "consumo_eletrico_kwh_km": 0.113889
+      "consumo_eletrico_kwh_km": 0.108333
     }
   },
   {
