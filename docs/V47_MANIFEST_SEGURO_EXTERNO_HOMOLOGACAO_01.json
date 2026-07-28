@@ -1,0 +1,140 @@
+{
+  "pacote": "V47 seguro externo homologação 01",
+  "base": "V46 pacote de teste 04 (plugve-web(6).zip)",
+  "gerado_em_utc": "2026-07-28T04:44:33.342904+00:00",
+  "estado": "homologacao; sem promocao para producao",
+  "decisao": "remove percentual fixo de seguro e usa série anual externa ou manual",
+  "arquivos_alterados_ou_adicionados": [
+    {
+      "arquivo": ".env.example",
+      "status": "alterado",
+      "sha256_v47": "53c6235227cd522a275e38c6555ff0991c361fbcb806f9284238e4b64a7d5568",
+      "sha256_base": "075040e054d4b6c0c35930743405ae23fdcba819c6732570a89f26f13d834c3e"
+    },
+    {
+      "arquivo": "app.py",
+      "status": "alterado",
+      "sha256_v47": "c5f9f6f439fc5959fbdc46ec837e8a25359d793d6f4454fd8528adaafd6fbe4d",
+      "sha256_base": "bfed8bac9316d89eac49740581324d331e86f3a667d9f47ca629477e61eb6e09"
+    },
+    {
+      "arquivo": "config.py",
+      "status": "alterado",
+      "sha256_v47": "417e70ec5edf274ff4a91e1455d5e8fb42e979917712ed98f7f20f4c486b60ad",
+      "sha256_base": "d552e2d8c1e11273012e43bac50f783d4c232e280decb2eccb8f060035dd9df8"
+    },
+    {
+      "arquivo": "routes/tco_routes.py",
+      "status": "alterado",
+      "sha256_v47": "bb384be04bc7bc56b861eb86ac0260ddfdf5b7e839e72c2ad71ae0fb9c6f0cfb",
+      "sha256_base": "cda580c61d89f96e378bfb73c11f5a7dfaf71247e60f9194f4af12fe69231131"
+    },
+    {
+      "arquivo": "routes/seguro_routes.py",
+      "status": "adicionado",
+      "sha256_v47": "3e42756985f0be04da01844321d081a0ebca775f38958cb9b4a45e744fa1a414",
+      "sha256_base": null
+    },
+    {
+      "arquivo": "services/seguro_service.py",
+      "status": "adicionado",
+      "sha256_v47": "b6bd65e5900c65b8537a499b2ce9326d573fd2442563de6de4e362a2f4f3c304",
+      "sha256_base": null
+    },
+    {
+      "arquivo": "templates/simular.html",
+      "status": "alterado",
+      "sha256_v47": "03d2fa121d394f9e0211d9cd73e6fc599454b5491cb562dcb7c142dd7a3c4193",
+      "sha256_base": "658d54ffc8e7426b1cbf5586d47ebe6c925139598a28d7096ccdec5b67182b53"
+    },
+    {
+      "arquivo": "templates/auditoria_tco.html",
+      "status": "alterado",
+      "sha256_v47": "ff8cfe692db91a8b291d9137cf03debbbe3c3f68b0c470981dbe2700d3ef507a",
+      "sha256_base": "cc1dbcbd1aae246e79932950a31e21aa0712719a0175145e0f57839f6a1621c0"
+    },
+    {
+      "arquivo": "tests/test_tco_insurance_manual.py",
+      "status": "alterado",
+      "sha256_v47": "15dc098e9ace6b4e141c30fbc199cca78eb25ad388f6694dc1cd35a6125cd1b2",
+      "sha256_base": "aaf64e4f23de8b99a32627fd3eca032038f88cde664fc32d69055dd4c2633dc8"
+    },
+    {
+      "arquivo": "tests/test_v47_insurance_external.py",
+      "status": "adicionado",
+      "sha256_v47": "843c57eb4a856d91ba71ef5397aeddd195b5517be4e408c80ad9d3529dc0baf0",
+      "sha256_base": null
+    },
+    {
+      "arquivo": "docs/V47_SEGURO_EXTERNO_HOMOLOGACAO_01.md",
+      "status": "adicionado",
+      "sha256_v47": "c18fbab63088bc44f777152bf84ea9f982ab98cd4cbdadacf4a544551239f293",
+      "sha256_base": null
+    }
+  ],
+  "arquivos_protegidos": [
+    {
+      "arquivo": "services/pbev_service.py",
+      "sha256_v47": "e9e9d08b81569d03da9306d639540eb191591fd029c24f0547a658e3662e027e",
+      "sha256_base": "e9e9d08b81569d03da9306d639540eb191591fd029c24f0547a658e3662e027e",
+      "identico_base": true
+    },
+    {
+      "arquivo": "services/fipe_service.py",
+      "sha256_v47": "934d635b1e75ed35f9f541648c7572833dc4e71d16cd722c5e87e335a391f5cd",
+      "sha256_base": "934d635b1e75ed35f9f541648c7572833dc4e71d16cd722c5e87e335a391f5cd",
+      "identico_base": true
+    },
+    {
+      "arquivo": "services/fipe_catalog_classifier.py",
+      "sha256_v47": "15a379f5f29f3329e832f3f7112c83f58d7c106273566dc50667219826bde11e",
+      "sha256_base": "15a379f5f29f3329e832f3f7112c83f58d7c106273566dc50667219826bde11e",
+      "identico_base": true
+    },
+    {
+      "arquivo": "services/depreciacao_service.py",
+      "sha256_v47": "278f828fe54ba8dc18a02a4930640d194308b38f9b0e5a765330e1f9705cf208",
+      "sha256_base": "278f828fe54ba8dc18a02a4930640d194308b38f9b0e5a765330e1f9705cf208",
+      "identico_base": true
+    },
+    {
+      "arquivo": "routes/pbev_routes.py",
+      "sha256_v47": "33cc7c06617c6de43d9d162c60328d39b3e4a7690885c370d038dcff3299d617",
+      "sha256_base": "33cc7c06617c6de43d9d162c60328d39b3e4a7690885c370d038dcff3299d617",
+      "identico_base": true
+    },
+    {
+      "arquivo": "routes/depreciacao_routes.py",
+      "sha256_v47": "f029b12bd4fe27fedae21c025a71138aea9a9790527c159303d4cc67802d9a0b",
+      "sha256_base": "f029b12bd4fe27fedae21c025a71138aea9a9790527c159303d4cc67802d9a0b",
+      "identico_base": true
+    },
+    {
+      "arquivo": "routes/utility_routes.py",
+      "sha256_v47": "786f53643a8e2dd76c038a0080f0be0509021a7c53ac487b10eb1b721724270d",
+      "sha256_base": "786f53643a8e2dd76c038a0080f0be0509021a7c53ac487b10eb1b721724270d",
+      "identico_base": true
+    },
+    {
+      "arquivo": "static/js/fipe.js",
+      "sha256_v47": "b8bf175d21dd1ec3e9b6b294ae8573be74ed9eefb083d6f68ee94c164c4a05f7",
+      "sha256_base": "b8bf175d21dd1ec3e9b6b294ae8573be74ed9eefb083d6f68ee94c164c4a05f7",
+      "identico_base": true
+    },
+    {
+      "arquivo": "templates/consulta_fipe.html",
+      "sha256_v47": "d02816e3c6d97fa4e6b9f2efeea81f0374d01fa4543a12abef76d19a2da50ed2",
+      "sha256_base": "d02816e3c6d97fa4e6b9f2efeea81f0374d01fa4543a12abef76d19a2da50ed2",
+      "identico_base": true
+    }
+  ],
+  "validacoes": {
+    "python_compileall": "aprovado",
+    "jinja_parse": "aprovado",
+    "javascript_node_check": "6 de 6 blocos aprovados",
+    "pytest_direcionado": "72 passed",
+    "percentual_fixo_runtime": "ausente",
+    "valor_mensal_seguro": "ausente",
+    "api_real": "não configurada; requer documentação e credenciais oficiais"
+  }
+}

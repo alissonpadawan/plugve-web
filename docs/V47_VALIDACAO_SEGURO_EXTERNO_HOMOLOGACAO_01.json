@@ -1,0 +1,51 @@
+{
+  "pacote": "V47 seguro externo homologação 01",
+  "data_utc": "2026-07-28T04:44:33.342904+00:00",
+  "resultados": [
+    {
+      "checagem": "Percentual fixo 4,7% em arquivos de runtime",
+      "resultado": "aprovado",
+      "detalhe": "nenhuma ocorrência"
+    },
+    {
+      "checagem": "Cálculo anual",
+      "resultado": "aprovado",
+      "detalhe": "seguro_ano lê a posição correspondente da série anual"
+    },
+    {
+      "checagem": "Falha da fonte",
+      "resultado": "aprovado",
+      "detalhe": "sem valor inventado; cache identificado ou entrada manual explícita"
+    },
+    {
+      "checagem": "Dados pessoais obrigatórios",
+      "resultado": "aprovado",
+      "detalhe": "CPF, telefone, nome e endereço não pertencem ao payload"
+    },
+    {
+      "checagem": "Unidade mensal",
+      "resultado": "aprovado",
+      "detalhe": "interface trabalha apenas com prêmio anual integral"
+    },
+    {
+      "checagem": "Regressões direcionadas",
+      "resultado": "aprovado",
+      "detalhe": "72 testes"
+    },
+    {
+      "checagem": "JavaScript",
+      "resultado": "aprovado",
+      "detalhe": "node --check em 6 blocos"
+    },
+    {
+      "checagem": "Templates",
+      "resultado": "aprovado",
+      "detalhe": "simular.html e auditoria_tco.html analisados pelo Jinja"
+    },
+    {
+      "checagem": "Suíte global",
+      "resultado": "inconclusivo por base",
+      "detalhe": "regressões PBEV preexistentes e duração superior a 5 minutos; primeiro erro reproduzido no ZIP original"
+    }
+  ]
+}

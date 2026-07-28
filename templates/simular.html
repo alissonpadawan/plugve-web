@@ -525,8 +525,8 @@
     .plugve-finance-modal{position:fixed;inset:0;z-index:1000;background:rgba(15,23,42,.55);display:flex;align-items:flex-start;justify-content:center;padding:calc(72px + 1rem) 1rem 1.25rem;overflow:auto;box-sizing:border-box}
     .plugve-finance-modal.hidden{display:none !important}
     .plugve-finance-panel{width:min(1080px,100%);background:#fff;border-radius:1.1rem;box-shadow:0 24px 80px rgba(15,23,42,.28);overflow:hidden}
-    .plugve-finance-modal>.plugve-finance-panel,.plugve-finance-modal>.plugve-fuel-modal-panel,.plugve-finance-modal>.plugve-phev-modal-panel{max-height:calc(100vh - 104px);display:flex;flex-direction:column;min-height:0}
-    .plugve-finance-modal>.plugve-finance-panel>.plugve-finance-body,.plugve-finance-modal>.plugve-fuel-modal-panel>.plugve-finance-body,.plugve-finance-modal>.plugve-phev-modal-panel>.plugve-finance-body{overflow-y:auto;flex:1 1 auto;min-height:0}
+    .plugve-finance-modal>.plugve-finance-panel,.plugve-finance-modal>.plugve-fuel-modal-panel,.plugve-finance-modal>.plugve-phev-modal-panel,.plugve-finance-modal>.plugve-insurance-modal-panel{max-height:calc(100vh - 104px);display:flex;flex-direction:column;min-height:0}
+    .plugve-finance-modal>.plugve-finance-panel>.plugve-finance-body,.plugve-finance-modal>.plugve-fuel-modal-panel>.plugve-finance-body,.plugve-finance-modal>.plugve-phev-modal-panel>.plugve-finance-body,.plugve-finance-modal>.plugve-insurance-modal-panel>.plugve-finance-body{overflow-y:auto;flex:1 1 auto;min-height:0}
     .plugve-finance-modal .plugve-finance-header{flex:0 0 auto}
     .plugve-finance-header{padding:1.2rem 1.4rem;border-bottom:1px solid #e5e7eb;background:linear-gradient(180deg,#eff6ff 0%,#ffffff 100%)}
     .plugve-finance-body{padding:1.25rem}
@@ -541,6 +541,42 @@
     .plugve-finance-actions{display:flex;align-items:center;justify-content:flex-end;gap:.75rem;flex-wrap:wrap}
     .plugve-finance-replicar{display:inline-flex;align-items:center;gap:.45rem;border:1px solid #bbf7d0;background:#ecfdf5;color:#065f46;border-radius:999px;padding:.55rem .85rem;font-size:.86rem;font-weight:800;user-select:none}
     .plugve-finance-replicar input{accent-color:#059669}
+    .plugve-insurance-field-row{display:flex;align-items:center;gap:.5rem}
+    .plugve-insurance-value{background:#f8fafc!important;color:#0f172a;font-weight:800;font-variant-numeric:tabular-nums;cursor:default}
+    .plugve-insurance-adjust{margin-top:.25rem;border:1px solid #bfdbfe;border-radius:.7rem;background:#eff6ff;color:#1d4ed8;padding:.58rem .8rem;font-size:.74rem;font-weight:900;white-space:nowrap}
+    .plugve-insurance-adjust:hover{background:#dbeafe}
+    .plugve-insurance-status{margin-top:.35rem;font-size:.7rem;line-height:1.35;color:#64748b;min-height:.95rem}
+    .plugve-insurance-status[data-state="external"]{color:#166534}
+    .plugve-insurance-status[data-state="manual"]{color:#92400e}
+    .plugve-insurance-status[data-state="error"]{color:#b91c1c}
+    .plugve-insurance-modal-panel{width:min(880px,100%);background:#fff;border-radius:1.1rem;box-shadow:0 24px 80px rgba(15,23,42,.28);overflow:hidden}
+    .plugve-insurance-summary{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:1rem;border:1px solid #dbeafe;border-radius:1rem;background:#f8fbff}
+    .plugve-insurance-summary strong{display:block;color:#0f172a;font-size:.95rem}
+    .plugve-insurance-summary small{display:block;color:#64748b;margin-top:.18rem}
+    .plugve-insurance-modal-status{margin:.75rem 0;padding:.72rem .85rem;border-radius:.8rem;background:#f8fafc;border:1px solid #e2e8f0;color:#475569;font-size:.78rem;line-height:1.4}
+    .plugve-insurance-modal-status[data-state="loading"]{background:#eff6ff;border-color:#bfdbfe;color:#1d4ed8}
+    .plugve-insurance-modal-status[data-state="success"]{background:#ecfdf5;border-color:#bbf7d0;color:#166534}
+    .plugve-insurance-modal-status[data-state="error"]{background:#fef2f2;border-color:#fecaca;color:#b91c1c}
+    .plugve-insurance-profile{margin-top:.9rem;border:1px solid #e2e8f0;border-radius:.9rem;background:#fff;overflow:hidden}
+    .plugve-insurance-profile summary{cursor:pointer;padding:.8rem 1rem;font-weight:800;color:#334155;background:#f8fafc}
+    .plugve-insurance-profile>p{padding:.75rem 1rem 0;color:#64748b;font-size:.76rem}
+    .plugve-insurance-profile-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.75rem;padding:1rem}
+    .plugve-insurance-profile-grid label{display:flex;flex-direction:column;gap:.3rem;font-size:.74rem;font-weight:800;color:#334155}
+    .plugve-insurance-profile-grid select{width:100%;border:1px solid #d1d5db;border-radius:.65rem;padding:.58rem;background:#fff;color:#111827;font-weight:500}
+    .plugve-insurance-series-head{display:flex;align-items:flex-end;justify-content:space-between;gap:1rem;margin:1rem 0 .55rem}
+    .plugve-insurance-series-head h3{font-size:.9rem;font-weight:900;color:#0f172a}
+    .plugve-insurance-series-head p{font-size:.72rem;color:#64748b;margin-top:.18rem}
+    .plugve-insurance-table-wrap{border:1px solid #e2e8f0;border-radius:.9rem;overflow:auto}
+    .plugve-insurance-table{width:100%;border-collapse:collapse;font-size:.78rem}
+    .plugve-insurance-table th{background:#f8fafc;color:#475569;text-align:left;padding:.65rem .75rem;border-bottom:1px solid #e2e8f0}
+    .plugve-insurance-table td{padding:.55rem .75rem;border-bottom:1px solid #f1f5f9}
+    .plugve-insurance-table tr:last-child td{border-bottom:0}
+    .plugve-insurance-table input{width:100%;border:1px solid #d1d5db;border-radius:.55rem;padding:.5rem .65rem;font-variant-numeric:tabular-nums}
+    .plugve-insurance-meta{margin-top:.8rem;padding:.75rem .85rem;border-radius:.8rem;background:#f8fafc;border:1px solid #e2e8f0;color:#475569;font-size:.72rem;line-height:1.45}
+    .plugve-insurance-meta.hidden{display:none!important}
+    .plugve-insurance-privacy{font-size:.7rem;color:#64748b;max-width:420px}
+    @media(max-width:760px){.plugve-insurance-profile-grid{grid-template-columns:1fr 1fr}.plugve-insurance-summary,.plugve-insurance-series-head{align-items:stretch;flex-direction:column}.plugve-insurance-summary button,.plugve-insurance-series-head button{width:100%}}
+    @media(max-width:520px){.plugve-insurance-profile-grid{grid-template-columns:1fr}.plugve-insurance-field-row{align-items:stretch;flex-direction:column}.plugve-insurance-adjust{width:100%}}
     @media(max-width:900px){.plugve-finance-form-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
     @media(max-width:560px){.plugve-finance-form-grid{grid-template-columns:1fr}.plugve-finance-footer{align-items:stretch}.plugve-finance-actions{justify-content:stretch}.plugve-finance-actions button{flex:1}}
     .plugve-source-logo{display:inline-flex;align-items:center;justify-content:center;border:0;background:transparent;padding:0;margin:0;line-height:1;box-shadow:none;vertical-align:middle}
@@ -1092,6 +1128,7 @@
 
               <div class="space-y-2">
                 <input type="hidden" name="modelo_atual" id="modelo_atual">
+                <input type="hidden" name="codigo_fipe_atual" id="codigo_fipe_atual">
                 <input type="hidden" name="ano_modelo_atual" id="ano_modelo_atual">
                 <input type="hidden" name="combustivel_atual" id="combustivel_atual">
 
@@ -1146,12 +1183,24 @@
                   <input type="text" name="ipva_atual" id="ipva_atual_input" class="mt-1 p-2 border rounded w-full" placeholder="Calculado automaticamente">
                 </div>
 
-                <div>
-                  <label class="block text-sm font-medium">Seguro atual (anual)</label>
-                  <input type="text" name="seguro_atual" id="seguro_atual" class="mt-1 p-2 border rounded w-full" placeholder="ex: 2800">
-                  <input type="hidden" name="seguro_atual_manual" id="seguro_atual_manual" value="0">
-                    <p id="seguro_status_atual" class="hidden"></p>
+              <div>
+                <label class="block text-sm font-medium">Seguro anual estimado</label>
+                <div class="plugve-insurance-field-row">
+                  <input type="text" name="seguro_atual" id="seguro_atual" class="mt-1 p-2 border rounded w-full plugve-insurance-value" placeholder="Fonte externa ou ajuste manual" readonly>
+                  <button type="button" class="btn_ajustar_seguro_tco plugve-insurance-adjust" data-seguro-prefixo="atual">Ajustar</button>
                 </div>
+                <input type="hidden" name="seguro_atual_manual" id="seguro_atual_manual" value="0">
+                <input type="hidden" name="seguro_atual_serie" id="seguro_atual_serie" value="">
+                <input type="hidden" name="seguro_atual_origem" id="seguro_atual_origem" value="">
+                <input type="hidden" name="seguro_atual_estimate_id" id="seguro_atual_estimate_id" value="">
+                <input type="hidden" name="seguro_atual_fonte" id="seguro_atual_fonte" value="">
+                <input type="hidden" name="seguro_atual_data_referencia" id="seguro_atual_data_referencia" value="">
+                <input type="hidden" name="seguro_atual_faixa_minima" id="seguro_atual_faixa_minima" value="">
+                <input type="hidden" name="seguro_atual_faixa_maxima" id="seguro_atual_faixa_maxima" value="">
+                <input type="hidden" name="seguro_atual_completa" id="seguro_atual_completa" value="0">
+                <input type="hidden" id="seguro_atual_perfil" value="">
+                <p id="seguro_status_atual" class="plugve-insurance-status">Aguardando veículo e localização.</p>
+              </div>
 
                 <div>
                   <label class="block text-sm font-medium">Depreciação atual (%)</label>
@@ -1204,6 +1253,7 @@
 
             <div id="dados_ve_box" class="space-y-2 plugve-progress-hidden mt-5 border rounded-lg p-4 bg-white shadow-sm">
               <input type="hidden" name="modelo_ve" id="modelo_ve">
+              <input type="hidden" name="codigo_fipe_ve" id="codigo_fipe_ve">
               <input type="hidden" name="ano_modelo_ve" id="ano_modelo_ve">
               <input type="hidden" name="combustivel_ve" id="combustivel_ve">
               <input type="hidden" name="tipo_veiculo_ve" id="tipo_veiculo_ve" value="">
@@ -1266,10 +1316,22 @@
               </div>
 
               <div class="plugve-align-pair" data-plugve-align="seguro">
-                <label class="block text-sm font-medium">Seguro anual VE</label>
-                <input type="text" name="seguro_ve" id="seguro_ve" class="mt-1 p-2 border rounded w-full" placeholder="ex: 4000">
+                <label class="block text-sm font-medium">Seguro anual estimado</label>
+                <div class="plugve-insurance-field-row">
+                  <input type="text" name="seguro_ve" id="seguro_ve" class="mt-1 p-2 border rounded w-full plugve-insurance-value" placeholder="Fonte externa ou ajuste manual" readonly>
+                  <button type="button" class="btn_ajustar_seguro_tco plugve-insurance-adjust" data-seguro-prefixo="ve">Ajustar</button>
+                </div>
                 <input type="hidden" name="seguro_ve_manual" id="seguro_ve_manual" value="0">
-                <p id="seguro_status_ve" class="hidden"></p>
+                <input type="hidden" name="seguro_ve_serie" id="seguro_ve_serie" value="">
+                <input type="hidden" name="seguro_ve_origem" id="seguro_ve_origem" value="">
+                <input type="hidden" name="seguro_ve_estimate_id" id="seguro_ve_estimate_id" value="">
+                <input type="hidden" name="seguro_ve_fonte" id="seguro_ve_fonte" value="">
+                <input type="hidden" name="seguro_ve_data_referencia" id="seguro_ve_data_referencia" value="">
+                <input type="hidden" name="seguro_ve_faixa_minima" id="seguro_ve_faixa_minima" value="">
+                <input type="hidden" name="seguro_ve_faixa_maxima" id="seguro_ve_faixa_maxima" value="">
+                <input type="hidden" name="seguro_ve_completa" id="seguro_ve_completa" value="0">
+                <input type="hidden" id="seguro_ve_perfil" value="">
+                <p id="seguro_status_ve" class="plugve-insurance-status">Aguardando veículo e localização.</p>
               </div>
 
               <div class="plugve-align-pair" data-plugve-align="depreciacao">
@@ -1316,6 +1378,7 @@
 
             <div id="dados_icev_box" class="space-y-2 plugve-progress-hidden mt-5 border rounded-lg p-4 bg-white shadow-sm">
               <input type="hidden" name="modelo_icev" id="modelo_icev">
+              <input type="hidden" name="codigo_fipe_icev" id="codigo_fipe_icev">
               <input type="hidden" name="ano_modelo_icev" id="ano_modelo_icev">
               <input type="hidden" name="combustivel_icev" id="combustivel_icev">
 
@@ -1371,10 +1434,22 @@
               </div>
 
               <div class="plugve-align-pair" data-plugve-align="seguro">
-                <label class="block text-sm font-medium">Seguro anual ICEV</label>
-                <input type="text" name="seguro_icev" id="seguro_icev" class="mt-1 p-2 border rounded w-full" placeholder="ex: 3000">
+                <label class="block text-sm font-medium">Seguro anual estimado</label>
+                <div class="plugve-insurance-field-row">
+                  <input type="text" name="seguro_icev" id="seguro_icev" class="mt-1 p-2 border rounded w-full plugve-insurance-value" placeholder="Fonte externa ou ajuste manual" readonly>
+                  <button type="button" class="btn_ajustar_seguro_tco plugve-insurance-adjust" data-seguro-prefixo="icev">Ajustar</button>
+                </div>
                 <input type="hidden" name="seguro_icev_manual" id="seguro_icev_manual" value="0">
-                <p id="seguro_status_icev" class="hidden"></p>
+                <input type="hidden" name="seguro_icev_serie" id="seguro_icev_serie" value="">
+                <input type="hidden" name="seguro_icev_origem" id="seguro_icev_origem" value="">
+                <input type="hidden" name="seguro_icev_estimate_id" id="seguro_icev_estimate_id" value="">
+                <input type="hidden" name="seguro_icev_fonte" id="seguro_icev_fonte" value="">
+                <input type="hidden" name="seguro_icev_data_referencia" id="seguro_icev_data_referencia" value="">
+                <input type="hidden" name="seguro_icev_faixa_minima" id="seguro_icev_faixa_minima" value="">
+                <input type="hidden" name="seguro_icev_faixa_maxima" id="seguro_icev_faixa_maxima" value="">
+                <input type="hidden" name="seguro_icev_completa" id="seguro_icev_completa" value="0">
+                <input type="hidden" id="seguro_icev_perfil" value="">
+                <p id="seguro_status_icev" class="plugve-insurance-status">Aguardando veículo e localização.</p>
               </div>
 
               <div class="plugve-align-pair" data-plugve-align="depreciacao">
@@ -1607,7 +1682,111 @@
     </section>
 
     <!-- =========================================================
-      3.5) MODAL DE PERFIL DE COMBUSTÍVEL FLEX
+      3.5) MODAL DE SEGURO AUTOMOTIVO — V47
+    ========================================================= -->
+    <section id="modal_seguro_tco" class="plugve-finance-modal hidden no-print" aria-hidden="true">
+      <div class="plugve-insurance-modal-panel" role="dialog" aria-modal="true" aria-labelledby="seguro_modal_titulo">
+        <div class="plugve-finance-header">
+          <div class="flex items-start justify-between gap-4">
+            <div>
+              <h2 id="seguro_modal_titulo" class="text-xl font-bold text-blue-700">Seguro anual estimado</h2>
+              <p class="text-sm text-gray-500 mt-1">Valor anual integral. A estimativa externa não representa cotação individual.</p>
+            </div>
+            <button type="button" id="btn_fechar_seguro_tco" class="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">Fechar</button>
+          </div>
+        </div>
+        <div class="plugve-finance-body">
+          <div class="plugve-insurance-summary">
+            <div>
+              <strong id="seguro_modal_modelo">Veículo</strong>
+              <small id="seguro_modal_localizacao">Localização</small>
+            </div>
+            <button type="button" id="btn_consultar_seguro_externo" class="px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700">Buscar na fonte externa</button>
+          </div>
+          <div id="seguro_modal_status" class="plugve-insurance-modal-status" role="status" aria-live="polite">Aguardando consulta.</div>
+
+          <details class="plugve-insurance-profile">
+            <summary>Refinar com informações opcionais</summary>
+            <p>Sem preenchimento, a fonte usa apenas os dados disponíveis do veículo e da região.</p>
+            <div class="plugve-insurance-profile-grid">
+              <label>Faixa etária
+                <select id="seguro_perfil_faixa_etaria">
+                  <option value="">Não informar</option>
+                  <option value="ate_25">Até 25 anos</option>
+                  <option value="26_35">26 a 35 anos</option>
+                  <option value="36_55">36 a 55 anos</option>
+                  <option value="acima_55">Acima de 55 anos</option>
+                </select>
+              </label>
+              <label>Sexo do condutor
+                <select id="seguro_perfil_sexo">
+                  <option value="">Não informar</option>
+                  <option value="feminino">Feminino</option>
+                  <option value="masculino">Masculino</option>
+                  <option value="outro_nao_informado">Outro / prefiro não informar</option>
+                </select>
+              </label>
+              <label>Tipo de uso
+                <select id="seguro_perfil_uso">
+                  <option value="">Não informar</option>
+                  <option value="particular">Particular</option>
+                  <option value="aplicativo">Aplicativo</option>
+                  <option value="comercial">Comercial</option>
+                </select>
+              </label>
+              <label>Pernoite em garagem
+                <select id="seguro_perfil_garagem">
+                  <option value="">Não informar</option>
+                  <option value="sim">Sim</option>
+                  <option value="nao">Não</option>
+                </select>
+              </label>
+              <label>Tempo de habilitação
+                <select id="seguro_perfil_habilitacao">
+                  <option value="">Não informar</option>
+                  <option value="ate_2">Até 2 anos</option>
+                  <option value="3_5">3 a 5 anos</option>
+                  <option value="6_10">6 a 10 anos</option>
+                  <option value="acima_10">Acima de 10 anos</option>
+                </select>
+              </label>
+              <label>Classe de bônus
+                <select id="seguro_perfil_bonus">
+                  <option value="">Não informar</option>
+                  {% for n in range(0, 11) %}<option value="{{ n }}">Classe {{ n }}</option>{% endfor %}
+                </select>
+              </label>
+            </div>
+          </details>
+
+          <div class="plugve-insurance-series-head">
+            <div>
+              <h3>Valores anuais usados no TCO</h3>
+              <p>A fonte pode preencher a série. Você também pode ajustar cada ano.</p>
+            </div>
+            <button type="button" id="btn_zerar_seguro_tco" class="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">Não considerar seguro</button>
+          </div>
+          <div class="plugve-insurance-table-wrap">
+            <table class="plugve-insurance-table">
+              <thead><tr><th>Ano do horizonte</th><th>Seguro anual (R$)</th></tr></thead>
+              <tbody id="seguro_modal_serie_body"></tbody>
+            </table>
+          </div>
+
+          <div id="seguro_modal_meta" class="plugve-insurance-meta hidden"></div>
+          <div class="plugve-finance-footer mt-5">
+            <span class="plugve-insurance-privacy">Nenhum CPF, telefone, nome ou data de nascimento é solicitado.</span>
+            <div class="plugve-finance-actions">
+              <button type="button" id="btn_cancelar_seguro_tco" class="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">Cancelar</button>
+              <button type="button" id="btn_salvar_seguro_tco" class="px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700">Salvar série anual</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================================================
+      3.6) MODAL DE PERFIL DE COMBUSTÍVEL FLEX
     ========================================================= -->
     <section id="modal_combustivel_tco" class="plugve-finance-modal hidden no-print" aria-hidden="true">
       <div class="plugve-fuel-modal-panel">
@@ -2023,7 +2202,11 @@
                         <dl>
                           <div><dt>Depreciação anual</dt><dd>{{ item.taxa_depreciacao }}</dd></div>
                           <div><dt>IPVA projetado</dt><dd>{{ item.taxa_ipva }} do valor</dd></div>
-                          <div><dt>Seguro projetado</dt><dd>{{ item.taxa_seguro }} do valor</dd></div>
+                          <div><dt>Seguro — 1º ano</dt><dd>{{ item.seguro_primeiro_ano }}</dd></div>
+                          <div><dt>Origem do seguro</dt><dd>{{ item.seguro_origem }}</dd></div>
+                          {% if item.seguro_faixa %}<div><dt>Faixa da fonte</dt><dd>{{ item.seguro_faixa }}</dd></div>{% endif %}
+                          {% if item.seguro_data_referencia %}<div><dt>Data da estimativa</dt><dd>{{ item.seguro_data_referencia }}</dd></div>{% endif %}
+                          {% if not item.seguro_serie_completa %}<div><dt>Aviso</dt><dd>Série anual incompleta ou indisponível</dd></div>{% endif %}
                           {% if item.financiamento_ativo %}
                             <div><dt>Entrada</dt><dd>{{ item.entrada_financiamento }}</dd></div>
                             <div><dt>Taxa mensal</dt><dd>{{ item.taxa_financiamento }}</dd></div>
@@ -2309,7 +2492,9 @@
                   <tr class="tco-pdf-group-row"><td colspan="3">Premissas usadas no cálculo</td></tr>
                   <tr><td><b>Depreciação anual</b></td><td>{{ comp.detalhes[0].taxa_depreciacao }}</td><td>{{ comp.detalhes[1].taxa_depreciacao }}</td></tr>
                   <tr><td><b>IPVA projetado</b></td><td>{{ comp.detalhes[0].taxa_ipva }} do valor</td><td>{{ comp.detalhes[1].taxa_ipva }} do valor</td></tr>
-                  <tr><td><b>Seguro projetado</b></td><td>{{ comp.detalhes[0].taxa_seguro }} do valor</td><td>{{ comp.detalhes[1].taxa_seguro }} do valor</td></tr>
+                  <tr><td><b>Seguro — 1º ano</b></td><td>{{ comp.detalhes[0].seguro_primeiro_ano }}</td><td>{{ comp.detalhes[1].seguro_primeiro_ano }}</td></tr>
+                  <tr><td><b>Origem do seguro</b></td><td>{{ comp.detalhes[0].seguro_origem }}</td><td>{{ comp.detalhes[1].seguro_origem }}</td></tr>
+                  <tr><td><b>Fonte do seguro</b></td><td>{{ comp.detalhes[0].seguro_fonte }}</td><td>{{ comp.detalhes[1].seguro_fonte }}</td></tr>
                   <tr><td><b>Financiamento</b></td><td>{{ 'Considerado' if comp.detalhes[0].financiamento_ativo else 'Não considerado' }}</td><td>{{ 'Considerado' if comp.detalhes[1].financiamento_ativo else 'Não considerado' }}</td></tr>
                 </tbody>
               </table>
@@ -3345,9 +3530,8 @@
     }
 
 
-    // Seguro padrão adotado provisoriamente para o TCO acadêmico.
-    // O campo continua editável porque a cotação real depende de perfil, CEP, cobertura, franquia e seguradora.
-    const PERCENTUAL_SEGURO_PADRAO = 0.047;
+    // V47: o seguro vem de uma fonte externa ou de uma série anual manual.
+    // Não existe percentual padrão da FIPE no navegador.
 
 
     function normalizarTextoTipoTCO(valor) {
@@ -3415,6 +3599,13 @@
       return "Tipo de veículo incompatível com este bloco.";
     }
 
+    const seguroModalStateTCO = {
+      prefixo: "",
+      estimativa: null,
+      serieExterna: [],
+      modificado: false,
+    };
+
     function campoSeguroPorPrefixo(prefixo) {
       if (prefixo === "ve") return document.getElementById("seguro_ve");
       if (prefixo === "icev") return document.getElementById("seguro_icev");
@@ -3435,51 +3626,392 @@
       return document.getElementById(`seguro_${prefixo}_manual`);
     }
 
-    function marcarSeguroManual(prefixo, manual) {
-      const seguroEl = campoSeguroPorPrefixo(prefixo);
-      const manualEl = campoSeguroManualPorPrefixo(prefixo);
-      const valor = manual ? "1" : "0";
-      if (manualEl) manualEl.value = valor;
-      if (seguroEl) {
-        seguroEl.dataset.editadoManual = valor;
-        seguroEl.dataset.autoSeguro = manual ? "0" : seguroEl.dataset.autoSeguro || "0";
+    function campoSeguroMetaPorPrefixo(prefixo, sufixo) {
+      return document.getElementById(`seguro_${prefixo}_${sufixo}`);
+    }
+
+    function anosSeguroTCO() {
+      const valor = Number(document.getElementById("anos")?.value || 1);
+      return Math.max(1, Math.min(30, Number.isFinite(valor) ? Math.trunc(valor) : 1));
+    }
+
+    function serieSeguroPorPrefixo(prefixo) {
+      const campo = campoSeguroMetaPorPrefixo(prefixo, "serie");
+      if (!campo?.value) return [];
+      try {
+        const serie = JSON.parse(campo.value);
+        return Array.isArray(serie) ? serie.map(v => Math.max(0, Number(v) || 0)) : [];
+      } catch (_) {
+        return [];
       }
     }
 
-    function atualizarSeguroAutomatico(prefixo, forcar = false) {
-      const precoEl = campoPrecoPorPrefixo(prefixo);
-      const seguroEl = campoSeguroPorPrefixo(prefixo);
+    function perfilSeguroPorPrefixo(prefixo) {
+      const campo = campoSeguroMetaPorPrefixo(prefixo, "perfil");
+      if (!campo?.value) return {};
+      try {
+        const perfil = JSON.parse(campo.value);
+        return perfil && typeof perfil === "object" ? perfil : {};
+      } catch (_) {
+        return {};
+      }
+    }
+
+    function definirStatusSeguroTCO(prefixo, texto, estado = "") {
       const status = statusSeguroPorPrefixo(prefixo);
-      if (!precoEl || !seguroEl) return;
-      const preco = numeroBRParaFloat(precoEl.value);
-      if (!preco || preco <= 0) return;
-      const jaManual = seguroEl.dataset.editadoManual === "1" || campoSeguroManualPorPrefixo(prefixo)?.value === "1";
-      if (jaManual && !forcar) {
-        if (status) status.textContent = "";
+      if (!status) return;
+      status.textContent = texto || "";
+      if (estado) status.dataset.state = estado;
+      else delete status.dataset.state;
+    }
+
+    function marcarSeguroManual(prefixo, manual) {
+      const manualEl = campoSeguroManualPorPrefixo(prefixo);
+      if (manualEl) manualEl.value = manual ? "1" : "0";
+    }
+
+    function limparSeguroTCO(prefixo, mensagem = "Aguardando estimativa externa.") {
+      const seguro = campoSeguroPorPrefixo(prefixo);
+      if (seguro) seguro.value = "";
+      ["serie", "origem", "estimate_id", "fonte", "data_referencia", "faixa_minima", "faixa_maxima"].forEach(sufixo => {
+        const campo = campoSeguroMetaPorPrefixo(prefixo, sufixo);
+        if (campo) campo.value = "";
+      });
+      const completa = campoSeguroMetaPorPrefixo(prefixo, "completa");
+      if (completa) completa.value = "0";
+      marcarSeguroManual(prefixo, false);
+      definirStatusSeguroTCO(prefixo, mensagem, "");
+    }
+
+    function dadosVeiculoSeguroTCO(prefixo) {
+      const modelo = document.getElementById(`modelo_${prefixo}`)?.value || "";
+      const ano = document.getElementById(`ano_modelo_${prefixo}`)?.value || "";
+      const combustivel = document.getElementById(`combustivel_${prefixo}`)?.value || "";
+      const codigoFipe = document.getElementById(`codigo_fipe_${prefixo}`)?.value || "";
+      const valorFipe = numeroBRParaFloat(campoPrecoPorPrefixo(prefixo)?.value || "");
+      const depreciacao = numeroBRParaFloat(document.getElementById(`depreciacao_${prefixo}`)?.value || "0");
+      const uf = document.getElementById("estado_uf")?.value || "";
+      const municipio = document.getElementById("municipio_select")?.value || "";
+      const propulsao = prefixo === "ve"
+        ? (document.getElementById("tipo_veiculo_ve")?.value || "ve")
+        : "icev";
+      return { modelo, ano, combustivel, codigoFipe, valorFipe, depreciacao, uf, municipio, propulsao };
+    }
+
+    function payloadSeguroTCO(prefixo, perfil = {}) {
+      const dados = dadosVeiculoSeguroTCO(prefixo);
+      return {
+        veiculo: {
+          codigo_fipe: dados.codigoFipe,
+          modelo: dados.modelo,
+          ano_modelo: dados.ano,
+          combustivel: dados.combustivel,
+          propulsao: dados.propulsao,
+          valor_fipe: dados.valorFipe,
+        },
+        localizacao: { uf: dados.uf, municipio: dados.municipio },
+        perfil,
+        horizonte_anos: anosSeguroTCO(),
+        depreciacao_percentual: dados.depreciacao,
+      };
+    }
+
+    async function requisitarEstimativaSeguroTCO(prefixo, perfil = {}) {
+      const dados = dadosVeiculoSeguroTCO(prefixo);
+      if (!dados.modelo || !dados.ano || !dados.valorFipe || !dados.uf || !dados.municipio) {
+        throw new Error("Selecione veículo, valor FIPE, UF e município antes de consultar o seguro.");
+      }
+      const resp = await fetch("/api/seguro/estimar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify(payloadSeguroTCO(prefixo, perfil)),
+      });
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok || !data?.ok || !data?.estimativa) {
+        throw new Error(data?.error || "A fonte externa não retornou uma estimativa válida.");
+      }
+      return data.estimativa;
+    }
+
+    function aplicarSerieSeguroTCO(prefixo, serie, meta = {}) {
+      const valores = Array.isArray(serie) ? serie.map(v => Math.max(0, Number(v) || 0)) : [];
+      const anos = anosSeguroTCO();
+      const completa = valores.length >= anos && valores.slice(0, anos).every(v => Number.isFinite(v));
+      const serieFinal = valores.slice(0, anos);
+      const campoSerie = campoSeguroMetaPorPrefixo(prefixo, "serie");
+      if (campoSerie) campoSerie.value = JSON.stringify(serieFinal);
+      const seguro = campoSeguroPorPrefixo(prefixo);
+      if (seguro) seguro.value = serieFinal.length ? formatarMoedaBR(serieFinal[0]) : "";
+      const mapa = {
+        origem: meta.origem || "manual",
+        estimate_id: meta.estimate_id || "",
+        fonte: meta.fonte || "Valor informado pelo usuário",
+        data_referencia: meta.data_referencia || "",
+        faixa_minima: meta.faixa_minima ?? "",
+        faixa_maxima: meta.faixa_maxima ?? "",
+        completa: completa && meta.completa !== false ? "1" : "0",
+      };
+      Object.entries(mapa).forEach(([sufixo, valor]) => {
+        const campo = campoSeguroMetaPorPrefixo(prefixo, sufixo);
+        if (campo) campo.value = String(valor ?? "");
+      });
+      const perfilCampo = campoSeguroMetaPorPrefixo(prefixo, "perfil");
+      if (perfilCampo && meta.perfil) perfilCampo.value = JSON.stringify(meta.perfil);
+      marcarSeguroManual(prefixo, !String(meta.origem || "").startsWith("extern"));
+
+      const origemExterna = String(meta.origem || "").startsWith("extern");
+      if (origemExterna) {
+        const cacheTxt = meta.cache ? " · cache" : "";
+        const aviso = completa ? "Série anual recebida" : "Série externa incompleta; ajuste os anos restantes";
+        definirStatusSeguroTCO(prefixo, `${aviso} · ${meta.fonte || "fonte externa"}${cacheTxt}`, completa ? "external" : "error");
+      } else {
+        definirStatusSeguroTCO(prefixo, completa ? "Série anual informada pelo usuário" : "Complete os valores anuais no botão Ajustar", "manual");
+      }
+    }
+
+    function aplicarEstimativaSeguroTCO(prefixo, estimativa, perfil = {}) {
+      const camposPerfil = Array.isArray(estimativa?.campos_perfil) ? estimativa.campos_perfil : [];
+      aplicarSerieSeguroTCO(prefixo, estimativa?.serie_anual || [], {
+        origem: camposPerfil.length ? "externa_refinada" : "externa_basica",
+        estimate_id: estimativa?.estimate_id || "",
+        fonte: estimativa?.fonte || "Fonte externa de seguro",
+        data_referencia: estimativa?.data_referencia || "",
+        faixa_minima: estimativa?.faixa_minima,
+        faixa_maxima: estimativa?.faixa_maxima,
+        completa: estimativa?.completa !== false,
+        cache: !!estimativa?.cache,
+        perfil,
+      });
+    }
+
+    async function consultarSeguroAutomaticoTCO(prefixo, forcar = false) {
+      const origem = campoSeguroMetaPorPrefixo(prefixo, "origem")?.value || "";
+      const jaManual = origem === "manual" || campoSeguroManualPorPrefixo(prefixo)?.value === "1";
+      if (jaManual && !forcar) return null;
+      const dados = dadosVeiculoSeguroTCO(prefixo);
+      if (!dados.modelo || !dados.ano || !dados.valorFipe || !dados.uf || !dados.municipio) {
+        limparSeguroTCO(prefixo, "Aguardando veículo e localização.");
+        return null;
+      }
+      definirStatusSeguroTCO(prefixo, "Consultando fonte externa de seguro...", "external");
+      try {
+        const estimativa = await requisitarEstimativaSeguroTCO(prefixo, {});
+        aplicarEstimativaSeguroTCO(prefixo, estimativa, {});
+        return estimativa;
+      } catch (erro) {
+        limparSeguroTCO(prefixo, erro?.message || "Estimativa externa indisponível. Use Ajustar para informar a série anual.");
+        definirStatusSeguroTCO(prefixo, erro?.message || "Estimativa externa indisponível. Use Ajustar para informar a série anual.", "error");
+        return null;
+      }
+    }
+
+    function renderizarSerieModalSeguroTCO(serie = []) {
+      const body = document.getElementById("seguro_modal_serie_body");
+      if (!body) return;
+      const anos = anosSeguroTCO();
+      body.innerHTML = "";
+      for (let i = 0; i < anos; i += 1) {
+        const valor = i < serie.length && serie[i] !== null && serie[i] !== undefined ? formatarMoedaBR(Number(serie[i]) || 0) : "";
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td><strong>Ano ${i + 1}</strong></td><td><input type="text" inputmode="decimal" data-seguro-ano="${i + 1}" value="${valor}" placeholder="Informe o valor anual"></td>`;
+        body.appendChild(tr);
+      }
+      body.querySelectorAll("input[data-seguro-ano]").forEach(input => {
+        input.addEventListener("input", () => { seguroModalStateTCO.modificado = true; });
+        input.addEventListener("blur", () => {
+          const valor = numeroBRParaFloat(input.value);
+          if (input.value.trim()) input.value = formatarMoedaBR(valor);
+        });
+      });
+    }
+
+    function serieModalSeguroTCO() {
+      const inputs = Array.from(document.querySelectorAll("#seguro_modal_serie_body input[data-seguro-ano]"));
+      const serie = [];
+      for (const input of inputs) {
+        if (!String(input.value || "").trim()) return null;
+        serie.push(Math.max(0, numeroBRParaFloat(input.value)));
+      }
+      return serie;
+    }
+
+    function preencherPerfilModalSeguroTCO(perfil = {}) {
+      document.getElementById("seguro_perfil_faixa_etaria").value = perfil.faixa_etaria || "";
+      document.getElementById("seguro_perfil_sexo").value = perfil.sexo_condutor || "";
+      document.getElementById("seguro_perfil_uso").value = perfil.tipo_uso || "";
+      document.getElementById("seguro_perfil_garagem").value = perfil.garagem || "";
+      document.getElementById("seguro_perfil_habilitacao").value = perfil.tempo_habilitacao || "";
+      document.getElementById("seguro_perfil_bonus").value = perfil.classe_bonus || "";
+    }
+
+    function coletarPerfilModalSeguroTCO() {
+      return {
+        faixa_etaria: document.getElementById("seguro_perfil_faixa_etaria")?.value || "",
+        sexo_condutor: document.getElementById("seguro_perfil_sexo")?.value || "",
+        tipo_uso: document.getElementById("seguro_perfil_uso")?.value || "",
+        garagem: document.getElementById("seguro_perfil_garagem")?.value || "",
+        tempo_habilitacao: document.getElementById("seguro_perfil_habilitacao")?.value || "",
+        classe_bonus: document.getElementById("seguro_perfil_bonus")?.value || "",
+      };
+    }
+
+    function mostrarMetaSeguroModalTCO(estimativa) {
+      const meta = document.getElementById("seguro_modal_meta");
+      if (!meta) return;
+      if (!estimativa) {
+        meta.classList.add("hidden");
+        meta.innerHTML = "";
         return;
       }
-      const seguro = preco * PERCENTUAL_SEGURO_PADRAO;
-      seguroEl.value = formatarMoedaBR(seguro);
-      seguroEl.dataset.autoSeguro = "1";
-      seguroEl.dataset.editadoManual = "0";
-      const manualEl = campoSeguroManualPorPrefixo(prefixo);
-      if (manualEl) manualEl.value = "0";
-      if (status) status.textContent = "";
+      const faixa = estimativa.faixa_minima !== null && estimativa.faixa_minima !== undefined && estimativa.faixa_maxima !== null && estimativa.faixa_maxima !== undefined
+        ? `<br><strong>Faixa informada:</strong> ${formatarMoedaBR(estimativa.faixa_minima)} a ${formatarMoedaBR(estimativa.faixa_maxima)}`
+        : "";
+      const cobertura = estimativa.cobertura_referencia ? `<br><strong>Cobertura de referência:</strong> ${estimativa.cobertura_referencia}` : "";
+      meta.innerHTML = `<strong>Fonte:</strong> ${estimativa.fonte || "Fonte externa"}<br><strong>Data:</strong> ${estimativa.data_referencia || "não informada"}${faixa}${cobertura}`;
+      meta.classList.remove("hidden");
+    }
+
+    function abrirModalSeguroTCO(prefixo) {
+      const dados = dadosVeiculoSeguroTCO(prefixo);
+      if (!dados.modelo || !dados.valorFipe) {
+        alert("Selecione o veículo e aguarde o valor FIPE antes de ajustar o seguro.");
+        return;
+      }
+      seguroModalStateTCO.prefixo = prefixo;
+      seguroModalStateTCO.estimativa = null;
+      seguroModalStateTCO.serieExterna = [];
+      seguroModalStateTCO.modificado = false;
+      document.getElementById("seguro_modal_modelo").textContent = dados.modelo || "Veículo";
+      document.getElementById("seguro_modal_localizacao").textContent = dados.uf && dados.municipio ? `${dados.municipio}/${dados.uf}` : "Localização não selecionada";
+      const serie = serieSeguroPorPrefixo(prefixo);
+      renderizarSerieModalSeguroTCO(serie);
+      preencherPerfilModalSeguroTCO(perfilSeguroPorPrefixo(prefixo));
+      mostrarMetaSeguroModalTCO(null);
+      const status = document.getElementById("seguro_modal_status");
+      if (status) {
+        status.textContent = serie.length ? "Série atual carregada. Você pode consultar a fonte ou editar os anos." : "Busque na fonte externa ou informe os valores anuais.";
+        delete status.dataset.state;
+      }
+      const modal = document.getElementById("modal_seguro_tco");
+      modal?.classList.remove("hidden");
+      modal?.setAttribute("aria-hidden", "false");
+      document.body.classList.add("overflow-hidden");
+    }
+
+    function fecharModalSeguroTCO() {
+      const modal = document.getElementById("modal_seguro_tco");
+      modal?.classList.add("hidden");
+      modal?.setAttribute("aria-hidden", "true");
+      document.body.classList.remove("overflow-hidden");
+      seguroModalStateTCO.prefixo = "";
+    }
+
+    async function consultarSeguroModalTCO() {
+      const prefixo = seguroModalStateTCO.prefixo;
+      if (!prefixo) return;
+      const perfil = coletarPerfilModalSeguroTCO();
+      const status = document.getElementById("seguro_modal_status");
+      const botao = document.getElementById("btn_consultar_seguro_externo");
+      if (status) { status.textContent = "Consultando a fonte externa..."; status.dataset.state = "loading"; }
+      if (botao) botao.disabled = true;
+      try {
+        const estimativa = await requisitarEstimativaSeguroTCO(prefixo, perfil);
+        seguroModalStateTCO.estimativa = estimativa;
+        seguroModalStateTCO.serieExterna = Array.isArray(estimativa.serie_anual) ? estimativa.serie_anual.map(Number) : [];
+        seguroModalStateTCO.modificado = false;
+        renderizarSerieModalSeguroTCO(seguroModalStateTCO.serieExterna);
+        mostrarMetaSeguroModalTCO(estimativa);
+        if (status) {
+          status.textContent = estimativa.completa === false
+            ? "A fonte retornou uma série incompleta. Preencha os anos restantes antes de salvar."
+            : "Série anual recebida da fonte externa.";
+          status.dataset.state = estimativa.completa === false ? "error" : "success";
+        }
+      } catch (erro) {
+        if (status) { status.textContent = erro?.message || "Falha ao consultar a fonte externa."; status.dataset.state = "error"; }
+      } finally {
+        if (botao) botao.disabled = false;
+      }
+    }
+
+    function salvarModalSeguroTCO() {
+      const prefixo = seguroModalStateTCO.prefixo;
+      const serie = serieModalSeguroTCO();
+      if (!prefixo || !serie) {
+        alert("Preencha o valor anual de todos os anos. Use 0 quando desejar não considerar seguro em determinado ano.");
+        return;
+      }
+      const perfil = coletarPerfilModalSeguroTCO();
+      const externa = seguroModalStateTCO.estimativa;
+      const igualExterna = externa && !seguroModalStateTCO.modificado && JSON.stringify(serie) === JSON.stringify(seguroModalStateTCO.serieExterna.slice(0, serie.length));
+      if (igualExterna) {
+        aplicarEstimativaSeguroTCO(prefixo, { ...externa, serie_anual: serie, completa: true }, perfil);
+      } else {
+        aplicarSerieSeguroTCO(prefixo, serie, {
+          origem: "manual",
+          fonte: "Valor informado pelo usuário",
+          completa: true,
+          perfil,
+        });
+        marcarSeguroManual(prefixo, true);
+      }
+      fecharModalSeguroTCO();
+      if (typeof agendarAlinhamentoVeiculosPlugVE === "function") agendarAlinhamentoVeiculosPlugVE();
+    }
+
+    function zerarSerieSeguroModalTCO() {
+      renderizarSerieModalSeguroTCO(Array(anosSeguroTCO()).fill(0));
+      seguroModalStateTCO.estimativa = null;
+      seguroModalStateTCO.serieExterna = [];
+      seguroModalStateTCO.modificado = true;
+      mostrarMetaSeguroModalTCO(null);
+      const status = document.getElementById("seguro_modal_status");
+      if (status) { status.textContent = "Série zerada. Salve para não considerar seguro no TCO."; status.dataset.state = "success"; }
+    }
+
+    function reprocessarHorizonteSeguroTCO() {
+      ["ve", "icev", "atual"].forEach(prefixo => {
+        const origem = campoSeguroMetaPorPrefixo(prefixo, "origem")?.value || "";
+        const serie = serieSeguroPorPrefixo(prefixo);
+        if (origem.startsWith("extern")) {
+          consultarSeguroAutomaticoTCO(prefixo, true);
+        } else if (serie.length && serie.length !== anosSeguroTCO()) {
+          const completa = campoSeguroMetaPorPrefixo(prefixo, "completa");
+          if (completa) completa.value = "0";
+          definirStatusSeguroTCO(prefixo, "O horizonte mudou. Abra Ajustar e complete a nova série anual.", "manual");
+        }
+      });
+    }
+
+    function validarSeriesSeguroTCO() {
+      const prefixosAtivos = typeof prefixosFinanciamentoCenarioTCO === "function"
+        ? prefixosFinanciamentoCenarioTCO()
+        : ["atual", "ve", "icev"];
+      for (const prefixo of prefixosAtivos) {
+        if (!campoModelo(prefixo)?.value || numeroBRParaFloat(campoValor(prefixo)?.value || "") <= 0) continue;
+        const campo = campoSeguroPorPrefixo(prefixo);
+        const serie = serieSeguroPorPrefixo(prefixo);
+        const completa = campoSeguroMetaPorPrefixo(prefixo, "completa")?.value === "1";
+        if (!serie.length || !completa || serie.length < anosSeguroTCO()) {
+          alert("O seguro anual deste veículo ainda não está definido para todo o horizonte. Aguarde a fonte externa ou abra Ajustar para informar os valores anuais. Para excluir o seguro, escolha Não considerar seguro no modal.");
+          campo?.scrollIntoView({ behavior: "smooth", block: "center" });
+          return false;
+        }
+      }
+      return true;
     }
 
     function limparCamposVeiculo(prefixo) {
       const ids = prefixo === "ve"
-        ? ["modelo_ve", "preco_ve", "ano_modelo_ve", "combustivel_ve", "ipva_ve_input", "seguro_ve", "depreciacao_ve"]
+        ? ["modelo_ve", "codigo_fipe_ve", "preco_ve", "ano_modelo_ve", "combustivel_ve", "ipva_ve_input", "seguro_ve", "depreciacao_ve"]
         : prefixo === "icev"
-          ? ["modelo_icev", "preco_icev", "ano_modelo_icev", "combustivel_icev", "ipva_icev_input", "seguro_icev", "depreciacao_icev"]
-          : ["modelo_atual", "preco_atual", "ano_modelo_atual", "combustivel_atual", "ipva_atual_input", "seguro_atual", "depreciacao_atual"];
+          ? ["modelo_icev", "codigo_fipe_icev", "preco_icev", "ano_modelo_icev", "combustivel_icev", "ipva_icev_input", "seguro_icev", "depreciacao_icev"]
+          : ["modelo_atual", "codigo_fipe_atual", "preco_atual", "ano_modelo_atual", "combustivel_atual", "ipva_atual_input", "seguro_atual", "depreciacao_atual"];
       ids.forEach(id => {
         const el = document.getElementById(id);
         if (el) el.value = "";
       });
-      marcarSeguroManual(prefixo, false);
-      const seguroLimpo = campoSeguroPorPrefixo(prefixo);
-      if (seguroLimpo) { delete seguroLimpo.dataset.autoSeguro; delete seguroLimpo.dataset.editadoManual; }
+      limparSeguroTCO(prefixo, "Aguardando novo veículo.");
       if (prefixo === "ve") setValorInputTCO("tipo_veiculo_ve", "");
       const status = statusDepreciacaoPorPrefixo(prefixo);
       if (status) status.textContent = "Seleção incompatível com este bloco.";
@@ -3548,10 +4080,10 @@
       if (typeof definirEstadoConsultaFipeTCO === "function") definirEstadoConsultaFipeTCO(prefixo, false);
       if (typeof definirEstadoConsultaPbevTCO === "function") definirEstadoConsultaPbevTCO(prefixo, false);
       const ids = prefixo === "ve"
-        ? ["modelo_ve", "preco_ve", "ano_modelo_ve", "combustivel_ve", "tipo_veiculo_ve", "ipva_ve_input", "seguro_ve", "depreciacao_ve"]
+        ? ["modelo_ve", "codigo_fipe_ve", "preco_ve", "ano_modelo_ve", "combustivel_ve", "tipo_veiculo_ve", "ipva_ve_input", "seguro_ve", "depreciacao_ve"]
         : prefixo === "icev"
-          ? ["modelo_icev", "preco_icev", "ano_modelo_icev", "combustivel_icev", "ipva_icev_input", "seguro_icev", "depreciacao_icev"]
-          : ["modelo_atual", "preco_atual", "ano_modelo_atual", "combustivel_atual", "ipva_atual_input", "seguro_atual", "depreciacao_atual"];
+          ? ["modelo_icev", "codigo_fipe_icev", "preco_icev", "ano_modelo_icev", "combustivel_icev", "ipva_icev_input", "seguro_icev", "depreciacao_icev"]
+          : ["modelo_atual", "codigo_fipe_atual", "preco_atual", "ano_modelo_atual", "combustivel_atual", "ipva_atual_input", "seguro_atual", "depreciacao_atual"];
       ids.forEach(id => {
         const el = document.getElementById(id);
         if (el) el.value = "";
@@ -3567,9 +4099,7 @@
         delete consumo.dataset.phevConfigurado;
       }
 
-      marcarSeguroManual(prefixo, false);
-      const seguroLimpo = campoSeguroPorPrefixo(prefixo);
-      if (seguroLimpo) { delete seguroLimpo.dataset.autoSeguro; delete seguroLimpo.dataset.editadoManual; }
+      limparSeguroTCO(prefixo, "Aguardando novo veículo.");
 
       pbevLimparEstadoConsumoTCO(prefixo);
 
@@ -4814,17 +5344,20 @@
 
         if (prefixo === "ve") {
           document.getElementById("modelo_ve").value = nomeCompleto;
+          document.getElementById("codigo_fipe_ve").value = data.CodigoFipe || data.CodigoFIPE || data.Codigo || "";
           document.getElementById("preco_ve").value = valor;
           document.getElementById("ano_modelo_ve").value = anoModeloStr;
           document.getElementById("combustivel_ve").value = combustivelStr;
           setValorInputTCO("tipo_veiculo_ve", tipoSelecionado);
         } else if (prefixo === "icev") {
           document.getElementById("modelo_icev").value = nomeCompleto;
+          document.getElementById("codigo_fipe_icev").value = data.CodigoFipe || data.CodigoFIPE || data.Codigo || "";
           document.getElementById("preco_icev").value = valor;
           document.getElementById("ano_modelo_icev").value = anoModeloStr;
           document.getElementById("combustivel_icev").value = combustivelStr;
         } else if (prefixo === "atual") {
           document.getElementById("modelo_atual").value = nomeCompleto;
+          document.getElementById("codigo_fipe_atual").value = data.CodigoFipe || data.CodigoFIPE || data.Codigo || "";
           document.getElementById("preco_atual").value = valor;
           document.getElementById("ano_modelo_atual").value = anoModeloStr;
           document.getElementById("combustivel_atual").value = combustivelStr;
@@ -4833,7 +5366,7 @@
         finalizarConsultaControladaTCO(CONSULTAS_FIPE_TCO, prefixo, consultaFipe);
         definirEstadoConsultaFipeTCO(prefixo, false);
 
-        atualizarSeguroAutomatico(prefixo);
+        consultarSeguroAutomaticoTCO(prefixo);
         atualizarIpva(prefixo);
         atualizarInterfaceCombustivelPorVeiculo(prefixo, true);
         if (typeof atualizarInterfacePhevPorVeiculo === "function") atualizarInterfacePhevPorVeiculo(prefixo, true);
@@ -5038,6 +5571,8 @@
             "text-green-700 font-semibold"
           );
           configurarBotaoDepreciacaoTCO(prefixo, true, detalhe, "relatorio");
+          const origemSeguro = campoSeguroMetaPorPrefixo(prefixo, "origem")?.value || "";
+          if (!origemSeguro || origemSeguro.startsWith("extern")) consultarSeguroAutomaticoTCO(prefixo, true);
           return;
         }
 
@@ -5073,6 +5608,8 @@
       const taxa = dados.taxa_anual_percentual ?? dados.taxa;
       if (taxa == null || isNaN(Number(taxa))) return;
       preencherTaxaDepreciacaoTCO(prefixo, Number(taxa), Number(dados.depreciacao_percentual ?? 0), dados.origem_curva || "depreciação validada");
+      const origemSeguro = campoSeguroMetaPorPrefixo(prefixo, "origem")?.value || "";
+      if (!origemSeguro || origemSeguro.startsWith("extern")) consultarSeguroAutomaticoTCO(prefixo, true);
       escreverStatusDepreciacaoTCO(
         prefixo,
         `Depreciação validada: ${Number(taxa).toFixed(2).replace(".", ",")}% a.a.`,
@@ -6674,6 +7211,7 @@
         atualizarIpva("ve");
         atualizarIpva("icev");
         atualizarIpva("atual");
+        ["ve", "icev", "atual"].forEach(prefixo => limparSeguroTCO(prefixo, "Aguardando município para estimar o seguro."));
       });
 
       document.getElementById("municipio_select")?.addEventListener("change", function () {
@@ -6686,6 +7224,7 @@
           atualizarIpva("ve");
           atualizarIpva("icev");
           atualizarIpva("atual");
+          ["ve", "icev", "atual"].forEach(prefixo => consultarSeguroAutomaticoTCO(prefixo, true));
         }
       });
 
@@ -6738,19 +7277,15 @@
       if (localizacaoValida()) atualizarPrecoCombustivelAutomatico();
 
       ["ve", "icev", "atual"].forEach(prefixo => {
-        const seguro = campoSeguroPorPrefixo(prefixo);
         const preco = campoPrecoPorPrefixo(prefixo);
-        if (seguro) {
-          seguro.addEventListener("input", function () {
-            marcarSeguroManual(prefixo, true);
-            const status = statusSeguroPorPrefixo(prefixo);
-            if (status) status.textContent = "";
-          });
-        }
         if (preco) {
-          preco.addEventListener("change", () => atualizarSeguroAutomatico(prefixo));
-          preco.addEventListener("blur", () => atualizarSeguroAutomatico(prefixo));
+          preco.addEventListener("change", () => consultarSeguroAutomaticoTCO(prefixo, true));
+          preco.addEventListener("blur", () => consultarSeguroAutomaticoTCO(prefixo, true));
         }
+        document.getElementById(`depreciacao_${prefixo}`)?.addEventListener("change", () => {
+          const origem = campoSeguroMetaPorPrefixo(prefixo, "origem")?.value || "";
+          if (origem.startsWith("extern")) consultarSeguroAutomaticoTCO(prefixo, true);
+        });
       });
 
       renderEnergiaBreakdown(0, null);
@@ -7658,6 +8193,7 @@
         const campoAnosPlugVE = document.getElementById("anos");
         let timerHorizontePlugVE = null;
         campoAnosPlugVE?.addEventListener("change", reprocessarHorizonteDepreciacaoPlugVE);
+        campoAnosPlugVE?.addEventListener("change", reprocessarHorizonteSeguroTCO);
         campoAnosPlugVE?.addEventListener("blur", reprocessarHorizonteDepreciacaoPlugVE);
         campoAnosPlugVE?.addEventListener("input", function(){
           clearTimeout(timerHorizontePlugVE);
@@ -7724,6 +8260,18 @@
           if (ev.target === this) fecharFinanciamentoTCO();
         });
 
+        document.querySelectorAll(".btn_ajustar_seguro_tco").forEach(btn => {
+          btn.addEventListener("click", function () { abrirModalSeguroTCO(this.dataset.seguroPrefixo || ""); });
+        });
+        document.getElementById("btn_fechar_seguro_tco")?.addEventListener("click", fecharModalSeguroTCO);
+        document.getElementById("btn_cancelar_seguro_tco")?.addEventListener("click", fecharModalSeguroTCO);
+        document.getElementById("btn_consultar_seguro_externo")?.addEventListener("click", consultarSeguroModalTCO);
+        document.getElementById("btn_salvar_seguro_tco")?.addEventListener("click", salvarModalSeguroTCO);
+        document.getElementById("btn_zerar_seguro_tco")?.addEventListener("click", zerarSerieSeguroModalTCO);
+        document.getElementById("modal_seguro_tco")?.addEventListener("click", function (ev) {
+          if (ev.target === this) fecharModalSeguroTCO();
+        });
+
         document.getElementById("plugve_fuel_card")?.addEventListener("click", function (ev) {
           if (ev.target && ev.target.id === "fuel_single_preco_input") return;
           if (modoCombustivelTCO === "flex") abrirModalCombustivelTCO();
@@ -7761,6 +8309,10 @@
         atualizarTodosResumosFinanciamento();
 
         document.getElementById("form_simulacao_tco")?.addEventListener("submit", function (ev) {
+          if (!validarSeriesSeguroTCO()) {
+            ev.preventDefault();
+            return;
+          }
           if (!usoPrevistoValidoPlugVE()) {
             ev.preventDefault();
             alert("Informe valores inteiros maiores que zero para anos de uso e KM por ano.");
