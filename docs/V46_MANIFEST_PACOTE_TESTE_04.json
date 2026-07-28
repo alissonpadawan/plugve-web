@@ -1,0 +1,74 @@
+{
+  "pacote": "V46 pacote de teste 04",
+  "base": "V46 pacote de teste 03",
+  "gerado_em_utc": "2026-07-28T00:22:10.354475+00:00",
+  "arquivos_producao_alterados": [
+    {
+      "arquivo": "templates/simular.html",
+      "sha256_pacote_04": "658d54ffc8e7426b1cbf5586d47ebe6c925139598a28d7096ccdec5b67182b53",
+      "sha256_pacote_03": "10bd182bbf21431253ae18c6b0eeda60c0d62023da08375bfa0a642f8e174085",
+      "motivo": "Corrige desbloqueio dos perfis após consulta e mantém campos de participação 0% editáveis."
+    }
+  ],
+  "arquivos_testes_alterados": [
+    {
+      "arquivo": "tests/test_v46_02_async_loading.py",
+      "status": "alterado",
+      "sha256_pacote_04": "4d90f6833bad52e27e0c81d0ff1611aebea9212787db1aa4352da160e09e7065",
+      "sha256_pacote_03": "f32cdb884dcf9f37facc1ae4620a6de7fefaed3533b9ed49336cbf4e08c1e7b7"
+    },
+    {
+      "arquivo": "tests/test_v46_04_profile_controls.py",
+      "status": "adicionado",
+      "sha256_pacote_04": "8eed065e831dc8d8c9423fd0def5aee5d80657e615121f197a5011adb7c8beaf",
+      "sha256_pacote_03": null
+    }
+  ],
+  "arquivos_protegidos": [
+    {
+      "arquivo": "services/pbev_service.py",
+      "sha256": "e9e9d08b81569d03da9306d639540eb191591fd029c24f0547a658e3662e027e",
+      "identico_pacote_03": true
+    },
+    {
+      "arquivo": "services/fipe_service.py",
+      "sha256": "934d635b1e75ed35f9f541648c7572833dc4e71d16cd722c5e87e335a391f5cd",
+      "identico_pacote_03": true
+    },
+    {
+      "arquivo": "services/fipe_catalog_classifier.py",
+      "sha256": "15a379f5f29f3329e832f3f7112c83f58d7c106273566dc50667219826bde11e",
+      "identico_pacote_03": true
+    },
+    {
+      "arquivo": "static/js/fipe.js",
+      "sha256": "b8bf175d21dd1ec3e9b6b294ae8573be74ed9eefb083d6f68ee94c164c4a05f7",
+      "identico_pacote_03": true
+    },
+    {
+      "arquivo": "templates/consulta_fipe.html",
+      "sha256": "d02816e3c6d97fa4e6b9f2efeea81f0374d01fa4543a12abef76d19a2da50ed2",
+      "identico_pacote_03": true
+    },
+    {
+      "arquivo": "routes/pbev_routes.py",
+      "sha256": "33cc7c06617c6de43d9d162c60328d39b3e4a7690885c370d038dcff3299d617",
+      "identico_pacote_03": true
+    },
+    {
+      "arquivo": "routes/tco_routes.py",
+      "sha256": "cda580c61d89f96e378bfb73c11f5a7dfaf71247e60f9194f4af12fe69231131",
+      "identico_pacote_03": true
+    },
+    {
+      "arquivo": "services/depreciacao_service.py",
+      "sha256": "278f828fe54ba8dc18a02a4930640d194308b38f9b0e5a765330e1f9705cf208",
+      "identico_pacote_03": true
+    },
+    {
+      "arquivo": "app.py",
+      "sha256": "bfed8bac9316d89eac49740581324d331e86f3a667d9f47ca629477e61eb6e09",
+      "identico_pacote_03": true
+    }
+  ]
+}

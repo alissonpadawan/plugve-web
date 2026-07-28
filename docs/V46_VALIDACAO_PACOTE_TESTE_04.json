@@ -1,0 +1,103 @@
+{
+  "pacote": "V46 pacote de teste 04",
+  "base": "V46 pacote de teste 03 sobre V44 homologada",
+  "gerado_em_utc": "2026-07-28T00:22:10.354475+00:00",
+  "python": "3.13.5",
+  "escopo": {
+    "correcao": "liberação dos sliders PHEV/flex após consultas e edição dos campos com participação 0%",
+    "backend": "inalterado",
+    "matching_catalogo_tco": "inalterados"
+  },
+  "validacoes": {
+    "compileall": {
+      "ok": true
+    },
+    "pytest": {
+      "aprovados": 139,
+      "ignorados": 5,
+      "subtestes_aprovados": 54,
+      "ok": true
+    },
+    "regressoes_reais": {
+      "casos": 44,
+      "aprovados": 44,
+      "reprovados": 0,
+      "decisoes_motor_multivisao": 31,
+      "decisoes_fallback_v44": 13,
+      "latencia_ms": {
+        "primeira_consulta_frio": 3382.758,
+        "media_aquecida": 133.869,
+        "mediana_aquecida": 73.192,
+        "maxima_aquecida": 855.488
+      }
+    },
+    "testes_dedicados_perfis": {
+      "testes_pytest": 5,
+      "regras": [
+        "slider PHEV segue estado de carregamento nos dois sentidos",
+        "slider flex segue estado de carregamento nos dois sentidos",
+        "participação 0% não desabilita campos PHEV",
+        "participação 0% não desabilita campos flex",
+        "botões continuam protegidos durante consulta"
+      ]
+    },
+    "jinja_parse": {
+      "templates": 15,
+      "ok": true
+    },
+    "node_check": {
+      "scripts_inline_simular": 3,
+      "scripts_estaticos": 7,
+      "ok": true
+    },
+    "chromium_headless": {
+      "phev": {
+        "antes": {
+          "slider_disabled": false,
+          "campo_combustivel_disabled": false
+        },
+        "durante": {
+          "slider_disabled": true,
+          "campo_combustivel_readonly": true
+        },
+        "depois": {
+          "slider_disabled": false,
+          "campo_combustivel_disabled": false,
+          "campo_combustivel_readonly": false
+        },
+        "movimento_confirmado": {
+          "valor": 75,
+          "rotulo_eletrico": "75% elétrico",
+          "rotulo_combustivel": "25% combustível"
+        }
+      },
+      "flex": {
+        "antes": {
+          "slider_disabled": false,
+          "campo_gasolina_disabled": false
+        },
+        "durante": {
+          "slider_disabled": true,
+          "campo_gasolina_readonly": true
+        },
+        "depois": {
+          "slider_disabled": false,
+          "campo_gasolina_disabled": false,
+          "campo_gasolina_readonly": false
+        },
+        "movimento_confirmado": {
+          "valor": 70,
+          "rotulo_etanol": "70% etanol",
+          "rotulo_gasolina": "30% gasolina"
+        }
+      },
+      "page_errors": [],
+      "ok": true
+    },
+    "flask_test_client": {
+      "executado": false,
+      "motivo": "Flask não está instalado no ambiente de montagem; 5 testes dependentes foram ignorados."
+    }
+  },
+  "conclusao": "Correção direcionada aprovada nas validações disponíveis; homologar o arraste dos sliders no Render."
+}

@@ -4098,12 +4098,14 @@
       });
       const fuelSlider = document.getElementById("fuel_mix_slider");
       const fuelSalvar = document.getElementById("btn_salvar_combustivel_tco");
-      if (combustaoCarregando) {
-        if (fuelSlider) fuelSlider.disabled = true;
-        if (fuelSalvar) {
-          fuelSalvar.disabled = true;
-          fuelSalvar.classList.add("plugve-fuel-save-disabled", "plugve-async-control-loading");
-        }
+      if (fuelSlider) {
+        fuelSlider.disabled = combustaoCarregando || !!modoEdicaoSomenteConsumoFlexTCO;
+        fuelSlider.classList.toggle("plugve-async-control-loading", combustaoCarregando);
+        fuelSlider.setAttribute("aria-busy", combustaoCarregando ? "true" : "false");
+      }
+      if (combustaoCarregando && fuelSalvar) {
+        fuelSalvar.disabled = true;
+        fuelSalvar.classList.add("plugve-fuel-save-disabled", "plugve-async-control-loading");
       }
       ["phev_modal_consumo_eletrico", "phev_modal_consumo_combustivel"].forEach(id => {
         const el = document.getElementById(id);
@@ -4114,12 +4116,14 @@
       });
       const phevSlider = document.getElementById("phev_mix_slider");
       const phevSalvar = document.getElementById("btn_salvar_phev_tco");
-      if (phevCarregando) {
-        if (phevSlider) phevSlider.disabled = true;
-        if (phevSalvar) {
-          phevSalvar.disabled = true;
-          phevSalvar.classList.add("plugve-phev-save-disabled", "plugve-async-control-loading");
-        }
+      if (phevSlider) {
+        phevSlider.disabled = phevCarregando;
+        phevSlider.classList.toggle("plugve-async-control-loading", phevCarregando);
+        phevSlider.setAttribute("aria-busy", phevCarregando ? "true" : "false");
+      }
+      if (phevCarregando && phevSalvar) {
+        phevSalvar.disabled = true;
+        phevSalvar.classList.add("plugve-phev-save-disabled", "plugve-async-control-loading");
       }
     }
 
@@ -5574,8 +5578,8 @@
         if (precoEta) precoEta.readOnly = false;
         if (precoGas) precoGas.readOnly = false;
         if (slider) slider.disabled = false;
-        [precoEta, consEta].forEach(el => { if (el) el.disabled = !usaEta; });
-        [precoGas, consGas].forEach(el => { if (el) el.disabled = !usaGas; });
+        // Participação 0% torna o campo opcional no cálculo, mas não impede sua edição.
+        [precoEta, consEta, precoGas, consGas].forEach(el => { if (el) el.disabled = false; });
         boxEta?.classList.toggle("plugve-disabled", !usaEta);
         boxGas?.classList.toggle("plugve-disabled", !usaGas);
         const okEta = !usaEta || (numeroBRParaFloat(precoEta?.value || 0) > 0 && numeroBRParaFloat(consEta?.value || 0) > 0);
@@ -6098,8 +6102,8 @@
 
       const usaEle = eletricoPct > 0;
       const usaComb = combustPct > 0;
-      [precoEle, consEle].forEach(el => { if (el) el.disabled = !usaEle; });
-      [precoComb, consComb].forEach(el => { if (el) el.disabled = !usaComb; });
+      // Participação 0% torna o campo opcional no cálculo, mas não impede sua edição.
+      [precoEle, consEle, precoComb, consComb].forEach(el => { if (el) el.disabled = false; });
       boxEle?.classList.toggle("plugve-disabled", !usaEle);
       boxComb?.classList.toggle("plugve-disabled", !usaComb);
 

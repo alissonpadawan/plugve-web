@@ -26,8 +26,8 @@ def test_requests_are_cancellable_and_stale_responses_are_guarded():
 def test_inputs_are_locked_while_official_queries_are_pending():
     assert "preco.readOnly = !!ativo" in TEMPLATE
     assert "campo.readOnly = bloqueado" in TEMPLATE
-    assert 'fuelSlider.disabled = true' in TEMPLATE
-    assert 'phevSlider.disabled = true' in TEMPLATE
+    assert 'fuelSlider.disabled = combustaoCarregando || !!modoEdicaoSomenteConsumoFlexTCO' in TEMPLATE
+    assert 'phevSlider.disabled = phevCarregando' in TEMPLATE
     assert 'fuelSalvar.disabled = true' in TEMPLATE
     assert 'phevSalvar.disabled = true' in TEMPLATE
     assert "consultaVeiculoPendenteTCO" in TEMPLATE
