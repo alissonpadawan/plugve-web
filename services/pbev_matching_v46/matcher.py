@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import os
 import re
+import threading
 import time
-from collections import defaultdict
+from collections import OrderedDict, defaultdict
 from typing import Any
 
 from .models import CandidateScore, TechnicalEvidence, TextViews
@@ -57,6 +59,17 @@ class PbevMultiviewMatcher:
         self._cache_signature: tuple[str, float] | None = None
         self._record_cache: dict[str, dict[str, Any]] = {}
         self._idf_by_brand: dict[str, dict[str, float]] = {}
+        self._prepare_lock = threading.RLock()
+        self._brand_scopes: OrderedDict[str, frozenset[str]] = OrderedDict()
+        self._scope_idf_keys: dict[str, str] = {}
+        self._prepared_globally = False
+        self._prepare_by_brand = self._env_enabled("PLUGVE_PBEV_V46_PREPARE_BY_BRAND", default=True)
+        self._brand_cache_limit = self._env_int(
+            "PLUGVE_PBEV_V46_BRAND_CACHE_SIZE",
+            default=4,
+            minimum=1,
+            maximum=32,
+        )
 
     # ------------------------------------------------------------------
     # Construção das representações
@@ -64,6 +77,21 @@ class PbevMultiviewMatcher:
     @staticmethod
     def _record_id(record: dict[str, Any]) -> str:
         return str(record.get("id_pbev_preliminar") or record.get("chave_tecnica_normalizada") or id(record))
+
+    @staticmethod
+    def _env_enabled(name: str, *, default: bool) -> bool:
+        raw = os.getenv(name)
+        if raw is None:
+            return default
+        return str(raw).strip().lower() not in {"0", "false", "nao", "não", "off", "no"}
+
+    @staticmethod
+    def _env_int(name: str, *, default: int, minimum: int, maximum: int) -> int:
+        try:
+            value = int(str(os.getenv(name, default)).strip())
+        except (TypeError, ValueError):
+            value = default
+        return max(minimum, min(maximum, value))
 
     def _query_text(self, query: dict[str, Any]) -> str:
         return " ".join(
@@ -156,40 +184,136 @@ class PbevMultiviewMatcher:
                 year = None
         return year, bool(resolved.get("zero_km_contexto"))
 
-    def _prepare_records(self, cache: Any) -> None:
+    def _reset_prepared_cache(self, cache: Any) -> None:
         signature = (cache.path, cache.mtime)
         if signature == self._cache_signature:
             return
         self._record_cache = {}
+        self._idf_by_brand = {}
+        self._brand_scopes.clear()
+        self._scope_idf_keys.clear()
+        self._prepared_globally = False
+        self._cache_signature = signature
+
+    def _prepare_record(self, record: dict[str, Any]) -> tuple[str, dict[str, Any]]:
+        rid = self._record_id(record)
+        cached = self._record_cache.get(rid)
+        if cached is not None:
+            return rid, cached
+
+        model_views = build_text_views(self._record_model_text(record))
+        version_views = build_text_views(self._record_version_text(record))
+        full_views = build_text_views(self._record_full_text(record))
+        propulsion = self._canon_propulsion(record.get("tipo_propulsao_normalizado") or record.get("tipo_propulsao"))
+        fuel = self._canon_fuel(record.get("combustivel_normalizado") or record.get("combustivel"))
+        tech = extract_technical_evidence(
+            full_views,
+            year=self._record_year(record),
+            propulsion=propulsion,
+            fuel=fuel,
+            infer_natural=True,
+        )
+        brand = self.service._marca_key(record.get("marca_normalizada") or record.get("marca"))
+        cached = {
+            "model_views": model_views,
+            "version_views": version_views,
+            "full_views": full_views,
+            "model_core": model_core_tokens(model_views),
+            "tech": tech,
+            "brand": brand,
+        }
+        self._record_cache[rid] = cached
+        return rid, cached
+
+    def _prepare_all_records(self, cache: Any) -> None:
+        self._reset_prepared_cache(cache)
+        if self._prepared_globally:
+            return
+
         by_brand_docs: dict[str, list[set[str]]] = defaultdict(list)
         for record in cache.registros:
             if not isinstance(record, dict):
                 continue
-            rid = self._record_id(record)
-            model_views = build_text_views(self._record_model_text(record))
-            version_views = build_text_views(self._record_version_text(record))
-            full_views = build_text_views(self._record_full_text(record))
-            propulsion = self._canon_propulsion(record.get("tipo_propulsao_normalizado") or record.get("tipo_propulsao"))
-            fuel = self._canon_fuel(record.get("combustivel_normalizado") or record.get("combustivel"))
-            tech = extract_technical_evidence(
-                full_views,
-                year=self._record_year(record),
-                propulsion=propulsion,
-                fuel=fuel,
-                infer_natural=True,
-            )
-            brand = self.service._marca_key(record.get("marca_normalizada") or record.get("marca"))
-            self._record_cache[rid] = {
-                "model_views": model_views,
-                "version_views": version_views,
-                "full_views": full_views,
-                "model_core": model_core_tokens(model_views),
-                "tech": tech,
-                "brand": brand,
-            }
-            by_brand_docs[brand].append(set(full_views.tokens))
+            _, prepared = self._prepare_record(record)
+            by_brand_docs[prepared["brand"]].append(set(prepared["full_views"].tokens))
         self._idf_by_brand = {brand: compute_idf(docs) for brand, docs in by_brand_docs.items()}
-        self._cache_signature = signature
+        self._brand_scopes.clear()
+        self._scope_idf_keys.clear()
+        self._prepared_globally = True
+
+    def _evict_old_brand_scopes(self) -> None:
+        while len(self._brand_scopes) > self._brand_cache_limit:
+            old_scope, _ = self._brand_scopes.popitem(last=False)
+            self._scope_idf_keys.pop(old_scope, None)
+
+        active_ids: set[str] = set()
+        for ids in self._brand_scopes.values():
+            active_ids.update(ids)
+        for rid in list(self._record_cache):
+            if rid not in active_ids:
+                del self._record_cache[rid]
+
+        active_idf_keys = set(self._scope_idf_keys.values())
+        for key in list(self._idf_by_brand):
+            if key not in active_idf_keys:
+                del self._idf_by_brand[key]
+
+    def _prepare_brand_records(
+        self,
+        cache: Any,
+        *,
+        brand_key: str,
+        brand_keys: list[str],
+        records: list[dict[str, Any]],
+    ) -> None:
+        self._reset_prepared_cache(cache)
+        scope_keys = list(dict.fromkeys(key for key in brand_keys if key)) or [brand_key]
+        scope_key = "|".join(scope_keys)
+        if scope_key in self._brand_scopes:
+            self._brand_scopes.move_to_end(scope_key)
+            return
+
+        scope_ids: set[str] = set()
+        for record in records:
+            if not isinstance(record, dict):
+                continue
+            rid, _ = self._prepare_record(record)
+            scope_ids.add(rid)
+
+        # Preserva exatamente o IDF histórico: ele é calculado apenas com os
+        # registros cuja marca normalizada coincide com a marca principal FIPE.
+        idf_docs: list[set[str]] = []
+        for record in cache.indice_marca.get(brand_key, []):
+            if not isinstance(record, dict):
+                continue
+            rid, prepared = self._prepare_record(record)
+            scope_ids.add(rid)
+            idf_docs.append(set(prepared["full_views"].tokens))
+        self._idf_by_brand[brand_key] = compute_idf(idf_docs) if idf_docs else {}
+
+        self._brand_scopes[scope_key] = frozenset(scope_ids)
+        self._scope_idf_keys[scope_key] = brand_key
+        self._brand_scopes.move_to_end(scope_key)
+        self._evict_old_brand_scopes()
+
+    def _prepare_records(
+        self,
+        cache: Any,
+        *,
+        brand_key: str | None = None,
+        brand_keys: list[str] | None = None,
+        records: list[dict[str, Any]] | None = None,
+    ) -> None:
+        with self._prepare_lock:
+            if not self._prepare_by_brand or not brand_key or records is None:
+                self._prepare_all_records(cache)
+                return
+            self._prepare_brand_records(
+                cache,
+                brand_key=brand_key,
+                brand_keys=brand_keys or [brand_key],
+                records=records,
+            )
 
     # ------------------------------------------------------------------
     # Compatibilidade e pontuação
@@ -592,7 +716,6 @@ class PbevMultiviewMatcher:
     def suggest(self, query: dict[str, Any]) -> dict[str, Any]:
         started = time.perf_counter()
         cache = self.service.carregar_base_pbev()
-        self._prepare_records(cache)
 
         query_views = build_text_views(self._query_text(query))
         query_model_views = build_text_views(self._query_model_text(query))
@@ -646,18 +769,25 @@ class PbevMultiviewMatcher:
             return self._empty_response(reason="Marca FIPE ausente ou sem registros PBEV.", debug=debug)
 
         allowed = self._allowed_propulsions(propulsion, str(query.get("prefixo") or "").lower())
-        idf = self._idf_by_brand.get(brand_key, {})
-        ranked = [
-            self._score_candidate(
-                record,
-                query_views=query_views,
-                query_model_views=query_model_views,
-                query_tech=query_tech,
-                allowed_propulsions=allowed,
-                brand_idf=idf,
+        with self._prepare_lock:
+            self._prepare_records(
+                cache,
+                brand_key=brand_key,
+                brand_keys=brand_keys or [brand_key],
+                records=records,
             )
-            for record in records
-        ]
+            idf = self._idf_by_brand.get(brand_key, {})
+            ranked = [
+                self._score_candidate(
+                    record,
+                    query_views=query_views,
+                    query_model_views=query_model_views,
+                    query_tech=query_tech,
+                    allowed_propulsions=allowed,
+                    brand_idf=idf,
+                )
+                for record in records
+            ]
         ranked.sort(
             key=lambda c: (
                 1 if c.usable else 0,
