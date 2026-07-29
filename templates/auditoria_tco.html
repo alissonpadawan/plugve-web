@@ -237,16 +237,6 @@ diferença_percentual = {{ comp.economia_percentual }}</p>
         {% for veic in comp.auditoria_veiculos %}
           <div class="audit-card" style="margin-top:14px">
             <h3>5.{{ loop.index + 1 }} Memória anual — {{ veic.nome }}</h3>
-            <dl class="audit-dl" style="margin-bottom:12px">
-              <dt>seguro — origem</dt><dd>{{ veic.seguro.origem }}</dd>
-              <dt>seguro — fonte</dt><dd>{{ veic.seguro.fonte }}</dd>
-              <dt>seguro — primeiro ano</dt><dd>{{ veic.seguro.valor_primeiro_ano }}</dd>
-              <dt>seguro — método</dt><dd>{{ veic.seguro.metodo }}</dd>
-              <dt>seguro — data</dt><dd>{{ veic.seguro.data_referencia or 'não informada' }}</dd>
-              <dt>seguro — cobertura</dt><dd>{{ veic.seguro.cobertura_referencia }}</dd>
-              <dt>seguro — série completa</dt><dd>{{ 'sim' if veic.seguro.completa else 'não' }}</dd>
-              {% if veic.seguro.observacao %}<dt>seguro — observação</dt><dd>{{ veic.seguro.observacao }}</dd>{% endif %}
-            </dl>
             <div class="audit-table-wrap">
               <table class="audit-table">
                 <thead><tr><th>Ano</th><th>Uso</th><th>IPVA</th><th>Seguro</th><th>Manut.</th><th>Juros</th><th>Deprec.</th><th>Custo total</th><th>CO₂</th></tr></thead>

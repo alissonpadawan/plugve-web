@@ -7,7 +7,6 @@ from flask import Blueprint, render_template, request, flash, jsonify, redirect,
 import plotly.graph_objs as go
 import plotly.io as pio
 import os
-import json
 import uuid
 import secrets
 import hmac
@@ -22,7 +21,6 @@ from functools import lru_cache
 
 from services.fipe_service import FipeService, FipeApiError
 from services.ipva_service import IpvaService
-from services.seguro_service import get_seguro_service
 from services.sobre_engagement_service import (
     COMMENT_MAX_LENGTH,
     PAGE_SIZE as SOBRE_COMMENTS_PAGE_SIZE,
@@ -61,6 +59,18 @@ CAMINHO_MUNICIPIOS = os.path.join(BASE_DIR, "data", "municipios.xlsx")
 # ============================================================
 
 # 2.1) Converter número com vírgula/ponto
+SEGURO_PADRAO_PERCENTUAL = 0.047
+
+# Fatores ambientais iniciais usados na seção de impacto ambiental.
+# A estimativa é operacional: não inclui fabricação do veículo, bateria,
+# transporte, manutenção ou descarte. Os valores ficam centralizados aqui
+# para facilitar revisão metodológica posterior na dissertação.
+FATOR_CO2_ENERGIA_KG_KWH = 0.0289   # MCTI/SIN: 0,0289 tCO2/MWh = 0,0289 kgCO2/kWh
+FATOR_CO2_GASOLINA_KG_L = 2.212     # gasolina comercial: premissa inicial kgCO2/L
+FATOR_CO2_ETANOL_KG_L = 0.0         # etanol: CO2 fóssil da queima tratado como biogênico separado
+FATOR_CO2_ETANOL_BIOGENICO_KG_L = 1.526  # etanol hidratado: CO2 biogênico reportado à parte
+FATOR_CO2_DIESEL_S10_KG_L = 2.603   # diesel S10/comercial: premissa inicial kgCO2/L
+FATOR_ARVORE_TCO2_ANO = 0.060       # EPA: árvore urbana média, tCO2/ano
 
 def conv(num):
     try:
@@ -74,160 +84,20 @@ def conv(num):
     except (TypeError, ValueError):
         return 0.0
 
+def seguro_padrao(preco: float) -> float:
+    return max(0.0, float(preco or 0.0) * SEGURO_PADRAO_PERCENTUAL)
 
 def _flag_formulario_ativo(dados_form, campo: str) -> bool:
-    return str(dados_form.get(campo, "") or "").strip().lower() in {"1", "true", "sim", "yes", "on"}
+    return str(dados_form.get(campo, "") or "").strip().lower() in {"1", "true", "sim", "s", "yes", "y"}
 
 
-def _valor_seguro_manual_legado(dados_form, campo: str):
-    """Compatibilidade explícita: valor antigo só vale quando foi informado pelo usuário."""
+def seguro_formulario_ou_padrao(dados_form, campo: str, preco: float) -> float:
     valor_bruto = dados_form.get(campo, "")
     if _flag_formulario_ativo(dados_form, f"{campo}_manual"):
+        # Campo apagado manualmente significa opção consciente por não considerar seguro.
         return max(0.0, conv(valor_bruto))
-    return None
-
-
-def _serie_seguro_json(valor_bruto) -> list[float]:
-    if isinstance(valor_bruto, list):
-        bruto = valor_bruto
-    else:
-        texto = str(valor_bruto or "").strip()
-        if not texto:
-            return []
-        try:
-            bruto = json.loads(texto)
-        except (TypeError, ValueError, json.JSONDecodeError):
-            return []
-    if not isinstance(bruto, list):
-        return []
-    valores = []
-    for item in bruto:
-        valor = conv(item)
-        if valor < 0:
-            valor = 0.0
-        valores.append(round(valor, 2))
-    return valores
-
-
-def _normalizar_serie_seguro(valores, anos: int) -> tuple[list[float], bool]:
-    anos = max(1, int(anos or 1))
-    serie = [max(0.0, float(v or 0.0)) for v in (valores or [])][:anos]
-    completa = len(serie) >= anos
-    if len(serie) < anos:
-        serie.extend([0.0] * (anos - len(serie)))
-    return serie, completa
-
-
-def extrair_seguro_formulario(dados_form, prefixo: str) -> dict:
-    """Lê uma série anual externa/manual sem aplicar percentual próprio da FIPE."""
-    anos = max(1, int(dados_form.get("anos", 1) or 1))
-    campo = f"seguro_{prefixo}"
-    origem_postada = str(dados_form.get(f"{campo}_origem", "") or "").strip().lower()
-    estimate_id = str(dados_form.get(f"{campo}_estimate_id", "") or "").strip()
-    serie_postada = _serie_seguro_json(dados_form.get(f"{campo}_serie", ""))
-
-    # Para valores automáticos, a memória do servidor é a fonte de verdade.
-    estimativa = None
-    if estimate_id and origem_postada.startswith("extern"):
-        try:
-            estimativa = get_seguro_service().get_by_id(estimate_id)
-        except Exception:
-            estimativa = None
-
-    if estimativa is not None:
-        serie, completa = _normalizar_serie_seguro(estimativa.serie_anual, anos)
-        return {
-            "valor_primeiro_ano": serie[0] if serie else 0.0,
-            "serie_anual": serie,
-            "origem": "externa_refinada" if estimativa.campos_perfil else "externa_basica",
-            "fonte": estimativa.fonte,
-            "provedor": estimativa.provedor,
-            "data_referencia": estimativa.data_referencia,
-            "faixa_minima": estimativa.faixa_minima,
-            "faixa_maxima": estimativa.faixa_maxima,
-            "cobertura_referencia": estimativa.cobertura_referencia,
-            "campos_perfil": list(estimativa.campos_perfil),
-            "estimate_id": estimativa.estimate_id,
-            "completa": bool(completa and estimativa.completa),
-            "observacao": estimativa.observacao,
-            "cache": estimativa.cache,
-            "metodo": "serie_externa_anual",
-        }
-
-    # Série digitada pelo usuário. A origem automática é removida se o token
-    # não puder ser validado no servidor.
-    if serie_postada:
-        serie, completa = _normalizar_serie_seguro(serie_postada, anos)
-        return {
-            "valor_primeiro_ano": serie[0] if serie else 0.0,
-            "serie_anual": serie,
-            "origem": "manual",
-            "fonte": "Valor informado pelo usuário",
-            "provedor": "",
-            "data_referencia": "",
-            "faixa_minima": None,
-            "faixa_maxima": None,
-            "cobertura_referencia": "",
-            "campos_perfil": [],
-            "estimate_id": "",
-            "completa": completa,
-            "observacao": "Série anual informada pelo usuário.",
-            "cache": False,
-            "metodo": "serie_manual_anual",
-        }
-
-    # Compatibilidade com formulários antigos: um valor explicitamente postado
-    # é tratado como premissa manual constante, nunca como percentual oculto.
-    valor_manual_legado = _valor_seguro_manual_legado(dados_form, campo)
-    valor_legado = valor_manual_legado if valor_manual_legado is not None else max(0.0, conv(dados_form.get(campo, 0)))
-    if valor_legado > 0:
-        serie = [valor_legado] * anos
-        return {
-            "valor_primeiro_ano": valor_legado,
-            "serie_anual": serie,
-            "origem": "manual_constante_legado",
-            "fonte": "Valor anual informado pelo usuário",
-            "provedor": "",
-            "data_referencia": "",
-            "faixa_minima": None,
-            "faixa_maxima": None,
-            "cobertura_referencia": "",
-            "campos_perfil": [],
-            "estimate_id": "",
-            "completa": True,
-            "observacao": "Valor anual repetido por compatibilidade com formulário anterior.",
-            "cache": False,
-            "metodo": "manual_constante_legado",
-        }
-
-    return {
-        "valor_primeiro_ano": 0.0,
-        "serie_anual": [0.0] * anos,
-        "origem": "indisponivel",
-        "fonte": "Sem estimativa de seguro",
-        "provedor": "",
-        "data_referencia": "",
-        "faixa_minima": None,
-        "faixa_maxima": None,
-        "cobertura_referencia": "",
-        "campos_perfil": [],
-        "estimate_id": "",
-        "completa": False,
-        "observacao": "A fonte externa não forneceu a série e nenhum valor manual foi informado.",
-        "cache": False,
-        "metodo": "nao_incluido",
-    }
-
-
-def rotulo_origem_seguro(seguro: dict) -> str:
-    origem = str((seguro or {}).get("origem") or "").strip().lower()
-    if origem == "externa_refinada":
-        return "Estimativa externa refinada"
-    if origem == "externa_basica":
-        return "Estimativa externa por veículo e região"
-    if origem.startswith("manual"):
-        return "Série anual informada pelo usuário"
-    return "Seguro não estimado"
+    valor = conv(valor_bruto)
+    return valor if valor > 0 else seguro_padrao(preco)
 
 # 2.2) Normalizar texto (remove acento, upper, trim)
 def normalizar(s: str) -> str:
@@ -694,8 +564,8 @@ def calcular_tco_completo(dados_form):
 
     ipva_icev = conv(dados_form.get("ipva_icev", 0))
 
-    seguro_ve_serie = extrair_seguro_formulario(dados_form, "ve")["serie_anual"]
-    seguro_icev_serie = extrair_seguro_formulario(dados_form, "icev")["serie_anual"]
+    seguro_ve = seguro_formulario_ou_padrao(dados_form, "seguro_ve", preco_ve)
+    seguro_icev = seguro_formulario_ou_padrao(dados_form, "seguro_icev", preco_icev)
 
     depreciacao_ve = conv(dados_form.get("depreciacao_ve", 0)) / 100.0
     depreciacao_icev = conv(dados_form.get("depreciacao_icev", 0)) / 100.0
@@ -726,10 +596,8 @@ def calcular_tco_completo(dados_form):
         preco_ve_atual *= 1 - depreciacao_ve
         preco_icev_atual *= 1 - depreciacao_icev
 
-        seguro_ve_ano = seguro_ve_serie[ano - 1] if ano - 1 < len(seguro_ve_serie) else 0.0
-        seguro_icev_ano = seguro_icev_serie[ano - 1] if ano - 1 < len(seguro_icev_serie) else 0.0
-        custo_anual_ve = (km_ano * consumo_ve * energia_anual) + manut_ve + ipva_ve + seguro_ve_ano
-        custo_anual_icev = (km_ano / consumo_icev * combustivel_anual) + manut_icev + ipva_icev + seguro_icev_ano
+        custo_anual_ve = (km_ano * consumo_ve * energia_anual) + manut_ve + ipva_ve + seguro_ve
+        custo_anual_icev = (km_ano / consumo_icev * combustivel_anual) + manut_icev + ipva_icev + seguro_icev
 
         tco_ve += custo_anual_ve
         tco_icev += custo_anual_icev
@@ -922,7 +790,7 @@ def montar_comparacao_componentes(v1: dict, v2: dict) -> list:
     linhas = [
         row("Energia/combustível", "uso", ajuda="Custo de recarga, combustível ou combinação configurada no perfil de uso."),
         row("IPVA", "ipva", ajuda="Soma do IPVA projetado no horizonte."),
-        row("Seguro", "seguro", ajuda="Soma da série anual fornecida por fonte externa ou informada pelo usuário."),
+        row("Seguro", "seguro", ajuda="Seguro projetado a partir da premissa informada/editável."),
         row("Manutenção", "manutencao", ajuda="Manutenção anual informada multiplicada pelo horizonte."),
         row("Depreciação", "depreciacao", ajuda="Perda estimada entre valor inicial e valor futuro de revenda."),
         row("Financiamento/juros", "financiamento_juros", ajuda="Somente juros do financiamento no horizonte, para não somar o principal duas vezes."),
@@ -1128,8 +996,9 @@ def html_grafico(fig):
 
 
 # 4.4) Projeção genérica de um veículo
-# V47: energia e combustível seguem seus reajustes; o seguro usa uma série anual
-# externa ou manual e não acompanha mais a FIPE por percentual fixo.
+# Regra: energia e combustível sobem a.a.; IPVA e seguro acompanham o valor de mercado do veículo.
+# 4.4) Projeção genérica de um veículo
+# Regra V26: energia e combustível sobem a.a.; IPVA e seguro acompanham o valor de mercado do veículo.
 def calcular_projecao_veiculo(veiculo, comum):
     nome = limpar_nome_veiculo(veiculo.get("nome", "Veículo"))
     tipo = veiculo.get("tipo", "icev")  # ve, phev ou icev
@@ -1138,17 +1007,7 @@ def calcular_projecao_veiculo(veiculo, comum):
     consumo = max(0.0, float(veiculo.get("consumo", 0) or 0))
     manut = max(0.0, float(veiculo.get("manut", 0) or 0))
     ipva_inicial = max(0.0, float(veiculo.get("ipva", 0) or 0))
-    seguro_info = veiculo.get("seguro") or {}
-    if not isinstance(seguro_info, dict):
-        valor_legacy = max(0.0, float(seguro_info or 0))
-        seguro_info = {
-            "valor_primeiro_ano": valor_legacy,
-            "serie_anual": [valor_legacy] * max(1, int(comum.get("anos", 1) or 1)),
-            "origem": "manual_constante_legado",
-            "fonte": "Valor anual informado pelo usuário",
-            "metodo": "manual_constante_legado",
-            "completa": True,
-        }
+    seguro_inicial = max(0.0, float(veiculo.get("seguro", 0) or 0))
     depreciacao = max(0.0, min(float(veiculo.get("depreciacao", 0) or 0), 0.95))
     financiamento = veiculo.get("financiamento") or {}
     combustivel_descricao = veiculo.get("combustivel", "")
@@ -1185,9 +1044,7 @@ def calcular_projecao_veiculo(veiculo, comum):
     phev_preco_combustivel = max(0.0, float(phev.get("preco_combustivel", 0) or 0))
 
     taxa_ipva = taxa_relativa(ipva_inicial, preco)
-    seguro_serie, seguro_serie_completa = _normalizar_serie_seguro(seguro_info.get("serie_anual"), anos)
-    seguro_inicial = seguro_serie[0] if seguro_serie else 0.0
-    taxa_seguro_equivalente = taxa_relativa(seguro_inicial, preco)
+    taxa_seguro = taxa_relativa(seguro_inicial, preco)
 
     valor_mercado = preco
     gasto_operacional_acumulado = 0.0
@@ -1222,7 +1079,7 @@ def calcular_projecao_veiculo(veiculo, comum):
         combustivel_ano = combustivel_inicial * ((1 + aumento_combustivel) ** (ano - 1))
 
         ipva_ano = valor_mercado * taxa_ipva
-        seguro_ano = seguro_serie[ano - 1] if ano - 1 < len(seguro_serie) else 0.0
+        seguro_ano = valor_mercado * taxa_seguro
 
         co2_energia_kg = 0.0
         co2_gasolina_kg = 0.0
@@ -1386,15 +1243,7 @@ def calcular_projecao_veiculo(veiculo, comum):
         "preco_inicial": preco,
         "taxa_depreciacao": depreciacao,
         "taxa_ipva": taxa_ipva,
-        "taxa_seguro": taxa_seguro_equivalente,
-        "taxa_seguro_equivalente": taxa_seguro_equivalente,
-        "taxa_seguro_equivalente_lista": [taxa_relativa(valor, mercado) for valor, mercado in zip(seguro_lista, valor_mercado_lista[:-1])],
-        "seguro_meta": {
-            **seguro_info,
-            "valor_primeiro_ano": seguro_inicial,
-            "serie_anual": seguro_serie,
-            "completa": bool(seguro_info.get("completa", seguro_serie_completa) and seguro_serie_completa),
-        },
+        "taxa_seguro": taxa_seguro,
         "valor_revenda_final": valor_revenda_final,
         "perda_depreciacao_final": perda_depreciacao_final,
         "gasto_operacional_final": gasto_operacional_final,
@@ -1626,12 +1475,6 @@ def montar_bloco_resultado(titulo, v1, v2):
 
     def resumo(v):
         financiamento = v.get("financiamento") or {}
-        seguro = v.get("seguro_meta") or {}
-        faixa_min = seguro.get("faixa_minima")
-        faixa_max = seguro.get("faixa_maxima")
-        faixa_texto = ""
-        if faixa_min is not None and faixa_max is not None:
-            faixa_texto = f"{real_format(faixa_min)} a {real_format(faixa_max)}"
         return {
             "nome": v["nome"],
             "nome_curto": v["nome_curto"],
@@ -1648,16 +1491,7 @@ def montar_bloco_resultado(titulo, v1, v2):
             "valor_revenda": real_format(v["valor_revenda_final"]),
             "taxa_depreciacao": percentual_format(v["taxa_depreciacao"]),
             "taxa_ipva": percentual_format(v["taxa_ipva"]),
-            "taxa_seguro": percentual_format(v.get("taxa_seguro_equivalente", 0)),
-            "seguro_primeiro_ano": real_format(seguro.get("valor_primeiro_ano", 0)),
-            "seguro_origem": rotulo_origem_seguro(seguro),
-            "seguro_fonte": seguro.get("fonte") or "Sem estimativa de seguro",
-            "seguro_data_referencia": seguro.get("data_referencia") or "",
-            "seguro_metodo": seguro.get("metodo") or "nao_incluido",
-            "seguro_cobertura": seguro.get("cobertura_referencia") or "Não informada pela fonte",
-            "seguro_faixa": faixa_texto,
-            "seguro_serie_completa": bool(seguro.get("completa")),
-            "seguro_observacao": seguro.get("observacao") or "",
+            "taxa_seguro": percentual_format(v["taxa_seguro"]),
             "financiamento_ativo": bool(financiamento.get("ativo")),
             "valor_financiado": real_format(financiamento.get("principal", 0)),
             "entrada_financiamento": real_format(financiamento.get("entrada", 0)),
@@ -1837,24 +1671,9 @@ def montar_bloco_resultado(titulo, v1, v2):
             "v2_co2": toneladas_format(m2.get("co2_fossil_acumulado_t", 0)),
         })
 
-    def seguro_auditoria(v):
-        seguro = v.get("seguro_meta") or {}
-        return {
-            "origem": rotulo_origem_seguro(seguro),
-            "fonte": seguro.get("fonte") or "Sem estimativa de seguro",
-            "provedor": seguro.get("provedor") or "",
-            "data_referencia": seguro.get("data_referencia") or "",
-            "metodo": seguro.get("metodo") or "nao_incluido",
-            "cobertura_referencia": seguro.get("cobertura_referencia") or "Não informada",
-            "completa": bool(seguro.get("completa")),
-            "observacao": seguro.get("observacao") or "",
-            "valor_primeiro_ano": real_format(seguro.get("valor_primeiro_ano", 0)),
-            "serie_anual": [real_format(valor) for valor in (seguro.get("serie_anual") or [])],
-        }
-
     auditoria_veiculos = [
-        {"nome": v1["nome"], "tipo": v1.get("tipo", ""), "componentes": comp1, "seguro": seguro_auditoria(v1), "memoria": [formatar_linha_anual(m) for m in mem1]},
-        {"nome": v2["nome"], "tipo": v2.get("tipo", ""), "componentes": comp2, "seguro": seguro_auditoria(v2), "memoria": [formatar_linha_anual(m) for m in mem2]},
+        {"nome": v1["nome"], "tipo": v1.get("tipo", ""), "componentes": comp1, "memoria": [formatar_linha_anual(m) for m in mem1]},
+        {"nome": v2["nome"], "tipo": v2.get("tipo", ""), "componentes": comp2, "memoria": [formatar_linha_anual(m) for m in mem2]},
     ]
 
     return {
@@ -1968,7 +1787,7 @@ def montar_veiculo_ve(dados_form):
         "consumo": conv(dados_form.get("consumo_ve", 0)),
         "manut": conv(dados_form.get("manut_ve", 0)),
         "ipva": ipva_ve,
-        "seguro": extrair_seguro_formulario(dados_form, "ve"),
+        "seguro": seguro_formulario_ou_padrao(dados_form, "seguro_ve", preco),
         "depreciacao": conv(dados_form.get("depreciacao_ve", 0)) / 100.0,
         "financiamento": calcular_financiamento_form(dados_form, "ve", preco),
     }
@@ -1986,7 +1805,7 @@ def montar_veiculo_icev(dados_form):
         "consumo": conv(dados_form.get("consumo_icev", 1)),
         "manut": conv(dados_form.get("manut_icev", 0)),
         "ipva": conv(dados_form.get("ipva_icev", 0)),
-        "seguro": extrair_seguro_formulario(dados_form, "icev"),
+        "seguro": seguro_formulario_ou_padrao(dados_form, "seguro_icev", preco),
         "depreciacao": conv(dados_form.get("depreciacao_icev", 0)) / 100.0,
         "financiamento": calcular_financiamento_form(dados_form, "icev", preco),
     }
@@ -2004,7 +1823,7 @@ def montar_veiculo_atual(dados_form):
         "consumo": conv(dados_form.get("consumo_atual", 1)),
         "manut": conv(dados_form.get("manut_atual", 0)),
         "ipva": conv(dados_form.get("ipva_atual", 0)),
-        "seguro": extrair_seguro_formulario(dados_form, "atual"),
+        "seguro": seguro_formulario_ou_padrao(dados_form, "seguro_atual", preco),
         "depreciacao": conv(dados_form.get("depreciacao_atual", 0)) / 100.0,
         "financiamento": calcular_financiamento_form(dados_form, "atual", preco),
     }
@@ -2045,8 +1864,7 @@ def montar_payload_auditoria_tco(resultado_final: dict) -> dict:
         "",
         "Tributos, seguro e manutenção:",
         "IPVA_n = VF_(n-1) × taxa_IPVA",
-        "Seguro_n = valor da série anual externa ou manual no ano n",
-        "A CurVE não aplica percentual fixo da FIPE para gerar o seguro.",
+        "Seguro_n = VF_(n-1) × taxa_seguro",
         "Manutenção_n = manutenção anual informada",
         "",
         "Financiamento:",
@@ -2108,7 +1926,6 @@ def montar_payload_auditoria_tco(resultado_final: dict) -> dict:
             "O CO₂ é estimativa operacional. Não inclui fabricação do veículo, bateria, manutenção, transporte, descarte ou análise de ciclo de vida completa.",
             "O CO₂ da queima do etanol é tratado como biogênico e apresentado separadamente; não é chamado de zero absoluto.",
             "No financiamento, o custo total considera juros/custos financeiros no horizonte para evitar somar o principal duas vezes.",
-            "O seguro usa uma série anual externa ou manual. A CurVE não cria o prêmio por percentual fixo da FIPE.",
         ],
     }
 

@@ -79,23 +79,4 @@ class Config:
     CONTACT_SMTP_TIMEOUT = int(os.environ.get("CONTACT_SMTP_TIMEOUT", "20"))
     CONTACT_RATE_LIMIT_SECONDS = int(os.environ.get("CONTACT_RATE_LIMIT_SECONDS", "60"))
 
-    # V47: seguro automotivo por fonte externa.
-    # A CurVE não aplica mais percentual fixo sobre a FIPE. Quando a fonte não
-    # estiver configurada, o usuário pode informar uma série anual manual.
-    INSURANCE_ENABLED = os.environ.get("INSURANCE_ENABLED", "0").strip().lower() in {"1", "true", "sim", "yes", "on"}
-    INSURANCE_PROVIDER = os.environ.get("INSURANCE_PROVIDER", "external").strip()
-    INSURANCE_SOURCE_LABEL = os.environ.get("INSURANCE_SOURCE_LABEL", "Fonte externa de seguro").strip()
-    INSURANCE_API_URL = os.environ.get("INSURANCE_API_URL", "").strip()
-    INSURANCE_API_KEY = os.environ.get("INSURANCE_API_KEY", "").strip()
-    INSURANCE_API_KEY_HEADER = os.environ.get("INSURANCE_API_KEY_HEADER", "Authorization").strip()
-    INSURANCE_API_KEY_PREFIX = os.environ.get("INSURANCE_API_KEY_PREFIX", "Bearer").strip()
-    INSURANCE_API_TIMEOUT = int(os.environ.get("INSURANCE_API_TIMEOUT", "20"))
-    # auto: tenta série completa e, se necessário, uma consulta por ano.
-    # series: exige série completa em uma resposta. per_year: consulta ano a ano.
-    INSURANCE_API_MODE = os.environ.get("INSURANCE_API_MODE", "auto").strip().lower()
-    INSURANCE_API_ALLOW_PER_YEAR = os.environ.get("INSURANCE_API_ALLOW_PER_YEAR", "1").strip().lower() in {"1", "true", "sim", "yes", "on"}
-    INSURANCE_CACHE_TTL_SECONDS = int(os.environ.get("INSURANCE_CACHE_TTL_SECONDS", "86400"))
-    INSURANCE_CACHE_STALE_SECONDS = int(os.environ.get("INSURANCE_CACHE_STALE_SECONDS", "2592000"))
-    INSURANCE_CACHE_DIR = PERSISTENT_DIR / "seguro" / "estimativas"
-
     HORIZONTE_PADRAO_ANOS = 5
