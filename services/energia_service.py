@@ -31,14 +31,14 @@ def _env_float(nome: str, padrao: float, minimo: float, maximo: float) -> float:
     return max(minimo, min(maximo, valor))
 
 
-# O Gunicorn usa timeout de 30 s. A consulta ANEEL precisa terminar muito antes
-# desse limite para que o fallback possa ser devolvido sem reiniciar o worker.
+# Proteção operacional: a metodologia permanece a mesma da V46.04, mas a
+# consulta externa precisa terminar antes do timeout de 30 s do Gunicorn.
 ANEEL_TOTAL_BUDGET_SECONDS = _env_float("PLUGVE_ANEEL_TOTAL_BUDGET_SECONDS", 8.0, 2.0, 20.0)
 ANEEL_CONNECT_TIMEOUT_SECONDS = _env_float("PLUGVE_ANEEL_CONNECT_TIMEOUT_SECONDS", 2.0, 0.5, 5.0)
 ANEEL_READ_TIMEOUT_SECONDS = _env_float("PLUGVE_ANEEL_READ_TIMEOUT_SECONDS", 4.0, 0.5, 10.0)
 ANEEL_CACHE_TTL_SECONDS = _env_float("PLUGVE_ANEEL_CACHE_TTL_SECONDS", 21600.0, 60.0, 604800.0)
 ANEEL_STALE_MAX_AGE_SECONDS = _env_float("PLUGVE_ANEEL_STALE_MAX_AGE_SECONDS", 2592000.0, 3600.0, 31536000.0)
-ANEEL_FAILURE_COOLDOWN_SECONDS = _env_float("PLUGVE_ANEEL_FAILURE_COOLDOWN_SECONDS", 300.0, 10.0, 3600.0)
+ANEEL_FAILURE_COOLDOWN_SECONDS = _env_float("PLUGVE_ANEEL_FAILURE_COOLDOWN_SECONDS", 60.0, 5.0, 600.0)
 
 _DEFAULT_PERSISTENT_DIR = Path("/var/data/plugve") if Path("/var/data").exists() else BASE_DIR / "data" / "_runtime"
 ANEEL_CACHE_FILE = (
@@ -102,17 +102,14 @@ def _salvar_cache_aneel() -> None:
             ANEEL_CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
             temporario = ANEEL_CACHE_FILE.with_suffix(".tmp")
             conteudo = {
-                "schema_version": 1,
+                "schema_version": 2,
                 "atualizado_em": datetime.now().isoformat(timespec="seconds"),
+                "descricao": "Componentes oficiais ANEEL B1; tributos são recalculados por UF em cada consulta.",
                 "tarifas": _ANEEL_CACHE_MEMORIA,
             }
-            temporario.write_text(
-                json.dumps(conteudo, ensure_ascii=False, indent=2),
-                encoding="utf-8",
-            )
+            temporario.write_text(json.dumps(conteudo, ensure_ascii=False, indent=2), encoding="utf-8")
             temporario.replace(ANEEL_CACHE_FILE)
         except Exception as exc:
-            # Falha de persistência não pode impedir a resposta da tarifa.
             print("[ANEEL] Não foi possível salvar o cache persistente:", exc)
 
 
@@ -134,6 +131,11 @@ def _obter_cache_aneel(sig: str, *, permitir_expirado: bool) -> Optional[dict[st
         limite = ANEEL_STALE_MAX_AGE_SECONDS if permitir_expirado else ANEEL_CACHE_TTL_SECONDS
         if idade > limite:
             return None
+        # Aceita o cache criado pelo pacote 06, pois ele já guarda somente
+        # TUSD, TE, tarifa-base e vigência oficiais, nunca os tributos da UF.
+        obrigatorios = {"tarifa_base_kwh", "tusd_kwh", "te_kwh", "sigagente"}
+        if not obrigatorios.issubset(dados):
+            return None
         copia = dict(dados)
         copia["_cache_status"] = "stale" if idade > ANEEL_CACHE_TTL_SECONDS else "fresh"
         copia["_cache_salvo_em"] = float(salvo_em)
@@ -143,7 +145,13 @@ def _obter_cache_aneel(sig: str, *, permitir_expirado: bool) -> Optional[dict[st
 def _registrar_cache_aneel(sig: str, dados: dict[str, Any]) -> None:
     _carregar_cache_aneel()
     chave = _normalizar(sig)
-    persistivel = {k: v for k, v in dados.items() if not str(k).startswith("_cache_")}
+    # Persistir apenas componentes oficiais da ANEEL. ICMS/PIS/COFINS não
+    # entram no cache porque são reaplicados pela planilha para cada UF.
+    campos = (
+        "sigagente", "tarifa_base_kwh", "tusd_kwh", "te_kwh",
+        "inicio_vig", "fim_vig", "base_tarifaria", "detalhe",
+    )
+    persistivel = {campo: dados.get(campo) for campo in campos}
     with _ANEEL_CACHE_LOCK:
         _ANEEL_CACHE_MEMORIA[chave] = {"salvo_em": time.time(), "dados": persistivel}
     _salvar_cache_aneel()
@@ -298,11 +306,11 @@ def _aneel_datastore_search(
     *,
     deadline: float | None = None,
 ) -> dict[str, Any] | None:
-    """Consulta a ANEEL dentro de um orçamento total curto e previsível.
+    """Executa a mesma consulta CKAN da V46.04 com tempo total limitado.
 
-    Tenta POST e usa GET somente se o POST falhar rapidamente e ainda houver
-    orçamento. Assim, o endpoint sempre tem tempo para devolver cache/fallback
-    antes do timeout de 30 segundos do Gunicorn.
+    POST continua sendo a chamada principal. GET permanece como compatibilidade,
+    mas só é tentado se ainda houver orçamento. A seleção de registros e a
+    metodologia tarifária não são alteradas por esta proteção.
     """
     deadline = deadline or (time.monotonic() + ANEEL_TOTAL_BUDGET_SECONDS)
 
@@ -312,10 +320,7 @@ def _aneel_datastore_search(
             break
 
         connect_timeout = min(ANEEL_CONNECT_TIMEOUT_SECONDS, max(0.2, restante * 0.25))
-        read_timeout = min(
-            ANEEL_READ_TIMEOUT_SECONDS,
-            max(0.25, restante - connect_timeout - 0.1),
-        )
+        read_timeout = min(ANEEL_READ_TIMEOUT_SECONDS, max(0.25, restante - connect_timeout - 0.1))
         timeout = Urllib3Timeout(
             total=max(0.5, restante),
             connect=connect_timeout,
@@ -341,7 +346,6 @@ def _aneel_datastore_search(
 
     return None
 
-
 def sugerir_sigagente_aneel(sig_digitado: str, limit: int = 25) -> list[str]:
     s = (sig_digitado or "").strip()
     if not s:
@@ -352,7 +356,7 @@ def sugerir_sigagente_aneel(sig_digitado: str, limit: int = 25) -> list[str]:
         "limit": int(limit),
         "q": s,
     }
-    data = _aneel_datastore_search(payload, deadline=time.monotonic() + ANEEL_TOTAL_BUDGET_SECONDS)
+    data = _aneel_datastore_search(payload)
     if not data:
         return []
 
@@ -393,10 +397,11 @@ def _filtrar_registros_aneel(records: list[dict[str, Any]], sig: str) -> list[di
 
 
 def obter_tarifa_energia_por_distribuidora(nome_distribuidora: str) -> Optional[dict[str, Any]]:
-    """Retorna a tarifa residencial B1 oficial sem bloquear o worker.
+    """Obtém os componentes oficiais B1 preservando a metodologia da V46.04.
 
-    Prioridade: cache oficial recente -> consulta online curta -> último valor
-    oficial em cache -> fallback local tratado pela função chamadora.
+    O cache contém somente dados oficiais da ANEEL (TUSD, TE, tarifa-base e
+    vigência). Os tributos estaduais nunca são persistidos aqui: continuam
+    sendo lidos de municipios.xlsx e aplicados em obter_tarifa_energia().
     """
     sig = mapear_para_sigagente(nome_distribuidora)
     if not sig:
@@ -404,15 +409,15 @@ def obter_tarifa_energia_por_distribuidora(nome_distribuidora: str) -> Optional[
 
     cache_recente = _obter_cache_aneel(sig, permitir_expirado=False)
     if cache_recente is not None:
-        print(f"[ANEEL] Cache oficial recente usado para {sig}.")
+        print(f"[ANEEL] Componentes oficiais recentes usados do cache para {sig}.")
         return cache_recente
 
     cache_anterior = _obter_cache_aneel(sig, permitir_expirado=True)
     if _aneel_em_cooldown(sig):
         if cache_anterior is not None:
-            print(f"[ANEEL] Cooldown ativo; último valor oficial usado para {sig}.")
+            print(f"[ANEEL] Cooldown ativo; componentes oficiais anteriores usados para {sig}.")
         else:
-            print(f"[ANEEL] Cooldown ativo; fallback local será usado para {sig}.")
+            print(f"[ANEEL] Cooldown ativo e sem componentes oficiais para {sig}.")
         return cache_anterior
 
     deadline = time.monotonic() + ANEEL_TOTAL_BUDGET_SECONDS
@@ -431,7 +436,7 @@ def obter_tarifa_energia_por_distribuidora(nome_distribuidora: str) -> Optional[
     data = _aneel_datastore_search(payload, deadline=deadline)
     records = data.get("result", {}).get("records", []) if data else []
 
-    # Mantém o fallback textual existente, mas somente dentro do mesmo orçamento.
+    # Fallback textual original, ainda limitado pelo mesmo orçamento total.
     if data is not None and not records and (deadline - time.monotonic()) > 0.75:
         payload_q = {
             "resource_id": ANEEL_RESOURCE_ID,
@@ -445,14 +450,15 @@ def obter_tarifa_energia_por_distribuidora(nome_distribuidora: str) -> Optional[
     if not records:
         _registrar_falha_aneel(sig)
         if cache_anterior is not None:
-            print(f"[ANEEL] Consulta indisponível; último valor oficial usado para {sig}.")
+            print(f"[ANEEL] Consulta indisponível; componentes oficiais anteriores usados para {sig}.")
             return cache_anterior
-        print(f"[ANEEL] Sem registros para {sig}; fallback local será usado.")
+        print(f"[ANEEL] Sem componentes oficiais disponíveis para {sig}.")
         return None
 
     def n(valor: Any) -> str:
         return _normalizar(valor)
 
+    # A partir daqui, seleção literal da V46.04.
     bases_preferidas = {"TARIFA DE APLICACAO", "BASE ECONOMICA"}
     filtrados = [r for r in records if n(r.get("DscBaseTarifaria")) in bases_preferidas]
     if not filtrados:
@@ -527,11 +533,9 @@ def obter_tarifa_energia_por_distribuidora(nome_distribuidora: str) -> Optional[
         "base_tarifaria": rec.get("DscBaseTarifaria"),
         "detalhe": rec.get("DscDetalhe"),
     }
-
     _registrar_cache_aneel(sig, resultado)
     _limpar_falha_aneel(sig)
     return resultado
-
 
 def calcular_tarifa_com_impostos(tarifa_base_kwh: float, uf: str) -> dict[str, float]:
     imp = obter_impostos_por_uf(uf)
@@ -567,37 +571,21 @@ def obter_tarifa_energia(uf: str, municipio: str) -> dict[str, Any]:
 
     dados_aneel = obter_tarifa_energia_por_distribuidora(dist)
     if dados_aneel is None:
-        tarifa_fallback = TARIFA_FALLBACK_UF.get(uf)
-        if tarifa_fallback is None:
-            return {
-                "tarifa_kwh": None,
-                "tarifa_base_kwh": None,
-                "distribuidora": dist,
-                "vigencia_inicio": None,
-                "vigencia_fim": None,
-                "detalhe": None,
-                "mensagem": "Não consegui consultar a ANEEL e não há estimativa local para esta UF. Ajuste manualmente.",
-            }
+        # Não devolver um número fixo como se fosse tarifa oficial. O frontend
+        # pode oferecer uma estimativa claramente identificada, sem selo ANEEL.
         return {
-            "tarifa_kwh": round(float(tarifa_fallback), 5),
-            "tarifa_base_kwh": round(float(tarifa_fallback), 5),
+            "tarifa_kwh": None,
+            "tarifa_base_kwh": None,
             "distribuidora": dist,
             "vigencia_inicio": None,
             "vigencia_fim": None,
-            "detalhe": {
-                "tusd_kwh": 0,
-                "te_kwh": 0,
-                "icms_kwh": 0,
-                "pis_kwh": 0,
-                "cofins_kwh": 0,
-                "icms_pct": 0,
-                "pis_pct": 0,
-                "cofins_pct": 0,
-                "base_tarifaria": "Estimativa local",
-                "sigagente": mapear_para_sigagente(dist),
-                "detalhe_aneel": "Fallback usado porque a consulta ANEEL falhou",
-            },
-            "mensagem": f"Tarifa preenchida por estimativa local para {uf}, pois a consulta ANEEL não retornou. Ajuste manualmente se necessário.",
+            "detalhe": None,
+            "fonte_oficial": False,
+            "mensagem": (
+                "A consulta ANEEL não respondeu dentro do limite seguro e ainda não há "
+                "componentes oficiais em cache para esta distribuidora. Ajuste manualmente "
+                "ou tente novamente em instantes."
+            ),
         }
 
     base_kwh = float(dados_aneel["tarifa_base_kwh"])
@@ -619,12 +607,12 @@ def obter_tarifa_energia(uf: str, municipio: str) -> dict[str, Any]:
     cache_status = dados_aneel.get("_cache_status")
     if cache_status == "stale":
         mensagem = (
-            f"Último valor oficial ANEEL disponível para {dist}, com impostos. "
-            f"Vigência registrada: {dados_aneel['inicio_vig']} até {dados_aneel['fim_vig']}."
+            f"Últimos componentes oficiais ANEEL disponíveis para {dist}, com impostos de {uf} "
+            f"recalculados pela planilha. Vigência: {dados_aneel['inicio_vig']} até {dados_aneel['fim_vig']}."
         )
     else:
         mensagem = (
-            f"Tarifa B1 Residencial ({dist}) com impostos. "
+            f"Tarifa B1 Residencial ({dist}) com impostos de {uf}. "
             f"Vigência ANEEL: {dados_aneel['inicio_vig']} até {dados_aneel['fim_vig']}."
         )
     return {
@@ -634,5 +622,6 @@ def obter_tarifa_energia(uf: str, municipio: str) -> dict[str, Any]:
         "vigencia_inicio": dados_aneel["inicio_vig"],
         "vigencia_fim": dados_aneel["fim_vig"],
         "detalhe": detalhe,
+        "fonte_oficial": True,
         "mensagem": mensagem,
     }
