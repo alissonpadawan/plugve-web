@@ -90,8 +90,9 @@ def test_fipe_plus_carros_chama_mesma_rota_de_preco_da_simular():
     assert "tipoAtual === 'carros'" in html
     assert "? `/api/fipe/preco?codigo_marca=${encodeURIComponent(marca)}" in html
     assert ": `/api/fipe/publica/preco?tipo=${encodeURIComponent(tipoAtual)}" in html
-    assert "if(ehConsultaPrecoFipe(url)) return null;" in html
-    assert "if(ehConsultaPrecoFipe(url)) return;" in html
+    # V49.04 removeu o cache independente do navegador; o preço continua
+    # apontando para a mesma rota canônica da Simular/Depreciação.
+    assert "cache:'no-store'" in html
 
 
 def test_depreciacao_usa_mesmo_contrato_http_fipe_da_simular():
@@ -99,7 +100,7 @@ def test_depreciacao_usa_mesmo_contrato_http_fipe_da_simular():
     inicio = js.index("async function buscarJsonFipeSeguro(url)")
     fim = js.index("async function varrerMarcaAtual", inicio)
     helper = js[inicio:fim]
-    assert 'fetch(url, { headers: { Accept: "application/json" } })' in helper
+    assert 'fetch(url, { headers: { Accept: "application/json" }, cache: "no-store" })' in helper
     assert "await carregarUsoFipe();" not in helper
     assert "if (!resp.ok)" in helper
 
@@ -110,6 +111,6 @@ def test_depreciacao_exibe_401_402_403_em_vez_de_falha_silenciosa():
     assert "erroFipeBloqueiaConsulta(e.data, { status: e.status })" in js
 
 
-def test_cache_bust_fipe_js_depreciacao_v49_03():
+def test_cache_bust_fipe_js_depreciacao_v49_04():
     html = (ROOT / "templates" / "depreciacao.html").read_text(encoding="utf-8")
-    assert "20260809_v49_03_fipe_unificado" in html
+    assert "20260809_v49_04_catalogo_canonico" in html

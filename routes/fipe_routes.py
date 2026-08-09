@@ -11,16 +11,25 @@ fipe_service = FipeService()
 
 
 def _resposta_catalogo(dados):
-    """Permite que navegador/CDN reutilizem listas FIPE estáveis."""
+    """Catálogo FIPE sempre revalidado no backend canônico da CurVE.
+
+    O FipeService mantém o cache persistente/compartilhado. O navegador e o
+    CDN não devem conservar cópias independentes por página, porque isso fazia
+    Simular, Depreciação e Fipe+ exibirem gerações diferentes do catálogo.
+    """
     resp = jsonify(dados)
-    resp.headers["Cache-Control"] = "public, max-age=21600, stale-while-revalidate=86400"
+    resp.headers["Cache-Control"] = "no-store, max-age=0"
+    resp.headers["Pragma"] = "no-cache"
+    resp.headers["X-CurVE-FIPE-Catalog"] = "canonical-v49.04"
     return resp
 
 
 def _resposta_preco(dados):
-    """Cache HTTP curto para preço atual FIPE, sem alterar a consulta feita."""
+    """Preço FIPE entregue pelo mesmo backend canônico, sem cache no cliente."""
     resp = jsonify(dados)
-    resp.headers["Cache-Control"] = "public, max-age=1800, stale-while-revalidate=21600"
+    resp.headers["Cache-Control"] = "no-store, max-age=0"
+    resp.headers["Pragma"] = "no-cache"
+    resp.headers["X-CurVE-FIPE-Catalog"] = "canonical-v49.04"
     return resp
 
 

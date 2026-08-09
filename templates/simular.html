@@ -3801,9 +3801,9 @@
       try {
         const contexto = contextoFipePorSelectId(selectId);
         const params = new URLSearchParams();
-        params.set("catalogo", "v46_03");
+        params.set("catalogo", "v49_04");
         if (contexto) params.set("contexto", contexto);
-        const resp = await fetch(`/api/fipe/marcas${params.toString() ? "?" + params.toString() : ""}`);
+        const resp = await fetch(`/api/fipe/marcas${params.toString() ? "?" + params.toString() : ""}`, { headers: { Accept: "application/json" }, cache: "no-store" });
         const marcas = await resp.json();
         select.innerHTML = "<option value=''>Selecione</option>";
         marcas.forEach(m => {
@@ -3838,10 +3838,10 @@
       try {
         const contexto = contextoFipePorSelectId(selectModeloId);
         const nomeMarca = marcaEl.options[marcaEl.selectedIndex]?.text || "";
-        const params = new URLSearchParams({ codigo_marca: marca, catalogo: "v46_03" });
+        const params = new URLSearchParams({ codigo_marca: marca, catalogo: "v49_04" });
         if (contexto) params.set("contexto", contexto);
         if (nomeMarca) params.set("nome_marca", nomeMarca);
-        const resp = await fetch(`/api/fipe/modelos?${params.toString()}`);
+        const resp = await fetch(`/api/fipe/modelos?${params.toString()}`, { headers: { Accept: "application/json" }, cache: "no-store" });
         const data = await resp.json();
         selectModelo.innerHTML = "<option value=''>Selecione</option>";
         (data.modelos || []).forEach(mod => {
@@ -3875,9 +3875,9 @@
 
       try {
         const contexto = contextoFipePorSelectId(selectAnoId);
-        const params = new URLSearchParams({ codigo_marca: marca, codigo_modelo: modelo, catalogo: "v46_03" });
+        const params = new URLSearchParams({ codigo_marca: marca, codigo_modelo: modelo, catalogo: "v49_04" });
         if (contexto) params.set("contexto", contexto);
-        const resp = await fetch(`/api/fipe/anos?${params.toString()}`);
+        const resp = await fetch(`/api/fipe/anos?${params.toString()}`, { headers: { Accept: "application/json" }, cache: "no-store" });
         const anos = await resp.json();
         selectAno.innerHTML = "<option value=''>Selecione</option>";
         let adicionados = 0;
@@ -4785,7 +4785,7 @@
 
       try {
         const params = new URLSearchParams({ codigo_marca: marca, codigo_modelo: modelo, codigo_ano: ano });
-        const resp = await fetch(`/api/fipe/preco?${params.toString()}`, { headers: { Accept: "application/json" }, signal: consultaFipe.signal });
+        const resp = await fetch(`/api/fipe/preco?${params.toString()}`, { headers: { Accept: "application/json" }, signal: consultaFipe.signal, cache: "no-store" });
         const data = await resp.json();
         if (!consultaControladaAtualTCO(CONSULTAS_FIPE_TCO, prefixo, consultaFipe)) return;
         if (!resp.ok) throw new Error(data?.erro || "Erro ao consultar FIPE.");
@@ -6929,9 +6929,10 @@
       const catalogoCurvasPlugVE = { modelos: new Set(), codigosModelo: new Set(), porNome: new Map(), porCodigo: new Map(), carregado: false };
       const CURVAS_CACHE_KEY_PLUGVE = "plugve:curvas:marcadores:v35_marcadores_unificados_legacy_unused";
       const CURVAS_CACHE_TTL_PLUGVE = 30 * 60 * 1000;
-      const cacheFipeMemoriaPlugVE = new Map();
+      // V49.04: o catálogo FIPE possui uma única fonte de verdade no backend.
+      // Não guardar respostas de catálogo em session/localStorage: isso permitia
+      // uma aba Simular permanecer dias com nomes/IDs diferentes de Fipe+.
       const requisicoesFipeEmCursoPlugVE = new Map();
-      const FIPE_CACHE_TTL_PLUGVE = 7 * 24 * 60 * 60 * 1000;
       const sequenciaFipePlugVE = { modelos: {}, anos: {} };
 
       function novaSequenciaFipePlugVE(tipo, selectId) {
@@ -6951,43 +6952,16 @@
         return String(valor || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
       }
 
-      function lerCacheFipeSessaoPlugVE(url) {
-        if (cacheFipeMemoriaPlugVE.has(url)) return cacheFipeMemoriaPlugVE.get(url);
-        const chave = `plugve:fipe:v2:${url}`;
-        for (const storage of [sessionStorage, localStorage]) {
-          try {
-            const bruto = storage.getItem(chave);
-            if (!bruto) continue;
-            const item = JSON.parse(bruto);
-            if (!item || !item.salvoEm || (Date.now() - item.salvoEm) > FIPE_CACHE_TTL_PLUGVE) {
-              storage.removeItem(chave);
-              continue;
-            }
-            cacheFipeMemoriaPlugVE.set(url, item.dados);
-            return item.dados;
-          } catch (e) {}
-        }
-        return null;
-      }
-
-      function salvarCacheFipeSessaoPlugVE(url, dados) {
-        cacheFipeMemoriaPlugVE.set(url, dados);
-        const chave = `plugve:fipe:v2:${url}`;
-        const payload = JSON.stringify({ salvoEm: Date.now(), dados });
-        try { sessionStorage.setItem(chave, payload); } catch (e) {}
-        try { localStorage.setItem(chave, payload); } catch (e) {}
-      }
-
       async function fetchJsonFipePlugVE(url) {
-        const cache = lerCacheFipeSessaoPlugVE(url);
-        if (cache !== null) return cache;
         if (requisicoesFipeEmCursoPlugVE.has(url)) return requisicoesFipeEmCursoPlugVE.get(url);
 
-        const requisicao = fetch(url, { headers: { Accept: "application/json" } })
+        const requisicao = fetch(url, {
+          headers: { Accept: "application/json" },
+          cache: "no-store"
+        })
           .then(async resp => {
-            const dados = await resp.json();
+            const dados = await resp.json().catch(() => ({}));
             if (!resp.ok) throw new Error(dados?.erro || `Erro FIPE ${resp.status}`);
-            salvarCacheFipeSessaoPlugVE(url, dados);
             return dados;
           })
           .finally(() => requisicoesFipeEmCursoPlugVE.delete(url));
@@ -7406,7 +7380,7 @@
         try {
           const contexto = contextoFipePorSelectId(selectId);
           const params = new URLSearchParams();
-          params.set("catalogo", "v46_03");
+          params.set("catalogo", "v49_04");
           if (contexto) params.set("contexto", contexto);
           const url = `/api/fipe/marcas${params.toString() ? "?" + params.toString() : ""}`;
           const marcas = await fetchJsonFipePlugVE(url);
@@ -7451,7 +7425,7 @@
         try {
           const contexto = contextoFipePorSelectId(selectModeloId);
           const nomeMarca = marcaEl.options[marcaEl.selectedIndex]?.text || "";
-          const params = new URLSearchParams({ codigo_marca: marca, catalogo: "v46_03" });
+          const params = new URLSearchParams({ codigo_marca: marca, catalogo: "v49_04" });
           if (contexto) params.set("contexto", contexto);
           if (nomeMarca) params.set("nome_marca", nomeMarca);
           const data = await fetchJsonFipePlugVE(`/api/fipe/modelos?${params.toString()}`);
@@ -7512,7 +7486,7 @@
         }
         try {
           const contexto = contextoFipePorSelectId(selectAnoId);
-          const params = new URLSearchParams({ codigo_marca: marca, codigo_modelo: modelo, catalogo: "v46_03" });
+          const params = new URLSearchParams({ codigo_marca: marca, codigo_modelo: modelo, catalogo: "v49_04" });
           if (contexto) params.set("contexto", contexto);
           const anos = await fetchJsonFipePlugVE(`/api/fipe/anos?${params.toString()}`);
 

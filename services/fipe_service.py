@@ -1078,7 +1078,7 @@ class FipeService:
         if not codigo_marca:
             return ""
         try:
-            for marca in self._normalizar_marcas(self._get_json("marcas")):
+            for marca in self.listar_marcas_canonicas_carros():
                 if str(marca.get("codigo")) == codigo_marca:
                     return str(marca.get("nome") or "")
         except Exception:
@@ -1092,14 +1092,36 @@ class FipeService:
             {"codigo": "caminhoes", "nome": "Caminhões"},
         ]
 
+    # V49.04 — catálogo FIPE canônico de automóveis.
+    # Todas as telas que trabalham com carros partem destes mesmos registros
+    # (mesmo transporte, cache persistente, códigos e nomes). Cada tela aplica
+    # somente sua visão/filtro depois: VE/ICEV, recorte 2012+ ou catálogo livre.
+    def listar_marcas_canonicas_carros(self) -> list[dict]:
+        return self._normalizar_marcas(self._get_json("marcas"))
+
+    def listar_modelos_canonicos_carros(self, codigo_marca: str) -> dict:
+        return self._normalizar_modelos(self._get_json(f"marcas/{codigo_marca}/modelos"))
+
+    def listar_anos_canonicos_carros(self, codigo_marca: str, codigo_modelo: str) -> list[dict]:
+        return self._normalizar_anos(self._get_json(f"marcas/{codigo_marca}/modelos/{codigo_modelo}/anos"))
+
     def listar_marcas_tipo(self, tipo_veiculo: str | None = None) -> list[dict]:
-        return self._normalizar_marcas(self._get_json_tipo(tipo_veiculo, "marcas"))
+        tipo = self.normalizar_tipo_consulta(tipo_veiculo)
+        if tipo == "carros":
+            return self.listar_marcas_canonicas_carros()
+        return self._normalizar_marcas(self._get_json_tipo(tipo, "marcas"))
 
     def listar_modelos_tipo(self, tipo_veiculo: str | None, codigo_marca: str) -> dict:
-        return self._normalizar_modelos(self._get_json_tipo(tipo_veiculo, f"marcas/{codigo_marca}/modelos"))
+        tipo = self.normalizar_tipo_consulta(tipo_veiculo)
+        if tipo == "carros":
+            return self.listar_modelos_canonicos_carros(codigo_marca)
+        return self._normalizar_modelos(self._get_json_tipo(tipo, f"marcas/{codigo_marca}/modelos"))
 
     def listar_anos_tipo(self, tipo_veiculo: str | None, codigo_marca: str, codigo_modelo: str) -> list[dict]:
-        return self._normalizar_anos(self._get_json_tipo(tipo_veiculo, f"marcas/{codigo_marca}/modelos/{codigo_modelo}/anos"))
+        tipo = self.normalizar_tipo_consulta(tipo_veiculo)
+        if tipo == "carros":
+            return self.listar_anos_canonicos_carros(codigo_marca, codigo_modelo)
+        return self._normalizar_anos(self._get_json_tipo(tipo, f"marcas/{codigo_marca}/modelos/{codigo_modelo}/anos"))
 
     def consultar_preco_tipo(self, tipo_veiculo: str | None, codigo_marca: str, codigo_modelo: str, codigo_ano: str) -> dict:
         tipo = self.normalizar_tipo_consulta(tipo_veiculo)
@@ -1113,7 +1135,7 @@ class FipeService:
 
     def listar_marcas(self, contexto: str | None = None):
         ctx = contexto_fipe(contexto or "")
-        marcas = self._normalizar_marcas(self._get_json("marcas"))
+        marcas = self.listar_marcas_canonicas_carros()
         bloqueadas = self._ler_marcas_bloqueadas()
         varridas = self._ler_marcas_varridas()
         estado_temporal = self._estado_varredura_temporal()
@@ -1147,7 +1169,7 @@ class FipeService:
 
     def listar_modelos(self, codigo_marca: str, filtrar_bloqueados: bool = True, contexto: str | None = None, nome_marca: str = ""):
         ctx = contexto_fipe(contexto or "")
-        data = self._normalizar_modelos(self._get_json(f"marcas/{codigo_marca}/modelos"))
+        data = self.listar_modelos_canonicos_carros(codigo_marca)
         marca_nome = nome_marca or self._nome_marca_por_codigo(str(codigo_marca))
         if not filtrar_bloqueados and not ctx:
             return data
@@ -1241,7 +1263,7 @@ class FipeService:
         return data
 
     def listar_anos(self, codigo_marca: str, codigo_modelo: str, contexto: str | None = None):
-        anos = self._normalizar_anos(self._get_json(f"marcas/{codigo_marca}/modelos/{codigo_modelo}/anos"))
+        anos = self.listar_anos_canonicos_carros(codigo_marca, codigo_modelo)
         ctx = contexto_fipe(contexto or "")
         if ctx not in {"ve", "icev", "depreciacao"}:
             return anos
@@ -1249,7 +1271,7 @@ class FipeService:
         marca_nome = self._nome_marca_por_codigo(str(codigo_marca))
         modelo_nome = ""
         try:
-            modelos_data = self._normalizar_modelos(self._get_json(f"marcas/{codigo_marca}/modelos"))
+            modelos_data = self.listar_modelos_canonicos_carros(codigo_marca)
             for modelo in modelos_data.get("modelos", []):
                 if str(modelo.get("codigo")) == str(codigo_modelo):
                     modelo_nome = str(modelo.get("nome") or "")
@@ -1278,7 +1300,7 @@ class FipeService:
                 motivo="sem_ano_2012_ou_zero_km_confirmado_backend",
             )
             try:
-                modelos_data = self._normalizar_modelos(self._get_json(f"marcas/{codigo_marca}/modelos"))
+                modelos_data = self.listar_modelos_canonicos_carros(codigo_marca)
                 bloqueados_marca = self._ler_bloqueados().get(str(codigo_marca), {})
                 modelos_ids = {str(item.get("codigo")) for item in modelos_data.get("modelos", [])}
                 if modelos_ids and modelos_ids <= set(map(str, bloqueados_marca.keys())):

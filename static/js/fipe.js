@@ -285,7 +285,7 @@ window.atualizarBotaoContinuarVarredura = atualizarBotaoContinuarVarredura;
 
 async function buscarJsonFipeSeguro(url) {
   // V49.03: mesmo contrato de consulta usado pela Simular.
-  const resp = await fetch(url, { headers: { Accept: "application/json" } });
+  const resp = await fetch(url, { headers: { Accept: "application/json" }, cache: "no-store" });
   const data = await resp.json().catch(() => ({}));
   // O contador é diagnóstico e não deve atrasar/bloquear a consulta principal.
   carregarUsoFipe();
@@ -610,7 +610,7 @@ async function carregarMarcasFipe() {
   limparSelect(ano, "Selecione o modelo primeiro");
 
   try {
-    const { data: marcas } = await buscarJsonFipeSeguro("/api/fipe/marcas?contexto=depreciacao&catalogo=v46_03");
+    const { data: marcas } = await buscarJsonFipeSeguro("/api/fipe/marcas?contexto=depreciacao&catalogo=v49_04");
     limparErroFipe();
     limparSelect(marca, "Selecione");
     marcas.forEach(item => {
@@ -643,7 +643,7 @@ async function carregarModelosFipe() {
 
   try {
     const nomeMarca = marca.options[marca.selectedIndex]?.dataset?.nome || marca.options[marca.selectedIndex]?.textContent || "";
-    const { data } = await buscarJsonFipeSeguro(`/api/fipe/modelos?codigo_marca=${encodeURIComponent(marca.value)}&contexto=depreciacao&catalogo=v46_03&nome_marca=${encodeURIComponent(nomeMarca)}`);
+    const { data } = await buscarJsonFipeSeguro(`/api/fipe/modelos?codigo_marca=${encodeURIComponent(marca.value)}&contexto=depreciacao&catalogo=v49_04&nome_marca=${encodeURIComponent(nomeMarca)}`);
     limparErroFipe();
     if (data.marca_bloqueada) {
       await carregarMarcasFipe();
@@ -699,7 +699,7 @@ async function carregarAnosFipe() {
   }
 
   try {
-    const url = `/api/fipe/anos?codigo_marca=${encodeURIComponent(marca.value)}&codigo_modelo=${encodeURIComponent(modelo.value)}&contexto=depreciacao&catalogo=v46_03`;
+    const url = `/api/fipe/anos?codigo_marca=${encodeURIComponent(marca.value)}&codigo_modelo=${encodeURIComponent(modelo.value)}&contexto=depreciacao&catalogo=v49_04`;
     const { data: anos } = await buscarJsonFipeSeguro(url);
     limparErroFipe();
     const anosElegiveis = ordenarAnosFipeParaTela(Array.isArray(anos) ? anos.filter(anoPermitidoNaTela) : []);

@@ -204,6 +204,10 @@ def test_frontend_forca_nova_versao_do_catalogo_sem_cache_antigo():
     root = Path(__file__).resolve().parents[1]
     simular = (root / "templates" / "simular.html").read_text(encoding="utf-8")
     depreciacao_js = (root / "static" / "js" / "fipe.js").read_text(encoding="utf-8")
-    assert simular.count('catalogo: "v46_03"') >= 4
-    assert simular.count('params.set("catalogo", "v46_03")') >= 2
-    assert depreciacao_js.count("catalogo=v46_03") >= 3
+    # A intenção original deste teste permanece: uma versão nova de catálogo
+    # deve invalidar respostas antigas. V49.04 também elimina o cache local
+    # independente da Simular e passa a revalidar no backend canônico.
+    assert simular.count('catalogo: "v49_04"') >= 4
+    assert simular.count('params.set("catalogo", "v49_04")') >= 2
+    assert depreciacao_js.count("catalogo=v49_04") >= 3
+    assert "plugve:fipe:v2:" not in simular
