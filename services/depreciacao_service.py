@@ -15,7 +15,8 @@ from repositories.curvas_repository import CurvasRepository
 from repositories.historico_repository import HistoricoRepository
 from repositories.ipca_repository import IpcaRepository
 from core.motor_combustao_web import calcular_curva_combustao_por_historico, CalculoCombustaoInvalido
-from services.text_utils import detectar_eletrico, parse_float_seguro, parse_int_seguro, normalizar_texto, formatar_brl
+from services.text_utils import parse_float_seguro, parse_int_seguro, normalizar_texto, formatar_brl
+from services.tipo_veiculo_service import classificar_tipo_veiculo, TIPO_EV_PURO, TIPO_PHEV
 from services.fipe_historico_service import FipeHistoricoService
 from services.fipe_service import FipeService, FipeApiError
 
@@ -1607,7 +1608,16 @@ class DepreciacaoService:
         return str(veiculo.ano_modelo).strip() == "32000" or str(veiculo.codigo_ano).strip().startswith("32000")
 
     def _detectar_tipo_por_veiculo(self, veiculo: VeiculoSelecionado) -> str:
-        return "eletrico" if detectar_eletrico(veiculo.combustivel, veiculo.modelo) else "combustao"
+        # V49: a depreciação deve respeitar a mesma separação consolidada da CurVE:
+        # BEV/PHEV usam a base elétrica; HEV/MHEV convencionais permanecem na base
+        # de combustão. O detector legado tratava qualquer "híbrido" como elétrico.
+        tipo_veiculo = classificar_tipo_veiculo(
+            modelo=veiculo.modelo,
+            combustivel=veiculo.combustivel,
+            codigo_ano=veiculo.codigo_ano,
+            marca=veiculo.marca,
+        )
+        return "eletrico" if tipo_veiculo in {TIPO_EV_PURO, TIPO_PHEV} else "combustao"
 
     def _resolver_tipo(self, veiculo: VeiculoSelecionado, tipo_detectado: str | None = None) -> str:
         tipo = str(veiculo.tipo or "auto").strip().lower()

@@ -581,11 +581,22 @@
     return '';
   }
   function tipoDepreciacaoPreferencial(veiculo){
-    const prop = normalizar(pbevAtual?.candidato?.tipo_propulsao || '');
+    const prop = normalizar(`${pbevAtual?.candidato?.tipo_propulsao || ''} ${pbevAtual?.candidato?.tipo_propulsao_normalizado || ''}`);
     const sugTipo = normalizar(pbevAtual?.sugestoes_consumo?.tipo || '');
     const texto = normalizar(`${veiculo?.modelo || ''} ${veiculo?.combustivel || ''} ${veiculo?.texto_ano || ''}`);
-    if (/ELETRICO|HIBRIDO|HYBRID|PLUG|PHEV/.test(`${prop} ${sugTipo} ${texto}`)) return 'eletrico';
-    return 'combustao';
+    const evidenciasPbev = `${prop} ${sugTipo}`;
+
+    // V49: HEV/MHEV convencional pertence à base de combustão. Apenas BEV/EV
+    // puro e híbrido plug-in (PHEV) devem forçar a base elétrica. Em casos sem
+    // evidência suficiente, deixa o backend aplicar o classificador consolidado.
+    if (/\b(PHEV|PLUG IN|PLUGIN|PLUG-IN|DM I|DMI|E HYBRID|RECHARGE|TFSI E)\b/.test(evidenciasPbev)) return 'eletrico';
+    if (/\b(ELETRICO|ELETRICA|ELECTRIC|BEV|EV PURO)\b/.test(evidenciasPbev)) return 'eletrico';
+    if (/\b(HEV|MHEV|HIBRIDO|HIBRIDA|HYBRID|MILD HYBRID)\b/.test(evidenciasPbev)) return 'combustao';
+
+    if (/\b(PHEV|PLUG IN|PLUGIN|PLUG-IN|DM I|DMI|E HYBRID|RECHARGE|TFSI E)\b/.test(texto)) return 'eletrico';
+    if (/\b(ELETRICO|ELETRICA|ELECTRIC|BEV)\b/.test(texto)) return 'eletrico';
+    if (/\b(HEV|MHEV|HIBRIDO|HIBRIDA|HYBRID|MILD HYBRID)\b/.test(texto)) return 'combustao';
+    return 'auto';
   }
   function combustivelLegivel(valor){
     const v = normalizar(valor).replace(/\s+/g,'_');

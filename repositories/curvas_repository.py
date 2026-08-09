@@ -1087,21 +1087,41 @@ class CurvasRepository:
         candidatos = self._ordenar_curvas_preferidas(candidatos)
         return candidatos[0] if candidatos else None
 
+    @staticmethod
+    def _normalizar_identidade_similaridade(valor: Any) -> str:
+        # Espelha a normalização usada pelos marcadores no navegador:
+        # acentos/pontuação não mudam a identidade, mas os tokens precisam ser
+        # exatamente os mesmos. Não há aproximação semântica nem fuzzy match.
+        texto = normalizar_texto(valor)
+        texto = re.sub(r"[^a-z0-9]+", " ", texto)
+        return re.sub(r"\s+", " ", texto).strip()
+
     def _vinculo_corresponde_veiculo(self, vinculo: dict[str, Any], veiculo: VeiculoSelecionado, tipo: str) -> bool:
         tipo_v = str(vinculo.get("tipo") or "").strip().lower()
         if tipo_v and tipo_v != tipo:
             return False
+
         marca_id_v = str(vinculo.get("marca_id") or vinculo.get("codigo_marca") or "").strip()
         modelo_id_v = str(vinculo.get("modelo_id") or vinculo.get("codigo_modelo") or "").strip()
         marca_id = str(veiculo.codigo_marca or "").strip()
         modelo_id = str(veiculo.codigo_modelo or "").strip()
+
+        # Identidade forte: quando os IDs coincidem, o vínculo é inequívoco mesmo
+        # que a descrição FIPE tenha sofrido pequena alteração textual.
         if marca_id_v and modelo_id_v and marca_id and modelo_id:
-            return marca_id_v == marca_id and modelo_id_v == modelo_id
-        marca_v = normalizar_texto(vinculo.get("marca", ""))
-        modelo_v = normalizar_texto(vinculo.get("modelo", ""))
-        marca = normalizar_texto(veiculo.marca)
-        modelo = normalizar_texto(veiculo.modelo)
-        return bool(marca_v and modelo_v and marca_v == marca and modelo_v == modelo)
+            if marca_id_v == marca_id and modelo_id_v == modelo_id:
+                return True
+
+        # V49: IDs de catálogo podem mudar entre a criação da árvore no Painel e
+        # uma consulta FIPE posterior. O marcador visual já aceitava o vínculo pelo
+        # nome exato; o resolvedor não, criando o estado "verde, mas sem curva".
+        # O fallback continua conservador: exige marca E modelo completos e
+        # exatamente iguais após normalização. Não há aproximação/fuzzy matching.
+        marca_v = self._normalizar_identidade_similaridade(vinculo.get("marca", ""))
+        modelo_v = self._normalizar_identidade_similaridade(vinculo.get("modelo", ""))
+        marca = self._normalizar_identidade_similaridade(veiculo.marca)
+        modelo = self._normalizar_identidade_similaridade(veiculo.modelo)
+        return bool(marca_v and modelo_v and marca and modelo and marca_v == marca and modelo_v == modelo)
 
     def _buscar_vinculo_similaridade_veiculo(self, veiculo: VeiculoSelecionado, tipo: str, curvas: list[dict[str, Any]]) -> dict[str, Any] | None:
         candidatos: list[dict[str, Any]] = []
