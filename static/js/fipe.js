@@ -208,6 +208,11 @@ function erroFipeEhLimite(data, resp) {
   return resp?.status === 429 || data?.fipe_limitada || data?.tipo === "limite_requisicoes";
 }
 
+function erroFipeBloqueiaConsulta(data, resp) {
+  const status = Number(resp?.status || data?.status_code || 0);
+  return erroFipeEhLimite(data, resp) || [401, 402, 403].includes(status);
+}
+
 function mostrarErroFipe(data, esconderBusca = true) {
   const box = document.getElementById("fipe_error_box");
   const area = document.getElementById("fipe_search_area");
@@ -279,10 +284,12 @@ async function atualizarBotaoContinuarVarredura() {
 window.atualizarBotaoContinuarVarredura = atualizarBotaoContinuarVarredura;
 
 async function buscarJsonFipeSeguro(url) {
-  const resp = await fetch(url);
+  // V49.03: mesmo contrato de consulta usado pela Simular.
+  const resp = await fetch(url, { headers: { Accept: "application/json" } });
   const data = await resp.json().catch(() => ({}));
-  await carregarUsoFipe();
-  if (!resp.ok || data?.erro) {
+  // O contador é diagnóstico e não deve atrasar/bloquear a consulta principal.
+  carregarUsoFipe();
+  if (!resp.ok) {
     const err = new Error(data?.erro || `Erro FIPE ${resp.status}`);
     err.data = data;
     err.status = resp.status;
@@ -765,7 +772,7 @@ async function consultarPrecoFipe() {
     await consultarResumoDepreciacao(ultimoDetalheFipe);
   } catch (e) {
     ultimoDetalheFipe = null;
-    if (erroFipeEhLimite(e.data, { status: e.status })) {
+    if (erroFipeBloqueiaConsulta(e.data, { status: e.status })) {
       mostrarErroFipe(e.data || { erro: e.message }, true);
     } else {
       atualizarStatusResultado(e.message || "Erro ao consultar preço FIPE.", "erro");

@@ -398,10 +398,13 @@
   }
 
   const CACHE_TTL_CATALOGO_FIPE = 7 * 24 * 60 * 60 * 1000;
-  const CACHE_TTL_PRECO_FIPE = 30 * 60 * 1000;
-  function ttlCacheFipe(url){ return String(url || '').includes('/preco') ? CACHE_TTL_PRECO_FIPE : CACHE_TTL_CATALOGO_FIPE; }
+  function ehConsultaPrecoFipe(url){ return String(url || '').includes('/preco'); }
+  function ttlCacheFipe(url){ return ehConsultaPrecoFipe(url) ? 0 : CACHE_TTL_CATALOGO_FIPE; }
   function lerCacheFipePublica(url){
-    const chave = `plugve:fipe-publica:v40:${url}`;
+    // Preço segue a mesma política da Simular: consulta HTTP ao endpoint
+    // canônico e deixa o Cache-Control do backend/navegador decidir a reutilização.
+    if(ehConsultaPrecoFipe(url)) return null;
+    const chave = `plugve:fipe-publica:v49_03:${url}`;
     try{
       const bruto = localStorage.getItem(chave) || sessionStorage.getItem(chave);
       if(!bruto) return null;
@@ -413,7 +416,8 @@
     }catch(e){ return null; }
   }
   function salvarCacheFipePublica(url, dados){
-    const chave = `plugve:fipe-publica:v40:${url}`;
+    if(ehConsultaPrecoFipe(url)) return;
+    const chave = `plugve:fipe-publica:v49_03:${url}`;
     const payload = JSON.stringify({salvoEm: Date.now(), dados});
     try{ sessionStorage.setItem(chave, payload); }catch(e){}
     try{ localStorage.setItem(chave, payload); }catch(e){}
@@ -1338,7 +1342,10 @@
     if(!marca || !modelo || !ano){ status('Selecione marca, modelo e ano/combustível.', true); return; }
     const token = requestToken(); status('Consultando FIPE...');
     try{
-      const data = await getJSON(`/api/fipe/publica/preco?tipo=${encodeURIComponent(tipoAtual)}&codigo_marca=${encodeURIComponent(marca)}&codigo_modelo=${encodeURIComponent(modelo)}&codigo_ano=${encodeURIComponent(ano)}`, token);
+      const urlPreco = tipoAtual === 'carros'
+        ? `/api/fipe/preco?codigo_marca=${encodeURIComponent(marca)}&codigo_modelo=${encodeURIComponent(modelo)}&codigo_ano=${encodeURIComponent(ano)}`
+        : `/api/fipe/publica/preco?tipo=${encodeURIComponent(tipoAtual)}&codigo_marca=${encodeURIComponent(marca)}&codigo_modelo=${encodeURIComponent(modelo)}&codigo_ano=${encodeURIComponent(ano)}`;
+      const data = await getJSON(urlPreco, token);
       showResult(data); status('Consulta concluída.');
       const csrf = document.querySelector('meta[name="curve-interaction-csrf"]')?.getAttribute('content') || '';
       fetch('/api/site-usage/analysis', {

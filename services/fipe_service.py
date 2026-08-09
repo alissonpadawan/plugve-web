@@ -496,7 +496,13 @@ class FipeService:
         )
 
     def _get_json_tipo(self, tipo_veiculo: str | None, endpoint: str):
-        base_url = self._base_url_tipo(tipo_veiculo)
+        tipo = self.normalizar_tipo_consulta(tipo_veiculo)
+        # V49.03: carros na Consulta Fipe+ devem usar exatamente o mesmo
+        # transporte, token e namespace de cache da Simular/Depreciação.
+        # Motos e caminhões continuam no transporte tipado próprio.
+        if tipo == "carros":
+            return self._get_json(endpoint)
+        base_url = self._base_url_tipo(tipo)
         token = self._token()
         endpoint_final = self._endpoint_v2(endpoint) if "/api/v2" in base_url else endpoint
         return self._get_json_cached(
@@ -1096,8 +1102,13 @@ class FipeService:
         return self._normalizar_anos(self._get_json_tipo(tipo_veiculo, f"marcas/{codigo_marca}/modelos/{codigo_modelo}/anos"))
 
     def consultar_preco_tipo(self, tipo_veiculo: str | None, codigo_marca: str, codigo_modelo: str, codigo_ano: str) -> dict:
-        data = self._normalizar_preco(self._get_json_tipo(tipo_veiculo, f"marcas/{codigo_marca}/modelos/{codigo_modelo}/anos/{codigo_ano}"))
-        data["TipoConsulta"] = self.normalizar_tipo_consulta(tipo_veiculo)
+        tipo = self.normalizar_tipo_consulta(tipo_veiculo)
+        if tipo == "carros":
+            # Mesma função de preço usada por /api/fipe/preco (Simular e Depreciação).
+            data = dict(self.consultar_preco(codigo_marca, codigo_modelo, codigo_ano))
+        else:
+            data = self._normalizar_preco(self._get_json_tipo(tipo, f"marcas/{codigo_marca}/modelos/{codigo_modelo}/anos/{codigo_ano}"))
+        data["TipoConsulta"] = tipo
         return data
 
     def listar_marcas(self, contexto: str | None = None):
