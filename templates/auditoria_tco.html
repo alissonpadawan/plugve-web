@@ -110,8 +110,12 @@ diferença_percentual = {{ comp.economia_percentual }}</p>
                 <dt>gasto operacional</dt><dd>{{ item.gasto_operacional }}</dd>
                 <dt>perda por depreciação</dt><dd>{{ item.perda_depreciacao }}</dd>
                 <dt>valor de revenda</dt><dd>{{ item.valor_revenda }}</dd>
+                <dt>seguro estimado</dt><dd>{{ item.taxa_seguro }} do valor</dd>
+                <dt>origem do seguro</dt><dd>{{ item.seguro_fonte or 'valor informado/indisponível' }}</dd>
+                <dt>método do seguro</dt><dd>{{ item.seguro_nivel_agregacao or item.seguro_metodo or '—' }}</dd>
+                <dt>data-base do seguro</dt><dd>{{ item.seguro_data_base or '—' }}</dd>
                 <dt>CO₂ fóssil operacional</dt><dd>{{ item.co2_total }}</dd>
-                <dt>CO₂ biogênico do etanol</dt><dd>{{ item.co2_biogenico }}</dd>
+                <dt>CO₂ biogênico operacional</dt><dd>{{ item.co2_biogenico }}</dd>
               </dl>
             </div>
           {% endfor %}
@@ -258,8 +262,11 @@ diferença_percentual = {{ comp.economia_percentual }}</p>
             <dt>menor emissão fóssil</dt><dd>{{ comp.impacto_ambiental.menor_nome }}</dd>
             <dt>CO₂ evitado</dt><dd>{{ comp.impacto_ambiental.co2_evitado }}</dd>
             <dt>árvores equivalentes</dt><dd>{{ comp.impacto_ambiental.arvores_equivalentes }} crescendo por {{ comp.impacto_ambiental.anos }} anos</dd>
-            <dt>fatores</dt><dd>{{ comp.impacto_ambiental.fatores.energia }}; {{ comp.impacto_ambiental.fatores.gasolina }}; {{ comp.impacto_ambiental.fatores.etanol_biogenico }}; {{ comp.impacto_ambiental.fatores.diesel }}</dd>
-            <dt>etanol</dt><dd>CO₂ da queima reportado como biogênico separado; não é tratado como zero absoluto e não representa ACV completo.</dd>
+            <dt>fator elétrico SIN</dt><dd>{{ comp.impacto_ambiental.fatores.energia }} — {{ comp.impacto_ambiental.fatores.energia_fonte }} — data-base {{ comp.impacto_ambiental.fatores.energia_data_base }}</dd>
+            <dt>gasolina C comum</dt><dd>{{ comp.impacto_ambiental.fatores.mistura_gasolina }}; {{ comp.impacto_ambiental.fatores.gasolina }}</dd>
+            <dt>etanol hidratado</dt><dd>{{ comp.impacto_ambiental.fatores.etanol_biogenico }}</dd>
+            <dt>diesel B15</dt><dd>{{ comp.impacto_ambiental.fatores.mistura_diesel }}; {{ comp.impacto_ambiental.fatores.diesel }}</dd>
+            <dt>escopo</dt><dd>Indicador principal de CO₂ fóssil operacional; CO₂ biogênico da gasolina C E30, etanol hidratado e diesel B15 é reportado separadamente. Não representa ACV completo.</dd>
           </dl>
         </div>
       </section>

@@ -21,6 +21,7 @@ from functools import lru_cache
 
 from services.fipe_service import FipeService, FipeApiError
 from services.ipva_service import IpvaService
+from services.seguro_autoseg_service import estimar_seguro_autoseg_referencia
 from services.sobre_engagement_service import (
     COMMENT_MAX_LENGTH,
     PAGE_SIZE as SOBRE_COMMENTS_PAGE_SIZE,
@@ -59,22 +60,56 @@ CAMINHO_MUNICIPIOS = os.path.join(BASE_DIR, "data", "municipios.xlsx")
 # ============================================================
 
 # 2.1) Converter número com vírgula/ponto
-SEGURO_PADRAO_PERCENTUAL = 0.047
 AUMENTO_ENERGIA_PADRAO_PERCENTUAL = 4.6
 AUMENTO_COMBUSTIVEL_PADRAO_PERCENTUAL = 5.6
 AUMENTO_ENERGIA_PADRAO = AUMENTO_ENERGIA_PADRAO_PERCENTUAL / 100.0
 AUMENTO_COMBUSTIVEL_PADRAO = AUMENTO_COMBUSTIVEL_PADRAO_PERCENTUAL / 100.0
 
-# Fatores ambientais iniciais usados na seção de impacto ambiental.
-# A estimativa é operacional: não inclui fabricação do veículo, bateria,
-# transporte, manutenção ou descarte. Os valores ficam centralizados aqui
-# para facilitar revisão metodológica posterior na dissertação.
-FATOR_CO2_ENERGIA_KG_KWH = 0.0289   # MCTI/SIN: 0,0289 tCO2/MWh = 0,0289 kgCO2/kWh
-FATOR_CO2_GASOLINA_KG_L = 2.212     # gasolina comercial: premissa inicial kgCO2/L
-FATOR_CO2_ETANOL_KG_L = 0.0         # etanol: CO2 fóssil da queima tratado como biogênico separado
-FATOR_CO2_ETANOL_BIOGENICO_KG_L = 1.526  # etanol hidratado: CO2 biogênico reportado à parte
-FATOR_CO2_DIESEL_S10_KG_L = 2.603   # diesel S10/comercial: premissa inicial kgCO2/L
-FATOR_ARVORE_TCO2_ANO = 0.060       # EPA: árvore urbana média, tCO2/ano
+# ============================================================
+# 2.0) IMPACTO OPERACIONAL DE CO2 — METODOLOGIA 2025/2026
+# ============================================================
+# Escopo: emissões operacionais associadas ao uso. Não constitui ACV e não
+# inclui fabricação do veículo, bateria, manutenção, descarte ou infraestrutura.
+#
+# Combustíveis: fatores do Inventário Nacional de Emissões Atmosféricas por
+# Veículos Automotores Rodoviários, ano-base 2024 (publicado em 2025), com as
+# misturas comerciais vigentes desde 01/08/2025: gasolina C comum E30 e diesel B15.
+# O indicador principal da CurVE é CO2 fóssil; o CO2 de origem biogênica é
+# calculado e apresentado separadamente.
+#
+# Eletricidade: fator médio do SIN para inventários. O valor e a data-base são
+# centralizados e podem ser atualizados no ambiente sem alterar as fórmulas.
+FATOR_CO2_ENERGIA_KG_KWH = float(os.environ.get("PLUGVE_CO2_SIN_KG_KWH", "0.0461"))
+FATOR_CO2_ENERGIA_DATA_BASE = str(os.environ.get("PLUGVE_CO2_SIN_DATA_BASE", "2025 - média anual")).strip()
+FATOR_CO2_ENERGIA_FONTE = "MCTI — fator médio de emissão do SIN para inventários"
+
+# Fatores por componente puro (kg CO2/L)
+FATOR_CO2_GASOLINA_A_FOSSIL_KG_L = 2.23
+FATOR_CO2_ETANOL_ANIDRO_BIOGENICO_KG_L = 1.58
+FATOR_CO2_ETANOL_HIDRATADO_BIOGENICO_KG_L = 1.51
+FATOR_CO2_DIESEL_MINERAL_FOSSIL_KG_L = 2.63
+FATOR_CO2_BIODIESEL_BIOGENICO_KG_L = 2.46
+
+# Composição volumétrica dos combustíveis comerciais considerados pela CurVE.
+FRAC_GASOLINA_A_E30 = 0.70
+FRAC_ETANOL_ANIDRO_E30 = 0.30
+FRAC_DIESEL_MINERAL_B15 = 0.85
+FRAC_BIODIESEL_B15 = 0.15
+
+# Fatores efetivos por litro do combustível comercial.
+FATOR_CO2_GASOLINA_C_E30_FOSSIL_KG_L = FRAC_GASOLINA_A_E30 * FATOR_CO2_GASOLINA_A_FOSSIL_KG_L
+FATOR_CO2_GASOLINA_C_E30_BIOGENICO_KG_L = FRAC_ETANOL_ANIDRO_E30 * FATOR_CO2_ETANOL_ANIDRO_BIOGENICO_KG_L
+FATOR_CO2_ETANOL_HIDRATADO_FOSSIL_KG_L = 0.0
+FATOR_CO2_DIESEL_B15_FOSSIL_KG_L = FRAC_DIESEL_MINERAL_B15 * FATOR_CO2_DIESEL_MINERAL_FOSSIL_KG_L
+FATOR_CO2_DIESEL_B15_BIOGENICO_KG_L = FRAC_BIODIESEL_B15 * FATOR_CO2_BIODIESEL_BIOGENICO_KG_L
+
+# Compatibilidade interna: estes aliases representam agora o fator FÓSSIL
+# efetivo do combustível comercial, e não mais o combustível puro.
+FATOR_CO2_GASOLINA_KG_L = FATOR_CO2_GASOLINA_C_E30_FOSSIL_KG_L
+FATOR_CO2_ETANOL_KG_L = FATOR_CO2_ETANOL_HIDRATADO_FOSSIL_KG_L
+FATOR_CO2_ETANOL_BIOGENICO_KG_L = FATOR_CO2_ETANOL_HIDRATADO_BIOGENICO_KG_L
+FATOR_CO2_DIESEL_S10_KG_L = FATOR_CO2_DIESEL_B15_FOSSIL_KG_L
+FATOR_ARVORE_TCO2_ANO = 0.060       # equivalência didática mantida separada da metodologia dos combustíveis
 
 def conv(num):
     try:
@@ -88,20 +123,84 @@ def conv(num):
     except (TypeError, ValueError):
         return 0.0
 
-def seguro_padrao(preco: float) -> float:
-    return max(0.0, float(preco or 0.0) * SEGURO_PADRAO_PERCENTUAL)
-
 def _flag_formulario_ativo(dados_form, campo: str) -> bool:
     return str(dados_form.get(campo, "") or "").strip().lower() in {"1", "true", "sim", "s", "yes", "y"}
 
 
+def _prefixo_seguro_campo(campo: str) -> str:
+    campo = str(campo or "")
+    if campo.startswith("seguro_"):
+        return campo.split("seguro_", 1)[1]
+    return ""
+
+
+def estimativa_seguro_backend(dados_form, campo: str, preco: float) -> dict:
+    prefixo = _prefixo_seguro_campo(campo)
+    uf = str(dados_form.get("estado_uf") or dados_form.get("uf") or "").strip().upper()
+    ano_modelo = (
+        dados_form.get(f"ano_modelo_{prefixo}")
+        or dados_form.get(f"{prefixo}_ano_codigo")
+        or dados_form.get(f"{prefixo}_ano")
+        or ""
+    )
+    try:
+        return estimar_seguro_autoseg_referencia(
+            valor_fipe=max(0.0, float(preco or 0.0)),
+            uf=uf,
+            ano_modelo=ano_modelo,
+        ).to_dict()
+    except (TypeError, ValueError):
+        return {}
+
+
 def seguro_formulario_ou_padrao(dados_form, campo: str, preco: float) -> float:
+    """Retorna seguro informado/estimado sem qualquer fallback percentual fixo.
+
+    A interface normalmente envia a estimativa AUTOSEG/SUSEP já calculada. Se
+    esse valor não chegar (por exemplo, POST externo ou JS desabilitado), o
+    backend reproduz a mesma estimativa V1. Se nem isso for possível, o
+    componente não recai silenciosamente em um percentual fixo universal.
+    """
     valor_bruto = dados_form.get(campo, "")
     if _flag_formulario_ativo(dados_form, f"{campo}_manual"):
-        # Campo apagado manualmente significa opção consciente por não considerar seguro.
         return max(0.0, conv(valor_bruto))
     valor = conv(valor_bruto)
-    return valor if valor > 0 else seguro_padrao(preco)
+    if valor > 0:
+        return valor
+    estimativa = estimativa_seguro_backend(dados_form, campo, preco)
+    return max(0.0, float(estimativa.get("valor_anual") or 0.0))
+
+
+def metadados_seguro_formulario(dados_form, campo: str, preco: float) -> dict:
+    if _flag_formulario_ativo(dados_form, f"{campo}_manual"):
+        return {
+            "origem": "usuario",
+            "fonte": "Valor informado pelo usuário",
+            "metodo": "manual",
+            "data_base": "",
+            "nivel_agregacao": "manual",
+            "taxa_efetiva": taxa_relativa(conv(dados_form.get(campo, 0)), preco) * 100.0 if preco else 0.0,
+        }
+    prefixo = _prefixo_seguro_campo(campo)
+    fonte_form = str(dados_form.get(f"seguro_{prefixo}_fonte") or "").strip()
+    if fonte_form:
+        return {
+            "origem": "automatico",
+            "fonte": fonte_form,
+            "metodo": str(dados_form.get(f"seguro_{prefixo}_metodo") or "premio_medio_dividido_por_importancia_segurada_media").strip(),
+            "data_base": str(dados_form.get(f"seguro_{prefixo}_data_base") or "").strip(),
+            "nivel_agregacao": str(dados_form.get(f"seguro_{prefixo}_nivel") or "").strip(),
+            "taxa_efetiva": conv(dados_form.get(f"seguro_{prefixo}_taxa") or 0),
+        }
+    estimativa = estimativa_seguro_backend(dados_form, campo, preco)
+    return {
+        "origem": "automatico" if estimativa else "nao_estimado",
+        "fonte": estimativa.get("fonte") or "",
+        "metodo": estimativa.get("metodo") or "premio_medio_dividido_por_importancia_segurada_media",
+        "data_base": estimativa.get("data_base") or "",
+        "nivel_agregacao": estimativa.get("nivel_agregacao") or "",
+        "taxa_efetiva": float(estimativa.get("taxa_efetiva") or 0.0),
+    }
 
 
 def percentual_form_ao_ano(dados_form, campo: str, padrao_percentual: float) -> float:
@@ -698,15 +797,39 @@ def arvores_format(valor):
     return f"{valor:,.0f} árvores".replace(",", ".")
 
 
-def fator_combustivel_co2_kg_l(texto_combustivel: str = "", padrao: str = "gasolina") -> float:
+def fatores_combustivel_operacional_kg_l(texto_combustivel: str = "", padrao: str = "gasolina") -> dict:
+    """Retorna fatores operacionais por litro do combustível COMERCIAL.
+
+    O resultado separa CO2 fóssil e biogênico. Para gasolina, a CurVE assume
+    gasolina C comum E30; para diesel, diesel B15; para etanol, etanol hidratado.
+    """
     texto = normalizar(texto_combustivel)
-    if "DIESEL" in texto or padrao == "diesel":
-        return FATOR_CO2_DIESEL_S10_KG_L
-    if "ETANOL" in texto or "ALCOOL" in texto or padrao == "etanol":
-        # Para a comparação principal, o CO2 da queima do etanol é reportado
-        # como biogênico separado. Não é ACV e não significa zero absoluto.
-        return FATOR_CO2_ETANOL_KG_L
-    return FATOR_CO2_GASOLINA_KG_L
+    padrao = normalizar(padrao)
+    if "DIESEL" in texto or padrao == "DIESEL":
+        return {
+            "tipo": "diesel_b15",
+            "rotulo": "Diesel B15",
+            "fossil_kg_l": FATOR_CO2_DIESEL_B15_FOSSIL_KG_L,
+            "biogenico_kg_l": FATOR_CO2_DIESEL_B15_BIOGENICO_KG_L,
+        }
+    if "ETANOL" in texto or "ALCOOL" in texto or padrao == "ETANOL":
+        return {
+            "tipo": "etanol_hidratado",
+            "rotulo": "Etanol hidratado",
+            "fossil_kg_l": FATOR_CO2_ETANOL_HIDRATADO_FOSSIL_KG_L,
+            "biogenico_kg_l": FATOR_CO2_ETANOL_HIDRATADO_BIOGENICO_KG_L,
+        }
+    return {
+        "tipo": "gasolina_c_e30",
+        "rotulo": "Gasolina C comum (E30)",
+        "fossil_kg_l": FATOR_CO2_GASOLINA_C_E30_FOSSIL_KG_L,
+        "biogenico_kg_l": FATOR_CO2_GASOLINA_C_E30_BIOGENICO_KG_L,
+    }
+
+
+def fator_combustivel_co2_kg_l(texto_combustivel: str = "", padrao: str = "gasolina") -> float:
+    """Compatibilidade: retorna somente a parcela fóssil do combustível comercial."""
+    return float(fatores_combustivel_operacional_kg_l(texto_combustivel, padrao).get("fossil_kg_l", 0.0) or 0.0)
 
 
 def calcular_arvores_equivalentes(co2_t: float, anos: int) -> float:
@@ -717,11 +840,31 @@ def calcular_arvores_equivalentes(co2_t: float, anos: int) -> float:
 
 def fatores_ambientais_resumo() -> dict:
     return {
+        "metodologia": "CO₂ operacional CurVE v2 — parcelas fóssil e biogênica separadas",
         "energia": f"{FATOR_CO2_ENERGIA_KG_KWH:.4f}".replace(".", ",") + " kgCO₂/kWh",
-        "gasolina": f"{FATOR_CO2_GASOLINA_KG_L:.3f}".replace(".", ",") + " kgCO₂ fóssil/L",
-        "etanol": "CO₂ da queima reportado como biogênico separado",
-        "etanol_biogenico": f"{FATOR_CO2_ETANOL_BIOGENICO_KG_L:.3f}".replace(".", ",") + " kgCO₂ biogênico/L",
-        "diesel": f"{FATOR_CO2_DIESEL_S10_KG_L:.3f}".replace(".", ",") + " kgCO₂ fóssil/L",
+        "energia_data_base": FATOR_CO2_ENERGIA_DATA_BASE,
+        "energia_fonte": FATOR_CO2_ENERGIA_FONTE,
+        "gasolina": (
+            f"{FATOR_CO2_GASOLINA_C_E30_FOSSIL_KG_L:.3f}".replace(".", ",")
+            + " kgCO₂ fóssil/L + "
+            + f"{FATOR_CO2_GASOLINA_C_E30_BIOGENICO_KG_L:.3f}".replace(".", ",")
+            + " kgCO₂ biogênico/L (gasolina C comum E30)"
+        ),
+        "gasolina_a": f"{FATOR_CO2_GASOLINA_A_FOSSIL_KG_L:.2f}".replace(".", ",") + " kgCO₂/L",
+        "etanol_anidro": f"{FATOR_CO2_ETANOL_ANIDRO_BIOGENICO_KG_L:.2f}".replace(".", ",") + " kgCO₂/L",
+        "etanol": "Etanol hidratado: parcela fóssil operacional = 0",
+        "etanol_biogenico": f"{FATOR_CO2_ETANOL_HIDRATADO_BIOGENICO_KG_L:.2f}".replace(".", ",") + " kgCO₂ biogênico/L (etanol hidratado)",
+        "diesel": (
+            f"{FATOR_CO2_DIESEL_B15_FOSSIL_KG_L:.4f}".replace(".", ",")
+            + " kgCO₂ fóssil/L + "
+            + f"{FATOR_CO2_DIESEL_B15_BIOGENICO_KG_L:.3f}".replace(".", ",")
+            + " kgCO₂ biogênico/L (diesel B15)"
+        ),
+        "diesel_mineral": f"{FATOR_CO2_DIESEL_MINERAL_FOSSIL_KG_L:.2f}".replace(".", ",") + " kgCO₂/L",
+        "biodiesel": f"{FATOR_CO2_BIODIESEL_BIOGENICO_KG_L:.2f}".replace(".", ",") + " kgCO₂/L",
+        "mistura_gasolina": "E30: 70% gasolina A + 30% etanol anidro",
+        "mistura_diesel": "B15: 85% diesel mineral + 15% biodiesel",
+        "vigencia_misturas": "01/08/2025",
         "arvore": f"{FATOR_ARVORE_TCO2_ANO:.3f}".replace(".", ",") + " tCO₂/árvore.ano",
     }
 
@@ -822,7 +965,7 @@ def montar_comparacao_componentes(v1: dict, v2: dict) -> list:
         row("Custo por km", "custo_km", tipo="km", ajuda="Custo total dividido pela quilometragem total."),
         row("Diferença a cada 10.000 km", "custo_km_10000", tipo="moeda", ajuda="Leitura financeira do custo por km multiplicado por 10.000 km."),
         row("CO₂ fóssil operacional", "co2_fossil", tipo="ton", ajuda="Emissões operacionais estimadas; não é ACV completo."),
-        row("CO₂ biogênico do etanol", "co2_biogenico", tipo="ton", ajuda="Informado à parte para não chamar etanol de zero absoluto.", informativo=True),
+        row("CO₂ biogênico operacional", "co2_biogenico", tipo="ton", ajuda="Parcela biogênica dos biocombustíveis presentes na gasolina C E30, etanol hidratado e diesel B15; informada separadamente do indicador fóssil.", informativo=True),
     ]
 
     # A chave custo_km_10000 é derivada para simplificar a tabela.
@@ -1030,6 +1173,7 @@ def calcular_projecao_veiculo(veiculo, comum):
     manut = max(0.0, float(veiculo.get("manut", 0) or 0))
     ipva_inicial = max(0.0, float(veiculo.get("ipva", 0) or 0))
     seguro_inicial = max(0.0, float(veiculo.get("seguro", 0) or 0))
+    seguro_meta = dict(veiculo.get("seguro_meta") or {})
     depreciacao = max(0.0, min(float(veiculo.get("depreciacao", 0) or 0), 0.95))
     financiamento = veiculo.get("financiamento") or {}
     combustivel_descricao = veiculo.get("combustivel", "")
@@ -1092,7 +1236,15 @@ def calcular_projecao_veiculo(veiculo, comum):
     co2_acumulado_t_lista = []
     co2_biogenico_t_lista = []
     memoria_anual = []
-    co2_componentes_kg = {"energia": 0.0, "gasolina": 0.0, "etanol": 0.0, "etanol_biogenico": 0.0, "diesel": 0.0}
+    co2_componentes_kg = {
+        "energia": 0.0,
+        "gasolina": 0.0,
+        "etanol": 0.0,
+        "diesel": 0.0,
+        "gasolina_biogenico": 0.0,
+        "etanol_biogenico": 0.0,
+        "diesel_biogenico": 0.0,
+    }
     financiamento_juros_anuais = juros_financiamento_por_ano(financiamento, anos)
 
     for ano in range(1, anos + 1):
@@ -1105,9 +1257,11 @@ def calcular_projecao_veiculo(veiculo, comum):
 
         co2_energia_kg = 0.0
         co2_gasolina_kg = 0.0
+        co2_gasolina_biogenico_kg = 0.0
         co2_etanol_kg = 0.0
         co2_etanol_biogenico_kg = 0.0
         co2_diesel_kg = 0.0
+        co2_diesel_biogenico_kg = 0.0
 
         if tipo == "ve":
             custo_uso = km_ano * consumo * energia_ano
@@ -1123,8 +1277,19 @@ def calcular_projecao_veiculo(veiculo, comum):
                 preco_combustivel_ano = (phev_preco_combustivel or combustivel_inicial) * ((1 + aumento_combustivel) ** (ano - 1))
                 litros_combustivel = (km_ano * frac_combustivel / phev_consumo_combustivel) if frac_combustivel > 0 and phev_consumo_combustivel > 0 else 0.0
                 custo_combustivel = litros_combustivel * preco_combustivel_ano if litros_combustivel > 0 and preco_combustivel_ano > 0 else 0.0
-                # Primeira versão: parcela a combustível do PHEV usa gasolina como premissa padrão.
-                co2_gasolina_kg = litros_combustivel * FATOR_CO2_GASOLINA_KG_L
+                fatores_phev = fatores_combustivel_operacional_kg_l(combustivel_descricao, "gasolina")
+                tipo_phev = fatores_phev["tipo"]
+                fossil_phev = litros_combustivel * fatores_phev["fossil_kg_l"]
+                biogenico_phev = litros_combustivel * fatores_phev["biogenico_kg_l"]
+                if tipo_phev == "diesel_b15":
+                    co2_diesel_kg = fossil_phev
+                    co2_diesel_biogenico_kg = biogenico_phev
+                elif tipo_phev == "etanol_hidratado":
+                    co2_etanol_kg = fossil_phev
+                    co2_etanol_biogenico_kg = biogenico_phev
+                else:
+                    co2_gasolina_kg = fossil_phev
+                    co2_gasolina_biogenico_kg = biogenico_phev
                 custo_uso = custo_eletrico + custo_combustivel
             else:
                 custo_uso = km_ano * consumo * energia_ano
@@ -1143,31 +1308,40 @@ def calcular_projecao_veiculo(veiculo, comum):
             gasolina_frac = 1.0 - etanol_frac
             litros_gasolina = (km_ano * gasolina_frac / flex_consumo_gasolina) if gasolina_frac > 0 and flex_consumo_gasolina > 0 else 0.0
             litros_etanol = (km_ano * etanol_frac / flex_consumo_etanol) if etanol_frac > 0 and flex_consumo_etanol > 0 else 0.0
-            co2_gasolina_kg = litros_gasolina * FATOR_CO2_GASOLINA_KG_L
-            co2_etanol_kg = litros_etanol * FATOR_CO2_ETANOL_KG_L
-            co2_etanol_biogenico_kg = litros_etanol * FATOR_CO2_ETANOL_BIOGENICO_KG_L
+            co2_gasolina_kg = litros_gasolina * FATOR_CO2_GASOLINA_C_E30_FOSSIL_KG_L
+            co2_gasolina_biogenico_kg = litros_gasolina * FATOR_CO2_GASOLINA_C_E30_BIOGENICO_KG_L
+            co2_etanol_kg = litros_etanol * FATOR_CO2_ETANOL_HIDRATADO_FOSSIL_KG_L
+            co2_etanol_biogenico_kg = litros_etanol * FATOR_CO2_ETANOL_HIDRATADO_BIOGENICO_KG_L
         else:
             litros_combustivel = (km_ano / consumo) if consumo > 0 else 0.0
             custo_uso = litros_combustivel * combustivel_ano if litros_combustivel > 0 else 0.0
-            fator_co2 = fator_combustivel_co2_kg_l(combustivel_descricao)
-            if fator_co2 == FATOR_CO2_DIESEL_S10_KG_L:
-                co2_diesel_kg = litros_combustivel * fator_co2
-            elif fator_co2 == FATOR_CO2_ETANOL_KG_L:
-                co2_etanol_kg = litros_combustivel * fator_co2
-                co2_etanol_biogenico_kg = litros_combustivel * FATOR_CO2_ETANOL_BIOGENICO_KG_L
+            fatores = fatores_combustivel_operacional_kg_l(combustivel_descricao)
+            fossil = litros_combustivel * fatores["fossil_kg_l"]
+            biogenico = litros_combustivel * fatores["biogenico_kg_l"]
+            if fatores["tipo"] == "diesel_b15":
+                co2_diesel_kg = fossil
+                co2_diesel_biogenico_kg = biogenico
+            elif fatores["tipo"] == "etanol_hidratado":
+                co2_etanol_kg = fossil
+                co2_etanol_biogenico_kg = biogenico
             else:
-                co2_gasolina_kg = litros_combustivel * fator_co2
+                co2_gasolina_kg = fossil
+                co2_gasolina_biogenico_kg = biogenico
 
-        # Indicador principal: CO2 fóssil operacional. O CO2 da queima do etanol
-        # é mostrado separadamente como biogênico, sem afirmar zero absoluto.
+        # Indicador principal: CO2 fóssil operacional. A parcela biogênica dos
+        # biocombustíveis presentes na gasolina C E30, no etanol hidratado e no
+        # diesel B15 é mantida em memória e reportada separadamente.
         co2_anual_kg = co2_energia_kg + co2_gasolina_kg + co2_etanol_kg + co2_diesel_kg
+        co2_biogenico_anual_kg = co2_gasolina_biogenico_kg + co2_etanol_biogenico_kg + co2_diesel_biogenico_kg
         co2_acumulado_kg += co2_anual_kg
-        co2_biogenico_acumulado_kg += co2_etanol_biogenico_kg
+        co2_biogenico_acumulado_kg += co2_biogenico_anual_kg
         co2_componentes_kg["energia"] += co2_energia_kg
         co2_componentes_kg["gasolina"] += co2_gasolina_kg
         co2_componentes_kg["etanol"] += co2_etanol_kg
-        co2_componentes_kg["etanol_biogenico"] += co2_etanol_biogenico_kg
         co2_componentes_kg["diesel"] += co2_diesel_kg
+        co2_componentes_kg["gasolina_biogenico"] += co2_gasolina_biogenico_kg
+        co2_componentes_kg["etanol_biogenico"] += co2_etanol_biogenico_kg
+        co2_componentes_kg["diesel_biogenico"] += co2_diesel_biogenico_kg
 
         juros_financiamento_ano = financiamento_juros_anuais[ano - 1] if ano - 1 < len(financiamento_juros_anuais) else 0.0
         custo_anual = custo_uso + manut + ipva_ano + seguro_ano + juros_financiamento_ano
@@ -1216,13 +1390,17 @@ def calcular_projecao_veiculo(veiculo, comum):
             "preco_combustivel": combustivel_ano,
             "co2_fossil_t": co2_anual_kg / 1000.0,
             "co2_fossil_acumulado_t": co2_acumulado_kg / 1000.0,
-            "co2_biogenico_t": co2_etanol_biogenico_kg / 1000.0,
+            "co2_biogenico_t": co2_biogenico_anual_kg / 1000.0,
             "co2_biogenico_acumulado_t": co2_biogenico_acumulado_kg / 1000.0,
             "co2_energia_kg": co2_energia_kg,
-            "co2_gasolina_kg": co2_gasolina_kg,
+            "co2_gasolina_fossil_kg": co2_gasolina_kg,
+            "co2_gasolina_biogenico_kg": co2_gasolina_biogenico_kg,
             "co2_etanol_fossil_kg": co2_etanol_kg,
             "co2_etanol_biogenico_kg": co2_etanol_biogenico_kg,
-            "co2_diesel_kg": co2_diesel_kg,
+            "co2_diesel_fossil_kg": co2_diesel_kg,
+            "co2_diesel_biogenico_kg": co2_diesel_biogenico_kg,
+            "co2_sin_fator_kg_kwh": FATOR_CO2_ENERGIA_KG_KWH,
+            "co2_sin_data_base": FATOR_CO2_ENERGIA_DATA_BASE,
         })
 
     total_km = anos * km_ano if anos > 0 and km_ano > 0 else 1
@@ -1266,6 +1444,7 @@ def calcular_projecao_veiculo(veiculo, comum):
         "taxa_depreciacao": depreciacao,
         "taxa_ipva": taxa_ipva,
         "taxa_seguro": taxa_seguro,
+        "seguro_meta": seguro_meta,
         "valor_revenda_final": valor_revenda_final,
         "perda_depreciacao_final": perda_depreciacao_final,
         "gasto_operacional_final": gasto_operacional_final,
@@ -1305,8 +1484,18 @@ def calcular_projecao_veiculo(veiculo, comum):
         "co2_anual_medio_t": co2_anual_medio_t,
         "co2_biogenico_anual_medio_t": co2_biogenico_anual_medio_t,
         "co2_por_km_kg": co2_por_km_kg,
-        "co2_componentes_t": {k: v / 1000.0 for k, v in co2_componentes_kg.items() if k != "etanol_biogenico"},
-        "co2_biogenico_componentes_t": {"etanol": co2_componentes_kg.get("etanol_biogenico", 0.0) / 1000.0},
+        "co2_componentes_t": {
+            "energia": co2_componentes_kg.get("energia", 0.0) / 1000.0,
+            "gasolina": co2_componentes_kg.get("gasolina", 0.0) / 1000.0,
+            "etanol": co2_componentes_kg.get("etanol", 0.0) / 1000.0,
+            "diesel": co2_componentes_kg.get("diesel", 0.0) / 1000.0,
+        },
+        "co2_biogenico_componentes_t": {
+            "gasolina": co2_componentes_kg.get("gasolina_biogenico", 0.0) / 1000.0,
+            "etanol": co2_componentes_kg.get("etanol_biogenico", 0.0) / 1000.0,
+            "diesel": co2_componentes_kg.get("diesel_biogenico", 0.0) / 1000.0,
+        },
+        "co2_metodologia": fatores_ambientais_resumo(),
     }
 
 # 4.5) Gera gráficos de comparação entre 2 veículos
@@ -1515,6 +1704,10 @@ def montar_bloco_resultado(titulo, v1, v2):
             "taxa_depreciacao": percentual_format(v["taxa_depreciacao"]),
             "taxa_ipva": percentual_format(v["taxa_ipva"]),
             "taxa_seguro": percentual_format(v["taxa_seguro"]),
+            "seguro_fonte": str((v.get("seguro_meta") or {}).get("fonte") or ""),
+            "seguro_metodo": str((v.get("seguro_meta") or {}).get("metodo") or ""),
+            "seguro_data_base": str((v.get("seguro_meta") or {}).get("data_base") or ""),
+            "seguro_nivel_agregacao": str((v.get("seguro_meta") or {}).get("nivel_agregacao") or ""),
             "financiamento_ativo": bool(financiamento.get("ativo")),
             "valor_financiado": real_format(financiamento.get("principal", 0)),
             "entrada_financiamento": real_format(financiamento.get("entrada", 0)),
@@ -1587,7 +1780,7 @@ def montar_bloco_resultado(titulo, v1, v2):
         linha_comparativa("Custo total no horizonte", v1["tco_final"], v2["tco_final"], ajuda="Custo total de propriedade estimado no período."),
         linha_comparativa("Custo total por km", v1["custo_km"], v2["custo_km"], ajuda="Custo total dividido pela quilometragem total simulada."),
         linha_comparativa("Gasto operacional acumulado", v1["gasto_operacional_final"], v2["gasto_operacional_final"], ajuda="Energia ou combustível, manutenção, IPVA, seguro e juros no horizonte."),
-        {"rotulo": "CO₂ fóssil operacional acumulado", "valor_1": toneladas_format(v1.get("co2_total_t", 0)), "valor_2": toneladas_format(v2.get("co2_total_t", 0)), "melhor": melhor_indice(v1.get("co2_total_t", 0), v2.get("co2_total_t", 0)), "ajuda": "Estimativa operacional; etanol biogênico é reportado à parte."},
+        {"rotulo": "CO₂ fóssil operacional acumulado", "valor_1": toneladas_format(v1.get("co2_total_t", 0)), "valor_2": toneladas_format(v2.get("co2_total_t", 0)), "melhor": melhor_indice(v1.get("co2_total_t", 0), v2.get("co2_total_t", 0)), "ajuda": "Indicador principal de CO₂ fóssil operacional; a parcela biogênica dos biocombustíveis é reportada separadamente."},
         linha_comparativa("Perda por depreciação", v1["perda_depreciacao_final"], v2["perda_depreciacao_final"], ajuda="Diferença entre o valor inicial e o valor estimado de revenda."),
         linha_comparativa("Valor estimado de revenda", v1["valor_revenda_final"], v2["valor_revenda_final"], maior_melhor=True, ajuda="Maior valor é favorável."),
     ]
@@ -1606,8 +1799,8 @@ def montar_bloco_resultado(titulo, v1, v2):
         linha_componente("Valor de revenda", comp1.get("valor_revenda", comp1.get("revenda", 0)), comp2.get("valor_revenda", comp2.get("revenda", 0)), maior_melhor=True),
         linha_componente("Custo total", comp1.get("tco", comp1.get("tco_total", 0)), comp2.get("tco", comp2.get("tco_total", 0))),
         linha_componente("Custo por km", v1.get("custo_km", 0), v2.get("custo_km", 0), tipo="km"),
-        linha_componente("CO₂ fóssil operacional", v1.get("co2_total_t", 0), v2.get("co2_total_t", 0), tipo="co2", ajuda="Não inclui fabricação, bateria, descarte nem CO₂ biogênico do etanol."),
-        linha_componente("CO₂ biogênico do etanol", v1.get("co2_biogenico_total_t", 0), v2.get("co2_biogenico_total_t", 0), tipo="co2", ajuda="Reportado separadamente; não entra no indicador fóssil principal."),
+        linha_componente("CO₂ fóssil operacional", v1.get("co2_total_t", 0), v2.get("co2_total_t", 0), tipo="co2", ajuda="Não inclui fabricação, bateria, manutenção, descarte nem a parcela biogênica dos biocombustíveis."),
+        linha_componente("CO₂ biogênico operacional", v1.get("co2_biogenico_total_t", 0), v2.get("co2_biogenico_total_t", 0), tipo="co2", ajuda="Parcela biogênica da gasolina C E30, do etanol hidratado e do diesel B15; reportada separadamente do indicador fóssil principal."),
     ]
     # Evita poluir o relatório com componentes inexistentes ou não aplicáveis
     # (ex.: financiamento/juros igual a zero para os dois veículos).
@@ -1668,8 +1861,8 @@ def montar_bloco_resultado(titulo, v1, v2):
         "fatores": fatores_ambientais_resumo(),
         "componentes_1": {k: toneladas_format(v) for k, v in (v1.get("co2_componentes_t") or {}).items()},
         "componentes_2": {k: toneladas_format(v) for k, v in (v2.get("co2_componentes_t") or {}).items()},
-        "componentes_biogenicos_1": {"etanol": toneladas_format((v1.get("co2_biogenico_componentes_t") or {}).get("etanol", 0))},
-        "componentes_biogenicos_2": {"etanol": toneladas_format((v2.get("co2_biogenico_componentes_t") or {}).get("etanol", 0))},
+        "componentes_biogenicos_1": {k: toneladas_format(v) for k, v in (v1.get("co2_biogenico_componentes_t") or {}).items()},
+        "componentes_biogenicos_2": {k: toneladas_format(v) for k, v in (v2.get("co2_biogenico_componentes_t") or {}).items()},
     }
 
     memoria_anual_comparativa = []
@@ -1695,8 +1888,8 @@ def montar_bloco_resultado(titulo, v1, v2):
         })
 
     auditoria_veiculos = [
-        {"nome": v1["nome"], "tipo": v1.get("tipo", ""), "componentes": comp1, "memoria": [formatar_linha_anual(m) for m in mem1]},
-        {"nome": v2["nome"], "tipo": v2.get("tipo", ""), "componentes": comp2, "memoria": [formatar_linha_anual(m) for m in mem2]},
+        {"nome": v1["nome"], "tipo": v1.get("tipo", ""), "componentes": comp1, "seguro_meta": v1.get("seguro_meta") or {}, "memoria": [formatar_linha_anual(m) for m in mem1]},
+        {"nome": v2["nome"], "tipo": v2.get("tipo", ""), "componentes": comp2, "seguro_meta": v2.get("seguro_meta") or {}, "memoria": [formatar_linha_anual(m) for m in mem2]},
     ]
 
     return {
@@ -1811,6 +2004,7 @@ def montar_veiculo_ve(dados_form):
         "manut": conv(dados_form.get("manut_ve", 0)),
         "ipva": ipva_ve,
         "seguro": seguro_formulario_ou_padrao(dados_form, "seguro_ve", preco),
+        "seguro_meta": metadados_seguro_formulario(dados_form, "seguro_ve", preco),
         "depreciacao": conv(dados_form.get("depreciacao_ve", 0)) / 100.0,
         "financiamento": calcular_financiamento_form(dados_form, "ve", preco),
     }
@@ -1829,6 +2023,7 @@ def montar_veiculo_icev(dados_form):
         "manut": conv(dados_form.get("manut_icev", 0)),
         "ipva": conv(dados_form.get("ipva_icev", 0)),
         "seguro": seguro_formulario_ou_padrao(dados_form, "seguro_icev", preco),
+        "seguro_meta": metadados_seguro_formulario(dados_form, "seguro_icev", preco),
         "depreciacao": conv(dados_form.get("depreciacao_icev", 0)) / 100.0,
         "financiamento": calcular_financiamento_form(dados_form, "icev", preco),
     }
@@ -1847,6 +2042,7 @@ def montar_veiculo_atual(dados_form):
         "manut": conv(dados_form.get("manut_atual", 0)),
         "ipva": conv(dados_form.get("ipva_atual", 0)),
         "seguro": seguro_formulario_ou_padrao(dados_form, "seguro_atual", preco),
+        "seguro_meta": metadados_seguro_formulario(dados_form, "seguro_atual", preco),
         "depreciacao": conv(dados_form.get("depreciacao_atual", 0)) / 100.0,
         "financiamento": calcular_financiamento_form(dados_form, "atual", preco),
     }
@@ -1904,10 +2100,11 @@ def montar_payload_auditoria_tco(resultado_final: dict) -> dict:
         "Custo_km = Custo_total_h / km_total",
         "",
         "Impacto ambiental operacional:",
-        "CO₂_eletricidade = kWh_consumido × fator_rede",
-        "CO₂_gasolina = litros_gasolina × fator_gasolina",
-        "CO₂_diesel = litros_diesel × fator_diesel",
-        "CO₂_etanol_biogênico = litros_etanol × fator_etanol_biogênico",
+        "CO₂_eletricidade = kWh_consumido × fator_médio_SIN[data-base]",
+        "Gasolina C comum E30: CO₂_fóssil = L × 0,70 × 2,23; CO₂_biogênico = L × 0,30 × 1,58",
+        "Etanol hidratado: CO₂_fóssil = 0; CO₂_biogênico = L × 1,51",
+        "Diesel B15: CO₂_fóssil = L × 0,85 × 2,63; CO₂_biogênico = L × 0,15 × 2,46",
+        "PHEV = parcela elétrica + parcela térmica, calculadas separadamente",
         "CO₂_evitado = maior emissão fóssil operacional - menor emissão fóssil operacional",
         "Árvores_equivalentes = CO₂_evitado / (0,060 × h)",
     ]
@@ -1946,8 +2143,12 @@ def montar_payload_auditoria_tco(resultado_final: dict) -> dict:
             "O resumo numérico usa os valores finais da memória anual da simulação.",
             "A memória anual permite reconstituir o custo total apresentado no resultado e validar a transição entre valor inicial, valor de revenda, gasto operacional e depreciação acumulada.",
             "A auditoria TCO não recalcula histórico FIPE pesado; as curvas de depreciação continuam vindo do fluxo próprio do painel local e/ou do repositório de curvas prontas.",
-            "O CO₂ é estimativa operacional. Não inclui fabricação do veículo, bateria, manutenção, transporte, descarte ou análise de ciclo de vida completa.",
-            "O CO₂ da queima do etanol é tratado como biogênico e apresentado separadamente; não é chamado de zero absoluto.",
+            "O CO₂ é estimativa operacional da fase de uso. Não inclui fabricação do veículo, produção da bateria, manutenção, transporte, descarte ou análise de ciclo de vida completa.",
+            "O indicador principal utiliza CO₂ fóssil operacional e mantém a parcela biogênica dos biocombustíveis em campo separado.",
+            f"Eletricidade: fator médio do SIN para inventários = {FATOR_CO2_ENERGIA_KG_KWH:.4f} kgCO₂/kWh; data-base {FATOR_CO2_ENERGIA_DATA_BASE}.",
+            "Combustíveis comerciais: gasolina C comum E30 e diesel B15, vigentes desde 01/08/2025; etanol veicular tratado como etanol hidratado.",
+            "Seguro: estimativa automática de referência SUSEP/AUTOSEG V1 pela taxa observada da UF (prêmio médio / importância segurada média), aplicada ao valor FIPE; não representa cotação individual e permanece editável.",
+            "Na ausência de valor manual, o backend utiliza a referência regional disponível; se a UF não estiver na base, aplica a referência nacional, sem percentual fixo universal oculto.",
             "No financiamento, o custo total considera juros/custos financeiros no horizonte para evitar somar o principal duas vezes.",
         ],
     }

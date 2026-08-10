@@ -14,6 +14,7 @@ from routes.tco_routes import tco_bp
 from routes.utility_routes import utility_bp
 from routes.pbev_routes import pbev_bp, pbev_pages_bp
 from routes.usage_routes import usage_bp
+from routes.seguro_routes import seguro_bp
 from services.persistent_storage import bootstrap_persistent_storage
 
 
@@ -51,6 +52,7 @@ def create_app() -> Flask:
     app.register_blueprint(utility_bp)
     app.register_blueprint(tco_bp)
     app.register_blueprint(usage_bp)
+    app.register_blueprint(seguro_bp, url_prefix="/api/seguro")
 
     @app.context_processor
     def inject_site_usage_context():

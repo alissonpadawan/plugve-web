@@ -1161,7 +1161,12 @@
                   <label class="block text-sm font-medium">Seguro atual (anual)</label>
                   <input type="text" name="seguro_atual" id="seguro_atual" class="mt-1 p-2 border rounded w-full" placeholder="ex: 2800">
                   <input type="hidden" name="seguro_atual_manual" id="seguro_atual_manual" value="0">
-                    <p id="seguro_status_atual" class="hidden"></p>
+                  <input type="hidden" name="seguro_atual_fonte" id="seguro_atual_fonte" value="">
+                  <input type="hidden" name="seguro_atual_metodo" id="seguro_atual_metodo" value="">
+                  <input type="hidden" name="seguro_atual_data_base" id="seguro_atual_data_base" value="">
+                  <input type="hidden" name="seguro_atual_nivel" id="seguro_atual_nivel" value="">
+                  <input type="hidden" name="seguro_atual_taxa" id="seguro_atual_taxa" value="">
+                  <p id="seguro_status_atual" class="mt-1 text-[11px] text-gray-500 hidden"></p>
                 </div>
 
                 <div>
@@ -1280,7 +1285,12 @@
                 <label class="block text-sm font-medium">Seguro anual VE</label>
                 <input type="text" name="seguro_ve" id="seguro_ve" class="mt-1 p-2 border rounded w-full" placeholder="ex: 4000">
                 <input type="hidden" name="seguro_ve_manual" id="seguro_ve_manual" value="0">
-                <p id="seguro_status_ve" class="hidden"></p>
+                <input type="hidden" name="seguro_ve_fonte" id="seguro_ve_fonte" value="">
+                <input type="hidden" name="seguro_ve_metodo" id="seguro_ve_metodo" value="">
+                <input type="hidden" name="seguro_ve_data_base" id="seguro_ve_data_base" value="">
+                <input type="hidden" name="seguro_ve_nivel" id="seguro_ve_nivel" value="">
+                <input type="hidden" name="seguro_ve_taxa" id="seguro_ve_taxa" value="">
+                <p id="seguro_status_ve" class="mt-1 text-[11px] text-gray-500 hidden"></p>
               </div>
 
               <div class="plugve-align-pair" data-plugve-align="depreciacao">
@@ -1385,7 +1395,12 @@
                 <label class="block text-sm font-medium">Seguro anual ICEV</label>
                 <input type="text" name="seguro_icev" id="seguro_icev" class="mt-1 p-2 border rounded w-full" placeholder="ex: 3000">
                 <input type="hidden" name="seguro_icev_manual" id="seguro_icev_manual" value="0">
-                <p id="seguro_status_icev" class="hidden"></p>
+                <input type="hidden" name="seguro_icev_fonte" id="seguro_icev_fonte" value="">
+                <input type="hidden" name="seguro_icev_metodo" id="seguro_icev_metodo" value="">
+                <input type="hidden" name="seguro_icev_data_base" id="seguro_icev_data_base" value="">
+                <input type="hidden" name="seguro_icev_nivel" id="seguro_icev_nivel" value="">
+                <input type="hidden" name="seguro_icev_taxa" id="seguro_icev_taxa" value="">
+                <p id="seguro_status_icev" class="mt-1 text-[11px] text-gray-500 hidden"></p>
               </div>
 
               <div class="plugve-align-pair" data-plugve-align="depreciacao">
@@ -1971,7 +1986,7 @@
                       <div>
                         <span class="plugve-comparison-kicker">Impacto ambiental estimado</span>
                         <h4>{{ comp.impacto_ambiental.menor_nome }} apresenta a menor emissão operacional estimada no horizonte.</h4>
-                        <p>Estimativa operacional fóssil/rede elétrica. Em veículo elétrico, representa CO₂ associado à energia consumida; etanol biogênico é informado à parte.</p>
+                        <p>Estimativa operacional da fase de uso. O indicador principal considera CO₂ fóssil e eletricidade; a parcela biogênica dos biocombustíveis é informada separadamente.</p>
                       </div>
                       <span class="plugve-env-badge">{{ comp.impacto_ambiental.co2_evitado }} evitadas</span>
                     </div>
@@ -2007,10 +2022,12 @@
                           <dl>
                             <div><dt>Por km</dt><dd>{{ comp.impacto_ambiental.veiculo_1_por_km }}</dd></div>
                             <div><dt>Energia elétrica</dt><dd>{{ comp.impacto_ambiental.componentes_1.energia }}</dd></div>
-                            <div><dt>Gasolina</dt><dd>{{ comp.impacto_ambiental.componentes_1.gasolina }}</dd></div>
-                            <div><dt>Etanol fóssil</dt><dd>{{ comp.impacto_ambiental.componentes_1.etanol }}</dd></div>
-                            <div><dt>Etanol biogênico</dt><dd>{{ comp.impacto_ambiental.componentes_biogenicos_1.etanol }}</dd></div>
-                            <div><dt>Diesel S10</dt><dd>{{ comp.impacto_ambiental.componentes_1.diesel }}</dd></div>
+                            <div><dt>Gasolina C E30 — fóssil</dt><dd>{{ comp.impacto_ambiental.componentes_1.gasolina }}</dd></div>
+                            <div><dt>Etanol hidratado — fóssil</dt><dd>{{ comp.impacto_ambiental.componentes_1.etanol }}</dd></div>
+                            <div><dt>Gasolina C E30 — biogênico</dt><dd>{{ comp.impacto_ambiental.componentes_biogenicos_1.gasolina }}</dd></div>
+                            <div><dt>Etanol hidratado — biogênico</dt><dd>{{ comp.impacto_ambiental.componentes_biogenicos_1.etanol }}</dd></div>
+                            <div><dt>Diesel B15 — biogênico</dt><dd>{{ comp.impacto_ambiental.componentes_biogenicos_1.diesel }}</dd></div>
+                            <div><dt>Diesel B15 — fóssil</dt><dd>{{ comp.impacto_ambiental.componentes_1.diesel }}</dd></div>
                           </dl>
                         </div>
                         <div class="plugve-env-breakdown">
@@ -2018,15 +2035,17 @@
                           <dl>
                             <div><dt>Por km</dt><dd>{{ comp.impacto_ambiental.veiculo_2_por_km }}</dd></div>
                             <div><dt>Energia elétrica</dt><dd>{{ comp.impacto_ambiental.componentes_2.energia }}</dd></div>
-                            <div><dt>Gasolina</dt><dd>{{ comp.impacto_ambiental.componentes_2.gasolina }}</dd></div>
-                            <div><dt>Etanol fóssil</dt><dd>{{ comp.impacto_ambiental.componentes_2.etanol }}</dd></div>
-                            <div><dt>Etanol biogênico</dt><dd>{{ comp.impacto_ambiental.componentes_biogenicos_2.etanol }}</dd></div>
-                            <div><dt>Diesel S10</dt><dd>{{ comp.impacto_ambiental.componentes_2.diesel }}</dd></div>
+                            <div><dt>Gasolina C E30 — fóssil</dt><dd>{{ comp.impacto_ambiental.componentes_2.gasolina }}</dd></div>
+                            <div><dt>Etanol hidratado — fóssil</dt><dd>{{ comp.impacto_ambiental.componentes_2.etanol }}</dd></div>
+                            <div><dt>Gasolina C E30 — biogênico</dt><dd>{{ comp.impacto_ambiental.componentes_biogenicos_2.gasolina }}</dd></div>
+                            <div><dt>Etanol hidratado — biogênico</dt><dd>{{ comp.impacto_ambiental.componentes_biogenicos_2.etanol }}</dd></div>
+                            <div><dt>Diesel B15 — biogênico</dt><dd>{{ comp.impacto_ambiental.componentes_biogenicos_2.diesel }}</dd></div>
+                            <div><dt>Diesel B15 — fóssil</dt><dd>{{ comp.impacto_ambiental.componentes_2.diesel }}</dd></div>
                           </dl>
                         </div>
                       </div>
                       <p class="plugve-env-note">
-                        Fatores usados nesta versão: energia elétrica {{ comp.impacto_ambiental.fatores.energia }}; gasolina {{ comp.impacto_ambiental.fatores.gasolina }}; etanol {{ comp.impacto_ambiental.fatores.etanol_biogenico }}; diesel S10 {{ comp.impacto_ambiental.fatores.diesel }}; equivalência de árvores {{ comp.impacto_ambiental.fatores.arvore }}. O CO₂ do etanol é apresentado como biogênico separado, sem ser chamado de zero absoluto.
+                        Metodologia operacional: energia elétrica {{ comp.impacto_ambiental.fatores.energia }} ({{ comp.impacto_ambiental.fatores.energia_fonte }}, data-base {{ comp.impacto_ambiental.fatores.energia_data_base }}); gasolina {{ comp.impacto_ambiental.fatores.mistura_gasolina }} — {{ comp.impacto_ambiental.fatores.gasolina }}; etanol hidratado {{ comp.impacto_ambiental.fatores.etanol_biogenico }}; diesel {{ comp.impacto_ambiental.fatores.mistura_diesel }} — {{ comp.impacto_ambiental.fatores.diesel }}. O indicador principal usa CO₂ fóssil operacional e mantém o CO₂ biogênico em campo separado.
                       </p>
                     </details>
                   </section>
@@ -2041,7 +2060,7 @@
                         <dl>
                           <div><dt>Depreciação anual</dt><dd>{{ item.taxa_depreciacao }}</dd></div>
                           <div><dt>IPVA projetado</dt><dd>{{ item.taxa_ipva }} do valor</dd></div>
-                          <div><dt>Seguro projetado</dt><dd>{{ item.taxa_seguro }} do valor</dd></div>
+                          <div><dt>Seguro projetado</dt><dd>{{ item.taxa_seguro }} do valor{% if item.seguro_fonte %}<small>{{ item.seguro_fonte }}{% if item.seguro_nivel_agregacao %} — {{ item.seguro_nivel_agregacao }}{% endif %}</small>{% endif %}</dd></div>
                           {% if item.financiamento_ativo %}
                             <div><dt>Entrada</dt><dd>{{ item.entrada_financiamento }}</dd></div>
                             <div><dt>Taxa mensal</dt><dd>{{ item.taxa_financiamento }}</dd></div>
@@ -2301,7 +2320,7 @@
                 <div class="tco-pdf-env-metric"><span>Diferença no horizonte</span><strong>{{ comp.impacto_ambiental.co2_evitado }}</strong><small>menor emissão fóssil operacional</small></div>
                 <div class="tco-pdf-env-metric"><span>Equivalente didático</span><strong>{{ comp.impacto_ambiental.arvores_equivalentes }}</strong><small>crescendo por {{ comp.impacto_ambiental.anos }} anos</small></div>
               </div>
-              <p class="tco-pdf-note">Estimativa operacional fóssil/rede elétrica. Não inclui fabricação, bateria, descarte ou análise de ciclo de vida completa. O CO₂ biogênico do etanol é informado separadamente.</p>
+              <p class="tco-pdf-note">Estimativa operacional da fase de uso. Não inclui fabricação do veículo, produção da bateria, manutenção, descarte ou análise de ciclo de vida completa. O indicador principal considera CO₂ fóssil e eletricidade; o CO₂ biogênico dos biocombustíveis é informado separadamente.</p>
             {% endif %}
             {% if comp.grafico_ambiental %}
               <section class="tco-pdf-chart combined" data-tco-chart-copy="ambiental-{{ loop.index }}"><div class="tco-pdf-chart-wait">Preparando gráfico ambiental...</div></section>
@@ -2318,10 +2337,14 @@
                   <tr><td><b>Rodagem anual</b></td><td colspan="2">{{ resultado.form_values.get('km_ano', '') }} km/ano</td></tr>
                   <tr><td><b>Aumento anual da energia</b></td><td colspan="2">{{ resultado.form_values.get('aumento_energia', '4,60') }}% a.a.</td></tr>
                   <tr><td><b>Aumento anual do combustível</b></td><td colspan="2">{{ resultado.form_values.get('aumento_combustivel', '5,60') }}% a.a.</td></tr>
+                  {% if comp.impacto_ambiental %}
+                    <tr><td><b>Fator elétrico SIN</b></td><td colspan="2">{{ comp.impacto_ambiental.fatores.energia }} — data-base {{ comp.impacto_ambiental.fatores.energia_data_base }}</td></tr>
+                    <tr><td><b>Combustíveis comerciais</b></td><td colspan="2">{{ comp.impacto_ambiental.fatores.mistura_gasolina }}; {{ comp.impacto_ambiental.fatores.mistura_diesel }}</td></tr>
+                  {% endif %}
                   <tr class="tco-pdf-group-row"><td colspan="3">Premissas por veículo</td></tr>
                   <tr><td><b>Depreciação anual</b></td><td>{{ comp.detalhes[0].taxa_depreciacao }}</td><td>{{ comp.detalhes[1].taxa_depreciacao }}</td></tr>
                   <tr><td><b>IPVA projetado</b></td><td>{{ comp.detalhes[0].taxa_ipva }} do valor</td><td>{{ comp.detalhes[1].taxa_ipva }} do valor</td></tr>
-                  <tr><td><b>Seguro projetado</b></td><td>{{ comp.detalhes[0].taxa_seguro }} do valor</td><td>{{ comp.detalhes[1].taxa_seguro }} do valor</td></tr>
+                  <tr><td><b>Seguro projetado</b><small>Estimativa de referência; não representa cotação individual.</small></td><td>{{ comp.detalhes[0].taxa_seguro }} do valor{% if comp.detalhes[0].seguro_fonte %}<small>{{ comp.detalhes[0].seguro_fonte }} — {{ comp.detalhes[0].seguro_nivel_agregacao or 'UF — automóvel' }}</small>{% endif %}</td><td>{{ comp.detalhes[1].taxa_seguro }} do valor{% if comp.detalhes[1].seguro_fonte %}<small>{{ comp.detalhes[1].seguro_fonte }} — {{ comp.detalhes[1].seguro_nivel_agregacao or 'UF — automóvel' }}</small>{% endif %}</td></tr>
                   <tr><td><b>Financiamento</b></td><td>{{ 'Considerado' if comp.detalhes[0].financiamento_ativo else 'Não considerado' }}</td><td>{{ 'Considerado' if comp.detalhes[1].financiamento_ativo else 'Não considerado' }}</td></tr>
                 </tbody>
               </table>
@@ -3389,10 +3412,9 @@
     }
 
 
-    // Seguro padrão adotado provisoriamente para o TCO acadêmico.
-    // O campo continua editável porque a cotação real depende de perfil, CEP, cobertura, franquia e seguradora.
-    const PERCENTUAL_SEGURO_PADRAO = 0.047;
-
+    // Seguro automático: referência estatística SUSEP/AUTOSEG V1 por UF.
+    // Taxa = prêmio médio / importância segurada média, aplicada ao valor FIPE.
+    // Não é cotação individual; o usuário pode substituir o valor manualmente.
 
     function normalizarTextoTipoTCO(valor) {
       return String(valor || "")
@@ -3490,7 +3512,37 @@
       }
     }
 
-    function atualizarSeguroAutomatico(prefixo, forcar = false) {
+    function limparMetadadosSeguroAutomaticoTCO(prefixo) {
+      ["fonte", "metodo", "data_base", "nivel", "taxa"].forEach(sufixo => {
+        const el = document.getElementById(`seguro_${prefixo}_${sufixo}`);
+        if (el) el.value = "";
+      });
+    }
+
+    function salvarMetadadosSeguroAutomaticoTCO(prefixo, estimativa) {
+      const mapa = {
+        fonte: estimativa?.fonte || "",
+        metodo: estimativa?.metodo || "premio_medio_dividido_por_importancia_segurada_media",
+        data_base: estimativa?.data_base || "",
+        nivel: estimativa?.nivel_agregacao || "",
+        taxa: estimativa?.taxa_efetiva ?? "",
+      };
+      Object.entries(mapa).forEach(([sufixo, valor]) => {
+        const el = document.getElementById(`seguro_${prefixo}_${sufixo}`);
+        if (el) el.value = String(valor ?? "");
+      });
+    }
+
+    function anoModeloSeguroPorPrefixoTCO(prefixo) {
+      const valorAnoModelo = document.getElementById(`ano_modelo_${prefixo}`)?.value;
+      if (valorAnoModelo) return valorAnoModelo;
+      const selectAno = document.getElementById(`${prefixo}_ano`);
+      if (!selectAno) return "";
+      const opt = selectAno.options?.[selectAno.selectedIndex];
+      return opt?.dataset?.nomeOriginal || opt?.textContent || selectAno.value || "";
+    }
+
+    async function atualizarSeguroAutomatico(prefixo, forcar = false) {
       const precoEl = campoPrecoPorPrefixo(prefixo);
       const seguroEl = campoSeguroPorPrefixo(prefixo);
       const status = statusSeguroPorPrefixo(prefixo);
@@ -3499,16 +3551,60 @@
       if (!preco || preco <= 0) return;
       const jaManual = seguroEl.dataset.editadoManual === "1" || campoSeguroManualPorPrefixo(prefixo)?.value === "1";
       if (jaManual && !forcar) {
-        if (status) status.textContent = "";
+        if (status) {
+          status.classList.add("hidden");
+          status.textContent = "";
+        }
         return;
       }
-      const seguro = preco * PERCENTUAL_SEGURO_PADRAO;
-      seguroEl.value = formatarMoedaBR(seguro);
-      seguroEl.dataset.autoSeguro = "1";
-      seguroEl.dataset.editadoManual = "0";
-      const manualEl = campoSeguroManualPorPrefixo(prefixo);
-      if (manualEl) manualEl.value = "0";
-      if (status) status.textContent = "";
+
+      if (status) {
+        status.classList.remove("hidden");
+        status.textContent = "Estimando seguro pela referência SUSEP/AUTOSEG...";
+      }
+      try {
+        const resp = await fetch("/api/seguro/estimar", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          cache: "no-store",
+          body: JSON.stringify({
+            veiculo: {
+              valor_fipe: preco,
+              ano_modelo: anoModeloSeguroPorPrefixoTCO(prefixo),
+              codigo_modelo: document.getElementById(`${prefixo}_modelo`)?.value || "",
+            },
+            localizacao: {
+              uf: document.getElementById("estado_uf")?.value || "",
+              municipio: document.getElementById("municipio_select")?.value || "",
+            },
+          }),
+        });
+        const payload = await resp.json().catch(() => ({}));
+        if (!resp.ok || !payload?.ok || !payload?.estimativa?.valor_anual) {
+          throw new Error(payload?.error || "estimativa indisponível");
+        }
+        const estimativa = payload.estimativa;
+        seguroEl.value = formatarMoedaBR(Number(estimativa.valor_anual || 0));
+        seguroEl.dataset.autoSeguro = "1";
+        seguroEl.dataset.editadoManual = "0";
+        const manualEl = campoSeguroManualPorPrefixo(prefixo);
+        if (manualEl) manualEl.value = "0";
+        salvarMetadadosSeguroAutomaticoTCO(prefixo, estimativa);
+        if (status) {
+          const taxa = Number(estimativa.taxa_efetiva || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+          const granularidade = estimativa.nivel_agregacao || "UF — automóvel";
+          status.classList.remove("hidden");
+          status.textContent = `Estimativa SUSEP/AUTOSEG — ${taxa}% da FIPE (${granularidade}, base ${estimativa.data_base || "referência disponível"}). Valor editável; não é cotação.`;
+        }
+      } catch (e) {
+        if (seguroEl.dataset.editadoManual !== "1") seguroEl.value = "";
+        seguroEl.dataset.autoSeguro = "0";
+        limparMetadadosSeguroAutomaticoTCO(prefixo);
+        if (status) {
+          status.classList.remove("hidden");
+          status.textContent = "Seguro automático indisponível. Informe um valor se quiser considerar este componente.";
+        }
+      }
     }
 
     function limparCamposVeiculo(prefixo) {
@@ -3522,8 +3618,11 @@
         if (el) el.value = "";
       });
       marcarSeguroManual(prefixo, false);
+      limparMetadadosSeguroAutomaticoTCO(prefixo);
       const seguroLimpo = campoSeguroPorPrefixo(prefixo);
       if (seguroLimpo) { delete seguroLimpo.dataset.autoSeguro; delete seguroLimpo.dataset.editadoManual; }
+      const statusSeguro = statusSeguroPorPrefixo(prefixo);
+      if (statusSeguro) { statusSeguro.textContent = ""; statusSeguro.classList.add("hidden"); }
       if (prefixo === "ve") setValorInputTCO("tipo_veiculo_ve", "");
       const status = statusDepreciacaoPorPrefixo(prefixo);
       if (status) status.textContent = "Seleção incompatível com este bloco.";
@@ -3612,8 +3711,11 @@
       }
 
       marcarSeguroManual(prefixo, false);
+      limparMetadadosSeguroAutomaticoTCO(prefixo);
       const seguroLimpo = campoSeguroPorPrefixo(prefixo);
       if (seguroLimpo) { delete seguroLimpo.dataset.autoSeguro; delete seguroLimpo.dataset.editadoManual; }
+      const statusSeguro = statusSeguroPorPrefixo(prefixo);
+      if (statusSeguro) { statusSeguro.textContent = ""; statusSeguro.classList.add("hidden"); }
 
       pbevLimparEstadoConsumoTCO(prefixo);
 
@@ -4877,7 +4979,7 @@
         finalizarConsultaControladaTCO(CONSULTAS_FIPE_TCO, prefixo, consultaFipe);
         definirEstadoConsultaFipeTCO(prefixo, false);
 
-        atualizarSeguroAutomatico(prefixo);
+        await atualizarSeguroAutomatico(prefixo);
         atualizarIpva(prefixo);
         atualizarInterfaceCombustivelPorVeiculo(prefixo, true);
         if (typeof atualizarInterfacePhevPorVeiculo === "function") atualizarInterfacePhevPorVeiculo(prefixo, true);
@@ -6725,6 +6827,7 @@
         atualizarIpva("ve");
         atualizarIpva("icev");
         atualizarIpva("atual");
+        ["ve", "icev", "atual"].forEach(prefixo => atualizarSeguroAutomatico(prefixo));
       });
 
       document.getElementById("municipio_select")?.addEventListener("change", function () {
@@ -6737,6 +6840,7 @@
           atualizarIpva("ve");
           atualizarIpva("icev");
           atualizarIpva("atual");
+          ["ve", "icev", "atual"].forEach(prefixo => atualizarSeguroAutomatico(prefixo));
         }
       });
 
@@ -6794,8 +6898,12 @@
         if (seguro) {
           seguro.addEventListener("input", function () {
             marcarSeguroManual(prefixo, true);
+            limparMetadadosSeguroAutomaticoTCO(prefixo);
             const status = statusSeguroPorPrefixo(prefixo);
-            if (status) status.textContent = "";
+            if (status) {
+              status.textContent = "Valor informado pelo usuário.";
+              status.classList.remove("hidden");
+            }
           });
         }
         if (preco) {
