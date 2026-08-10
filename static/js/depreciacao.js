@@ -1153,7 +1153,7 @@ async function solicitarCurvaDepreciacao() {
     const resp = await fetch("/api/site-usage/curve-requests", {
       method: "POST",
       headers: {"Content-Type":"application/json", "Accept":"application/json", "X-CSRF-Token": csrf},
-      body: JSON.stringify(payload)
+      body: JSON.stringify({...payload, usage_context: "depreciacao"})
     });
     const data = await resp.json().catch(() => ({}));
     if (!resp.ok || !data?.ok) throw new Error(data?.error || "Não foi possível enviar a solicitação.");
@@ -2820,6 +2820,18 @@ function atualizarCabecalhoPDFDepreciacao() {
   }
 }
 
+function registrarEventoUsoDepreciacao(action) {
+  try {
+    const csrf = document.querySelector('meta[name="curve-interaction-csrf"]')?.getAttribute('content') || '';
+    fetch('/api/site-usage/event', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrf},
+      body: JSON.stringify({module: 'depreciacao', action}),
+      keepalive: true
+    }).catch(() => {});
+  } catch (e) {}
+}
+
 function exportarPDFDepreciacao() {
   if (!ultimoResumoDepreciacao || !ultimoResumoDepreciacao.encontrado) {
     window.alert("Selecione primeiro um veículo com curva de depreciação pronta.");
@@ -2835,7 +2847,10 @@ function exportarPDFDepreciacao() {
   preencherRelatorio(ultimoResumoDepreciacao, "curva salva");
   renderizarGraficosDepreciacao(ultimoResumoDepreciacao);
   atualizarCabecalhoPDFDepreciacao();
-  setTimeout(() => window.print(), 150);
+  setTimeout(() => {
+    registrarEventoUsoDepreciacao('pdf_exported');
+    window.print();
+  }, 150);
 }
 
 function abrirAuditoriaDepreciacao() {

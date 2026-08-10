@@ -5,8 +5,28 @@ from pathlib import Path
 from datetime import timedelta
 
 
+def _is_production_runtime() -> bool:
+    return (
+        str(os.environ.get("RENDER", "")).strip().lower() in {"1", "true", "yes", "on"}
+        or str(os.environ.get("FLASK_ENV", "")).strip().lower() == "production"
+    )
+
+
+def _resolve_secret_key() -> str:
+    configured = str(os.environ.get("SECRET_KEY", "") or "").strip()
+    if configured:
+        return configured
+    if _is_production_runtime():
+        raise RuntimeError(
+            "SECRET_KEY não configurada no ambiente de produção. "
+            "Defina um segredo exclusivo no Render antes de iniciar a aplicação."
+        )
+    # Fallback exclusivamente local/teste. Nunca deve ser usado em produção.
+    return "curve-local-dev-only-secret"
+
+
 class Config:
-    SECRET_KEY = os.environ.get("SECRET_KEY", "plugve-depreciacao-v23")
+    SECRET_KEY = _resolve_secret_key()
 
     BASE_DIR = Path(__file__).resolve().parent
     DATA_DIR = BASE_DIR / "data"
@@ -64,7 +84,10 @@ class Config:
     # Token simples para sincronização de leitura painel local -> Render.
     # Configure PLUGVE_SYNC_TOKEN no Render com o mesmo valor do painel local.
     PLUGVE_SYNC_TOKEN = os.environ.get("PLUGVE_SYNC_TOKEN", "").strip()
-    PLUGVE_ADMIN_TOKEN = os.environ.get("PLUGVE_ADMIN_TOKEN", PLUGVE_SYNC_TOKEN).strip()
+    # O token administrativo é deliberadamente separado do token de sincronização.
+    # Não faça fallback para PLUGVE_SYNC_TOKEN: quem pode sincronizar dados não deve
+    # ganhar acesso ao painel de telemetria por consequência.
+    PLUGVE_ADMIN_TOKEN = os.environ.get("PLUGVE_ADMIN_TOKEN", "").strip()
 
     # Envio direto da página Contato. Para Gmail, use uma senha de aplicativo
     # e mantenha as credenciais apenas nas variáveis de ambiente do Render.

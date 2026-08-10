@@ -29,6 +29,7 @@ from services.sobre_engagement_service import (
     SobreEngagementService,
 )
 from services.site_usage_service import get_site_usage_service
+from services.site_usage_tracking import record_current_usage_event
 from services.contact_email_service import (
     ContactEmailConfigurationError,
     ContactEmailDeliveryError,
@@ -383,9 +384,6 @@ def _sobre_admin_token_recebido() -> str:
     token = request.headers.get("X-PlugVE-Admin-Token", "").strip()
     if token:
         return token
-    token = request.headers.get("X-PlugVE-Sync-Token", "").strip()
-    if token:
-        return token
     authorization = request.headers.get("Authorization", "").strip()
     if authorization.lower().startswith("bearer "):
         return authorization[7:].strip()
@@ -393,11 +391,7 @@ def _sobre_admin_token_recebido() -> str:
 
 
 def _sobre_admin_token_valido() -> bool:
-    esperado = str(
-        current_app.config.get("PLUGVE_ADMIN_TOKEN", "")
-        or current_app.config.get("PLUGVE_SYNC_TOKEN", "")
-        or ""
-    ).strip()
+    esperado = str(current_app.config.get("PLUGVE_ADMIN_TOKEN", "") or "").strip()
     recebido = _sobre_admin_token_recebido()
     return bool(esperado and recebido and hmac.compare_digest(esperado, recebido))
 
@@ -2231,6 +2225,32 @@ def auditoria_tco():
     return render_template("auditoria_tco.html", auditoria=auditoria)
 
 
+def _veiculo_telemetria_tco(form, prefixo: str, role: str, tecnologia: str = "") -> dict:
+    return {
+        "role": role,
+        "tipo": tecnologia or prefixo,
+        "codigo_marca": form.get(f"{prefixo}_marca_codigo") or "",
+        "codigo_modelo": form.get(f"{prefixo}_modelo_codigo") or "",
+        "codigo_ano": form.get(f"{prefixo}_ano_codigo") or "",
+        "marca": form.get(f"{prefixo}_marca_nome") or "",
+        "modelo": form.get(f"modelo_{prefixo}") or "",
+        "ano_modelo": form.get(f"ano_modelo_{prefixo}") or form.get(f"{prefixo}_ano_codigo") or "",
+        "combustivel": form.get(f"combustivel_{prefixo}") or "",
+        "tecnologia": tecnologia or "",
+    }
+
+
+def _veiculos_telemetria_tco(form, tipo_comparacao: str) -> list[dict]:
+    ve = _veiculo_telemetria_tco(form, "ve", "veiculo_eletrico", "ve")
+    icev = _veiculo_telemetria_tco(form, "icev", "veiculo_combustao", "icev")
+    atual = _veiculo_telemetria_tco(form, "atual", "veiculo_atual", "icev")
+    if tipo_comparacao == "trocar_por_eletrico":
+        return [atual, ve]
+    if tipo_comparacao == "trocar_e_comparar_opcoes":
+        return [atual, ve, icev]
+    return [ve, icev]
+
+
 # ============================================================
 # 5) ROTA PRINCIPAL /SIMULAR (AGORA COM TIPOS DE COMPARAÇÃO)
 # ============================================================
@@ -2326,9 +2346,26 @@ def simular():
             resultado_final["auditoria_url"] = url_for("tco.auditoria_tco", token=token_auditoria)
             if comparacoes:
                 try:
-                    get_site_usage_service().record_analysis("tco")
+                    record_current_usage_event(
+                        event_type="analysis",
+                        module="tco",
+                        action="simulation_completed",
+                        metadata={
+                            "tipo_comparacao": tipo_comparacao,
+                            "comparacoes_geradas": len(comparacoes),
+                            "financiamento_ve": bool_form(request.form, "fin_ve_ativo"),
+                            "financiamento_icev": bool_form(request.form, "fin_icev_ativo"),
+                            "financiamento_atual": bool_form(request.form, "fin_atual_ativo"),
+                        },
+                        vehicles=_veiculos_telemetria_tco(request.form, tipo_comparacao),
+                        simulation_uf=request.form.get("estado_uf") or request.form.get("uf") or "",
+                        simulation_city=request.form.get("municipio_select") or request.form.get("municipio") or "",
+                        horizon_years=request.form.get("anos") or "",
+                        km_year=request.form.get("km_ano") or "",
+                        analysis_type="tco",
+                    )
                 except Exception as analytics_error:
-                    current_app.logger.warning("Falha ao registrar métrica TCO: %s", analytics_error)
+                    current_app.logger.warning("Falha ao registrar telemetria TCO: %s", analytics_error)
 
         except Exception as e:
             print("Erro ao processar simulação:", e)

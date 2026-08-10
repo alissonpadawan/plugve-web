@@ -8,6 +8,7 @@ from services.depreciacao_service import DepreciacaoService
 from services.coorte_diagnostico_service import CoorteDiagnosticoService
 from services.depreciacao_motor_v1917_adapter import DepreciacaoMotorV1917Adapter
 from services.site_usage_service import get_site_usage_service
+from services.site_usage_tracking import record_current_usage_event
 from repositories.curvas_repository import CurvasRepository
 
 depreciacao_bp = Blueprint("depreciacao", __name__)
@@ -17,14 +18,8 @@ motor_v1917_adapter = DepreciacaoMotorV1917Adapter()
 curvas_repository = CurvasRepository()
 
 
-def _admin_token_recebido() -> str:
-    token = request.headers.get("X-PlugVE-Admin-Token", "").strip()
-    if token:
-        return token
+def _sync_token_recebido() -> str:
     token = request.headers.get("X-PlugVE-Sync-Token", "").strip()
-    if token:
-        return token
-    token = request.args.get("token", "").strip()
     if token:
         return token
     auth = request.headers.get("Authorization", "").strip()
@@ -33,13 +28,9 @@ def _admin_token_recebido() -> str:
     return ""
 
 
-def _admin_token_valido() -> bool:
-    esperado = str(
-        current_app.config.get("PLUGVE_ADMIN_TOKEN", "")
-        or current_app.config.get("PLUGVE_SYNC_TOKEN", "")
-        or ""
-    ).strip()
-    recebido = _admin_token_recebido()
+def _sync_token_valido() -> bool:
+    esperado = str(current_app.config.get("PLUGVE_SYNC_TOKEN", "") or "").strip()
+    recebido = _sync_token_recebido()
     return bool(esperado) and bool(recebido) and hmac.compare_digest(recebido, esperado)
 
 
@@ -79,9 +70,37 @@ def resumo():
         is_internal_usage = bool(payload.get("origem_tco")) or str(payload.get("usage_context") or "").strip().lower() == "fipe_plus"
         if resultado.get("encontrado") and not is_internal_usage:
             try:
-                get_site_usage_service().record_analysis("depreciacao")
+                tipo_curva = str(resultado.get("tipo_curva_aplicada") or "").strip().lower()
+                if tipo_curva not in {"propria", "similaridade"}:
+                    tipo_curva = "similaridade" if resultado.get("curva_por_similaridade") else "nao_informado"
+                record_current_usage_event(
+                    event_type="analysis",
+                    module="depreciacao",
+                    action="consultation_completed",
+                    metadata={
+                        "origem_curva": resultado.get("origem_curva") or resultado.get("tipo_match") or "",
+                        "confianca": resultado.get("confianca") or resultado.get("nivel_confianca") or "",
+                        "tipo_curva": tipo_curva,
+                        "horizonte_anos": payload.get("horizonte_anos") or payload.get("anos") or "",
+                    },
+                    vehicles=[{
+                        "role": "consultado",
+                        "tipo": payload.get("tipo") or payload.get("tipo_veiculo") or "auto",
+                        "codigo_fipe": payload.get("codigo_fipe") or payload.get("CodigoFipe") or "",
+                        "codigo_marca": payload.get("codigo_marca") or payload.get("marca_id") or "",
+                        "codigo_modelo": payload.get("codigo_modelo") or payload.get("modelo_id") or "",
+                        "codigo_ano": payload.get("codigo_ano") or payload.get("ano_codigo") or "",
+                        "marca": payload.get("marca") or payload.get("Marca") or "",
+                        "modelo": payload.get("modelo") or payload.get("Modelo") or payload.get("nome_modelo") or "",
+                        "ano_modelo": payload.get("ano_modelo") or payload.get("AnoModelo") or "",
+                        "combustivel": payload.get("combustivel") or payload.get("Combustivel") or "",
+                        "tecnologia": payload.get("tecnologia") or payload.get("propulsao") or "",
+                    }],
+                    horizon_years=payload.get("horizonte_anos") or payload.get("anos") or "",
+                    analysis_type="depreciacao",
+                )
             except Exception as analytics_error:
-                current_app.logger.warning("Falha ao registrar métrica de depreciação: %s", analytics_error)
+                current_app.logger.warning("Falha ao registrar telemetria de depreciação: %s", analytics_error)
         return jsonify(resultado)
     except Exception as exc:
         return jsonify({"encontrado": False, "erro": str(exc)}), 500
@@ -117,10 +136,10 @@ def apagar_curva():
 @depreciacao_bp.route("/importar_curvas", methods=["POST"])
 @depreciacao_bp.route("/admin/importar_curvas", methods=["POST"])
 def importar_curvas():
-    if not _admin_token_valido():
+    if not _sync_token_valido():
         return jsonify({
             "ok": False,
-            "erro": "Token administrativo inválido ou ausente.",
+            "erro": "Token de sincronização inválido ou ausente.",
             "tipo": "nao_autorizado",
         }), 401
     payload = request.get_json(silent=True) or {}
@@ -142,10 +161,10 @@ def importar_curvas():
 @depreciacao_bp.route("/sincronizar_snapshot", methods=["POST"])
 @depreciacao_bp.route("/admin/sincronizar_snapshot", methods=["POST"])
 def sincronizar_snapshot_curvas():
-    if not _admin_token_valido():
+    if not _sync_token_valido():
         return jsonify({
             "ok": False,
-            "erro": "Token administrativo inválido ou ausente.",
+            "erro": "Token de sincronização inválido ou ausente.",
             "tipo": "nao_autorizado",
         }), 401
     payload = request.get_json(silent=True) or {}
@@ -168,10 +187,10 @@ def sincronizar_snapshot_curvas():
 @depreciacao_bp.route("/excluir_curvas", methods=["POST"])
 @depreciacao_bp.route("/admin/excluir_curvas", methods=["POST"])
 def excluir_curvas_admin():
-    if not _admin_token_valido():
+    if not _sync_token_valido():
         return jsonify({
             "ok": False,
-            "erro": "Token administrativo inválido ou ausente.",
+            "erro": "Token de sincronização inválido ou ausente.",
             "tipo": "nao_autorizado",
         }), 401
     payload = request.get_json(silent=True) or {}

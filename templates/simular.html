@@ -3428,21 +3428,19 @@
 
     function classificarTipoVeiculoTCO(modelo, combustivel, codigoAno, marca, prefixoContexto = "") {
       const marcaNorm = normalizarTextoTipoTCO(marca);
-      const prefixoNorm = String(prefixoContexto || "").toLowerCase();
       const texto = normalizarTextoTipoTCO(`${marca || ""} ${modelo || ""} ${combustivel || ""} ${codigoAno || ""}`);
-      const ehHibridoGenerico = /(\bHIBRID[OA]\b|\bHYBRID\b|\bHEV\b|\bMHEV\b|\bMILD\s+HYBRID\b|\bE\s+HEV\b)/i.test(texto);
-      const ehPlugin = /(\bPHEV\b|\bPLUG\s*IN\b|\bPLUGIN\b|HIBRID[OA]\s+PLUGIN|HIBRID[OA]\s+PLUG\s*IN|HYBRID\s+PLUGIN|HYBRID\s+PLUG\s*IN|\bDM\s*I\b|\bDMI\b|\bE\s+HYBRID\b|\bEHIBRID\b|\bTFSI\s*E\b|\bTFSIE\b|\bRECHARGE\b|\b330E\b|\b530E\b|\b545E\b|\b740E\b|\b745E\b|\bC\s*300E\b|\bE\s*300E\b|\bS\s*580E\b|\bGLC\s*300E\b|\bGLE\s*350E\b|\b225XE\b|\bX1\s+XDRIVE\s*25E\b|\bX3\s+XDRIVE\s*30E\b|\bX5\s+XDRIVE\s*(40E|45E|50E)\b)/i.test(texto);
+      const ehHibridoGenerico = /(\bHIBRID[OA]\b|\bHYBRID\b|\bHEV(?:\s*[-/]?\s*\d{1,3})?\b|\bMHEV\b|\bMILD\s+HYBRID\b|\bE\s+HEV\b)/i.test(texto);
+      const ehPlugin = /(\bPHEV(?:\s*[-/]?\s*\d{1,4})?\b|\bPLUG\s*IN\b|\bPLUGIN\b|HIBRID[OA]\s+PLUGIN|HIBRID[OA]\s+PLUG\s*IN|HYBRID\s+PLUGIN|HYBRID\s+PLUG\s*IN|\bDM\s*I\b|\bDMI\b|\bE\s+HYBRID\b|\bEHIBRID\b|\bTFSI\s*E\b|\bTFSIE\b|\bRECHARGE\b|\b330E\b|\b530E\b|\b545E\b|\b740E\b|\b745E\b|\bC\s*300E\b|\bE\s*300E\b|\bS\s*580E\b|\bGLC\s*300E\b|\bGLE\s*350E\b|\b225XE\b|\bX1\s+XDRIVE\s*25E\b|\bX3\s+XDRIVE\s*30E\b|\bX5\s+XDRIVE\s*(40E|45E|50E)\b)/i.test(texto);
 
       if (ehPlugin) return "phev";
 
-      // A FIPE geralmente mostra apenas "Híbrido", sem distinguir plug-in.
-      // Pela regra da CurVE, híbrido que passou pelo bloco VE deve ser tratado como PHEV.
-      // No bloco ICEV/combustão, o mesmo texto continua como HEV não plug-in.
-      if (prefixoNorm === "ve" && ehHibridoGenerico) return "phev";
-
       if (marcaNorm === "BYD") {
-        if (ehHibridoGenerico) return "hibrido";
+        if (ehHibridoGenerico) return "phev";
         return "eletrico";
+      }
+      if (marcaNorm === "GWM" && /\bHAVAL\s+H6\b/i.test(texto)) {
+        if (/\bGT\b/i.test(texto)) return "phev";
+        if (ehHibridoGenerico) return "hibrido";
       }
       if (marcaNorm === "TESLA") return "eletrico";
       if (marcaNorm === "VOLVO" && /\bT8\b/i.test(texto)) return "phev";
@@ -3453,6 +3451,22 @@
       if (ehHibridoGenerico) return "hibrido";
 
       return "combustao";
+    }
+
+    function normalizarTipoCatalogoPlugVeTCO(valor) {
+      const tipo = normalizarTextoTipoTCO(valor).replace(/\s+/g, "_");
+      const mapa = {
+        EV_PURO: "eletrico", ELETRICO: "eletrico", BEV: "eletrico",
+        PHEV: "phev", PLUG_IN: "phev", PLUGIN: "phev",
+        HEV_NAO_PLUGIN: "hibrido", HEV: "hibrido", MHEV: "hibrido", HIBRIDO: "hibrido",
+        COMBUSTAO: "combustao", ICEV: "combustao", ICE: "combustao"
+      };
+      return mapa[tipo] || "";
+    }
+
+    function tipoCatalogoAnoSelecionadoTCO(anoSelect) {
+      const opt = anoSelect?.options?.[anoSelect.selectedIndex];
+      return normalizarTipoCatalogoPlugVeTCO(opt?.dataset?.tipoVeiculo || "");
     }
 
     function tipoPermitidoNoBloco(prefixo, tipo) {
@@ -3550,9 +3564,10 @@
       const modelo = document.getElementById(`modelo_${prefixo}`)?.value || modeloSelecionado;
       const combustivel = document.getElementById(`combustivel_${prefixo}`)?.value || "";
       const codigoAno = document.getElementById(`${prefixo}_ano`)?.value || "";
-      const tipo = typeof classificarTipoVeiculoTCO === "function"
+      const tipoCanonico = prefixo === "ve" ? (document.getElementById("tipo_veiculo_ve")?.value || "") : "";
+      const tipo = tipoCanonico || (typeof classificarTipoVeiculoTCO === "function"
         ? classificarTipoVeiculoTCO(modelo, combustivel, codigoAno, marca, prefixo)
-        : (prefixo === "ve" ? "eletrico" : "combustao");
+        : (prefixo === "ve" ? "eletrico" : "combustao"));
       const texto = normalizarTextoTipoTCO(`${modelo} ${combustivel} ${tipo}`);
 
       if (tipo === "eletrico") return "eletrico";
@@ -4347,7 +4362,8 @@
       const anoModeloStr = anoModeloParaCalculo(ano, "");
       const combustivelStr = combustivelPorTextoAnoFipeTCO(ano, textoAnoOriginal);
       const nomeCompleto = limparNomeVeiculoTCO(`${nomeModelo} ${textoAnoTela}`.trim());
-      const tipoSelecionado = classificarTipoVeiculoTCO(nomeModelo, combustivelStr || textoAnoTela, ano, marcaStr, prefixo);
+      const tipoSelecionado = tipoCatalogoAnoSelecionadoTCO(anoSelect)
+        || classificarTipoVeiculoTCO(nomeModelo, combustivelStr || textoAnoTela, ano, marcaStr, prefixo);
 
       if (!tipoPermitidoNoBloco(prefixo, tipoSelecionado)) {
         limparCamposVeiculo(prefixo);
@@ -4965,7 +4981,8 @@
         const textoAnoTela = textoAnoFipeParaTela(ano, textoAnoOriginal);
         const nomeCompleto = limparNomeVeiculoTCO(`${nomeModelo} ${textoAnoTela}`.trim());
         const marcaStr = data.Marca || selecaoRapida?.marcaStr || textoOpcaoSelecionadaFipeTCO(marcaSelect);
-        const tipoSelecionado = classificarTipoVeiculoTCO(nomeModelo, combustivelStr || textoAnoTela, ano, marcaStr, prefixo);
+        const tipoSelecionado = tipoCatalogoAnoSelecionadoTCO(anoSelect)
+          || classificarTipoVeiculoTCO(nomeModelo, combustivelStr || textoAnoTela, ano, marcaStr, prefixo);
         if (!tipoPermitidoNoBloco(prefixo, tipoSelecionado)) {
           limparCamposVeiculo(prefixo);
           alert(mensagemBloqueioTipo(prefixo, tipoSelecionado));
@@ -5142,7 +5159,7 @@
         const resp = await fetch("/api/site-usage/curve-requests", {
           method: "POST",
           headers: { "Content-Type": "application/json", "X-CSRF-Token": csrf },
-          body: JSON.stringify(detalhe)
+          body: JSON.stringify({...detalhe, usage_context: "tco"})
         });
         const data = await resp.json().catch(() => ({}));
         if (!resp.ok) throw new Error(data.error || "Não foi possível registrar a solicitação.");
@@ -7902,6 +7919,15 @@
 
         let tituloOriginalRelatorioTCO = document.title;
         document.getElementById("btn_exportar_pdf_tco")?.addEventListener("click", async function () {
+          try {
+            const csrfUso = document.querySelector('meta[name="curve-interaction-csrf"]')?.getAttribute("content") || "";
+            fetch("/api/site-usage/event", {
+              method: "POST",
+              headers: {"Content-Type": "application/json", "X-CSRF-Token": csrfUso},
+              body: JSON.stringify({module: "tco", action: "pdf_exported"}),
+              keepalive: true
+            }).catch(() => {});
+          } catch (e) {}
           document.querySelectorAll("[id^='tco_pdf_date_']").forEach(el => {
             el.textContent = "Data de emissão: " + new Date().toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
           });

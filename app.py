@@ -4,7 +4,7 @@ import os
 import secrets
 import threading
 
-from flask import Flask, session
+from flask import Flask, request, session
 
 from config import Config
 from routes.main_routes import main_bp
@@ -16,6 +16,7 @@ from routes.pbev_routes import pbev_bp, pbev_pages_bp
 from routes.usage_routes import usage_bp
 from routes.seguro_routes import seguro_bp
 from services.persistent_storage import bootstrap_persistent_storage
+from services.site_usage_tracking import ensure_site_usage_identity, maybe_record_page_view
 
 
 def _preaquecer_catalogo_fipe_async(app: Flask) -> None:
@@ -54,18 +55,23 @@ def create_app() -> Flask:
     app.register_blueprint(usage_bp)
     app.register_blueprint(seguro_bp, url_prefix="/api/seguro")
 
+    @app.before_request
+    def prepare_site_usage_identity():
+        if request.endpoint != "static":
+            ensure_site_usage_identity()
+
+    @app.after_request
+    def record_site_usage_page_view(response):
+        try:
+            maybe_record_page_view(response)
+        except Exception as exc:
+            app.logger.debug("Falha de telemetria de página ignorada: %s", exc)
+        return response
+
     @app.context_processor
     def inject_site_usage_context():
-        session.permanent = True
-        visitor_id = str(session.get("site_usage_visitor_id") or "").strip()
-        if not visitor_id:
-            visitor_id = secrets.token_urlsafe(24)
-            session["site_usage_visitor_id"] = visitor_id
-        csrf_token = str(session.get("site_usage_csrf_token") or "").strip()
-        if not csrf_token:
-            csrf_token = secrets.token_urlsafe(32)
-            session["site_usage_csrf_token"] = csrf_token
-        return {"site_usage_csrf_token": csrf_token}
+        ensure_site_usage_identity()
+        return {"site_usage_csrf_token": str(session.get("site_usage_csrf_token") or "")}
 
     _preaquecer_catalogo_fipe_async(app)
 

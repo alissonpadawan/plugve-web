@@ -33,14 +33,8 @@ def _resposta_preco(dados):
     return resp
 
 
-def _admin_token_recebido() -> str:
-    token = request.headers.get("X-PlugVE-Admin-Token", "").strip()
-    if token:
-        return token
+def _sync_token_recebido() -> str:
     token = request.headers.get("X-PlugVE-Sync-Token", "").strip()
-    if token:
-        return token
-    token = request.args.get("token", "").strip()
     if token:
         return token
     auth = request.headers.get("Authorization", "").strip()
@@ -49,13 +43,9 @@ def _admin_token_recebido() -> str:
     return ""
 
 
-def _admin_token_valido() -> bool:
-    esperado = str(
-        current_app.config.get("PLUGVE_SYNC_TOKEN", "")
-        or current_app.config.get("PLUGVE_ADMIN_TOKEN", "")
-        or ""
-    ).strip()
-    recebido = _admin_token_recebido()
+def _sync_token_valido() -> bool:
+    esperado = str(current_app.config.get("PLUGVE_SYNC_TOKEN", "") or "").strip()
+    recebido = _sync_token_recebido()
     return bool(esperado) and bool(recebido) and hmac.compare_digest(recebido, esperado)
 
 
@@ -133,7 +123,7 @@ def preco_publico():
 @fipe_bp.route("/catalogo/status")
 def catalogo_estado():
     """Estado consolidado da varredura FIPE para sincronização com o painel local."""
-    if not _admin_token_valido():
+    if not _sync_token_valido():
         return jsonify({
             "ok": False,
             "erro": "Token de sincronização inválido ou ausente.",

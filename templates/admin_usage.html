@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Administração de uso | CurVE</title>
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/favicon.png') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin_usage.css') }}?v=20260810_v50_08">
+</head>
+<body>
+  <section id="admin_auth_panel" class="admin-auth-shell">
+    <div class="admin-auth-card">
+      <img src="{{ url_for('static', filename='img/logo_curve_horizontal.png') }}" alt="CurVE" class="admin-auth-logo">
+      <span class="admin-eyebrow">Área administrativa</span>
+      <h1>Painel de uso da plataforma</h1>
+      <p>Informe o token administrativo para consultar a telemetria pseudonimizada da CurVE.</p>
+      <label for="admin_token_input">Token administrativo</label>
+      <div class="admin-token-row">
+        <input id="admin_token_input" type="password" autocomplete="off" spellcheck="false" placeholder="PLUGVE_ADMIN_TOKEN">
+        <button id="admin_login_button" type="button">Entrar</button>
+      </div>
+      <div id="admin_login_error" class="admin-auth-error" role="alert"></div>
+      <small>O token fica somente na sessão desta aba do navegador e é enviado no cabeçalho das consultas administrativas.</small>
+    </div>
+  </section>
+
+  <div id="admin_dashboard" class="admin-dashboard hidden">
+    <header class="admin-topbar">
+      <div class="admin-topbar-inner">
+        <div class="admin-brand-block">
+          <img src="{{ url_for('static', filename='img/logo_curve_horizontal.png') }}" alt="CurVE">
+          <div>
+            <span class="admin-eyebrow">Administração</span>
+            <strong>Painel de uso e tendências</strong>
+          </div>
+        </div>
+        <div class="admin-top-actions">
+          <span id="admin_refresh_status" class="admin-refresh-status">—</span>
+          <button id="admin_refresh_button" type="button" class="admin-button-secondary">Atualizar</button>
+          <button id="admin_logout_button" type="button" class="admin-button-danger">Sair</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="admin-main">
+      <section class="admin-page-heading">
+        <div>
+          <span class="admin-eyebrow">Telemetria V50.08</span>
+          <h1>Uso da plataforma CurVE</h1>
+          <p>Acompanhe visitantes pseudônimos, sessões, consultas, comparações e tendências de uso.</p>
+        </div>
+        <div class="admin-privacy-badge">IP bruto não armazenado</div>
+      </section>
+
+      <section class="admin-filter-card" aria-label="Filtros de período">
+        <div class="admin-filter-presets" id="admin_filter_presets">
+          <button type="button" data-preset="today">Hoje</button>
+          <button type="button" data-preset="7d">7 dias</button>
+          <button type="button" data-preset="30d" class="active">30 dias</button>
+          <button type="button" data-preset="month">Mês atual</button>
+          <button type="button" data-preset="all">Tudo</button>
+        </div>
+        <div class="admin-date-range">
+          <label>De <input id="admin_start_date" type="date"></label>
+          <label>Até <input id="admin_end_date" type="date"></label>
+          <button id="admin_apply_dates" type="button" class="admin-button-primary">Aplicar período</button>
+        </div>
+      </section>
+
+      <section class="admin-metrics-grid" aria-label="Indicadores principais">
+        <article class="admin-metric-card"><span>Visitantes únicos</span><strong id="metric_visitors">0</strong><small>no período</small></article>
+        <article class="admin-metric-card"><span>Sessões</span><strong id="metric_sessions">0</strong><small>no período</small></article>
+        <article class="admin-metric-card"><span>Visualizações</span><strong id="metric_page_views">0</strong><small>páginas registradas</small></article>
+        <article class="admin-metric-card"><span>Simulações TCO</span><strong id="metric_tco">0</strong><small>concluídas</small></article>
+        <article class="admin-metric-card"><span>Depreciação</span><strong id="metric_depreciacao">0</strong><small>consultas concluídas</small></article>
+        <article class="admin-metric-card"><span>Fipe+</span><strong id="metric_fipe">0</strong><small>consultas concluídas</small></article>
+        <article class="admin-metric-card"><span>PDFs</span><strong id="metric_pdf">0</strong><small>exportações registradas</small></article>
+      </section>
+
+      <section class="admin-panel admin-trend-panel">
+        <div class="admin-panel-head">
+          <div><span class="admin-eyebrow">Evolução</span><h2>Atividade ao longo do tempo</h2></div>
+          <div class="admin-chart-legend">
+            <span><i class="legend-visitors"></i>Visitantes</span>
+            <span><i class="legend-tco"></i>TCO</span>
+            <span><i class="legend-dep"></i>Depreciação</span>
+            <span><i class="legend-fipe"></i>Fipe+</span>
+          </div>
+        </div>
+        <div class="admin-canvas-wrap"><canvas id="admin_trend_canvas" height="270"></canvas></div>
+        <div id="admin_trend_empty" class="admin-empty hidden">Ainda não há atividade registrada neste período.</div>
+      </section>
+
+      <section class="admin-two-columns">
+        <article class="admin-panel">
+          <div class="admin-panel-head compact">
+            <div><span class="admin-eyebrow">Ranking</span><h2>Veículos mais consultados</h2></div>
+            <select id="admin_vehicle_module_filter" aria-label="Filtrar veículos por módulo">
+              <option value="all">Todos</option>
+              <option value="tco">TCO</option>
+              <option value="depreciacao">Depreciação</option>
+              <option value="fipe_plus">Fipe+</option>
+            </select>
+          </div>
+          <div id="admin_top_vehicles" class="admin-ranking-list"></div>
+        </article>
+
+        <article class="admin-panel">
+          <div class="admin-panel-head compact"><div><span class="admin-eyebrow">Comparações</span><h2>Pares mais comparados no TCO</h2></div></div>
+          <div id="admin_top_pairs" class="admin-ranking-list"></div>
+        </article>
+      </section>
+
+      <section class="admin-three-columns">
+        <article class="admin-panel">
+          <div class="admin-panel-head compact"><div><span class="admin-eyebrow">Tecnologia</span><h2>Propulsões consultadas</h2></div></div>
+          <div id="admin_technology_usage" class="admin-ranking-list small"></div>
+        </article>
+        <article class="admin-panel">
+          <div class="admin-panel-head compact"><div><span class="admin-eyebrow">Marcas</span><h2>Marcas mais presentes</h2></div></div>
+          <div id="admin_top_brands" class="admin-ranking-list small"></div>
+        </article>
+        <article class="admin-panel">
+          <div class="admin-panel-head compact"><div><span class="admin-eyebrow">Local da simulação</span><h2>Municípios escolhidos</h2></div></div>
+          <div id="admin_simulation_locations" class="admin-ranking-list small"></div>
+        </article>
+      </section>
+
+      <section class="admin-panel">
+        <div class="admin-panel-head compact">
+          <div>
+            <span class="admin-eyebrow">Depreciação</span>
+            <h2>Curva própria × similaridade</h2>
+            <p class="admin-panel-help">Classificação da curva utilizada nas consultas de Depreciação. Eventos antigos sem metadado explícito permanecem identificados como legado.</p>
+          </div>
+        </div>
+        <div id="admin_depreciation_curve_types" class="admin-ranking-list small"></div>
+      </section>
+
+      <section class="admin-panel">
+        <div class="admin-panel-head compact">
+          <div>
+            <span class="admin-eyebrow">Origem aproximada</span>
+            <h2>Localização dos acessos</h2>
+            <p class="admin-panel-help">Disponível somente quando a infraestrutura de hospedagem fornece cidade/UF aproximadas.</p>
+          </div>
+        </div>
+        <div id="admin_access_locations" class="admin-location-grid"></div>
+      </section>
+
+      <section class="admin-panel">
+        <div class="admin-panel-head">
+          <div><span class="admin-eyebrow">Visitantes</span><h2>Quem entrou no site</h2></div>
+          <div class="admin-table-tools">
+            <input id="admin_visitor_search" type="search" placeholder="Buscar visitante, cidade, UF...">
+            <span id="admin_visitors_total" class="admin-table-count">0 visitantes</span>
+          </div>
+        </div>
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead><tr><th>Visitante</th><th>Local aproximado</th><th>Sessões</th><th>Eventos</th><th>Última atividade</th><th>Ambiente</th></tr></thead>
+            <tbody id="admin_visitors_body"></tbody>
+          </table>
+        </div>
+        <button id="admin_visitors_more" type="button" class="admin-load-more hidden">Carregar mais visitantes</button>
+      </section>
+
+      <section class="admin-panel">
+        <div class="admin-panel-head">
+          <div>
+            <span class="admin-eyebrow">Linha do tempo</span>
+            <h2 id="admin_events_title">Últimas atividades</h2>
+          </div>
+          <div class="admin-table-tools">
+            <select id="admin_event_module_filter" aria-label="Filtrar atividades por módulo">
+              <option value="">Todos os módulos</option>
+              <option value="tco">TCO</option>
+              <option value="depreciacao">Depreciação</option>
+              <option value="fipe_plus">Fipe+</option>
+              <option value="home">Início</option>
+            </select>
+            <button id="admin_clear_visitor_filter" type="button" class="admin-button-secondary hidden">Limpar visitante</button>
+          </div>
+        </div>
+        <div id="admin_events_feed" class="admin-events-feed"></div>
+        <button id="admin_events_more" type="button" class="admin-load-more hidden">Carregar mais atividades</button>
+      </section>
+
+      <section class="admin-method-note">
+        <strong>Privacidade operacional:</strong> o painel trabalha com identificadores pseudônimos. O IP bruto não é exibido nem armazenado pela telemetria V50.08. Cidade/UF do acesso são aproximações fornecidas pela infraestrutura quando disponíveis e são mantidas separadas da localização escolhida pelo usuário na simulação.
+      </section>
+    </main>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/admin_usage.js') }}?v=20260810_v50_08"></script>
+</body>
+</html>

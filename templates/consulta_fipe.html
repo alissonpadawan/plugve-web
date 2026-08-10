@@ -956,7 +956,7 @@
     button.textContent = 'Enviando...';
     if (feedback) feedback.textContent = '';
     try {
-      const payload = montarPayloadDepreciacao(veiculo, horizonte);
+      const payload = {...montarPayloadDepreciacao(veiculo, horizonte), usage_context: 'fipe_plus'};
       const resp = await fetch('/api/site-usage/curve-requests', {
         method: 'POST',
         headers: {'Content-Type':'application/json','Accept':'application/json','X-CSRF-Token':csrf},
@@ -1324,10 +1324,27 @@
       const data = await getJSON(urlPreco, token);
       showResult(data); status('Consulta concluída.');
       const csrf = document.querySelector('meta[name="curve-interaction-csrf"]')?.getAttribute('content') || '';
-      fetch('/api/site-usage/analysis', {
+      fetch('/api/site-usage/event', {
         method:'POST',
         headers:{'Content-Type':'application/json','X-CSRF-Token':csrf},
-        body:JSON.stringify({type:'fipe_plus'}),
+        body:JSON.stringify({
+          module:'fipe_plus',
+          action:'consultation_completed',
+          vehicles:[{
+            role:'consultado',
+            tipo:tipoAtual,
+            codigo_fipe:data.CodigoFipe || data.CodigoFIPE || data.Codigo || '',
+            codigo_marca:marca,
+            codigo_modelo:modelo,
+            codigo_ano:ano,
+            marca:selects.marca.options[selects.marca.selectedIndex]?.textContent || data.Marca || '',
+            modelo:selects.modelo.options[selects.modelo.selectedIndex]?.textContent || data.Modelo || '',
+            ano_modelo:data.AnoModelo || selects.ano.options[selects.ano.selectedIndex]?.textContent || '',
+            combustivel:data.Combustivel || '',
+            tecnologia:tipoAtual === 'carros' ? (data.tipo_plugve || data.tipo_interface || '') : tipoAtual
+          }],
+          metadata:{tipo_catalogo:tipoAtual}
+        }),
         keepalive:true
       }).catch(() => {});
     }catch(e){ if(e.message !== '__stale__') { hideResult(); status(e.message,true); } }
@@ -1345,7 +1362,16 @@
   selects.ano.addEventListener('change', hideResult);
   btnConsultar.addEventListener('click', consultarPreco);
   btnLimpar.addEventListener('click', () => carregarMarcas());
-  document.getElementById('btn_imprimir_fipe_plus_topo')?.addEventListener('click', exportarPdfFipePlus);
+  document.getElementById('btn_imprimir_fipe_plus_topo')?.addEventListener('click', function(){
+    const csrf = document.querySelector('meta[name="curve-interaction-csrf"]')?.getAttribute('content') || '';
+    fetch('/api/site-usage/event', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-CSRF-Token':csrf},
+      body:JSON.stringify({module:'fipe_plus',action:'pdf_exported'}),
+      keepalive:true
+    }).catch(() => {});
+    exportarPdfFipePlus();
+  });
   btnRevenda.addEventListener('click', estimarRevenda);
   btnAbrirIpva?.addEventListener('click', abrirModalIpva);
   btnFecharIpvaModal?.addEventListener('click', fecharModalIpva);

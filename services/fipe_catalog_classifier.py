@@ -32,7 +32,7 @@ _PROP_CONTEXT = {
 }
 
 _PLUGIN_PATTERNS = (
-    r"\bPHEV\b", r"\bPLUG\s*IN\b", r"\bPLUGIN\b", r"\bDM\s*I\b", r"\bDMI\b",
+    r"\bPHEV(?:\s*[-/]?\s*\d{1,4})?\b", r"\bPLUG\s*IN\b", r"\bPLUGIN\b", r"\bDM\s*I\b", r"\bDMI\b",
     r"\bE\s*HYBRID\b", r"\bTFSI\s*E\b", r"\bRECHARGE\b", r"\b(?:XDRIVE|SDRIVE)?\s*\d{2,3}E\b", r"\bT8\b",
 )
 _ELECTRIC_PATTERNS = (
@@ -40,7 +40,7 @@ _ELECTRIC_PATTERNS = (
     r"\bETRON\b", r"\bZERO\s+EMISSAO\b", r"\bE\s*\d{3,4}\b",
 )
 _HEV_PATTERNS = (
-    r"\bMHEV\b", r"\bMILD\s+HYBRID\b", r"\bHEV\b", r"\bE\s*HEV\b",
+    r"\bMHEV\b", r"\bMILD\s+HYBRID\b", r"\bHEV(?:\s*[-/]?\s*\d{1,3})?\b", r"\bE\s*HEV\b",
 )
 _HYBRID_GENERIC_PATTERNS = (r"\bHIBRID[OA]\b", r"\bHYBRID\b")
 _COMBUSTION_FUEL_PATTERNS = (
@@ -284,11 +284,21 @@ class FipeCatalogPropulsionClassifier:
             strong = top_score >= 0.74
 
             if hybrid_generic:
-                # Híbrido genérico não vira plugin pelo lado da tela. Só usa VE
-                # quando a identidade PBEV local é dominante e não ambígua.
-                if strong and contexts == {CONTEXT_VE} and margin >= 0.055:
+                # O texto FIPE frequentemente informa apenas "Híbrido" mesmo quando
+                # a versão é plug-in. Em famílias que possuem HEV e PHEV, a melhor
+                # identidade PBEV pode ficar acompanhada por candidatos próximos da
+                # outra propulsão. Nesses casos usamos a propulsão do melhor candidato
+                # somente quando ela é plug-in e ainda mantém margem mínima real.
+                # Isso resolve versões comerciais distintivas (ex.: GT/PHEV19/PHEV35)
+                # sem converter um HEV genérico em PHEV pelo lado da interface.
+                plugin_pbev_dominante = (
+                    strong
+                    and top_propulsion in {"PLUG_IN", "PHEV"}
+                    and margin >= 0.030
+                )
+                if plugin_pbev_dominante:
                     decision = CatalogPropulsionDecision(
-                        frozenset({CONTEXT_VE}), "PHEV", "pbev_plugin_dominante", min(0.97, top_score), top_score, margin
+                        frozenset({CONTEXT_VE}), "PHEV", "pbev_plugin_top_dominante", min(0.97, top_score), top_score, margin
                     )
                 else:
                     decision = CatalogPropulsionDecision(

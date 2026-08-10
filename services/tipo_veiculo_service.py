@@ -132,7 +132,7 @@ def classificar_tipo_veiculo(modelo: object = "", combustivel: object = "", codi
     # BYD e Tesla são tratados como elétrico/plugin no catálogo atual do PlugVE,
     # evitando que apareçam no bloco de combustão do TCO.
     if marca_norm == "BYD":
-        if _tem_regex(texto, [r"\bDM\s*I\b", r"\bDMI\b", r"\bPHEV\b", r"\bPLUG\s*IN\b", r"\bPLUGIN\b"]):
+        if _tem_regex(texto, [r"\bDM\s*I\b", r"\bDMI\b", r"\bPHEV(?:\s*[-/]?\s*\d{1,4})?\b", r"\bPLUG\s*IN\b", r"\bPLUGIN\b", r"\bHIBRID[OA]\b", r"\bHYBRID\b"]):
             return TIPO_PHEV
         return TIPO_EV_PURO
     if marca_norm == "TESLA":
@@ -140,8 +140,16 @@ def classificar_tipo_veiculo(modelo: object = "", combustivel: object = "", codi
     if marca_norm == "VOLVO" and _tem_regex(texto, [r"\bT8\b"]):
         return TIPO_PHEV
 
+    # GWM Haval H6: a FIPE pode trazer apenas "(Híbrido)". A base PBEV
+    # distingue as versões GT/PHEVxx como plug-in e HEV/HEV2/ONE como HEV.
+    if marca_norm == "GWM" and _tem_regex(texto, [r"\bHAVAL\s+H6\b"]):
+        if _tem_regex(texto, [r"\bPHEV(?:\s*[-/]?\s*\d{1,4})?\b", r"\bGT\b"]):
+            return TIPO_PHEV
+        if _tem_regex(texto, [r"\bHEV(?:\s*[-/]?\s*\d{1,3})?\b", r"\bONE\b", r"\bHIBRID[OA]\b", r"\bHYBRID\b"]):
+            return TIPO_HEV
+
     padroes_plugin = [
-        r"\bPHEV\b",
+        r"\bPHEV(?:\s*[-/]?\s*\d{1,4})?\b",
         r"\bPLUG\s*IN\b",
         r"\bPLUGIN\b",
         r"\bPLUG-IN\b",
@@ -197,7 +205,7 @@ def classificar_tipo_veiculo(modelo: object = "", combustivel: object = "", codi
     padroes_hibrido = [
         r"\bHIBRID[OA]\b",
         r"\bHYBRID\b",
-        r"\bHEV\b",
+        r"\bHEV(?:\s*[-/]?\s*\d{1,3})?\b",
         r"\bMHEV\b",
         r"\bMILD\s+HYBRID\b",
         r"\bE\s+HEV\b",
