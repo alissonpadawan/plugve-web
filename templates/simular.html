@@ -32,6 +32,7 @@
     .curve-page-heading{margin:0 0 1.25rem;padding:0 .25rem;color:#14232c;font-size:clamp(2.5rem,5vw,4.25rem);font-weight:800;line-height:1.04;letter-spacing:-.04em}
     @media(max-width:640px){.curve-page-heading{font-size:clamp(2.15rem,10vw,3rem);margin-bottom:1rem}}
     .curve-footer{margin-top:auto;padding:26px 0 30px;text-align:center;font-size:14px;color:#6b7280;position:relative;z-index:1}
+    .curve-internal-page > .institutional-footer{margin-top:auto;flex:0 0 auto}
     .plugve-flow-summary{display:none;margin:.5rem 0 1rem;padding:.45rem .75rem;border:1px solid #bbf7d0;border-radius:.5rem;background:#f9fffb;color:#4b5563;font-size:.78rem;line-height:1.35;position:relative;z-index:20;overflow:visible;transition:box-shadow .18s ease,border-color .18s ease}
     .plugve-flow-summary strong{color:#1f2937}
     .plugve-flow-summary .plugve-flow-line span+span::before{content:" | ";color:#9ca3af;margin:0 .35rem}
@@ -364,6 +365,7 @@
     .plugve-comparison-hero{display:flex;align-items:center;justify-content:space-between;gap:1.5rem;border:1px solid #bbf7d0;border-radius:1rem;background:linear-gradient(135deg,#f0fdf4 0%,#ffffff 75%);padding:1.1rem 1.2rem}
     .plugve-executive-summary{border:1px solid #dbeafe;border-radius:1.1rem;background:linear-gradient(180deg,#ffffff 0%,#f8fbff 100%);padding:1rem;box-shadow:0 10px 28px rgba(15,23,42,.05)}
     .plugve-summary-title{font-size:2rem;line-height:1.15;font-weight:900;color:#047857}
+    .plugve-result-versus-title{font-size:clamp(1.05rem,1.8vw,1.45rem);line-height:1.2;font-weight:900;color:#10202b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;letter-spacing:-.02em}
     .plugve-executive-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.9rem;margin-bottom:.9rem}
     .plugve-executive-card{border:1px solid #bbf7d0;border-radius:1rem;background:linear-gradient(135deg,#f0fdf4 0%,#ffffff 78%);padding:1rem 1.05rem;min-height:auto}
     .plugve-executive-card-env{border-color:#bfdbfe;background:linear-gradient(135deg,#eff6ff 0%,#ffffff 78%)}
@@ -756,7 +758,7 @@
     button:disabled.plugve-fuel-save-disabled{background:#d1d5db!important;color:#64748b!important;border-color:#d1d5db!important;opacity:1!important;filter:none!important}
 
     @media print{
-      header, footer, #form_simulacao_tco, .no-print{display:none !important}
+      .curve-header, .curve-footer, .institutional-footer, #form_simulacao_tco, .no-print{display:none !important}
       body{background:#fff !important;color:#111827 !important}
       main{max-width:100% !important;margin:0 !important;padding:0 !important;box-shadow:none !important;border-radius:0 !important}
       .plugve-chart-card,.plugve-metric-card{box-shadow:none !important;border:1px solid #d1d5db !important}
@@ -768,7 +770,7 @@
 
     /* Relatório TCO em PDF: layout próprio, separado da tela interativa */
     .tco-pdf-report{
-      position:absolute;
+      position:fixed;
       left:-100000px;
       top:0;
       width:794px;
@@ -832,6 +834,15 @@
     .tco-pdf-env-metric small{display:block;color:#64748b;font-size:8.5px;margin-top:3px;line-height:1.25}
     .tco-pdf-note{font-size:9.5px;color:#64748b;line-height:1.35;border-left:3px solid #168A4A;padding:8px 10px;background:#f8fbf9;margin-top:10px}
     .tco-pdf-chart-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+    .tco-pdf-chart-stack{display:grid;grid-template-columns:1fr;gap:8px}
+    .tco-pdf-page-evolution .tco-pdf-chart{margin:7px 0 9px;padding:9px}
+    .tco-pdf-page-annual .tco-pdf-chart{margin:8px 0;padding:9px}
+    .tco-pdf-page-combined .tco-pdf-env-grid{margin:8px 0}
+    .tco-pdf-page-combined .tco-pdf-env-metric{min-height:68px;padding:8px}
+    .tco-pdf-page-combined .tco-pdf-note{margin-top:6px;padding:6px 9px}
+    .tco-pdf-page-combined .tco-pdf-chart{margin:7px 0 9px;padding:9px}
+    .tco-pdf-premise-table{font-size:9px;margin:7px 0 0}
+    .tco-pdf-premise-table th,.tco-pdf-premise-table td{padding:5px 7px}
     .tco-pdf-footer{margin-top:14px;border-top:1px solid #e5e7eb;padding-top:8px;color:#64748b;font-size:9px;display:flex;justify-content:space-between;gap:12px}
 
     @media print{
@@ -1798,7 +1809,12 @@
     {% if resultado and resultado.comparacoes %}
       <section id="secao_resultados_tco" class="mt-10 plugve-page-break">
         <div class="mb-4">
-          <h2 class="plugve-summary-title">Resumo dos Resultados</h2>
+          {% set resumo_comp = resultado.comparacoes[0] if resultado.comparacoes else None %}
+          {% if resumo_comp and resumo_comp.detalhes and resumo_comp.detalhes|length >= 2 %}
+            <h2 class="plugve-result-versus-title" title="{{ resumo_comp.detalhes[0].nome }} × {{ resumo_comp.detalhes[1].nome }}">{{ resumo_comp.detalhes[0].nome }} × {{ resumo_comp.detalhes[1].nome }}</h2>
+          {% else %}
+            <h2 class="plugve-result-versus-title">Comparação veicular</h2>
+          {% endif %}
         </div>
         <div class="plugve-result-toolbar no-print">
           <button type="button" id="btn_nova_consulta_tco" class="px-4 py-2 rounded-lg border border-red-500 text-red-600 font-semibold hover:bg-red-50">
@@ -1817,7 +1833,9 @@
           </button>
         </div>
         <div class="plugve-result-surface">
-          <h2 class="plugve-summary-title mb-6 hidden print:block">Resumo dos Resultados</h2>
+          {% if resumo_comp and resumo_comp.detalhes and resumo_comp.detalhes|length >= 2 %}
+            <h2 class="plugve-result-versus-title mb-6 hidden print:block">{{ resumo_comp.detalhes[0].nome }} × {{ resumo_comp.detalhes[1].nome }}</h2>
+          {% endif %}
 
           {% for comp in resultado.comparacoes %}
             <div class="mb-14 plugve-page-break">
@@ -2161,8 +2179,8 @@
 
               {% if comp.custo_km_comparacao %}
                 <div class="tco-pdf-grid">
-                  <div class="tco-pdf-metric">{{ comp.custo_km_comparacao.veiculo_1_nome }}<strong>{{ comp.custo_km_comparacao.veiculo_1_valor }}/km</strong></div>
-                  <div class="tco-pdf-metric">{{ comp.custo_km_comparacao.veiculo_2_nome }}<strong>{{ comp.custo_km_comparacao.veiculo_2_valor }}/km</strong></div>
+                  <div class="tco-pdf-metric">{{ comp.detalhes[0].nome if comp.detalhes else comp.custo_km_comparacao.veiculo_1_nome }}<strong>{{ comp.custo_km_comparacao.veiculo_1_valor }}/km</strong></div>
+                  <div class="tco-pdf-metric">{{ comp.detalhes[1].nome if comp.detalhes else comp.custo_km_comparacao.veiculo_2_nome }}<strong>{{ comp.custo_km_comparacao.veiculo_2_valor }}/km</strong></div>
                 </div>
               {% endif %}
             {% endif %}
@@ -2186,8 +2204,8 @@
                 <thead>
                   <tr>
                     <th>Indicador</th>
-                    <th>{{ comp.detalhes[0].nome_curto if comp.detalhes else 'Veículo 1' }}</th>
-                    <th>{{ comp.detalhes[1].nome_curto if comp.detalhes else 'Veículo 2' }}</th>
+                    <th>{{ comp.detalhes[0].nome if comp.detalhes else 'Veículo 1' }}</th>
+                    <th>{{ comp.detalhes[1].nome if comp.detalhes else 'Veículo 2' }}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -2221,103 +2239,86 @@
                 </tbody>
               </table>
             {% endif %}
-            {% if comp.grafico_componentes %}
-              <section class="tco-pdf-chart compact" data-tco-chart-copy="componentes-{{ loop.index }}">
-                <div class="tco-pdf-chart-wait">Preparando gráfico de componentes...</div>
-              </section>
-            {% endif %}
             <footer class="tco-pdf-footer"><span>CurVE © 2026 - Instituto Federal de Goiás</span><span>Comparativo financeiro</span></footer>
           </article>
 
           {% if comp.grafico_componentes_anuais_v1 or comp.grafico_componentes_anuais_v2 %}
-            <article class="tco-pdf-page">
+            <article class="tco-pdf-page tco-pdf-page-annual">
               <header class="tco-pdf-head">
                 <img class="tco-pdf-logo" src="{{ url_for('static', filename='img/logo_curve_horizontal.png') }}" alt="CurVE">
                 <div class="tco-pdf-meta"><strong>Relatório TCO</strong><br>Componentes anuais</div>
               </header>
               <h2 class="tco-pdf-section-title">Componentes anuais do custo</h2>
               <p class="tco-pdf-subtitle">Distribuição anual dos principais componentes considerados para cada veículo no horizonte informado.</p>
-              <div class="tco-pdf-chart-grid">
+              <div class="tco-pdf-chart-stack">
                 {% if comp.grafico_componentes_anuais_v1 %}
-                  <section class="tco-pdf-chart small" data-tco-chart-copy="anuais1-{{ loop.index }}"><div class="tco-pdf-chart-wait">Preparando gráfico anual...</div></section>
+                  <section class="tco-pdf-chart annual" data-tco-chart-copy="anuais1-{{ loop.index }}"><div class="tco-pdf-chart-wait">Preparando gráfico anual...</div></section>
                 {% endif %}
                 {% if comp.grafico_componentes_anuais_v2 %}
-                  <section class="tco-pdf-chart small" data-tco-chart-copy="anuais2-{{ loop.index }}"><div class="tco-pdf-chart-wait">Preparando gráfico anual...</div></section>
+                  <section class="tco-pdf-chart annual" data-tco-chart-copy="anuais2-{{ loop.index }}"><div class="tco-pdf-chart-wait">Preparando gráfico anual...</div></section>
                 {% endif %}
               </div>
               <footer class="tco-pdf-footer"><span>CurVE © 2026 - Instituto Federal de Goiás</span><span>Componentes anuais</span></footer>
             </article>
           {% endif %}
 
-          {% if comp.grafico_diferenca_anual or comp.grafico_sem_depreciacao %}
-            <article class="tco-pdf-page">
+          {% if comp.grafico_componentes or comp.grafico_diferenca_anual or comp.grafico_sem_depreciacao %}
+            <article class="tco-pdf-page tco-pdf-page-evolution">
               <header class="tco-pdf-head">
                 <img class="tco-pdf-logo" src="{{ url_for('static', filename='img/logo_curve_horizontal.png') }}" alt="CurVE">
                 <div class="tco-pdf-meta"><strong>Relatório TCO</strong><br>Evolução do custo</div>
               </header>
-              <h2 class="tco-pdf-section-title">Evolução do custo e gastos operacionais</h2>
+              <h2 class="tco-pdf-section-title">Evolução econômica no horizonte</h2>
+              {% if comp.grafico_componentes %}
+                <section class="tco-pdf-chart economic" data-tco-chart-copy="componentes-{{ loop.index }}">
+                  <div class="tco-pdf-chart-wait">Preparando gráfico de componentes...</div>
+                </section>
+              {% endif %}
               {% if comp.grafico_diferenca_anual %}
-                <section class="tco-pdf-chart compact" data-tco-chart-copy="diferenca-{{ loop.index }}">
+                <section class="tco-pdf-chart economic" data-tco-chart-copy="diferenca-{{ loop.index }}">
                   <div class="tco-pdf-chart-wait">Preparando gráfico da diferença anual...</div>
                 </section>
               {% endif %}
               {% if comp.grafico_sem_depreciacao %}
-                <section class="tco-pdf-chart compact" data-tco-chart-copy="operacional-{{ loop.index }}">
+                <section class="tco-pdf-chart economic" data-tco-chart-copy="operacional-{{ loop.index }}">
                   <div class="tco-pdf-chart-wait">Preparando gráfico operacional...</div>
                 </section>
               {% endif %}
-              <footer class="tco-pdf-footer"><span>CurVE © 2026 - Instituto Federal de Goiás</span><span>Evolução do custo</span></footer>
+              <footer class="tco-pdf-footer"><span>CurVE © 2026 - Instituto Federal de Goiás</span><span>Evolução econômica</span></footer>
             </article>
           {% endif %}
 
-          {% if comp.impacto_ambiental or comp.grafico_ambiental %}
-            <article class="tco-pdf-page">
-              <header class="tco-pdf-head">
-                <img class="tco-pdf-logo" src="{{ url_for('static', filename='img/logo_curve_horizontal.png') }}" alt="CurVE">
-                <div class="tco-pdf-meta"><strong>Relatório TCO</strong><br>Impacto operacional estimado</div>
-              </header>
-              <h2 class="tco-pdf-section-title">Impacto ambiental operacional estimado</h2>
-              {% if comp.impacto_ambiental %}
-                <p class="tco-pdf-subtitle">{{ comp.impacto_ambiental.menor_nome }} apresenta a menor emissão operacional estimada no horizonte.</p>
-                <div class="tco-pdf-env-grid">
-                  <div class="tco-pdf-env-metric"><span>{{ comp.impacto_ambiental.veiculo_1_nome }}</span><strong>{{ comp.impacto_ambiental.veiculo_1_total }}</strong><small>{{ comp.impacto_ambiental.veiculo_1_anual }}/ano</small></div>
-                  <div class="tco-pdf-env-metric"><span>{{ comp.impacto_ambiental.veiculo_2_nome }}</span><strong>{{ comp.impacto_ambiental.veiculo_2_total }}</strong><small>{{ comp.impacto_ambiental.veiculo_2_anual }}/ano</small></div>
-                  <div class="tco-pdf-env-metric"><span>Diferença no horizonte</span><strong>{{ comp.impacto_ambiental.co2_evitado }}</strong><small>menor emissão fóssil operacional</small></div>
-                  <div class="tco-pdf-env-metric"><span>Equivalente didático</span><strong>{{ comp.impacto_ambiental.arvores_equivalentes }}</strong><small>crescendo por {{ comp.impacto_ambiental.anos }} anos</small></div>
-                </div>
-                <p class="tco-pdf-note">Estimativa operacional fóssil/rede elétrica. Não inclui fabricação, bateria, descarte ou análise de ciclo de vida completa. O CO₂ biogênico do etanol é informado separadamente.</p>
-              {% endif %}
-              {% if comp.grafico_ambiental %}
-                <section class="tco-pdf-chart compact" data-tco-chart-copy="ambiental-{{ loop.index }}">
-                  <div class="tco-pdf-chart-wait">Preparando gráfico ambiental...</div>
-                </section>
-              {% endif %}
-              <footer class="tco-pdf-footer"><span>CurVE © 2026 - Instituto Federal de Goiás</span><span>Impacto ambiental</span></footer>
-            </article>
-          {% endif %}
-
-          <article class="tco-pdf-page">
+          <article class="tco-pdf-page tco-pdf-page-combined">
             <header class="tco-pdf-head">
               <img class="tco-pdf-logo" src="{{ url_for('static', filename='img/logo_curve_horizontal.png') }}" alt="CurVE">
-              <div class="tco-pdf-meta"><strong>Relatório TCO</strong><br>Depreciação e revenda</div>
+              <div class="tco-pdf-meta"><strong>Relatório TCO</strong><br>Impacto operacional e revenda</div>
             </header>
-            <h2 class="tco-pdf-section-title">Depreciação e valor estimado de revenda</h2>
-            <div class="tco-pdf-chart-grid">
-              {% if comp.grafico_depreciacao_v1 %}
-                <section class="tco-pdf-chart compact" data-tco-chart-copy="dep1-{{ loop.index }}"><div class="tco-pdf-chart-wait">Preparando gráfico...</div></section>
-              {% endif %}
-              {% if comp.grafico_depreciacao_v2 %}
-                <section class="tco-pdf-chart compact" data-tco-chart-copy="dep2-{{ loop.index }}"><div class="tco-pdf-chart-wait">Preparando gráfico...</div></section>
-              {% endif %}
-            </div>
+            <h2 class="tco-pdf-section-title">Impacto operacional, depreciação e revenda</h2>
+            {% if comp.impacto_ambiental %}
+              <div class="tco-pdf-env-grid">
+                <div class="tco-pdf-env-metric"><span>{{ comp.impacto_ambiental.veiculo_1_nome }}</span><strong>{{ comp.impacto_ambiental.veiculo_1_total }}</strong><small>{{ comp.impacto_ambiental.veiculo_1_anual }}/ano</small></div>
+                <div class="tco-pdf-env-metric"><span>{{ comp.impacto_ambiental.veiculo_2_nome }}</span><strong>{{ comp.impacto_ambiental.veiculo_2_total }}</strong><small>{{ comp.impacto_ambiental.veiculo_2_anual }}/ano</small></div>
+                <div class="tco-pdf-env-metric"><span>Diferença no horizonte</span><strong>{{ comp.impacto_ambiental.co2_evitado }}</strong><small>menor emissão fóssil operacional</small></div>
+                <div class="tco-pdf-env-metric"><span>Equivalente didático</span><strong>{{ comp.impacto_ambiental.arvores_equivalentes }}</strong><small>crescendo por {{ comp.impacto_ambiental.anos }} anos</small></div>
+              </div>
+              <p class="tco-pdf-note">Estimativa operacional fóssil/rede elétrica. Não inclui fabricação, bateria, descarte ou análise de ciclo de vida completa. O CO₂ biogênico do etanol é informado separadamente.</p>
+            {% endif %}
+            {% if comp.grafico_ambiental %}
+              <section class="tco-pdf-chart combined" data-tco-chart-copy="ambiental-{{ loop.index }}"><div class="tco-pdf-chart-wait">Preparando gráfico ambiental...</div></section>
+            {% endif %}
             {% if comp.grafico_revenda_comparativo %}
-              <section class="tco-pdf-chart compact" data-tco-chart-copy="revenda-{{ loop.index }}"><div class="tco-pdf-chart-wait">Preparando gráfico comparativo...</div></section>
+              <section class="tco-pdf-chart combined" data-tco-chart-copy="revenda-{{ loop.index }}"><div class="tco-pdf-chart-wait">Preparando gráfico de revenda...</div></section>
             {% endif %}
             {% if comp.detalhes %}
-              <table class="tco-pdf-table">
-                <thead><tr><th>Premissa</th><th>{{ comp.detalhes[0].nome_curto }}</th><th>{{ comp.detalhes[1].nome_curto }}</th></tr></thead>
+              <table class="tco-pdf-table tco-pdf-premise-table">
+                <thead><tr><th>Premissa</th><th>{{ comp.detalhes[0].nome }}</th><th>{{ comp.detalhes[1].nome }}</th></tr></thead>
                 <tbody>
-                  <tr class="tco-pdf-group-row"><td colspan="3">Premissas usadas no cálculo</td></tr>
+                  <tr class="tco-pdf-group-row"><td colspan="3">Parâmetros comuns da simulação</td></tr>
+                  <tr><td><b>Horizonte</b></td><td colspan="2">{{ resultado.form_values.get('anos', '') }} ano(s)</td></tr>
+                  <tr><td><b>Rodagem anual</b></td><td colspan="2">{{ resultado.form_values.get('km_ano', '') }} km/ano</td></tr>
+                  <tr><td><b>Aumento anual da energia</b></td><td colspan="2">{{ resultado.form_values.get('aumento_energia', '4,60') }}% a.a.</td></tr>
+                  <tr><td><b>Aumento anual do combustível</b></td><td colspan="2">{{ resultado.form_values.get('aumento_combustivel', '5,60') }}% a.a.</td></tr>
+                  <tr class="tco-pdf-group-row"><td colspan="3">Premissas por veículo</td></tr>
                   <tr><td><b>Depreciação anual</b></td><td>{{ comp.detalhes[0].taxa_depreciacao }}</td><td>{{ comp.detalhes[1].taxa_depreciacao }}</td></tr>
                   <tr><td><b>IPVA projetado</b></td><td>{{ comp.detalhes[0].taxa_ipva }} do valor</td><td>{{ comp.detalhes[1].taxa_ipva }} do valor</td></tr>
                   <tr><td><b>Seguro projetado</b></td><td>{{ comp.detalhes[0].taxa_seguro }} do valor</td><td>{{ comp.detalhes[1].taxa_seguro }} do valor</td></tr>
@@ -2325,7 +2326,7 @@
                 </tbody>
               </table>
             {% endif %}
-            <footer class="tco-pdf-footer"><span>CurVE © 2026 - Instituto Federal de Goiás</span><span>Depreciação e revenda</span></footer>
+            <footer class="tco-pdf-footer"><span>CurVE © 2026 - Instituto Federal de Goiás</span><span>Impacto, depreciação e revenda</span></footer>
           </article>
         {% endfor %}
       </section>
@@ -3180,7 +3181,7 @@
         const tag = (el.tagName || "").toUpperCase();
         const tipo = (el.type || "").toLowerCase();
         if (tipo === "checkbox" || tipo === "radio") {
-          el.checked = !!item.checked || item.value === "on" || item.value === "true";
+          el.checked = (typeof item.checked === "boolean") ? item.checked : (item.value === "on" || item.value === "true");
           return;
         }
         if (tag === "SELECT") {
@@ -3223,6 +3224,9 @@
         select.appendChild(opt);
       }
       select.value = valor;
+      if (typeof window.atualizarComboboxesFipeCurVE === "function") {
+        window.atualizarComboboxesFipeCurVE();
+      }
     }
 
     async function restaurarSelecaoFipePrefixoTCO(prefixo, estado) {
@@ -3253,6 +3257,10 @@
       }
 
       if (typeof atualizarEstiloSelectModeloPlugVE === "function") atualizarEstiloSelectModeloPlugVE(modelo);
+      if (typeof window.atualizarComboboxesFipeCurVE === "function") {
+        window.atualizarComboboxesFipeCurVE();
+        requestAnimationFrame(() => window.atualizarComboboxesFipeCurVE?.());
+      }
     }
 
     async function restaurarEstadoFormularioTCO(forcarFipe = false) {
@@ -3309,9 +3317,15 @@
       if (typeof atualizarInterfaceCombustivelPorVeiculo === "function") atualizarInterfaceCombustivelPorVeiculo();
       if (typeof atualizarInterfacePhevPorVeiculo === "function") atualizarInterfacePhevPorVeiculo();
       setTimeout(() => {
+        if (typeof window.atualizarComboboxesFipeCurVE === "function") window.atualizarComboboxesFipeCurVE();
         if (typeof window.atualizarLiberacaoAreaSimulacao === "function") window.atualizarLiberacaoAreaSimulacao();
+        document.body.classList.remove("tco-print-report-mode");
         form?.scrollIntoView({ behavior: "smooth", block: "start" });
-      }, 250);
+        requestAnimationFrame(() => {
+          window.atualizarComboboxesFipeCurVE?.();
+          window.dispatchEvent(new Event("resize"));
+        });
+      }, 120);
     }
 
     function codigoAnoFipeZeroKm(codigoAno) {
@@ -7677,25 +7691,86 @@
 
         document.getElementById("btn_nova_consulta_tco")?.addEventListener("click", novaConsultaTCO);
         document.getElementById("btn_voltar_editar_tco")?.addEventListener("click", mostrarFormularioEdicaoTCO);
+        function configuracaoGraficoPdfTCO(alvo, chave) {
+          if (alvo.classList.contains("tall")) return { largura: 720, altura: 330, margem: { l: 62, r: 18, t: 58, b: 52 } };
+          if (alvo.classList.contains("annual")) return { largura: 720, altura: 300, margem: { l: 62, r: 18, t: 58, b: 78 }, legendaBaixo: true };
+          if (alvo.classList.contains("economic")) return { largura: 720, altura: 225, margem: { l: 62, r: 18, t: 54, b: 48 }, ocultarLegenda: chave.startsWith("diferenca-") };
+          if (alvo.classList.contains("combined")) return { largura: 720, altura: 215, margem: { l: 62, r: 18, t: 54, b: 48 } };
+          if (alvo.classList.contains("compact")) return { largura: 720, altura: 245, margem: { l: 62, r: 18, t: 56, b: 52 } };
+          if (alvo.classList.contains("small")) return { largura: 720, altura: 255, margem: { l: 62, r: 18, t: 56, b: 60 } };
+          return { largura: 720, altura: 255, margem: { l: 62, r: 18, t: 56, b: 52 } };
+        }
+
+        async function aguardarImagemPdfTCO(img) {
+          if (img.decode) {
+            try { await img.decode(); return; } catch (e) {}
+          }
+          if (img.complete) return;
+          await new Promise(resolve => {
+            img.onload = resolve;
+            img.onerror = resolve;
+          });
+        }
+
         async function prepararGraficosRelatorioTCO() {
           const alvos = Array.from(document.querySelectorAll("#tco_pdf_report [data-tco-chart-copy]"));
           if (!window.Plotly || !alvos.length) return;
+          const temporarios = [];
           for (const alvo of alvos) {
-            const chave = alvo.getAttribute("data-tco-chart-copy");
+            const chave = alvo.getAttribute("data-tco-chart-copy") || "";
             const origem = document.querySelector(`[data-tco-chart-key="${chave}"] .plotly-graph-div`);
-            if (!origem) continue;
+            if (!origem || !Array.isArray(origem.data)) {
+              alvo.innerHTML = '<div class="tco-pdf-chart-wait">Gráfico indisponível para impressão.</div>';
+              continue;
+            }
             try {
-              let largura = 720;
-              let altura = 250;
-              if (alvo.classList.contains("small")) { largura = 560; altura = 205; }
-              else if (alvo.classList.contains("compact")) { largura = 680; altura = 235; }
-              else if (alvo.classList.contains("tall")) { largura = 720; altura = 310; }
-              const url = await window.Plotly.toImage(origem, { format: "png", width: largura, height: altura, scale: 2 });
-              alvo.innerHTML = `<img src="${url}" alt="Gráfico do relatório CurVE">`;
+              const cfg = configuracaoGraficoPdfTCO(alvo, chave);
+              const temp = document.createElement("div");
+              temp.style.cssText = `position:fixed;left:-10000px;top:0;width:${cfg.largura}px;height:${cfg.altura}px;background:#fff;pointer-events:none;`;
+              document.body.appendChild(temp);
+              temporarios.push(temp);
+
+              const layoutOriginal = JSON.parse(JSON.stringify(origem.layout || {}));
+              const layoutPdf = {
+                ...layoutOriginal,
+                width: cfg.largura,
+                height: cfg.altura,
+                autosize: false,
+                margin: cfg.margem,
+                paper_bgcolor: "#FFFFFF",
+                plot_bgcolor: "#FFFFFF",
+                font: { ...(layoutOriginal.font || {}), family: "Inter, Arial, sans-serif", size: 11, color: "#1F2933" },
+                title: layoutOriginal.title ? { ...layoutOriginal.title, font: { ...(layoutOriginal.title.font || {}), size: 15 }, x: 0.02, xanchor: "left" } : layoutOriginal.title,
+              };
+              if (cfg.legendaBaixo) {
+                layoutPdf.legend = { ...(layoutOriginal.legend || {}), orientation: "h", x: 0, xanchor: "left", y: -0.20, yanchor: "top", font: { size: 9 } };
+              } else if (cfg.ocultarLegenda) {
+                layoutPdf.showlegend = false;
+              } else if (layoutPdf.legend) {
+                layoutPdf.legend = { ...layoutPdf.legend, orientation: "h", x: 0, xanchor: "left", y: 1.03, yanchor: "bottom", font: { size: 9.5 } };
+              }
+
+              const dadosPdf = JSON.parse(JSON.stringify(origem.data || []));
+              await window.Plotly.newPlot(temp, dadosPdf, layoutPdf, { displayModeBar: false, responsive: false, staticPlot: true, locale: "pt-BR" });
+              const url = await window.Plotly.toImage(temp, { format: "png", width: cfg.largura, height: cfg.altura, scale: 2 });
+              const img = new Image();
+              img.alt = "Gráfico do relatório CurVE";
+              img.src = url;
+              await aguardarImagemPdfTCO(img);
+              alvo.replaceChildren(img);
+              window.Plotly.purge(temp);
+              temp.remove();
             } catch (e) {
+              console.error("Falha ao preparar gráfico do PDF:", chave, e);
               alvo.innerHTML = '<div class="tco-pdf-chart-wait">Não foi possível preparar este gráfico para impressão.</div>';
             }
           }
+          temporarios.forEach(temp => {
+            try { window.Plotly.purge(temp); } catch (e) {}
+            temp.remove?.();
+          });
+          await document.fonts?.ready;
+          await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
         }
 
         let tituloOriginalRelatorioTCO = document.title;
@@ -7707,7 +7782,9 @@
           tituloOriginalRelatorioTCO = document.title;
           document.title = "Relatório CurVE - Custo Total de Propriedade";
           document.body.classList.add("tco-print-report-mode");
-          setTimeout(() => window.print(), 150);
+          await document.fonts?.ready;
+          await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+          window.print();
         });
         window.addEventListener("afterprint", function () {
           document.body.classList.remove("tco-print-report-mode");
