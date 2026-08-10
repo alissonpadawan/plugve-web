@@ -134,6 +134,23 @@ def _prefixo_seguro_campo(campo: str) -> str:
     return ""
 
 
+def tecnologia_seguro_formulario(dados_form, prefixo: str) -> str:
+    prefixo = str(prefixo or "").strip().lower()
+    modelo = str(dados_form.get(f"modelo_{prefixo}") or "").upper()
+    combustivel = str(dados_form.get(f"combustivel_{prefixo}") or "").upper()
+    tipo = str(dados_form.get("tipo_veiculo_ve") or "").upper() if prefixo == "ve" else ""
+    texto = f"{modelo} {combustivel} {tipo}"
+
+    hibrido = any(token in texto for token in ("PHEV", "HEV", "MHEV", "HIBRID", "HYBRID", "PLUG-IN", "PLUG IN"))
+    if prefixo == "ve":
+        return "hibrido" if hibrido else "eletrico"
+    if "DIESEL" in texto:
+        return "diesel"
+    if hibrido:
+        return "hibrido"
+    return "gasolina"
+
+
 def estimativa_seguro_backend(dados_form, campo: str, preco: float) -> dict:
     prefixo = _prefixo_seguro_campo(campo)
     uf = str(dados_form.get("estado_uf") or dados_form.get("uf") or "").strip().upper()
@@ -144,11 +161,24 @@ def estimativa_seguro_backend(dados_form, campo: str, preco: float) -> dict:
         or ""
     )
     try:
-        return estimar_seguro_autoseg_referencia(
-            valor_fipe=max(0.0, float(preco or 0.0)),
-            uf=uf,
-            ano_modelo=ano_modelo,
-        ).to_dict()
+        classificador = globals().get("tecnologia_seguro_formulario")
+        tecnologia = classificador(dados_form, prefixo) if callable(classificador) else "gasolina"
+        try:
+            estimativa = estimar_seguro_autoseg_referencia(
+                valor_fipe=max(0.0, float(preco or 0.0)),
+                uf=uf,
+                ano_modelo=ano_modelo,
+                tecnologia=tecnologia,
+            )
+        except TypeError:
+            # Compatibilidade com adaptadores/testes antigos que ainda expõem
+            # o contrato V1 sem o argumento opcional `tecnologia`.
+            estimativa = estimar_seguro_autoseg_referencia(
+                valor_fipe=max(0.0, float(preco or 0.0)),
+                uf=uf,
+                ano_modelo=ano_modelo,
+            )
+        return estimativa.to_dict()
     except (TypeError, ValueError):
         return {}
 
@@ -187,7 +217,7 @@ def metadados_seguro_formulario(dados_form, campo: str, preco: float) -> dict:
         return {
             "origem": "automatico",
             "fonte": fonte_form,
-            "metodo": str(dados_form.get(f"seguro_{prefixo}_metodo") or "premio_medio_dividido_por_importancia_segurada_media").strip(),
+            "metodo": str(dados_form.get(f"seguro_{prefixo}_metodo") or "taxa_uf_autoseg_vez_fator_relativo_ipsa_tecnologia").strip(),
             "data_base": str(dados_form.get(f"seguro_{prefixo}_data_base") or "").strip(),
             "nivel_agregacao": str(dados_form.get(f"seguro_{prefixo}_nivel") or "").strip(),
             "taxa_efetiva": conv(dados_form.get(f"seguro_{prefixo}_taxa") or 0),
@@ -196,7 +226,7 @@ def metadados_seguro_formulario(dados_form, campo: str, preco: float) -> dict:
     return {
         "origem": "automatico" if estimativa else "nao_estimado",
         "fonte": estimativa.get("fonte") or "",
-        "metodo": estimativa.get("metodo") or "premio_medio_dividido_por_importancia_segurada_media",
+        "metodo": estimativa.get("metodo") or "taxa_uf_autoseg_vez_fator_relativo_ipsa_tecnologia",
         "data_base": estimativa.get("data_base") or "",
         "nivel_agregacao": estimativa.get("nivel_agregacao") or "",
         "taxa_efetiva": float(estimativa.get("taxa_efetiva") or 0.0),
@@ -2147,7 +2177,7 @@ def montar_payload_auditoria_tco(resultado_final: dict) -> dict:
             "O indicador principal utiliza CO₂ fóssil operacional e mantém a parcela biogênica dos biocombustíveis em campo separado.",
             f"Eletricidade: fator médio do SIN para inventários = {FATOR_CO2_ENERGIA_KG_KWH:.4f} kgCO₂/kWh; data-base {FATOR_CO2_ENERGIA_DATA_BASE}.",
             "Combustíveis comerciais: gasolina C comum E30 e diesel B15, vigentes desde 01/08/2025; etanol veicular tratado como etanol hidratado.",
-            "Seguro: estimativa automática de referência SUSEP/AUTOSEG V1 pela taxa observada da UF (prêmio médio / importância segurada média), aplicada ao valor FIPE; não representa cotação individual e permanece editável.",
+            "Seguro: estimativa automática de referência que combina a taxa regional AUTOSEG/SUSEP da UF com ajuste relativo de tecnologia do IPSA/TEx; não representa cotação individual e permanece editável.",
             "Na ausência de valor manual, o backend utiliza a referência regional disponível; se a UF não estiver na base, aplica a referência nacional, sem percentual fixo universal oculto.",
             "No financiamento, o custo total considera juros/custos financeiros no horizonte para evitar somar o principal duas vezes.",
         ],

@@ -28,7 +28,8 @@ class SeguroIntegracaoV50_04Tests(unittest.TestCase):
         self.assertIn('/api/seguro/estimar', text)
         self.assertIn('seguro_ve_manual', text)
         self.assertIn('seguro_icev_manual', text)
-        self.assertIn('Estimativa SUSEP/AUTOSEG', text)
+        self.assertIn('tecnologiaSeguroPorPrefixoTCO', text)
+        self.assertNotIn('Estimativa SUSEP/AUTOSEG —', text)
         self.assertIn('Valor informado pelo usuário.', text)
 
     def test_projection_keeps_rate_relative_to_projected_market_value(self):

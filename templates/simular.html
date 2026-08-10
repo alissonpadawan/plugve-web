@@ -3522,7 +3522,7 @@
     function salvarMetadadosSeguroAutomaticoTCO(prefixo, estimativa) {
       const mapa = {
         fonte: estimativa?.fonte || "",
-        metodo: estimativa?.metodo || "premio_medio_dividido_por_importancia_segurada_media",
+        metodo: estimativa?.metodo || "taxa_uf_autoseg_vez_fator_relativo_ipsa_tecnologia",
         data_base: estimativa?.data_base || "",
         nivel: estimativa?.nivel_agregacao || "",
         taxa: estimativa?.taxa_efetiva ?? "",
@@ -3542,6 +3542,25 @@
       return opt?.dataset?.nomeOriginal || opt?.textContent || selectAno.value || "";
     }
 
+    function tecnologiaSeguroPorPrefixoTCO(prefixo) {
+      const selectMarca = document.getElementById(`${prefixo}_marca`);
+      const selectModelo = document.getElementById(`${prefixo}_modelo`);
+      const marca = selectMarca?.options?.[selectMarca.selectedIndex]?.textContent || "";
+      const modeloSelecionado = selectModelo?.options?.[selectModelo.selectedIndex]?.textContent || "";
+      const modelo = document.getElementById(`modelo_${prefixo}`)?.value || modeloSelecionado;
+      const combustivel = document.getElementById(`combustivel_${prefixo}`)?.value || "";
+      const codigoAno = document.getElementById(`${prefixo}_ano`)?.value || "";
+      const tipo = typeof classificarTipoVeiculoTCO === "function"
+        ? classificarTipoVeiculoTCO(modelo, combustivel, codigoAno, marca, prefixo)
+        : (prefixo === "ve" ? "eletrico" : "combustao");
+      const texto = normalizarTextoTipoTCO(`${modelo} ${combustivel} ${tipo}`);
+
+      if (tipo === "eletrico") return "eletrico";
+      if (tipo === "phev" || tipo === "hibrido" || /\b(PHEV|HEV|MHEV|HIBRIDO|HYBRID)\b/.test(texto)) return "hibrido";
+      if (/\bDIESEL\b/.test(texto)) return "diesel";
+      return "gasolina";
+    }
+
     async function atualizarSeguroAutomatico(prefixo, forcar = false) {
       const precoEl = campoPrecoPorPrefixo(prefixo);
       const seguroEl = campoSeguroPorPrefixo(prefixo);
@@ -3559,8 +3578,8 @@
       }
 
       if (status) {
-        status.classList.remove("hidden");
-        status.textContent = "Estimando seguro pela referência SUSEP/AUTOSEG...";
+        status.classList.add("hidden");
+        status.textContent = "";
       }
       try {
         const resp = await fetch("/api/seguro/estimar", {
@@ -3572,6 +3591,7 @@
               valor_fipe: preco,
               ano_modelo: anoModeloSeguroPorPrefixoTCO(prefixo),
               codigo_modelo: document.getElementById(`${prefixo}_modelo`)?.value || "",
+              tecnologia: tecnologiaSeguroPorPrefixoTCO(prefixo),
             },
             localizacao: {
               uf: document.getElementById("estado_uf")?.value || "",
@@ -3591,19 +3611,18 @@
         if (manualEl) manualEl.value = "0";
         salvarMetadadosSeguroAutomaticoTCO(prefixo, estimativa);
         if (status) {
-          const taxa = Number(estimativa.taxa_efetiva || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-          const granularidade = estimativa.nivel_agregacao || "UF — automóvel";
-          status.classList.remove("hidden");
-          status.textContent = `Estimativa SUSEP/AUTOSEG — ${taxa}% da FIPE (${granularidade}, base ${estimativa.data_base || "referência disponível"}). Valor editável; não é cotação.`;
+          status.classList.add("hidden");
+          status.textContent = "";
         }
       } catch (e) {
         if (seguroEl.dataset.editadoManual !== "1") seguroEl.value = "";
         seguroEl.dataset.autoSeguro = "0";
         limparMetadadosSeguroAutomaticoTCO(prefixo);
         if (status) {
-          status.classList.remove("hidden");
-          status.textContent = "Seguro automático indisponível. Informe um valor se quiser considerar este componente.";
+          status.classList.add("hidden");
+          status.textContent = "";
         }
+        console.warn("Seguro automático indisponível:", e);
       }
     }
 

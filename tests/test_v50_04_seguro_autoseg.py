@@ -36,14 +36,16 @@ class SeguroAutosegUfV1Tests(unittest.TestCase):
         esperado = 1207.0 / 39425.0
         self.assertEqual(est.uf_referencia, "BR")
         self.assertAlmostEqual(est.taxa_efetiva, esperado, places=10)
-        self.assertEqual(est.to_dict()["nivel_agregacao"], "Brasil — automóvel (fallback)")
+        self.assertIn("Brasil (fallback)", est.to_dict()["nivel_agregacao"])
 
     def test_metadata_is_explicit_and_not_quote(self):
         est = estimar_seguro_autoseg_referencia(valor_fipe=150_000, uf="GO").to_dict()
         self.assertIn("AUTOSEG/SUSEP", est["fonte"])
-        self.assertEqual(est["data_base"], "1º semestre de 2020")
-        self.assertEqual(est["nivel_agregacao"], "UF — automóvel")
-        self.assertEqual(est["metodo"], "premio_medio_dividido_por_importancia_segurada_media")
+        self.assertIn("1º semestre de 2020", est["data_base"])
+        self.assertIn("Abril de 2026", est["data_base"])
+        self.assertIn("UF GO", est["nivel_agregacao"])
+        self.assertIn("Gasolina", est["nivel_agregacao"])
+        self.assertEqual(est["metodo"], "taxa_uf_autoseg_vez_fator_relativo_ipsa_tecnologia")
         self.assertIn("não representa cotação", est["observacao"].lower())
 
     def test_reference_table_contains_brazil_and_all_27_ufs(self):
