@@ -60,6 +60,10 @@ CAMINHO_MUNICIPIOS = os.path.join(BASE_DIR, "data", "municipios.xlsx")
 
 # 2.1) Converter número com vírgula/ponto
 SEGURO_PADRAO_PERCENTUAL = 0.047
+AUMENTO_ENERGIA_PADRAO_PERCENTUAL = 4.6
+AUMENTO_COMBUSTIVEL_PADRAO_PERCENTUAL = 5.6
+AUMENTO_ENERGIA_PADRAO = AUMENTO_ENERGIA_PADRAO_PERCENTUAL / 100.0
+AUMENTO_COMBUSTIVEL_PADRAO = AUMENTO_COMBUSTIVEL_PADRAO_PERCENTUAL / 100.0
 
 # Fatores ambientais iniciais usados na seção de impacto ambiental.
 # A estimativa é operacional: não inclui fabricação do veículo, bateria,
@@ -98,6 +102,16 @@ def seguro_formulario_ou_padrao(dados_form, campo: str, preco: float) -> float:
         return max(0.0, conv(valor_bruto))
     valor = conv(valor_bruto)
     return valor if valor > 0 else seguro_padrao(preco)
+
+
+def percentual_form_ao_ano(dados_form, campo: str, padrao_percentual: float) -> float:
+    valor_bruto = dados_form.get(campo, None)
+    if valor_bruto is None:
+        return padrao_percentual / 100.0
+    texto = str(valor_bruto).strip()
+    if not texto:
+        return padrao_percentual / 100.0
+    return conv(texto) / 100.0
 
 # 2.2) Normalizar texto (remove acento, upper, trim)
 def normalizar(s: str) -> str:
@@ -550,8 +564,8 @@ def calcular_tco_completo(dados_form):
     energia_inicial = conv(dados_form.get("energia", 0))
     combustivel_inicial = conv(dados_form.get("combustivel", 0))
 
-    aumento_energia = conv(dados_form.get("aumento_energia", "0")) / 100.0
-    aumento_combustivel = conv(dados_form.get("aumento_combustivel", "0")) / 100.0
+    aumento_energia = percentual_form_ao_ano(dados_form, "aumento_energia", AUMENTO_ENERGIA_PADRAO_PERCENTUAL)
+    aumento_combustivel = percentual_form_ao_ano(dados_form, "aumento_combustivel", AUMENTO_COMBUSTIVEL_PADRAO_PERCENTUAL)
 
     manut_ve = conv(dados_form.get("manut_ve", 0))
     manut_icev = conv(dados_form.get("manut_icev", 0))
@@ -641,6 +655,14 @@ def calcular_tco_completo(dados_form):
 
 # 4.2) Helpers visuais e numéricos
 CORES_GRAFICOS = ["#168A4A", "#14232C", "#C99A3D", "#6B7280"]
+CORES_COMPONENTES_TCO = {
+    "Energia/comb.": "#4A78A6",
+    "IPVA": "#C28743",
+    "Seguro": "#3F9075",
+    "Manutenção": "#8F6A4C",
+    "Juros": "#7A8797",
+    "Depreciação": "#8A73B8",
+}
 
 
 def real_format(valor):
@@ -976,7 +998,7 @@ def obter_layout_web(titulo: str = ""):
         "autosize": True,
         "font": {"family": "Inter, Arial, sans-serif", "size": 12, "color": "#1F2933"},
         "legend": {"orientation": "h", "yanchor": "bottom", "y": 1.04, "xanchor": "left", "x": 0},
-        "margin": {"l": 70, "r": 30, "t": 78, "b": 70},
+        "margin": {"l": 70, "r": 30, "t": 90, "b": 78},
         "hovermode": "x unified",
         "paper_bgcolor": "#FFFFFF",
         "plot_bgcolor": "#FFFFFF",
@@ -1381,6 +1403,7 @@ def gerar_graficos_dupla(v1, v2):
                 x=v.get("anos_lista", []),
                 y=valores,
                 name=nome_comp,
+                marker_color=CORES_COMPONENTES_TCO.get(nome_comp, "#6B7280"),
                 hovertemplate=nome_comp + ": R$ %{y:,.2f}<extra></extra>",
             ))
         layout_componentes_anuais = obter_layout_web(titulo)
@@ -1388,8 +1411,8 @@ def gerar_graficos_dupla(v1, v2):
             "height": 500,
             "yaxis_title": "Custo anual (R$)",
             "barmode": "stack",
-            "margin": {"l": 70, "r": 30, "t": 78, "b": 118},
-            "legend": {"orientation": "h", "yanchor": "top", "y": -0.22, "xanchor": "left", "x": 0},
+            "margin": {"l": 70, "r": 30, "t": 92, "b": 126},
+            "legend": {"orientation": "h", "yanchor": "top", "y": -0.24, "xanchor": "left", "x": 0},
         })
         fig.update_xaxes(tickangle=0)
         fig.update_layout(**layout_componentes_anuais)
@@ -1420,7 +1443,7 @@ def gerar_graficos_dupla(v1, v2):
             fill="tozeroy", fillcolor="rgba(22, 138, 74, 0.10)",
             hovertemplate="R$ %{y:,.2f}<extra></extra>",
         ))
-        fig.update_layout(**obter_layout_web(f"Depreciação — {nome_curto(v['nome'], 42)}"), yaxis_title="Valor de mercado (R$)")
+        fig.update_layout(**obter_layout_web(f"Depreciação — {nome_curto(v['nome'], 30)}"), yaxis_title="Valor de mercado (R$)")
         return html_grafico(fig)
 
     fig_co2 = go.Figure()
@@ -1743,8 +1766,8 @@ def extrair_parametros_comuns(dados_form):
     return {
         "energia": conv(dados_form.get("energia", 0)),
         "combustivel": conv(dados_form.get("combustivel", 0)),
-        "aumento_energia": conv(dados_form.get("aumento_energia", "0")) / 100.0,
-        "aumento_combustivel": conv(dados_form.get("aumento_combustivel", "0")) / 100.0,
+        "aumento_energia": percentual_form_ao_ano(dados_form, "aumento_energia", AUMENTO_ENERGIA_PADRAO_PERCENTUAL),
+        "aumento_combustivel": percentual_form_ao_ano(dados_form, "aumento_combustivel", AUMENTO_COMBUSTIVEL_PADRAO_PERCENTUAL),
         "anos": int(dados_form.get("anos", 1)),
         "km_ano": int(dados_form.get("km_ano", 0)),
         "fuel": {
@@ -1899,8 +1922,8 @@ def montar_payload_auditoria_tco(resultado_final: dict) -> dict:
             "km_ano": form.get("km_ano") or "",
             "energia": form.get("energia") or "",
             "combustivel": form.get("combustivel") or "",
-            "aumento_energia": form.get("aumento_energia") or "0",
-            "aumento_combustivel": form.get("aumento_combustivel") or "0",
+            "aumento_energia": form.get("aumento_energia") or f"{AUMENTO_ENERGIA_PADRAO_PERCENTUAL:.2f}".replace(".", ","),
+            "aumento_combustivel": form.get("aumento_combustivel") or f"{AUMENTO_COMBUSTIVEL_PADRAO_PERCENTUAL:.2f}".replace(".", ","),
         },
         "perfis": {
             "flex_configurado": form.get("fuel_flex_configurado") or "0",

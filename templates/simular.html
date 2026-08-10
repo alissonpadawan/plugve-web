@@ -815,9 +815,9 @@
     .tco-pdf-chart img{display:block;width:100%;max-width:100%;height:auto;border:0}
     .tco-pdf-chart-wait{display:flex;align-items:center;justify-content:center;height:210px;color:#64748b;font-size:11px;background:#f8fafc;border-radius:10px}
     .tco-pdf-chart .plotly-graph-div{width:100% !important;max-width:100% !important;height:250px !important;min-height:250px !important}
-    .tco-pdf-chart.compact .plotly-graph-div{height:215px !important;min-height:215px !important}
-    .tco-pdf-chart.small .plotly-graph-div{height:185px !important;min-height:185px !important}
-    .tco-pdf-chart.tall .plotly-graph-div{height:285px !important;min-height:285px !important}
+    .tco-pdf-chart.compact .plotly-graph-div{height:235px !important;min-height:235px !important}
+    .tco-pdf-chart.small .plotly-graph-div{height:205px !important;min-height:205px !important}
+    .tco-pdf-chart.tall .plotly-graph-div{height:310px !important;min-height:310px !important}
     .tco-pdf-table{width:100%;border-collapse:collapse;border:1px solid #dbe7df;border-radius:12px;overflow:hidden;font-size:10px;background:#fff;margin:10px 0 16px;break-inside:avoid;page-break-inside:avoid}
     .tco-pdf-table th,.tco-pdf-table td{border-bottom:1px solid #edf2ef;padding:7px 8px;vertical-align:top;text-align:right}
     .tco-pdf-table th:first-child,.tco-pdf-table td:first-child{text-align:left;width:43%}
@@ -1536,17 +1536,17 @@
 
             <div>
               <label class="block text-sm font-medium">Aumento anual energia (%)</label>
-              <input type="text" name="aumento_energia" id="aumento_energia_input" value="4,50" class="mt-1 p-2 border rounded w-full" required>
+              <input type="text" name="aumento_energia" id="aumento_energia_input" value="4,60" class="mt-1 p-2 border rounded w-full" required>
               <p id="status_aumento_energia" class="text-[11px] text-gray-500 mt-1">
-                Preenchido automaticamente por premissa técnica inicial. Você pode ajustar.
+                Preenchido automaticamente por premissa operacional inicial. Você pode ajustar.
               </p>
             </div>
 
             <div>
               <label class="block text-sm font-medium">Aumento anual combustível (%)</label>
-              <input type="text" name="aumento_combustivel" id="aumento_combustivel_input" value="5,00" class="mt-1 p-2 border rounded w-full" required>
+              <input type="text" name="aumento_combustivel" id="aumento_combustivel_input" value="5,60" class="mt-1 p-2 border rounded w-full" required>
               <p id="status_aumento_combustivel" class="text-[11px] text-gray-500 mt-1">
-                Preenchido automaticamente por premissa técnica inicial. Você pode ajustar.
+                Preenchido automaticamente por premissa operacional inicial. Você pode ajustar.
               </p>
             </div>
 
@@ -2229,7 +2229,27 @@
             <footer class="tco-pdf-footer"><span>CurVE © 2026 - Instituto Federal de Goiás</span><span>Comparativo financeiro</span></footer>
           </article>
 
-          {% if comp.grafico_diferenca_anual or comp.grafico_sem_depreciacao or comp.grafico_componentes_anuais_v1 or comp.grafico_componentes_anuais_v2 %}
+          {% if comp.grafico_componentes_anuais_v1 or comp.grafico_componentes_anuais_v2 %}
+            <article class="tco-pdf-page">
+              <header class="tco-pdf-head">
+                <img class="tco-pdf-logo" src="{{ url_for('static', filename='img/logo_curve_horizontal.png') }}" alt="CurVE">
+                <div class="tco-pdf-meta"><strong>Relatório TCO</strong><br>Componentes anuais</div>
+              </header>
+              <h2 class="tco-pdf-section-title">Componentes anuais do custo</h2>
+              <p class="tco-pdf-subtitle">Distribuição anual dos principais componentes considerados para cada veículo no horizonte informado.</p>
+              <div class="tco-pdf-chart-grid">
+                {% if comp.grafico_componentes_anuais_v1 %}
+                  <section class="tco-pdf-chart small" data-tco-chart-copy="anuais1-{{ loop.index }}"><div class="tco-pdf-chart-wait">Preparando gráfico anual...</div></section>
+                {% endif %}
+                {% if comp.grafico_componentes_anuais_v2 %}
+                  <section class="tco-pdf-chart small" data-tco-chart-copy="anuais2-{{ loop.index }}"><div class="tco-pdf-chart-wait">Preparando gráfico anual...</div></section>
+                {% endif %}
+              </div>
+              <footer class="tco-pdf-footer"><span>CurVE © 2026 - Instituto Federal de Goiás</span><span>Componentes anuais</span></footer>
+            </article>
+          {% endif %}
+
+          {% if comp.grafico_diferenca_anual or comp.grafico_sem_depreciacao %}
             <article class="tco-pdf-page">
               <header class="tco-pdf-head">
                 <img class="tco-pdf-logo" src="{{ url_for('static', filename='img/logo_curve_horizontal.png') }}" alt="CurVE">
@@ -2245,15 +2265,6 @@
                 <section class="tco-pdf-chart compact" data-tco-chart-copy="operacional-{{ loop.index }}">
                   <div class="tco-pdf-chart-wait">Preparando gráfico operacional...</div>
                 </section>
-              {% elif comp.grafico_componentes_anuais_v1 or comp.grafico_componentes_anuais_v2 %}
-                <div class="tco-pdf-chart-grid">
-                  {% if comp.grafico_componentes_anuais_v1 %}
-                    <section class="tco-pdf-chart small" data-tco-chart-copy="anuais1-{{ loop.index }}"><div class="tco-pdf-chart-wait">Preparando gráfico anual...</div></section>
-                  {% endif %}
-                  {% if comp.grafico_componentes_anuais_v2 %}
-                    <section class="tco-pdf-chart small" data-tco-chart-copy="anuais2-{{ loop.index }}"><div class="tco-pdf-chart-wait">Preparando gráfico anual...</div></section>
-                  {% endif %}
-                </div>
               {% endif %}
               <footer class="tco-pdf-footer"><span>CurVE © 2026 - Instituto Federal de Goiás</span><span>Evolução do custo</span></footer>
             </article>
@@ -3266,12 +3277,31 @@
       return restauracaoFipeTCOEmCurso;
     }
 
+    async function reidratarCamposFipeEditadosTCO() {
+      const mapa = {
+        atual: { modelo: "modelo_atual", preco: "preco_atual" },
+        ve: { modelo: "modelo_ve", preco: "preco_ve" },
+        icev: { modelo: "modelo_icev", preco: "preco_icev" },
+      };
+      for (const [prefixo, campos] of Object.entries(mapa)) {
+        const anoEl = document.getElementById(`${prefixo}_ano`);
+        if (!anoEl || !anoEl.value) continue;
+        const modeloEl = document.getElementById(campos.modelo);
+        const precoEl = document.getElementById(campos.preco);
+        const precisaRecarregar = !String(modeloEl?.value || "").trim() || !String(precoEl?.value || "").trim();
+        if (precisaRecarregar && typeof window.preencherPorFipe === "function") {
+          await window.preencherPorFipe(prefixo);
+        }
+      }
+    }
+
     async function mostrarFormularioEdicaoTCO() {
       const form = document.getElementById("form_simulacao_tco");
       const resultados = document.getElementById("secao_resultados_tco");
       if (form) form.classList.remove("hidden");
       if (resultados) resultados.classList.add("hidden");
       await restaurarEstadoFormularioTCO(true);
+      await reidratarCamposFipeEditadosTCO();
       const tipo = document.getElementById("tipo_comparacao")?.value || "dois_carros_novos";
       if (typeof window.selecionarCenario === "function") window.selecionarCenario(tipo);
       if (typeof window.atualizarInterfacePorCenario === "function") window.atualizarInterfacePorCenario();
@@ -3587,11 +3617,11 @@
       const statusEnergia = document.getElementById("status_aumento_energia");
       const statusCombustivel = document.getElementById("status_aumento_combustivel");
 
-      if (campoEnergia && !campoEnergia.dataset.editado) campoEnergia.value = "4,50";
-      if (campoCombustivel && !campoCombustivel.dataset.editado) campoCombustivel.value = "5,00";
+      if (campoEnergia && !campoEnergia.dataset.editado) campoEnergia.value = "4,60";
+      if (campoCombustivel && !campoCombustivel.dataset.editado) campoCombustivel.value = "5,60";
 
-      if (statusEnergia) statusEnergia.textContent = "Premissa automática inicial: 4,50% a.a. Pode ajustar manualmente.";
-      if (statusCombustivel) statusCombustivel.textContent = "Premissa automática inicial: 5,00% a.a. Pode ajustar manualmente.";
+      if (statusEnergia) statusEnergia.textContent = "Premissa operacional inicial: 4,60% a.a. Pode ajustar manualmente.";
+      if (statusCombustivel) statusCombustivel.textContent = "Premissa operacional inicial: 5,60% a.a. Pode ajustar manualmente.";
     }
 
     function mostrarElemento(id, mostrar) {
@@ -6620,9 +6650,16 @@
       atualizarInterfacePorCenario();
 
       // fipe
-      carregarMarcas("ve_marca");
-      carregarMarcas("icev_marca");
-      carregarMarcas("atual_marca");
+      const estadoInicialTCO = estadoCombinadoFormularioTCO();
+      const possuiSelecaoFipePersistidaTCO = ["ve", "icev", "atual"].some(prefixo => {
+        const itemMarca = itemEstadoFormularioTCO(estadoInicialTCO, `${prefixo}_marca`, `${prefixo}_marca_codigo`);
+        return !!String(itemMarca?.value || "").trim();
+      });
+      if (!possuiSelecaoFipePersistidaTCO) {
+        carregarMarcas("ve_marca");
+        carregarMarcas("icev_marca");
+        carregarMarcas("atual_marca");
+      }
       inicializarEventosPbevConsumoTCO();
 
       document.getElementById("ve_marca")?.addEventListener("change", function () {
@@ -7650,9 +7687,9 @@
             try {
               let largura = 720;
               let altura = 250;
-              if (alvo.classList.contains("small")) { largura = 520; altura = 185; }
-              else if (alvo.classList.contains("compact")) { largura = 650; altura = 215; }
-              else if (alvo.classList.contains("tall")) { largura = 720; altura = 285; }
+              if (alvo.classList.contains("small")) { largura = 560; altura = 205; }
+              else if (alvo.classList.contains("compact")) { largura = 680; altura = 235; }
+              else if (alvo.classList.contains("tall")) { largura = 720; altura = 310; }
               const url = await window.Plotly.toImage(origem, { format: "png", width: largura, height: altura, scale: 2 });
               alvo.innerHTML = `<img src="${url}" alt="Gráfico do relatório CurVE">`;
             } catch (e) {
