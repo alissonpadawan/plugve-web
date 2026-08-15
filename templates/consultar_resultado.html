@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block title %}Consultar resultado | CurVE{% endblock %}
+{% block head_extra %}
+  <meta name="robots" content="noindex,nofollow">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/result_history.css') }}?v=20260815_v50_12">
+{% endblock %}
+
+{% block content %}
+<section class="history-search-wrap" aria-labelledby="history-search-title">
+  <div class="history-search-card">
+    <span class="history-eyebrow">Rastreabilidade CurVE</span>
+    <h1 id="history-search-title">Consultar resultado</h1>
+    <p class="history-lead">Digite o código impresso na tela ou no relatório para abrir o resultado histórico originalmente gerado.</p>
+
+    <form class="history-search-form" action="{{ url_for('main.consultar_resultado') }}" method="get" novalidate>
+      <label for="codigo_resultado">Código do resultado</label>
+      <div class="history-search-row">
+        <input
+          id="codigo_resultado"
+          name="codigo"
+          type="text"
+          value="{{ codigo or '' }}"
+          placeholder="Ex.: S-20260815-A7K92D4F6H"
+          autocomplete="off"
+          autocapitalize="characters"
+          spellcheck="false"
+          maxlength="21"
+          required
+        >
+        <button type="submit">Consultar</button>
+      </div>
+      <p class="history-search-hint">S = Simulação TCO · D = Depreciação · F = Consulta Fipe+</p>
+    </form>
+
+    {% if erro %}
+      <div class="history-message history-message-error" role="alert">{{ erro }}</div>
+    {% endif %}
+
+    <div class="history-freeze-note">
+      <strong>Resultado histórico, sem recálculo.</strong>
+      <span>A consulta pelo código lê o snapshot gravado na data original. Valores FIPE, parâmetros e resultados não são atualizados automaticamente.</span>
+    </div>
+  </div>
+</section>
+{% endblock %}

@@ -165,12 +165,14 @@ function atualizarTerminalV1917(data) {
 }
 
 function limparResumo() {
-  ["res_valor_atual", "res_valor_futuro", "res_perda", "res_horizonte", "res_taxa", "res_taxa_total", "res_confianca", "res_origem", "res_tipo_usado", "res_modelo"].forEach(id => {
+  ["res_valor_atual", "res_valor_futuro", "res_perda", "res_horizonte", "res_taxa", "res_taxa_total", "res_confianca", "res_origem", "res_tipo_usado", "res_modelo", "res_codigo_resultado"].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.textContent = "-";
   });
   configurarBotoesResultado(false, false, false);
   atualizarVisibilidadeResumo();
+  const linhaResultado = document.getElementById("res_codigo_resultado_linha");
+  if (linhaResultado) linhaResultado.classList.add("hidden");
   const linhaModelo = document.getElementById("res_modelo_linha");
   if (linhaModelo) {
     linhaModelo.classList.add("hidden");
@@ -281,6 +283,24 @@ function preencherResumo(data) {
     elModelo.textContent = info.veiculoDescricao || "-";
     linhaModelo.classList.toggle("hidden", !info.veiculoDescricao);
     linhaModelo.classList.toggle("low-confidence", confiancaEhBaixaOuExploratoria(info.confianca));
+  }
+  const linhaCodigo = document.getElementById("res_codigo_fipe_linha");
+  const elCodigo = document.getElementById("res_codigo_fipe");
+  if (linhaCodigo && elCodigo) {
+    elCodigo.textContent = info.codigoFipe || "-";
+    linhaCodigo.classList.toggle("hidden", !info.codigoFipe);
+  }
+  const linhaResultado = document.getElementById("res_codigo_resultado_linha");
+  const elResultado = document.getElementById("res_codigo_resultado");
+  if (linhaResultado && elResultado) {
+    elResultado.textContent = data?.resultado_codigo || "-";
+    linhaResultado.classList.toggle("hidden", !data?.resultado_codigo);
+  }
+  const linhaGerado = document.getElementById("res_resultado_gerado_linha");
+  const elGerado = document.getElementById("res_resultado_gerado");
+  if (linhaGerado && elGerado) {
+    elGerado.textContent = data?.resultado_gerado_em_texto || "-";
+    linhaGerado.classList.toggle("hidden", !data?.resultado_gerado_em_texto);
   }
   atualizarVisibilidadeResumo();
 }
@@ -692,6 +712,7 @@ function montarRelatorioHTMLProfissional(data) {
     <section class="report-section report-executive">
       <p class="report-kicker">Resumo executivo</p>
       <h3>Resultado aplicado ao veículo consultado</h3>
+      ${info.codigoFipe ? `<p class="report-vehicle-code">Código FIPE: <strong>${escaparHtml(info.codigoFipe)}</strong></p>` : ""}
       <p class="report-lead">A estimativa considera o valor FIPE do veículo selecionado, o horizonte informado e a curva histórica disponível para a base técnica correspondente.</p>
       <div class="report-metric-grid">
         ${valorLinhaHTML("Veículo analisado", info.veiculoDescricao || "Veículo selecionado", true)}
@@ -746,6 +767,7 @@ function montarRelatorioTextual(data, origem = "curva") {
   return [
     "Relatório profissional de depreciação veicular",
     `Veículo analisado: ${info.veiculoDescricao || "veículo selecionado"}`,
+    ...(info.codigoFipe ? [`Código FIPE: ${info.codigoFipe}`] : []),
     `Valor FIPE atual: ${info.valorAtual > 0 ? formatarMoedaBR(info.valorAtual) : "não disponível"}`,
     `Valor estimado no horizonte: ${info.valorFuturo > 0 ? formatarMoedaBR(info.valorFuturo) : "não disponível"}`,
     `Horizonte de análise: ${info.horizonteLabel}`,
@@ -1408,7 +1430,7 @@ function renderizarListaCurvasLateral(lista) {
     div.innerHTML = `
       <strong>✓ ${item.titulo || "Curva salva"}</strong>
       <span>${item.tipo === "eletrico" ? "Elétrico" : "Combustão"} | ${item.ano_modelo || "-"} | ${formatarPercentualBR(item.taxa_anual_percentual)} a.a.</span>
-      <small>${item.confianca || "-"} | ${item.pontos_historicos || 0} pontos</small>
+      <small>${item.codigo_fipe ? `Código FIPE: ${escaparHtml(item.codigo_fipe)} | ` : ""}${item.confianca || "-"} | ${item.pontos_historicos || 0} pontos</small>
     `;
     box.appendChild(div);
   });
@@ -2818,6 +2840,10 @@ function atualizarCabecalhoPDFDepreciacao() {
   if (dataEl) {
     dataEl.textContent = `Data de emissão: ${new Date().toLocaleString("pt-BR")}`;
   }
+  const codigoEl = document.getElementById("pdf_codigo_resultado");
+  if (codigoEl) codigoEl.textContent = `Código do resultado: ${ultimoResumoDepreciacao?.resultado_codigo || "—"}`;
+  const geradoEl = document.getElementById("pdf_resultado_gerado_em");
+  if (geradoEl) geradoEl.textContent = `Resultado gerado em: ${ultimoResumoDepreciacao?.resultado_gerado_em_texto || "—"}`;
 }
 
 function registrarEventoUsoDepreciacao(action) {
@@ -2826,7 +2852,7 @@ function registrarEventoUsoDepreciacao(action) {
     fetch('/api/site-usage/event', {
       method: 'POST',
       headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrf},
-      body: JSON.stringify({module: 'depreciacao', action}),
+      body: JSON.stringify({module: 'depreciacao', action, metadata: {resultado_codigo: ultimoResumoDepreciacao?.resultado_codigo || ''}}),
       keepalive: true
     }).catch(() => {});
   } catch (e) {}
@@ -2847,8 +2873,12 @@ function exportarPDFDepreciacao() {
   preencherRelatorio(ultimoResumoDepreciacao, "curva salva");
   renderizarGraficosDepreciacao(ultimoResumoDepreciacao);
   atualizarCabecalhoPDFDepreciacao();
+  const tituloOriginal = document.title;
+  const codigoResultado = ultimoResumoDepreciacao?.resultado_codigo || '';
+  document.title = codigoResultado ? `CurVE_Depreciacao_${codigoResultado}` : 'CurVE_Depreciacao';
   setTimeout(() => {
     registrarEventoUsoDepreciacao('pdf_exported');
+    window.addEventListener('afterprint', () => { document.title = tituloOriginal; }, {once: true});
     window.print();
   }, 150);
 }

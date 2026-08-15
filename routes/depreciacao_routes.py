@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from flask import Blueprint, current_app, jsonify, request
+from flask import Blueprint, current_app, jsonify, request, session
 import hmac
 import traceback
 
@@ -8,6 +8,7 @@ from services.depreciacao_service import DepreciacaoService
 from services.coorte_diagnostico_service import CoorteDiagnosticoService
 from services.depreciacao_motor_v1917_adapter import DepreciacaoMotorV1917Adapter
 from services.site_usage_service import get_site_usage_service
+from services.result_snapshot_service import get_result_snapshot_service
 from services.site_usage_tracking import record_current_usage_event
 from repositories.curvas_repository import CurvasRepository
 
@@ -70,6 +71,25 @@ def resumo():
         is_internal_usage = bool(payload.get("origem_tco")) or str(payload.get("usage_context") or "").strip().lower() == "fipe_plus"
         if resultado.get("encontrado") and not is_internal_usage:
             try:
+                snapshot_meta = get_result_snapshot_service().create_snapshot(
+                    result_type="D",
+                    module="depreciacao",
+                    payload={
+                        "entrada": payload,
+                        "resultado": resultado,
+                        "observacao": "Snapshot imutável da consulta de depreciação; não recalcular ao recuperar este código.",
+                    },
+                    visitor_id=str(session.get("site_usage_visitor_id") or ""),
+                    session_id=str(session.get("site_usage_session_id") or ""),
+                )
+                resultado["resultado_codigo"] = snapshot_meta["code"]
+                resultado["resultado_gerado_em"] = snapshot_meta["created_at_local"]
+                resultado["resultado_gerado_em_texto"] = snapshot_meta["created_at_local_display"]
+                resultado["resultado_snapshot_hash"] = snapshot_meta["payload_sha256"]
+            except Exception as snapshot_error:
+                current_app.logger.warning("Falha ao persistir snapshot de depreciação: %s", snapshot_error)
+
+            try:
                 tipo_curva = str(resultado.get("tipo_curva_aplicada") or "").strip().lower()
                 if tipo_curva not in {"propria", "similaridade"}:
                     tipo_curva = "similaridade" if resultado.get("curva_por_similaridade") else "nao_informado"
@@ -82,6 +102,7 @@ def resumo():
                         "confianca": resultado.get("confianca") or resultado.get("nivel_confianca") or "",
                         "tipo_curva": tipo_curva,
                         "horizonte_anos": payload.get("horizonte_anos") or payload.get("anos") or "",
+                        "resultado_codigo": resultado.get("resultado_codigo") or "",
                     },
                     vehicles=[{
                         "role": "consultado",

@@ -772,6 +772,7 @@ async function consultarPrecoFipe() {
     await consultarResumoDepreciacao(ultimoDetalheFipe);
   } catch (e) {
     ultimoDetalheFipe = null;
+    atualizarCodigoFipeSelecionadoDepreciacao("");
     if (erroFipeBloqueiaConsulta(e.data, { status: e.status })) {
       mostrarErroFipe(e.data || { erro: e.message }, true);
     } else {
@@ -785,6 +786,15 @@ function setTextoSeExistir(id, valor) {
   if (el) el.textContent = valor;
 }
 
+function atualizarCodigoFipeSelecionadoDepreciacao(codigo) {
+  const linha = document.getElementById("fipe_codigo_selecionado");
+  if (!linha) return;
+  const valor = String(codigo || "").trim();
+  const alvo = linha.querySelector("strong");
+  if (alvo) alvo.textContent = valor || "—";
+  linha.classList.toggle("hidden", !valor);
+}
+
 function atualizarCardVeiculo(detalhe) {
   setTextoSeExistir("info_marca", detalhe.marca || "-");
   setTextoSeExistir("info_modelo", detalhe.modelo || "-");
@@ -792,6 +802,7 @@ function atualizarCardVeiculo(detalhe) {
   setTextoSeExistir("info_combustivel", detalhe.combustivel || "-");
   setTextoSeExistir("info_codigo_fipe", detalhe.codigo_fipe || "-");
   setTextoSeExistir("info_valor", detalhe.valor_texto || formatarMoedaBR(detalhe.valor_atual));
+  atualizarCodigoFipeSelecionadoDepreciacao(detalhe.codigo_fipe || "");
 }
 
 
@@ -807,6 +818,7 @@ function agendarConsultaModeloSelecionado() {
   clearTimeout(timerNavegacaoModelo);
   timerNavegacaoModelo = setTimeout(() => {
     ultimoDetalheFipe = null;
+    atualizarCodigoFipeSelecionadoDepreciacao("");
     if (typeof window.resetarFluxoDepreciacao === "function") window.resetarFluxoDepreciacao();
     carregarAnosFipe();
   }, 180);
@@ -830,6 +842,7 @@ document.addEventListener("DOMContentLoaded", () => {
     setStatusVarredura("");
     sequenciaConsultaPrecoFipe++;
     ultimoDetalheFipe = null;
+    atualizarCodigoFipeSelecionadoDepreciacao("");
     if (typeof window.resetarFluxoDepreciacao === "function") window.resetarFluxoDepreciacao();
     carregarModelosFipe();
     atualizarBotaoContinuarVarredura();
@@ -847,6 +860,7 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("fipe_ano")?.addEventListener("change", () => {
     sequenciaConsultaPrecoFipe++;
     ultimoDetalheFipe = null;
+    atualizarCodigoFipeSelecionadoDepreciacao("");
     if (typeof window.resetarFluxoDepreciacao === "function") window.resetarFluxoDepreciacao();
     consultarPrecoFipe();
   });

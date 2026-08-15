@@ -29,6 +29,7 @@ from services.sobre_engagement_service import (
     SobreEngagementService,
 )
 from services.site_usage_service import get_site_usage_service
+from services.result_snapshot_service import get_result_snapshot_service
 from services.site_usage_tracking import record_current_usage_event
 from services.contact_email_service import (
     ContactEmailConfigurationError,
@@ -1201,6 +1202,7 @@ def calcular_projecao_veiculo(veiculo, comum):
     depreciacao = max(0.0, min(float(veiculo.get("depreciacao", 0) or 0), 0.95))
     financiamento = veiculo.get("financiamento") or {}
     combustivel_descricao = veiculo.get("combustivel", "")
+    codigo_fipe = str(veiculo.get("codigo_fipe") or "").strip()
 
     energia_inicial = max(0.0, float(comum.get("energia", 0) or 0))
     combustivel_inicial = max(0.0, float(comum.get("combustivel", 0) or 0))
@@ -1463,6 +1465,7 @@ def calcular_projecao_veiculo(veiculo, comum):
     return {
         "nome": nome,
         "nome_curto": nome_curto(nome),
+        "codigo_fipe": codigo_fipe,
         "tipo": tipo,
         "preco_inicial": preco,
         "taxa_depreciacao": depreciacao,
@@ -1714,6 +1717,7 @@ def montar_bloco_resultado(titulo, v1, v2):
         return {
             "nome": v["nome"],
             "nome_curto": v["nome_curto"],
+            "codigo_fipe": str(v.get("codigo_fipe") or "").strip(),
             "tipo": v.get("tipo", ""),
             "combustivel": v.get("combustivel", ""),
             "tema_classe": classe_visual_veiculo(v),
@@ -1912,8 +1916,8 @@ def montar_bloco_resultado(titulo, v1, v2):
         })
 
     auditoria_veiculos = [
-        {"nome": v1["nome"], "tipo": v1.get("tipo", ""), "componentes": comp1, "seguro_meta": v1.get("seguro_meta") or {}, "memoria": [formatar_linha_anual(m) for m in mem1]},
-        {"nome": v2["nome"], "tipo": v2.get("tipo", ""), "componentes": comp2, "seguro_meta": v2.get("seguro_meta") or {}, "memoria": [formatar_linha_anual(m) for m in mem2]},
+        {"nome": v1["nome"], "codigo_fipe": str(v1.get("codigo_fipe") or "").strip(), "tipo": v1.get("tipo", ""), "componentes": comp1, "seguro_meta": v1.get("seguro_meta") or {}, "memoria": [formatar_linha_anual(m) for m in mem1]},
+        {"nome": v2["nome"], "codigo_fipe": str(v2.get("codigo_fipe") or "").strip(), "tipo": v2.get("tipo", ""), "componentes": comp2, "seguro_meta": v2.get("seguro_meta") or {}, "memoria": [formatar_linha_anual(m) for m in mem2]},
     ]
 
     return {
@@ -2020,6 +2024,7 @@ def montar_veiculo_ve(dados_form):
     tipo = "phev" if detectar_phev_texto(modelo, combustivel, tipo_form) else "ve"
     return {
         "nome": modelo,
+        "codigo_fipe": str(dados_form.get("codigo_fipe_ve") or "").strip(),
         "tipo": tipo,
         "prefixo": "ve",
         "combustivel": combustivel,
@@ -2039,6 +2044,7 @@ def montar_veiculo_icev(dados_form):
     preco = conv(dados_form.get("preco_icev", 0))
     return {
         "nome": limpar_nome_veiculo(dados_form.get("modelo_icev", "Veículo a combustão")),
+        "codigo_fipe": str(dados_form.get("codigo_fipe_icev") or "").strip(),
         "tipo": "icev",
         "prefixo": "icev",
         "combustivel": dados_form.get("combustivel_icev", ""),
@@ -2058,6 +2064,7 @@ def montar_veiculo_atual(dados_form):
     preco = conv(dados_form.get("preco_atual", 0))
     return {
         "nome": limpar_nome_veiculo(dados_form.get("modelo_atual", "Meu carro atual")),
+        "codigo_fipe": str(dados_form.get("codigo_fipe_atual") or "").strip(),
         "tipo": "icev",
         "prefixo": "atual",
         "combustivel": dados_form.get("combustivel_atual", ""),
@@ -2135,6 +2142,8 @@ def montar_payload_auditoria_tco(resultado_final: dict) -> dict:
 
     payload = {
         "gerado_em": datetime.now().strftime("%d/%m/%Y %H:%M"),
+        "codigo_resultado": resultado_final.get("resultado_codigo") or "",
+        "resultado_gerado_em": resultado_final.get("resultado_gerado_em") or "",
         "tipo_comparacao": resultado_final.get("tipo_comparacao", ""),
         "parametros": {
             "uf": form.get("estado_uf") or form.get("uf") or "",
@@ -2232,6 +2241,7 @@ def _veiculo_telemetria_tco(form, prefixo: str, role: str, tecnologia: str = "")
         "codigo_marca": form.get(f"{prefixo}_marca_codigo") or "",
         "codigo_modelo": form.get(f"{prefixo}_modelo_codigo") or "",
         "codigo_ano": form.get(f"{prefixo}_ano_codigo") or "",
+        "codigo_fipe": form.get(f"codigo_fipe_{prefixo}") or "",
         "marca": form.get(f"{prefixo}_marca_nome") or "",
         "modelo": form.get(f"modelo_{prefixo}") or "",
         "ano_modelo": form.get(f"ano_modelo_{prefixo}") or form.get(f"{prefixo}_ano_codigo") or "",
@@ -2249,6 +2259,49 @@ def _veiculos_telemetria_tco(form, tipo_comparacao: str) -> list[dict]:
     if tipo_comparacao == "trocar_e_comparar_opcoes":
         return [atual, ve, icev]
     return [ve, icev]
+
+
+def _remover_html_graficos_snapshot(value):
+    """Remove HTML Plotly redundante sem remover os dados numéricos do resultado.
+
+    Os snapshots históricos guardam a memória anual, componentes e indicadores
+    necessários para reconstruir os gráficos futuramente sem recalcular o TCO.
+    Guardar os HTMLs Plotly completos multiplicaria o tamanho de cada snapshot.
+    """
+    if isinstance(value, dict):
+        saida = {}
+        for chave, item in value.items():
+            chave_txt = str(chave or "").strip().lower()
+            if chave_txt == "graficos" or chave_txt.startswith("grafico"):
+                continue
+            saida[chave] = _remover_html_graficos_snapshot(item)
+        return saida
+    if isinstance(value, list):
+        return [_remover_html_graficos_snapshot(item) for item in value]
+    return value
+
+
+def _registrar_snapshot_tco(resultado_final: dict, form, tipo_comparacao: str) -> dict:
+    payload = {
+        "entrada": form.to_dict(flat=True),
+        "veiculos": _veiculos_telemetria_tco(form, tipo_comparacao),
+        "resultado": _remover_html_graficos_snapshot({
+            "tipo_comparacao": resultado_final.get("tipo_comparacao"),
+            "comparacoes": resultado_final.get("comparacoes") or [],
+        }),
+        "auditoria": _remover_html_graficos_snapshot(montar_payload_auditoria_tco(resultado_final)),
+        "observacao": (
+            "Snapshot imutável do resultado originalmente calculado. "
+            "HTMLs Plotly não são persistidos; a memória numérica histórica é preservada para visualização futura sem recálculo."
+        ),
+    }
+    return get_result_snapshot_service().create_snapshot(
+        result_type="S",
+        module="tco",
+        payload=payload,
+        visitor_id=str(session.get("site_usage_visitor_id") or ""),
+        session_id=str(session.get("site_usage_session_id") or ""),
+    )
 
 
 # ============================================================
@@ -2342,6 +2395,16 @@ def simular():
                 "comparacoes": comparacoes,
                 "form_values": request.form.to_dict(flat=True),
             }
+            if comparacoes:
+                try:
+                    snapshot_meta = _registrar_snapshot_tco(resultado_final, request.form, tipo_comparacao)
+                    resultado_final["resultado_codigo"] = snapshot_meta["code"]
+                    resultado_final["resultado_gerado_em"] = snapshot_meta["created_at_local"]
+                    resultado_final["resultado_gerado_em_texto"] = snapshot_meta["created_at_local_display"]
+                    resultado_final["resultado_snapshot_hash"] = snapshot_meta["payload_sha256"]
+                except Exception as snapshot_error:
+                    current_app.logger.warning("Falha ao persistir snapshot TCO: %s", snapshot_error)
+
             token_auditoria = registrar_auditoria_tco(resultado_final)
             resultado_final["auditoria_url"] = url_for("tco.auditoria_tco", token=token_auditoria)
             if comparacoes:
@@ -2353,6 +2416,7 @@ def simular():
                         metadata={
                             "tipo_comparacao": tipo_comparacao,
                             "comparacoes_geradas": len(comparacoes),
+                            "resultado_codigo": resultado_final.get("resultado_codigo") or "",
                             "financiamento_ve": bool_form(request.form, "fin_ve_ativo"),
                             "financiamento_icev": bool_form(request.form, "fin_icev_ativo"),
                             "financiamento_atual": bool_form(request.form, "fin_atual_ativo"),

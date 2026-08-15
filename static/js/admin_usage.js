@@ -358,6 +358,17 @@
     return vehicles.map(vehicleName).filter(Boolean).join(" · ");
   }
 
+  function eventResultCode(event) {
+    const raw = String(event?.result_code || event?.metadata?.resultado_codigo || '').trim().toUpperCase();
+    return /^[SDF]-\d{8}-[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{10}$/.test(raw) ? raw : '';
+  }
+
+  function eventResultLink(event) {
+    const code = eventResultCode(event);
+    if (!code) return '';
+    return `<a class="admin-result-link" href="/resultado/${encodeURIComponent(code)}" target="_blank" rel="noopener" title="Abrir snapshot histórico ${escapeHtml(code)}">${escapeHtml(code)}</a>`;
+  }
+
   function eventDetails(event) {
     const parts = [];
     const vehicles = eventVehicleText(event);
@@ -380,7 +391,8 @@
     } else {
       host.innerHTML = state.events.map((event) => {
         const access = [event.access_city, event.access_region].filter(Boolean).join("/") || "local não disponível";
-        return `<article class="admin-event-item"><div class="admin-event-time">${escapeHtml(formatDateTime(event.occurred_at))}</div><div class="admin-event-module">${escapeHtml(moduleLabel(event.module))}</div><div class="admin-event-main"><strong>${escapeHtml(actionLabel(event.action))}</strong><p>${escapeHtml(eventDetails(event) || event.path || "")}</p></div><div class="admin-event-visitor"><strong>${escapeHtml(event.visitor)}</strong>${escapeHtml(access)}</div></article>`;
+        const resultLink = eventResultLink(event);
+        return `<article class="admin-event-item"><div class="admin-event-time">${escapeHtml(formatDateTime(event.occurred_at))}</div><div class="admin-event-module">${escapeHtml(moduleLabel(event.module))}</div><div class="admin-event-main"><strong>${escapeHtml(actionLabel(event.action))}</strong>${resultLink ? `<div class="admin-event-result">Resultado ${resultLink}</div>` : ''}<p>${escapeHtml(eventDetails(event) || event.path || "")}</p></div><div class="admin-event-visitor"><strong>${escapeHtml(event.visitor)}</strong>${escapeHtml(access)}</div></article>`;
       }).join("");
     }
     $("admin_events_more").classList.toggle("hidden", !state.eventsHasMore);

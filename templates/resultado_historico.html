@@ -1,0 +1,217 @@
+{% extends "base.html" %}
+
+{% block title %}{{ resultado.code }} | CurVE{% endblock %}
+{% block head_extra %}
+  <meta name="robots" content="noindex,nofollow">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/result_history.css') }}?v=20260815_v50_12">
+{% endblock %}
+
+{% block content %}
+<section class="history-result" aria-labelledby="history-result-title">
+  <header class="history-result-header">
+    <div>
+      <span class="history-eyebrow">Resultado histórico · leitura imutável</span>
+      <h1 id="history-result-title">{{ resultado.result_label }}</h1>
+      <p class="history-lead">Resultado originalmente gerado em <strong>{{ resultado.created_at_display }}</strong>. Nenhuma fonte atual foi consultada e nenhum cálculo foi refeito para abrir esta página.</p>
+    </div>
+    <div class="history-code-card" aria-label="Identificação do resultado">
+      <span>Código do resultado</span>
+      <strong>{{ resultado.code }}</strong>
+      <small>CurVE {{ resultado.platform_version }}</small>
+    </div>
+  </header>
+
+  <div class="history-message history-message-lock">
+    <strong>Snapshot preservado.</strong>
+    <span>Os valores abaixo são os mesmos armazenados no momento da geração. Mudanças posteriores em FIPE, inflação, tarifas, combustíveis, seguro ou metodologia não alteram este registro.</span>
+  </div>
+
+  {% if resultado.result_type == 'S' %}
+    {% set mv = resultado.module_view %}
+    {% if mv.vehicles %}
+      <section class="history-section">
+        <div class="history-section-heading">
+          <span class="history-section-kicker">Veículos</span>
+          <h2>Identificação da simulação original</h2>
+        </div>
+        <div class="history-vehicle-grid">
+          {% for veiculo in mv.vehicles %}
+            <article class="history-vehicle-card">
+              <span class="history-role">{{ veiculo.get('role') or veiculo.get('tipo') or 'Veículo' }}</span>
+              <h3>{{ veiculo.get('modelo') or 'Veículo' }}</h3>
+              <dl>
+                {% if veiculo.get('marca') %}<div><dt>Marca</dt><dd>{{ veiculo.get('marca') }}</dd></div>{% endif %}
+                {% if veiculo.get('codigo_fipe') %}<div><dt>Código FIPE</dt><dd>{{ veiculo.get('codigo_fipe') }}</dd></div>{% endif %}
+                {% if veiculo.get('ano_modelo') %}<div><dt>Ano/modelo</dt><dd>{{ veiculo.get('ano_modelo') }}</dd></div>{% endif %}
+                {% if veiculo.get('combustivel') %}<div><dt>Combustível</dt><dd>{{ veiculo.get('combustivel') }}</dd></div>{% endif %}
+              </dl>
+            </article>
+          {% endfor %}
+        </div>
+      </section>
+    {% endif %}
+
+    {% for comparacao in mv.comparisons %}
+      <section class="history-section history-comparison">
+        <div class="history-section-heading">
+          <span class="history-section-kicker">Resultado preservado</span>
+          <h2>{{ comparacao.get('titulo') or ('Comparação ' ~ loop.index) }}</h2>
+        </div>
+
+        {% if comparacao.get('detalhes') %}
+          <div class="history-summary-grid">
+            {% for detalhe in comparacao.get('detalhes') %}
+              <article class="history-summary-card">
+                <h3>{{ detalhe.get('nome') or ('Veículo ' ~ loop.index) }}</h3>
+                {% if detalhe.get('codigo_fipe') %}<p class="history-fipe-code">Código FIPE: {{ detalhe.get('codigo_fipe') }}</p>{% endif %}
+                <div class="history-primary-value">
+                  <span>TCO no horizonte</span>
+                  <strong>{{ detalhe.get('tco_final') or '—' }}</strong>
+                </div>
+                <dl>
+                  {% if detalhe.get('custo_km') %}<div><dt>Custo por km</dt><dd>{{ detalhe.get('custo_km') }}/km</dd></div>{% endif %}
+                  {% if detalhe.get('preco_inicial') %}<div><dt>Valor inicial</dt><dd>{{ detalhe.get('preco_inicial') }}</dd></div>{% endif %}
+                  {% if detalhe.get('gasto_operacional') %}<div><dt>Gasto operacional</dt><dd>{{ detalhe.get('gasto_operacional') }}</dd></div>{% endif %}
+                  {% if detalhe.get('perda_depreciacao') %}<div><dt>Depreciação</dt><dd>{{ detalhe.get('perda_depreciacao') }}</dd></div>{% endif %}
+                  {% if detalhe.get('valor_revenda') %}<div><dt>Valor de revenda</dt><dd>{{ detalhe.get('valor_revenda') }}</dd></div>{% endif %}
+                  {% if detalhe.get('co2_total') %}<div><dt>CO₂ fóssil operacional</dt><dd>{{ detalhe.get('co2_total') }}</dd></div>{% endif %}
+                </dl>
+              </article>
+            {% endfor %}
+          </div>
+        {% endif %}
+
+        {% if comparacao.get('comparativo_indicadores') %}
+          <div class="history-table-wrap">
+            <table class="history-table">
+              <thead><tr><th>Indicador</th><th>Veículo 1</th><th>Veículo 2</th></tr></thead>
+              <tbody>
+                {% for item in comparacao.get('comparativo_indicadores') %}
+                  <tr>
+                    <th>{{ item.get('rotulo') }}</th>
+                    <td>{{ item.get('valor_1') }}</td>
+                    <td>{{ item.get('valor_2') }}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% endif %}
+
+        {% set componentes = comparacao.get('comparativo_componentes') or comparacao.get('comparacao_componentes') %}
+        {% if componentes %}
+          <details class="history-details">
+            <summary>Componentes do TCO preservados</summary>
+            <div class="history-table-wrap">
+              <table class="history-table history-table-compact">
+                <thead><tr><th>Componente</th><th>Veículo 1</th><th>Veículo 2</th></tr></thead>
+                <tbody>
+                  {% for item in componentes %}
+                    <tr><th>{{ item.get('rotulo') }}</th><td>{{ item.get('valor_1') }}</td><td>{{ item.get('valor_2') }}</td></tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </details>
+        {% endif %}
+
+        {% if comparacao.get('memoria_anual_comparativa') %}
+          <details class="history-details">
+            <summary>Memória anual preservada</summary>
+            <div class="history-table-wrap">
+              <table class="history-table history-table-compact">
+                <thead><tr><th>Ano</th><th>TCO veículo 1</th><th>TCO veículo 2</th><th>Revenda 1</th><th>Revenda 2</th></tr></thead>
+                <tbody>
+                  {% for item in comparacao.get('memoria_anual_comparativa') %}
+                    <tr>
+                      <th>{{ item.get('ano') }}</th>
+                      <td>{{ item.get('v1_tco') }}</td>
+                      <td>{{ item.get('v2_tco') }}</td>
+                      <td>{{ item.get('v1_revenda') }}</td>
+                      <td>{{ item.get('v2_revenda') }}</td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </details>
+        {% endif %}
+      </section>
+    {% endfor %}
+
+  {% elif resultado.result_type == 'D' %}
+    {% set mv = resultado.module_view %}
+    <section class="history-section">
+      <div class="history-section-heading">
+        <span class="history-section-kicker">Consulta original</span>
+        <h2>Depreciação preservada</h2>
+      </div>
+      <div class="history-kv-grid">
+        {% for field in mv.fields %}
+          <div class="history-kv"><span>{{ field.label }}</span><strong>{{ field.value }}</strong></div>
+        {% endfor %}
+      </div>
+
+      {% set r = mv.result %}
+      {% if r.get('valor_futuro_otimista') or r.get('valor_futuro_pessimista') %}
+        <div class="history-scenario-grid">
+          {% if r.get('valor_futuro_otimista') %}<div><span>Cenário otimista</span><strong>R$ {{ '%.2f'|format(r.get('valor_futuro_otimista')) }}</strong></div>{% endif %}
+          {% if r.get('valor_futuro') %}<div><span>Cenário base</span><strong>R$ {{ '%.2f'|format(r.get('valor_futuro')) }}</strong></div>{% endif %}
+          {% if r.get('valor_futuro_pessimista') %}<div><span>Cenário pessimista</span><strong>R$ {{ '%.2f'|format(r.get('valor_futuro_pessimista')) }}</strong></div>{% endif %}
+        </div>
+      {% endif %}
+    </section>
+
+  {% elif resultado.result_type == 'F' %}
+    {% set mv = resultado.module_view %}
+    <section class="history-section">
+      <div class="history-section-heading">
+        <span class="history-section-kicker">Consulta original</span>
+        <h2>Valor FIPE preservado</h2>
+      </div>
+      <div class="history-kv-grid history-kv-grid-fipe">
+        {% for field in mv.fields %}
+          <div class="history-kv {% if field.label == 'Valor FIPE' %}history-kv-highlight{% endif %}"><span>{{ field.label }}</span><strong>{{ field.value }}</strong></div>
+        {% endfor %}
+      </div>
+    </section>
+  {% endif %}
+
+  {% if resultado.module_view.input_items %}
+    <details class="history-details history-section">
+      <summary>Parâmetros originais armazenados</summary>
+      <div class="history-table-wrap">
+        <table class="history-table history-table-compact history-raw-table">
+          <thead><tr><th>Campo</th><th>Valor preservado</th></tr></thead>
+          <tbody>
+            {% for item in resultado.module_view.input_items %}
+              <tr><th>{{ item.key }}</th><td>{{ item.value }}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </details>
+  {% endif %}
+
+  <details class="history-details history-section">
+    <summary>Integridade e dados técnicos do snapshot</summary>
+    <div class="history-integrity-grid">
+      <div><span>Versão da CurVE</span><strong>{{ resultado.platform_version }}</strong></div>
+      <div><span>Schema</span><strong>{{ resultado.schema_version }}</strong></div>
+      <div><span>SHA-256</span><code>{{ resultado.payload_sha256 }}</code></div>
+      <div><span>Tamanho do snapshot</span><strong>{{ resultado.payload_bytes }} bytes</strong></div>
+    </div>
+    <details class="history-raw-json">
+      <summary>Ver payload preservado</summary>
+      <pre>{{ resultado.payload | tojson(indent=2) }}</pre>
+    </details>
+  </details>
+
+  <div class="history-actions">
+    <a class="history-button history-button-primary" href="{{ url_for('main.consultar_resultado') }}">Consultar outro código</a>
+    {% if resultado.result_type == 'S' %}<a class="history-button" href="{{ url_for('tco.simular') }}">Nova simulação</a>{% endif %}
+    {% if resultado.result_type == 'D' %}<a class="history-button" href="{{ url_for('main.depreciacao') }}">Nova consulta de depreciação</a>{% endif %}
+    {% if resultado.result_type == 'F' %}<a class="history-button" href="{{ url_for('main.consulta_fipe') }}">Nova consulta Fipe+</a>{% endif %}
+  </div>
+</section>
+{% endblock %}

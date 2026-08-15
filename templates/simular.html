@@ -392,6 +392,8 @@
     .plugve-vehicle-name-block{flex:1 1 auto}
     .plugve-vehicle-name-block .plugve-vehicle-fipe{display:block;font-size:.74rem;text-transform:none;letter-spacing:0;color:#64748b;font-weight:700;margin-top:.45rem}
     .plugve-vehicle-name-block .plugve-vehicle-fipe b{color:#334155;font-weight:800}
+    .plugve-fipe-code-hint{font-size:.72rem;color:#64748b;font-weight:600;margin-top:.4rem;letter-spacing:.01em}
+    .plugve-fipe-code-hint b{color:#475569;font-weight:800}
     .plugve-vehicle-price .plugve-vehicle-total-label{display:block;font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:#64748b;font-weight:900}
     .plugve-vehicle-price .plugve-vehicle-total-value{display:block;font-size:1.3rem;line-height:1.15;font-weight:900;color:#0f172a;margin-top:.18rem}
     .plugve-vehicle-summary.plugve-theme-eletrico{border-color:#93c5fd;background:linear-gradient(135deg,#eff6ff 0%,#ffffff 88%)}
@@ -1093,6 +1095,7 @@
                 <div>
                   <label class="block text-xs font-medium">Ano/Combustível</label>
                   <select name="atual_ano_codigo" id="atual_ano" class="mt-1 p-2 border rounded w-full"></select>
+                  <p id="codigo_fipe_atual_label" class="plugve-fipe-code-hint hidden">Código FIPE: <b>—</b></p>
                 </div>
                 </div>
               </div>
@@ -1103,6 +1106,7 @@
 
               <div class="space-y-2">
                 <input type="hidden" name="modelo_atual" id="modelo_atual">
+                <input type="hidden" name="codigo_fipe_atual" id="codigo_fipe_atual" value="{{ request.form.get('codigo_fipe_atual', '') }}">
                 <input type="hidden" name="ano_modelo_atual" id="ano_modelo_atual">
                 <input type="hidden" name="combustivel_atual" id="combustivel_atual">
 
@@ -1210,6 +1214,7 @@
                 <div>
                   <label class="block text-xs font-medium">Ano/Combustível</label>
                   <select name="ve_ano_codigo" id="ve_ano" class="mt-1 p-2 border rounded w-full"></select>
+                  <p id="codigo_fipe_ve_label" class="plugve-fipe-code-hint hidden">Código FIPE: <b>—</b></p>
                 </div>
 
                 </div>
@@ -1220,6 +1225,7 @@
 
             <div id="dados_ve_box" class="space-y-2 plugve-progress-hidden mt-5 border rounded-lg p-4 bg-white shadow-sm">
               <input type="hidden" name="modelo_ve" id="modelo_ve">
+              <input type="hidden" name="codigo_fipe_ve" id="codigo_fipe_ve" value="{{ request.form.get('codigo_fipe_ve', '') }}">
               <input type="hidden" name="ano_modelo_ve" id="ano_modelo_ve">
               <input type="hidden" name="combustivel_ve" id="combustivel_ve">
               <input type="hidden" name="tipo_veiculo_ve" id="tipo_veiculo_ve" value="">
@@ -1327,6 +1333,7 @@
                 <div>
                   <label class="block text-xs font-medium">Ano/Combustível</label>
                   <select name="icev_ano_codigo" id="icev_ano" class="mt-1 p-2 border rounded w-full"></select>
+                  <p id="codigo_fipe_icev_label" class="plugve-fipe-code-hint hidden">Código FIPE: <b>—</b></p>
                 </div>
 
                 </div>
@@ -1337,6 +1344,7 @@
 
             <div id="dados_icev_box" class="space-y-2 plugve-progress-hidden mt-5 border rounded-lg p-4 bg-white shadow-sm">
               <input type="hidden" name="modelo_icev" id="modelo_icev">
+              <input type="hidden" name="codigo_fipe_icev" id="codigo_fipe_icev" value="{{ request.form.get('codigo_fipe_icev', '') }}">
               <input type="hidden" name="ano_modelo_icev" id="ano_modelo_icev">
               <input type="hidden" name="combustivel_icev" id="combustivel_icev">
 
@@ -1511,9 +1519,9 @@
                     <div class="plugve-money-field plugve-fuel-money-field">
                       <span class="plugve-money-prefix">R$</span>
                       <input type="text" id="fuel_single_preco_input" class="plugve-fuel-single-input" value="5,80" inputmode="numeric" aria-label="Preço do combustível em reais por litro">
-                      <span class="plugve-field-source plugve-source-logo plugve-source-logo--anp hidden" data-plugve-source-for="fuel_single_preco_input" role="img" aria-label="ANP, fonte dos preços médios de combustível" aria-hidden="true" title="Fonte dos preços médios de combustível: ANP">
+                      <a class="plugve-field-source plugve-source-logo plugve-source-logo--anp hidden" href="https://www.gov.br/anp/pt-br/assuntos/precos-e-defesa-da-concorrencia/precos/levantamento-de-precos-de-combustiveis-ultimas-semanas-pesquisadas" target="_blank" rel="noopener noreferrer" data-plugve-source-for="fuel_single_preco_input" aria-label="ANP, fonte dos preços médios de combustível" aria-hidden="true" title="Fonte dos preços médios de combustível: ANP">
                         <img src="{{ url_for('static', filename='img/fontes/anp.png') }}" alt="ANP">
-                      </span>
+                      </a>
                     </div>
                   </div>
                   
@@ -1670,9 +1678,9 @@
                 <div class="plugve-money-field plugve-money-field--source">
                   <span class="plugve-money-prefix">R$</span>
                   <input type="text" id="fuel_modal_preco_etanol" inputmode="numeric" placeholder="ex: 4,48">
-                  <span class="plugve-field-source plugve-source-logo plugve-source-logo--anp hidden" data-plugve-source-for="fuel_modal_preco_etanol" role="img" aria-label="ANP, fonte do preço médio de etanol" aria-hidden="true" title="Fonte do preço médio: ANP">
-                    <img src="{{ url_for('static', filename='img/fontes/anp.png') }}" alt="ANP">
-                  </span>
+                  <a class="plugve-field-source plugve-source-logo plugve-source-logo--anp hidden" href="https://www.gov.br/anp/pt-br/assuntos/precos-e-defesa-da-concorrencia/precos/levantamento-de-precos-de-combustiveis-ultimas-semanas-pesquisadas" target="_blank" rel="noopener noreferrer" data-plugve-source-for="fuel_modal_preco_etanol" aria-label="ANP, fonte do preço médio de etanol" aria-hidden="true" title="Fonte do preço médio: ANP">
+                        <img src="{{ url_for('static', filename='img/fontes/anp.png') }}" alt="ANP">
+                      </a>
                 </div>
                 <label for="fuel_modal_consumo_etanol">Consumo (km/L)</label>
                 <div class="plugve-pbev-inline-field">
@@ -1686,9 +1694,9 @@
                 <div class="plugve-money-field plugve-money-field--source">
                   <span class="plugve-money-prefix">R$</span>
                   <input type="text" id="fuel_modal_preco_gasolina" inputmode="numeric" placeholder="ex: 6,87">
-                  <span class="plugve-field-source plugve-source-logo plugve-source-logo--anp hidden" data-plugve-source-for="fuel_modal_preco_gasolina" role="img" aria-label="ANP, fonte do preço médio de gasolina" aria-hidden="true" title="Fonte do preço médio: ANP">
-                    <img src="{{ url_for('static', filename='img/fontes/anp.png') }}" alt="ANP">
-                  </span>
+                  <a class="plugve-field-source plugve-source-logo plugve-source-logo--anp hidden" href="https://www.gov.br/anp/pt-br/assuntos/precos-e-defesa-da-concorrencia/precos/levantamento-de-precos-de-combustiveis-ultimas-semanas-pesquisadas" target="_blank" rel="noopener noreferrer" data-plugve-source-for="fuel_modal_preco_gasolina" aria-label="ANP, fonte do preço médio de gasolina" aria-hidden="true" title="Fonte do preço médio: ANP">
+                        <img src="{{ url_for('static', filename='img/fontes/anp.png') }}" alt="ANP">
+                      </a>
                 </div>
                 <label for="fuel_modal_consumo_gasolina">Consumo (km/L)</label>
                 <div class="plugve-pbev-inline-field">
@@ -1785,9 +1793,9 @@
                 <div class="plugve-money-field plugve-money-field--source">
                   <span class="plugve-money-prefix">R$</span>
                   <input type="text" id="phev_modal_preco_combustivel" inputmode="numeric" placeholder="ex: 6,87">
-                  <span class="plugve-field-source plugve-source-logo plugve-source-logo--anp hidden" data-plugve-source-for="phev_modal_preco_combustivel" role="img" aria-label="ANP, fonte do preço médio de combustível" aria-hidden="true" title="Fonte do preço médio: ANP">
-                    <img src="{{ url_for('static', filename='img/fontes/anp.png') }}" alt="ANP">
-                  </span>
+                  <a class="plugve-field-source plugve-source-logo plugve-source-logo--anp hidden" href="https://www.gov.br/anp/pt-br/assuntos/precos-e-defesa-da-concorrencia/precos/levantamento-de-precos-de-combustiveis-ultimas-semanas-pesquisadas" target="_blank" rel="noopener noreferrer" data-plugve-source-for="phev_modal_preco_combustivel" aria-label="ANP, fonte do preço médio de combustível" aria-hidden="true" title="Fonte do preço médio: ANP">
+                        <img src="{{ url_for('static', filename='img/fontes/anp.png') }}" alt="ANP">
+                      </a>
                 </div>
                 <label for="phev_modal_consumo_combustivel">Consumo (km/L)</label>
                 <div class="plugve-pbev-inline-field">
@@ -1829,6 +1837,9 @@
             <h2 class="plugve-result-versus-title" title="{{ resumo_comp.detalhes[0].nome }} × {{ resumo_comp.detalhes[1].nome }}">{{ resumo_comp.detalhes[0].nome }} × {{ resumo_comp.detalhes[1].nome }}</h2>
           {% else %}
             <h2 class="plugve-result-versus-title">Comparação veicular</h2>
+          {% endif %}
+          {% if resultado.resultado_codigo %}
+            <p class="text-xs text-slate-500 mt-1"><strong>Código do resultado:</strong> {{ resultado.resultado_codigo }}{% if resultado.resultado_gerado_em_texto %} · gerado em {{ resultado.resultado_gerado_em_texto }}{% endif %}</p>
           {% endif %}
         </div>
         <div class="plugve-result-toolbar no-print">
@@ -1882,6 +1893,7 @@
                       <article class="plugve-vehicle-summary {{ item.tema_classe }} {% if comp.vencedor_indice == loop.index %}plugve-vehicle-summary-winner{% endif %}">
                         <div class="plugve-vehicle-name-block">
                           <h4>{{ item.nome }}</h4>
+                          {% if item.codigo_fipe %}<span class="plugve-vehicle-fipe">Código FIPE: <b>{{ item.codigo_fipe }}</b></span>{% endif %}
                           <span class="plugve-vehicle-fipe">Valor FIPE inicial: <b>{{ item.preco_inicial }}</b></span>
                         </div>
                         <div class="plugve-vehicle-price">
@@ -2153,6 +2165,8 @@
               </div>
               <div class="tco-pdf-meta">
                 <strong>Relatório TCO</strong><br>
+                {% if resultado.resultado_codigo %}<span><strong>Código:</strong> {{ resultado.resultado_codigo }}</span><br>{% endif %}
+                {% if resultado.resultado_gerado_em_texto %}<span><strong>Resultado gerado em:</strong> {{ resultado.resultado_gerado_em_texto }}</span><br>{% endif %}
                 <span id="tco_pdf_date_{{ loop.index }}">Data de emissão: -</span><br>
                 CurVE - Calculadora Veicular
               </div>
@@ -2187,6 +2201,7 @@
                 <section class="tco-pdf-vehicle">
                   <div>
                     <h4>{{ item.nome }}</h4>
+                    {% if item.codigo_fipe %}<small>Código FIPE: <b>{{ item.codigo_fipe }}</b></small>{% endif %}
                     <small>Valor FIPE inicial: <b>{{ item.preco_inicial }}</b></small>
                   </div>
                   <div class="tco-pdf-vehicle-total">
@@ -2215,7 +2230,7 @@
           <article class="tco-pdf-page">
             <header class="tco-pdf-head">
               <img class="tco-pdf-logo" src="{{ url_for('static', filename='img/logo_curve_horizontal.png') }}" alt="CurVE">
-              <div class="tco-pdf-meta"><strong>Relatório TCO</strong><br>Comparativo financeiro</div>
+              <div class="tco-pdf-meta"><strong>Relatório TCO</strong><br>Comparativo financeiro{% if resultado.resultado_codigo %}<br><strong>Código:</strong> {{ resultado.resultado_codigo }}{% endif %}{% if resultado.resultado_gerado_em_texto %}<br>Gerado em {{ resultado.resultado_gerado_em_texto }}{% endif %}</div>
             </header>
             <h2 class="tco-pdf-section-title">Comparação financeira dos veículos</h2>
             {% if comp.comparativo_indicadores or comp.comparativo_componentes %}
@@ -2265,7 +2280,7 @@
             <article class="tco-pdf-page tco-pdf-page-annual">
               <header class="tco-pdf-head">
                 <img class="tco-pdf-logo" src="{{ url_for('static', filename='img/logo_curve_horizontal.png') }}" alt="CurVE">
-                <div class="tco-pdf-meta"><strong>Relatório TCO</strong><br>Componentes anuais</div>
+                <div class="tco-pdf-meta"><strong>Relatório TCO</strong><br>Componentes anuais{% if resultado.resultado_codigo %}<br><strong>Código:</strong> {{ resultado.resultado_codigo }}{% endif %}{% if resultado.resultado_gerado_em_texto %}<br>Gerado em {{ resultado.resultado_gerado_em_texto }}{% endif %}</div>
               </header>
               <h2 class="tco-pdf-section-title">Componentes anuais do custo</h2>
               <p class="tco-pdf-subtitle">Distribuição anual dos principais componentes considerados para cada veículo no horizonte informado.</p>
@@ -2285,7 +2300,7 @@
             <article class="tco-pdf-page tco-pdf-page-evolution">
               <header class="tco-pdf-head">
                 <img class="tco-pdf-logo" src="{{ url_for('static', filename='img/logo_curve_horizontal.png') }}" alt="CurVE">
-                <div class="tco-pdf-meta"><strong>Relatório TCO</strong><br>Evolução do custo</div>
+                <div class="tco-pdf-meta"><strong>Relatório TCO</strong><br>Evolução do custo{% if resultado.resultado_codigo %}<br><strong>Código:</strong> {{ resultado.resultado_codigo }}{% endif %}{% if resultado.resultado_gerado_em_texto %}<br>Gerado em {{ resultado.resultado_gerado_em_texto }}{% endif %}</div>
               </header>
               <h2 class="tco-pdf-section-title">Evolução econômica no horizonte</h2>
               {% if comp.grafico_componentes %}
@@ -2310,7 +2325,7 @@
           <article class="tco-pdf-page tco-pdf-page-combined">
             <header class="tco-pdf-head">
               <img class="tco-pdf-logo" src="{{ url_for('static', filename='img/logo_curve_horizontal.png') }}" alt="CurVE">
-              <div class="tco-pdf-meta"><strong>Relatório TCO</strong><br>Impacto operacional e revenda</div>
+              <div class="tco-pdf-meta"><strong>Relatório TCO</strong><br>Impacto operacional e revenda{% if resultado.resultado_codigo %}<br><strong>Código:</strong> {{ resultado.resultado_codigo }}{% endif %}{% if resultado.resultado_gerado_em_texto %}<br>Gerado em {{ resultado.resultado_gerado_em_texto }}{% endif %}</div>
             </header>
             <h2 class="tco-pdf-section-title">Impacto operacional, depreciação e revenda</h2>
             {% if comp.impacto_ambiental %}
@@ -2533,6 +2548,18 @@
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#39;");
+    }
+
+    function atualizarCodigoFipeTCO(prefixo, codigo) {
+      const valor = String(codigo || "").trim();
+      const campo = document.getElementById(`codigo_fipe_${prefixo}`);
+      if (campo) campo.value = valor;
+      const linha = document.getElementById(`codigo_fipe_${prefixo}_label`);
+      if (linha) {
+        const alvo = linha.querySelector("b");
+        if (alvo) alvo.textContent = valor || "—";
+        linha.classList.toggle("hidden", !valor);
+      }
     }
 
     const plugveEnergiaResumoAtual = {
@@ -3300,6 +3327,7 @@
         restaurarSelecaoFipePrefixoTCO("atual", estado),
       ]).then(() => {
         restauracaoFipeTCOConcluida = true;
+        ["ve", "icev", "atual"].forEach(prefixo => atualizarCodigoFipeTCO(prefixo, document.getElementById(`codigo_fipe_${prefixo}`)?.value || ""));
         atualizarTodosResumosFinanciamento();
       }).finally(() => {
         restauracaoFipeTCOEmCurso = null;
@@ -3651,6 +3679,7 @@
         const el = document.getElementById(id);
         if (el) el.value = "";
       });
+      atualizarCodigoFipeTCO(prefixo, "");
       marcarSeguroManual(prefixo, false);
       limparMetadadosSeguroAutomaticoTCO(prefixo);
       const seguroLimpo = campoSeguroPorPrefixo(prefixo);
@@ -3733,6 +3762,7 @@
         const el = document.getElementById(id);
         if (el) el.value = "";
       });
+      atualizarCodigoFipeTCO(prefixo, "");
 
       const consumoId = prefixo === "ve" ? "consumo_ve" : prefixo === "icev" ? "consumo_icev" : "consumo_atual";
       const consumo = document.getElementById(consumoId);
@@ -4981,6 +5011,8 @@
         const textoAnoTela = textoAnoFipeParaTela(ano, textoAnoOriginal);
         const nomeCompleto = limparNomeVeiculoTCO(`${nomeModelo} ${textoAnoTela}`.trim());
         const marcaStr = data.Marca || selecaoRapida?.marcaStr || textoOpcaoSelecionadaFipeTCO(marcaSelect);
+        const codigoFipeSelecionado = data.CodigoFipe || data.CodigoFIPE || data.Codigo || "";
+        atualizarCodigoFipeTCO(prefixo, codigoFipeSelecionado);
         const tipoSelecionado = tipoCatalogoAnoSelecionadoTCO(anoSelect)
           || classificarTipoVeiculoTCO(nomeModelo, combustivelStr || textoAnoTela, ano, marcaStr, prefixo);
         if (!tipoPermitidoNoBloco(prefixo, tipoSelecionado)) {
@@ -5025,7 +5057,7 @@
           texto_modelo: nomeCompleto,
           ano: anoModeloStr,
           combustivel: combustivelStr,
-          codigo_fipe: data.CodigoFipe || data.CodigoFIPE || data.Codigo || "",
+          codigo_fipe: codigoFipeSelecionado,
           codigo_marca: marca,
           codigo_modelo: modelo,
           codigo_ano: ano,
@@ -5103,7 +5135,7 @@
         modelo: data.Modelo || nomeModelo || modeloSelect.options[modeloSelect.selectedIndex]?.text || "",
         ano_modelo: anoModeloStr || "",
         combustivel: combustivelStr || "",
-        codigo_fipe: data.CodigoFipe || "",
+        codigo_fipe: data.CodigoFipe || data.CodigoFIPE || data.Codigo || document.getElementById(`codigo_fipe_${prefixo}`)?.value || "",
         valor_atual: numeroBRParaFloat(valor || data.Valor || 0),
         valor_texto: data.Valor || ""
       };
@@ -7918,13 +7950,14 @@
         }
 
         let tituloOriginalRelatorioTCO = document.title;
+        const codigoResultadoTCO = {{ (resultado.resultado_codigo or '')|tojson }};
         document.getElementById("btn_exportar_pdf_tco")?.addEventListener("click", async function () {
           try {
             const csrfUso = document.querySelector('meta[name="curve-interaction-csrf"]')?.getAttribute("content") || "";
             fetch("/api/site-usage/event", {
               method: "POST",
               headers: {"Content-Type": "application/json", "X-CSRF-Token": csrfUso},
-              body: JSON.stringify({module: "tco", action: "pdf_exported"}),
+              body: JSON.stringify({module: "tco", action: "pdf_exported", metadata: {resultado_codigo: codigoResultadoTCO || ""}}),
               keepalive: true
             }).catch(() => {});
           } catch (e) {}
@@ -7933,7 +7966,7 @@
           });
           await prepararGraficosRelatorioTCO();
           tituloOriginalRelatorioTCO = document.title;
-          document.title = "Relatório CurVE - Custo Total de Propriedade";
+          document.title = codigoResultadoTCO ? `CurVE_Simulacao_${codigoResultadoTCO}` : "CurVE_Simulacao";
           document.body.classList.add("tco-print-report-mode");
           await document.fonts?.ready;
           await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
@@ -7967,9 +8000,11 @@
 
         document.getElementById("plugve_fuel_card")?.addEventListener("click", function (ev) {
           if (ev.target && ev.target.id === "fuel_single_preco_input") return;
+          if (ev.target?.closest?.(".plugve-source-logo--anp")) return;
           if (modoCombustivelTCO === "flex") abrirModalCombustivelTCO();
         });
         document.getElementById("plugve_fuel_card")?.addEventListener("keydown", function (ev) {
+          if (ev.target?.closest?.(".plugve-source-logo--anp")) return;
           if ((ev.key === "Enter" || ev.key === " ") && modoCombustivelTCO === "flex") {
             ev.preventDefault();
             abrirModalCombustivelTCO();

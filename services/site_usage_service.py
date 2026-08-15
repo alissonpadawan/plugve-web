@@ -314,6 +314,7 @@ class SiteUsageService:
             "horizon_years": row["horizon_years"],
             "km_year": row["km_year"],
             "metadata": metadata,
+            "result_code": str(metadata.get("resultado_codigo") or "").strip().upper(),
             "vehicles": vehicles or [],
         }
 

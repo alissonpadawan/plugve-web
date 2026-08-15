@@ -60,6 +60,7 @@
         <div class="field">
           <label for="fipe_ano">Ano/Combustível</label>
           <select id="fipe_ano" data-fipe-combobox="1"></select>
+          <p id="fipe_codigo_selecionado" class="muted small-text hidden">Código FIPE: <strong>—</strong></p>
         </div>
       </div>
 
@@ -73,6 +74,8 @@
       <img src="{{ url_for('static', filename='img/logo_curve_horizontal.png') }}" alt="CurVE Calculadora Veicular">
       <div>
         <strong>Relatório de depreciação veicular</strong>
+        <span id="pdf_codigo_resultado">Código do resultado: -</span>
+        <span id="pdf_resultado_gerado_em">Resultado gerado em: -</span>
         <span id="pdf_data_emissao">Data de emissão: -</span>
       </div>
     </section>
@@ -82,6 +85,9 @@
         <h2>Resultado da depreciação</h2>
         <p id="resultado_status" class="muted">Selecione um veículo para gerar a estimativa.</p>
         <p id="res_modelo_linha" class="result-model-line hidden"><strong>Veículo analisado:</strong> <span id="res_modelo">-</span></p>
+        <p id="res_codigo_fipe_linha" class="muted small-text hidden"><strong>Código FIPE:</strong> <span id="res_codigo_fipe">-</span></p>
+        <p id="res_codigo_resultado_linha" class="muted small-text hidden"><strong>Código do resultado:</strong> <span id="res_codigo_resultado">-</span></p>
+        <p id="res_resultado_gerado_linha" class="muted small-text hidden"><strong>Gerado em:</strong> <span id="res_resultado_gerado">-</span></p>
         <dl class="data-list compact resumo-inline">
           <dt>Valor FIPE atual</dt><dd id="res_valor_atual">-</dd>
           <dt>Valor estimado no horizonte</dt><dd id="res_valor_futuro">-</dd>
@@ -152,6 +158,6 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/fipe.js') }}?v=20260809_v49_04_catalogo_canonico"></script>
-<script src="{{ url_for('static', filename='js/depreciacao.js') }}?v=20260725_v43_13"></script>
+<script src="{{ url_for('static', filename='js/fipe.js') }}?v=20260809_v49_04_catalogo_canonico_v50_10_rastreabilidade"></script>
+<script src="{{ url_for('static', filename='js/depreciacao.js') }}?v=20260815_v50_13_pdfs_ids"></script>
 {% endblock %}

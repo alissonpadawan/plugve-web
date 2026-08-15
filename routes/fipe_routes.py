@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import hmac
 
-from flask import Blueprint, current_app, jsonify, request
+from flask import Blueprint, current_app, jsonify, request, session
 
 from services.fipe_service import FipeApiError, FipeService
+from services.result_snapshot_service import get_result_snapshot_service
 
 fipe_bp = Blueprint("fipe", __name__)
 fipe_service = FipeService()
@@ -31,6 +32,37 @@ def _resposta_preco(dados):
     resp.headers["Pragma"] = "no-cache"
     resp.headers["X-CurVE-FIPE-Catalog"] = "canonical-v49.04"
     return resp
+
+
+def _snapshot_fipe_plus_if_requested(dados, *, tipo: str, codigo_marca: str, codigo_modelo: str, codigo_ano: str):
+    contexto = str(request.args.get("contexto_resultado") or "").strip().lower()
+    if contexto != "fipe_plus" or not isinstance(dados, dict):
+        return dados
+    resposta = dict(dados)
+    try:
+        snapshot_meta = get_result_snapshot_service().create_snapshot(
+            result_type="F",
+            module="fipe_plus",
+            payload={
+                "entrada": {
+                    "tipo": tipo,
+                    "codigo_marca": codigo_marca,
+                    "codigo_modelo": codigo_modelo,
+                    "codigo_ano": codigo_ano,
+                },
+                "resultado": dict(dados),
+                "observacao": "Snapshot imutável da consulta FIPE original; preço e referência são preservados sem nova consulta futura.",
+            },
+            visitor_id=str(session.get("site_usage_visitor_id") or ""),
+            session_id=str(session.get("site_usage_session_id") or ""),
+        )
+        resposta["resultado_codigo"] = snapshot_meta["code"]
+        resposta["resultado_gerado_em"] = snapshot_meta["created_at_local"]
+        resposta["resultado_gerado_em_texto"] = snapshot_meta["created_at_local_display"]
+        resposta["resultado_snapshot_hash"] = snapshot_meta["payload_sha256"]
+    except Exception as snapshot_error:
+        current_app.logger.warning("Falha ao persistir snapshot Fipe+: %s", snapshot_error)
+    return resposta
 
 
 def _sync_token_recebido() -> str:
@@ -114,7 +146,11 @@ def preco_publico():
     if not codigo_marca or not codigo_modelo or not codigo_ano:
         return jsonify({"erro": "Parâmetros incompletos."}), 400
     try:
-        return _resposta_preco(fipe_service.consultar_preco_tipo(tipo, codigo_marca, codigo_modelo, codigo_ano))
+        dados = fipe_service.consultar_preco_tipo(tipo, codigo_marca, codigo_modelo, codigo_ano)
+        dados = _snapshot_fipe_plus_if_requested(
+            dados, tipo=tipo, codigo_marca=codigo_marca, codigo_modelo=codigo_modelo, codigo_ano=codigo_ano
+        )
+        return _resposta_preco(dados)
     except Exception as exc:
         return _erro_fipe_response(exc)
 
@@ -349,6 +385,10 @@ def preco():
     if not codigo_marca or not codigo_modelo or not codigo_ano:
         return jsonify({"erro": "Parâmetros incompletos."}), 400
     try:
-        return _resposta_preco(fipe_service.consultar_preco(codigo_marca, codigo_modelo, codigo_ano))
+        dados = fipe_service.consultar_preco(codigo_marca, codigo_modelo, codigo_ano)
+        dados = _snapshot_fipe_plus_if_requested(
+            dados, tipo="carros", codigo_marca=codigo_marca, codigo_modelo=codigo_modelo, codigo_ano=codigo_ano
+        )
+        return _resposta_preco(dados)
     except Exception as exc:
         return _erro_fipe_response(exc)

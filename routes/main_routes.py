@@ -1,8 +1,14 @@
 from __future__ import annotations
 
-from flask import Blueprint, render_template, redirect, url_for
+from flask import Blueprint, current_app, make_response, redirect, render_template, request, url_for
 
 from services.noticias_service import carregar_noticias_home
+from services.result_history_service import (
+    build_result_history_view,
+    is_valid_result_code,
+    normalize_result_code,
+)
+from services.result_snapshot_service import ResultSnapshotError, get_result_snapshot_service
 
 main_bp = Blueprint("main", __name__)
 
@@ -26,6 +32,54 @@ def depreciacao():
 @main_bp.route("/depreciacao/auditoria")
 def depreciacao_auditoria():
     return render_template("auditoria_depreciacao.html")
+
+
+@main_bp.route("/resultado")
+def consultar_resultado():
+    codigo = normalize_result_code(request.args.get("codigo") or "")
+    if codigo:
+        if not is_valid_result_code(codigo):
+            return render_template(
+                "consultar_resultado.html",
+                codigo=codigo,
+                erro="Código inválido. Confira o identificador S, D ou F impresso no resultado.",
+            ), 400
+        return redirect(url_for("main.resultado_historico", codigo=codigo))
+    return render_template("consultar_resultado.html", codigo="", erro="")
+
+
+@main_bp.route("/resultado/<codigo>")
+def resultado_historico(codigo: str):
+    codigo = normalize_result_code(codigo)
+    if not is_valid_result_code(codigo):
+        return render_template(
+            "consultar_resultado.html",
+            codigo=codigo,
+            erro="Código inválido. Confira o identificador S, D ou F impresso no resultado.",
+        ), 400
+
+    try:
+        stored = get_result_snapshot_service().get_snapshot(codigo, verify_integrity=True)
+    except ResultSnapshotError as exc:
+        current_app.logger.error("Falha de integridade ao recuperar resultado %s: %s", codigo, exc)
+        return render_template(
+            "consultar_resultado.html",
+            codigo=codigo,
+            erro="O resultado foi localizado, mas a verificação de integridade falhou. Não foi exibido.",
+        ), 409
+
+    if stored is None:
+        return render_template(
+            "consultar_resultado.html",
+            codigo=codigo,
+            erro="Nenhum resultado histórico foi encontrado para esse código.",
+        ), 404
+
+    view = build_result_history_view(stored)
+    response = make_response(render_template("resultado_historico.html", resultado=view))
+    response.headers["Cache-Control"] = "private, no-store, max-age=0"
+    response.headers["X-Robots-Tag"] = "noindex, nofollow"
+    return response
 
 
 @main_bp.route("/metodologia")

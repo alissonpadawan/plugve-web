@@ -102,6 +102,7 @@ diferença_percentual = {{ comp.economia_percentual }}</p>
               <h3>Veículo {{ loop.index }}</h3>
               <dl class="audit-dl">
                 <dt>veículo</dt><dd>{{ item.nome }}</dd>
+                <dt>Código FIPE</dt><dd>{{ item.codigo_fipe or '—' }}</dd>
                 <dt>tipo</dt><dd>{{ item.tipo or '—' }}</dd>
                 <dt>combustível/FIPE</dt><dd>{{ item.combustivel or '—' }}</dd>
                 <dt>VI</dt><dd>{{ item.preco_inicial }}</dd>
@@ -241,6 +242,7 @@ diferença_percentual = {{ comp.economia_percentual }}</p>
         {% for veic in comp.auditoria_veiculos %}
           <div class="audit-card" style="margin-top:14px">
             <h3>5.{{ loop.index + 1 }} Memória anual — {{ veic.nome }}</h3>
+            {% if veic.codigo_fipe %}<p class="audit-note">Código FIPE: <strong>{{ veic.codigo_fipe }}</strong></p>{% endif %}
             <div class="audit-table-wrap">
               <table class="audit-table">
                 <thead><tr><th>Ano</th><th>Uso</th><th>IPVA</th><th>Seguro</th><th>Manut.</th><th>Juros</th><th>Deprec.</th><th>Custo total</th><th>CO₂</th></tr></thead>

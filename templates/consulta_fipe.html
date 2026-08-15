@@ -107,7 +107,7 @@
       <p>Valor FIPE, ficha técnica e revenda estimada quando houver dados confiáveis.</p>
     </div>
     <div class="plus-hero-badges" aria-label="Ações da consulta">
-      <button type="button" id="btn_imprimir_fipe_plus_topo" class="fipe-btn ghost">Imprimir</button>
+      <button type="button" id="btn_imprimir_fipe_plus_topo" class="fipe-btn ghost">Exportar PDF</button>
     </div>
   </header>
 
@@ -486,6 +486,9 @@
       valor_texto: data.Valor || '',
       valor_num: limparValorMonetario(data.Valor),
       mes_referencia: data.MesReferencia || '',
+      resultado_codigo: data.resultado_codigo || '',
+      resultado_gerado_em: data.resultado_gerado_em || '',
+      resultado_gerado_em_texto: data.resultado_gerado_em_texto || '',
       data_consulta: new Date().toLocaleString('pt-BR')
     };
   }
@@ -499,6 +502,8 @@
     document.getElementById('fipe_result_marca').textContent = veiculoAtual.marca || '—';
     renderKv(document.getElementById('fipe_result_kv'), [
       ['Código FIPE', veiculoAtual.codigo_fipe || '—'],
+      ['Código do resultado', veiculoAtual.resultado_codigo || '—'],
+      ['Gerado em', veiculoAtual.resultado_gerado_em_texto || '—'],
       ['Ano/modelo', veiculoAtual.ano_modelo_label || '—'],
       ['Combustível', veiculoAtual.combustivel || '—'],
       ['Referência', veiculoAtual.mes_referencia || '—'],
@@ -913,10 +918,16 @@
       window.alert('Consulte um veículo primeiro.');
       return;
     }
+    const tituloOriginal = document.title;
+    const codigoResultado = veiculoAtual.resultado_codigo || '';
+    document.title = codigoResultado ? `CurVE_FIPE_${codigoResultado}` : 'CurVE_FIPE';
     document.body.classList.add('fipe-plus-print-mode');
+    window.addEventListener('afterprint', () => {
+      document.body.classList.remove('fipe-plus-print-mode');
+      document.title = tituloOriginal;
+    }, {once:true});
     window.setTimeout(() => {
       window.print();
-      window.setTimeout(() => document.body.classList.remove('fipe-plus-print-mode'), 500);
     }, 120);
   }
 
@@ -1319,8 +1330,8 @@
     const token = requestToken(); status('Consultando FIPE...');
     try{
       const urlPreco = tipoAtual === 'carros'
-        ? `/api/fipe/preco?codigo_marca=${encodeURIComponent(marca)}&codigo_modelo=${encodeURIComponent(modelo)}&codigo_ano=${encodeURIComponent(ano)}`
-        : `/api/fipe/publica/preco?tipo=${encodeURIComponent(tipoAtual)}&codigo_marca=${encodeURIComponent(marca)}&codigo_modelo=${encodeURIComponent(modelo)}&codigo_ano=${encodeURIComponent(ano)}`;
+        ? `/api/fipe/preco?codigo_marca=${encodeURIComponent(marca)}&codigo_modelo=${encodeURIComponent(modelo)}&codigo_ano=${encodeURIComponent(ano)}&contexto_resultado=fipe_plus`
+        : `/api/fipe/publica/preco?tipo=${encodeURIComponent(tipoAtual)}&codigo_marca=${encodeURIComponent(marca)}&codigo_modelo=${encodeURIComponent(modelo)}&codigo_ano=${encodeURIComponent(ano)}&contexto_resultado=fipe_plus`;
       const data = await getJSON(urlPreco, token);
       showResult(data); status('Consulta concluída.');
       const csrf = document.querySelector('meta[name="curve-interaction-csrf"]')?.getAttribute('content') || '';
@@ -1343,7 +1354,7 @@
             combustivel:data.Combustivel || '',
             tecnologia:tipoAtual === 'carros' ? (data.tipo_plugve || data.tipo_interface || '') : tipoAtual
           }],
-          metadata:{tipo_catalogo:tipoAtual}
+          metadata:{tipo_catalogo:tipoAtual, resultado_codigo:data.resultado_codigo || ''}
         }),
         keepalive:true
       }).catch(() => {});
@@ -1363,13 +1374,15 @@
   btnConsultar.addEventListener('click', consultarPreco);
   btnLimpar.addEventListener('click', () => carregarMarcas());
   document.getElementById('btn_imprimir_fipe_plus_topo')?.addEventListener('click', function(){
-    const csrf = document.querySelector('meta[name="curve-interaction-csrf"]')?.getAttribute('content') || '';
-    fetch('/api/site-usage/event', {
-      method:'POST',
-      headers:{'Content-Type':'application/json','X-CSRF-Token':csrf},
-      body:JSON.stringify({module:'fipe_plus',action:'pdf_exported'}),
-      keepalive:true
-    }).catch(() => {});
+    if (veiculoAtual) {
+      const csrf = document.querySelector('meta[name="curve-interaction-csrf"]')?.getAttribute('content') || '';
+      fetch('/api/site-usage/event', {
+        method:'POST',
+        headers:{'Content-Type':'application/json','X-CSRF-Token':csrf},
+        body:JSON.stringify({module:'fipe_plus',action:'pdf_exported',metadata:{resultado_codigo:veiculoAtual.resultado_codigo || ''}}),
+        keepalive:true
+      }).catch(() => {});
+    }
     exportarPdfFipePlus();
   });
   btnRevenda.addEventListener('click', estimarRevenda);

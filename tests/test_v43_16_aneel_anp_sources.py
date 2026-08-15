@@ -12,12 +12,13 @@ class V4316AneelAnpSourceBadgesTests(unittest.TestCase):
         self.assertTrue((self.root / "static" / "img" / "fontes" / "aneel.png").is_file())
         self.assertTrue((self.root / "static" / "img" / "fontes" / "anp.png").is_file())
 
-    def test_source_logos_are_subtle_and_not_external_links(self):
+    def test_source_logos_are_subtle_and_anp_links_to_official_source(self):
         self.assertGreaterEqual(self.template.count("img/fontes/aneel.png"), 2)
         self.assertGreaterEqual(self.template.count("img/fontes/anp.png"), 4)
         self.assertIn(".plugve-source-logo{", self.template)
         self.assertNotIn('href="https://www.gov.br/aneel', self.template.lower())
-        self.assertNotIn('href="https://www.gov.br/anp', self.template.lower())
+        self.assertGreaterEqual(self.template.lower().count('href="https://www.gov.br/anp'), 4)
+        self.assertGreaterEqual(self.template.count('target="_blank" rel="noopener noreferrer"'), 4)
 
     def test_aneel_logo_reuses_tariff_breakdown(self):
         self.assertIn("plugve-aneel-tooltip-trigger", self.template)

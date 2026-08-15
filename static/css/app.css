@@ -1539,6 +1539,11 @@ textarea { resize: vertical; }
     margin-bottom: 4px;
   }
 
+  .pdf-report-header span {
+    display: block;
+    line-height: 1.35;
+  }
+
   .result-top-grid,
   .auditoria-final {
     display: block !important;
@@ -2227,6 +2232,18 @@ textarea { resize: vertical; }
 .professional-report .report-section p {
   margin: 0 0 10px;
   color: var(--text-strong);
+}
+
+.professional-report .report-vehicle-code {
+  margin: -2px 0 10px;
+  font-size: 0.78rem;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.professional-report .report-vehicle-code strong {
+  color: #475569;
+  font-weight: 800;
 }
 
 .professional-report .report-kicker {

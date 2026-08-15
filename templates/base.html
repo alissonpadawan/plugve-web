@@ -9,7 +9,7 @@
   <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/favicon-180.png') }}">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}?v=20260705_v35_marcadores_unificados">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}?v=20260815_v50_13_pdfs_ids">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/institucional.css') }}?v=20260726_v43_14">
   {% block head_extra %}{% endblock %}
 </head>
@@ -24,6 +24,7 @@
         <a href="/simular" class="{% if request.path.startswith('/simular') %}active{% endif %}">Simular TCO</a>
         <a href="/depreciacao" class="{% if request.path.startswith('/depreciacao') %}active{% endif %}">Depreciação</a>
         <a href="/consulta-fipe" class="{% if request.path.startswith('/consulta-fipe') or request.path == '/fipe' %}active{% endif %}">Consulta Fipe+</a>
+        <a href="/resultado" class="{% if request.path.startswith('/resultado') %}active{% endif %}">Consultar resultado</a>
         <a href="/sobre" class="{% if request.path.startswith('/sobre') %}active{% endif %}">Sobre</a>
         <a href="/contato" class="{% if request.path.startswith('/contato') %}active{% endif %}">Contato</a>
       </nav>

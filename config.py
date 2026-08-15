@@ -26,6 +26,7 @@ def _resolve_secret_key() -> str:
 
 
 class Config:
+    CURVE_VERSION = "V50.13"
     SECRET_KEY = _resolve_secret_key()
 
     BASE_DIR = Path(__file__).resolve().parent
@@ -38,6 +39,7 @@ class Config:
     PERSISTENT_DIR = Path(os.environ.get("PLUGVE_PERSISTENT_DIR", str(_DEFAULT_PERSISTENT_DIR)))
     ARQUIVO_SOBRE_ENGAJAMENTO = PERSISTENT_DIR / "institucional" / "sobre_engagement.sqlite3"
     ARQUIVO_USO_SITE = PERSISTENT_DIR / "institucional" / "site_usage.sqlite3"
+    ARQUIVO_RESULTADOS = PERSISTENT_DIR / "institucional" / "result_snapshots.sqlite3"
     ARQUIVO_MENSAGENS_CONTATO = PERSISTENT_DIR / "institucional" / "contact_messages.sqlite3"
 
     PERMANENT_SESSION_LIFETIME = timedelta(days=365)
