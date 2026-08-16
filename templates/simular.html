@@ -710,8 +710,8 @@
     .plugve-energy-card:hover{border-color:#60a5fa;box-shadow:0 16px 36px rgba(15,23,42,.10);transform:none}
     .plugve-energy-card #status_energia{position:absolute!important;width:1px!important;height:1px!important;overflow:hidden!important;clip:rect(0 0 0 0)!important;white-space:nowrap!important}
     .plugve-energy-row span:first-child{color:#1d4ed8}
-    .plugve-energy-row span:last-child{color:#1d4ed8;text-align:right}
-    .plugve-energy-row #energia_compact_right{display:none!important}
+    .plugve-energy-row span:last-child{color:#991b1b;text-align:right}
+    .plugve-energy-row #energia_compact_right.hidden{display:none!important}
     .plugve-energy-row .plugve-energy-tooltip{max-width:100%}
     .plugve-energy-row .plugve-energy-tooltip-trigger{display:inline-flex;align-items:center;justify-content:flex-end;gap:.25rem;max-width:100%;white-space:nowrap}
     .plugve-energy-row .plugve-energy-tooltip-panel{left:auto;right:0;text-align:left}
@@ -798,7 +798,8 @@
     .tco-pdf-meta{text-align:right;color:#64748b;font-size:10px;line-height:1.35}
     .tco-pdf-kicker{display:inline-block;font-size:10px;text-transform:uppercase;letter-spacing:.06em;font-weight:900;color:#047857;margin-bottom:6px}
     .tco-pdf-title{font-size:28px;line-height:1.04;font-weight:900;color:#10202b;margin:0 0 6px;letter-spacing:-.04em}
-    .tco-pdf-subtitle{font-size:12px;color:#475569;margin:0;max-width:560px}
+    .tco-pdf-subtitle{font-size:12px;color:#334155;margin:0;max-width:660px;font-weight:800;line-height:1.35}
+    .tco-pdf-subtitle .tco-pdf-vs{color:#047857;font-weight:900;padding:0 4px}
     .tco-pdf-section-title{font-size:18px;line-height:1.15;font-weight:900;color:#10202b;margin:0 0 12px;letter-spacing:-.03em}
     .tco-pdf-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:14px 0}
     .tco-pdf-grid.three{grid-template-columns:repeat(3,minmax(0,1fr))}
@@ -1474,12 +1475,12 @@
                   </div>
                 </div>
                 <div class="plugve-phev-mini-bar" aria-hidden="true">
-                  <div class="plugve-phev-mini-electric" style="width:100%"></div>
-                  <div class="plugve-phev-mini-fuel" style="width:0%"></div>
+                  <div id="energia_bar_eletrico" class="plugve-phev-mini-electric" style="width:100%"></div>
+                  <div id="energia_bar_combustivel" class="plugve-phev-mini-fuel" style="width:0%"></div>
                 </div>
                 <div class="plugve-phev-compact-row plugve-energy-row">
-                  <span>100% elétrico</span>
-                  <span id="energia_compact_right" class="hidden" aria-hidden="true"></span>
+                  <span id="energia_compact_left">100% elétrico</span>
+                  <span id="energia_compact_right" class="hidden" aria-hidden="true">0% combustível</span>
                 </div>
                 <p id="status_energia" class="text-[11px] text-gray-500 mt-1">
                   Selecione UF e município para buscar a tarifa da ANEEL.
@@ -2173,7 +2174,9 @@
             </header>
             <span class="tco-pdf-kicker">Resumo executivo</span>
             <h1 class="tco-pdf-title">Relatório de Custo Total de Propriedade</h1>
-            <p class="tco-pdf-subtitle">Comparação entre alternativas veiculares considerando aquisição, energia/combustível, manutenção, impostos, seguro, financiamento, depreciação, revenda e emissões operacionais estimadas.</p>
+            {% if comp.detalhes and comp.detalhes|length >= 2 %}
+              <p class="tco-pdf-subtitle">{{ comp.detalhes[0].nome }} <span class="tco-pdf-vs">×</span> {{ comp.detalhes[1].nome }}</p>
+            {% endif %}
 
             {% if comp.detalhes %}
               <div class="tco-pdf-grid">
@@ -2659,9 +2662,29 @@
       atualizarLogosAneelPlugVE();
     }
 
+    function renderizarParticipacaoEnergiaPhevPlugVE(eletricoPctOverride = null) {
+      const phevAtivo = typeof ehPhevSelecionadoTCO === "function" && ehPhevSelecionadoTCO();
+      const valorPersistido = Number(document.getElementById("phev_percent_eletrico")?.value || 100);
+      const eletricoPct = phevAtivo
+        ? Math.max(0, Math.min(100, Number(eletricoPctOverride ?? valorPersistido)))
+        : 100;
+      const combustPct = 100 - eletricoPct;
+      const barEletrico = document.getElementById("energia_bar_eletrico");
+      const barCombustivel = document.getElementById("energia_bar_combustivel");
+      const esquerda = document.getElementById("energia_compact_left");
+      const direita = document.getElementById("energia_compact_right");
+      if (barEletrico) barEletrico.style.width = `${eletricoPct}%`;
+      if (barCombustivel) barCombustivel.style.width = `${combustPct}%`;
+      if (esquerda) esquerda.textContent = `${eletricoPct}% elétrico`;
+      if (direita) {
+        direita.textContent = `${combustPct}% combustível`;
+        direita.classList.toggle("hidden", !phevAtivo);
+        direita.setAttribute("aria-hidden", phevAtivo ? "false" : "true");
+      }
+    }
+
     function atualizarCardEnergiaEletricaPlugVE() {
-      const destino = document.getElementById("energia_compact_right");
-      if (destino) destino.textContent = "";
+      renderizarParticipacaoEnergiaPhevPlugVE();
       atualizarPaineisAneelPlugVE();
       if (typeof renderizarCardPhevTCO === "function") renderizarCardPhevTCO();
     }
@@ -6311,6 +6334,7 @@
       const btnSalvar = document.getElementById("btn_salvar_phev_tco");
 
       if (slider) slider.style.setProperty("--phev-electric-pct", `${eletricoPct}%`);
+      renderizarParticipacaoEnergiaPhevPlugVE(eletricoPct);
       if (pctEle) pctEle.textContent = `${eletricoPct}% elétrico`;
       if (pctComb) pctComb.textContent = `${combustPct}% combustível`;
 
@@ -6350,7 +6374,10 @@
       if (!card) return;
       const ativo = ehPhevSelecionadoTCO();
       card.classList.toggle("hidden", !ativo);
-      if (!ativo) return;
+      if (!ativo) {
+        renderizarParticipacaoEnergiaPhevPlugVE();
+        return;
+      }
 
       const eletricoPct = Math.max(0, Math.min(100, Number(document.getElementById("phev_percent_eletrico")?.value || 100)));
       const combustPct = 100 - eletricoPct;
@@ -6369,6 +6396,7 @@
       if (PBEV_DEBUG_TCO.ve?.autopreencher === true && PBEV_DEBUG_TCO.ve?.nivel_match === "alto") {
         pbevRenderizarSeloComprovacaoTCO("ve", PBEV_DEBUG_TCO.ve);
       }
+      renderizarParticipacaoEnergiaPhevPlugVE();
     }
 
     function abrirModalPhevTCO() {

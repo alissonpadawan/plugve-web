@@ -31,6 +31,9 @@ from services.sobre_engagement_service import (
 from services.site_usage_service import get_site_usage_service
 from services.result_snapshot_service import get_result_snapshot_service
 from services.site_usage_tracking import record_current_usage_event
+from services.tipo_veiculo_service import (
+    classificar_tipo_veiculo, TIPO_EV_PURO, TIPO_PHEV, TIPO_HEV, TIPO_COMBUSTAO,
+)
 from services.contact_email_service import (
     ContactEmailConfigurationError,
     ContactEmailDeliveryError,
@@ -2234,10 +2237,37 @@ def auditoria_tco():
     return render_template("auditoria_tco.html", auditoria=auditoria)
 
 
+def _tecnologia_telemetria_tco(form, prefixo: str, fallback: str = "") -> str:
+    """Classifica somente a dimensão analítica de propulsão da telemetria.
+
+    Não participa do TCO. Para o lado VE aproveita o tipo canônico já
+    selecionado pela interface (BEV/PHEV); para os demais lados usa o mesmo
+    classificador tecnológico da plataforma para distinguir HEV de ICEV.
+    """
+    if prefixo == "ve":
+        canonico = str(form.get("tipo_veiculo_ve") or "").strip().lower()
+        if canonico in {"bev", "phev"}:
+            return canonico
+    tipo = classificar_tipo_veiculo(
+        modelo=form.get(f"modelo_{prefixo}") or "",
+        combustivel=form.get(f"combustivel_{prefixo}") or "",
+        codigo_ano=form.get(f"{prefixo}_ano_codigo") or form.get(f"ano_modelo_{prefixo}") or "",
+        marca=form.get(f"{prefixo}_marca_nome") or "",
+    )
+    mapa = {
+        TIPO_EV_PURO: "bev",
+        TIPO_PHEV: "phev",
+        TIPO_HEV: "hev",
+        TIPO_COMBUSTAO: "icev",
+    }
+    return mapa.get(tipo, fallback or "")
+
+
 def _veiculo_telemetria_tco(form, prefixo: str, role: str, tecnologia: str = "") -> dict:
+    tecnologia_analitica = _tecnologia_telemetria_tco(form, prefixo, tecnologia)
     return {
         "role": role,
-        "tipo": tecnologia or prefixo,
+        "tipo": tecnologia_analitica or prefixo,
         "codigo_marca": form.get(f"{prefixo}_marca_codigo") or "",
         "codigo_modelo": form.get(f"{prefixo}_modelo_codigo") or "",
         "codigo_ano": form.get(f"{prefixo}_ano_codigo") or "",
@@ -2246,7 +2276,7 @@ def _veiculo_telemetria_tco(form, prefixo: str, role: str, tecnologia: str = "")
         "modelo": form.get(f"modelo_{prefixo}") or "",
         "ano_modelo": form.get(f"ano_modelo_{prefixo}") or form.get(f"{prefixo}_ano_codigo") or "",
         "combustivel": form.get(f"combustivel_{prefixo}") or "",
-        "tecnologia": tecnologia or "",
+        "tecnologia": tecnologia_analitica,
     }
 
 

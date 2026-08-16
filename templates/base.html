@@ -9,7 +9,7 @@
   <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/favicon-180.png') }}">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}?v=20260815_v50_13_pdfs_ids">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}?v=20260815_v50_14_ui">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/institucional.css') }}?v=20260726_v43_14">
   {% block head_extra %}{% endblock %}
 </head>
@@ -24,12 +24,26 @@
         <a href="/simular" class="{% if request.path.startswith('/simular') %}active{% endif %}">Simular TCO</a>
         <a href="/depreciacao" class="{% if request.path.startswith('/depreciacao') %}active{% endif %}">Depreciação</a>
         <a href="/consulta-fipe" class="{% if request.path.startswith('/consulta-fipe') or request.path == '/fipe' %}active{% endif %}">Consulta Fipe+</a>
-        <a href="/resultado" class="{% if request.path.startswith('/resultado') %}active{% endif %}">Consultar resultado</a>
+        <button type="button" id="result_search_trigger" class="result-search-trigger{% if request.path.startswith('/resultado') %} active{% endif %}" aria-label="Consultar resultado por código" title="Consultar resultado">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"></circle><path d="m16 16 4 4"></path></svg>
+        </button>
         <a href="/sobre" class="{% if request.path.startswith('/sobre') %}active{% endif %}">Sobre</a>
         <a href="/contato" class="{% if request.path.startswith('/contato') %}active{% endif %}">Contato</a>
       </nav>
     </div>
   </header>
+
+  <div id="result_search_overlay" class="result-search-overlay" hidden aria-hidden="true">
+    <section class="result-search-dialog" role="dialog" aria-modal="true" aria-labelledby="result_search_label">
+      <button type="button" id="result_search_close" class="result-search-close" aria-label="Fechar busca">×</button>
+      <label id="result_search_label" class="sr-only" for="result_search_input">Digite o código</label>
+      <div class="result-search-field-wrap">
+        <svg class="result-search-field-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"></circle><path d="m16 16 4 4"></path></svg>
+        <input id="result_search_input" class="result-search-input" type="text" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="21" placeholder="Digite o código" aria-describedby="result_search_error">
+      </div>
+      <p id="result_search_error" class="result-search-error" role="alert" aria-live="polite"></p>
+    </section>
+  </div>
 
   <main class="container page site-main">
     {% block content %}{% endblock %}
@@ -75,5 +89,6 @@
   <script src="{{ url_for('static', filename='js/curve_marcadores_curvas.js') }}?v=20260705_v35_marcadores_unificados"></script>
   {% block scripts %}{% endblock %}
   <script src="{{ url_for('static', filename='js/fipe_combobox.js') }}?v=20260724_v42_08"></script>
+  <script src="{{ url_for('static', filename='js/result_search_modal.js') }}?v=20260815_v50_14"></script>
 </body>
 </html>

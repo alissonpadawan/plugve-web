@@ -28,7 +28,7 @@ class V4402AneelModalAndEvCardTests(unittest.TestCase):
             self.template,
         )
 
-    def test_ev_card_bottom_row_only_shows_100_percent_electric(self):
+    def test_ev_energy_summary_is_100_percent_for_bev_and_syncs_when_phev(self):
         row = re.search(
             r'<div class="plugve-phev-compact-row plugve-energy-row">(.*?)</div>',
             self.template,
@@ -38,13 +38,11 @@ class V4402AneelModalAndEvCardTests(unittest.TestCase):
         self.assertIn("100% elétrico", row.group(1))
         self.assertIn('id="energia_compact_right" class="hidden"', row.group(1))
         self.assertNotIn("Tarifa ANEEL", row.group(1))
-        function = re.search(
-            r'function atualizarCardEnergiaEletricaPlugVE\(\) \{.*?\n    \}',
-            self.template,
-            re.S,
-        )
-        self.assertIsNotNone(function)
-        self.assertIn('destino.textContent = "";', function.group(0))
+        self.assertIn('function renderizarParticipacaoEnergiaPhevPlugVE(eletricoPctOverride = null)', self.template)
+        self.assertIn('const eletricoPct = phevAtivo', self.template)
+        self.assertIn('barEletrico.style.width = `${eletricoPct}%`', self.template)
+        self.assertIn('barCombustivel.style.width = `${combustPct}%`', self.template)
+        self.assertIn('direita.classList.toggle("hidden", !phevAtivo)', self.template)
 
 
 if __name__ == "__main__":

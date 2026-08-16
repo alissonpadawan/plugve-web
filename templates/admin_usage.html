@@ -6,7 +6,7 @@
   <meta name="robots" content="noindex,nofollow">
   <title>Administração de uso | CurVE</title>
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/favicon.png') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin_usage.css') }}?v=20260815_v50_13">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin_usage.css') }}?v=20260815_v50_17">
 </head>
 <body>
   <section id="admin_auth_panel" class="admin-auth-shell">
@@ -46,7 +46,7 @@
     <main class="admin-main">
       <section class="admin-page-heading">
         <div>
-          <span class="admin-eyebrow">Telemetria V50.13</span>
+          <span class="admin-eyebrow">Inteligência V50.17</span>
           <h1>Uso da plataforma CurVE</h1>
           <p>Acompanhe visitantes pseudônimos, sessões, consultas, comparações e tendências de uso.</p>
         </div>
@@ -68,14 +68,72 @@
         </div>
       </section>
 
+      <section class="admin-market-filter-card" aria-label="Filtros de inteligência de mercado">
+        <div class="admin-market-filter-head">
+          <div>
+            <span class="admin-eyebrow">Inteligência de mercado</span>
+            <h2>Filtros combinados</h2>
+            <p>Os filtros abaixo recortam indicadores, rankings, visitantes e atividades ao mesmo tempo.</p>
+          </div>
+          <span id="admin_active_filters_text" class="admin-filter-status">Sem filtros adicionais</span>
+        </div>
+        <div class="admin-market-filter-grid">
+          <label>Atividade
+            <select id="admin_filter_activity">
+              <option value="">Todas</option>
+              <option value="pesquisas">Pesquisas concluídas</option>
+              <option value="tco">Simulação TCO</option>
+              <option value="depreciacao">Depreciação</option>
+              <option value="fipe_plus">Fipe+</option>
+              <option value="pdf">PDF exportado</option>
+              <option value="resultado">Resultado histórico</option>
+            </select>
+          </label>
+          <label>Veículo / Código FIPE
+            <input id="admin_filter_vehicle" type="search" placeholder="Ex.: Dolphin ou 096001-2">
+          </label>
+          <label>Tecnologia
+            <select id="admin_filter_technology">
+              <option value="">Todas</option>
+              <option value="bev">BEV</option>
+              <option value="phev">PHEV</option>
+              <option value="hev">HEV / MHEV</option>
+              <option value="icev">ICEV</option>
+              <option value="ve">VE legado não detalhado</option>
+            </select>
+          </label>
+          <label>Marca
+            <input id="admin_filter_brand" type="search" placeholder="Ex.: BYD, Toyota, GWM">
+          </label>
+          <label>Cidade/UF do acesso
+            <input id="admin_filter_access" type="search" placeholder="Ex.: Goiânia ou GO">
+          </label>
+          <label>Local usado na simulação
+            <input id="admin_filter_simulation" type="search" placeholder="Ex.: Brasília ou DF">
+          </label>
+          <label>Visitante / dispositivo
+            <input id="admin_filter_environment" type="search" placeholder="ID, hash, Chrome, Android...">
+          </label>
+          <label>Código S / D / F
+            <input id="admin_filter_result_code" type="search" placeholder="S-20260815-..." autocomplete="off" spellcheck="false">
+          </label>
+        </div>
+        <div class="admin-market-filter-actions">
+          <button id="admin_apply_market_filters" type="button" class="admin-button-primary">Aplicar filtros</button>
+          <button id="admin_clear_market_filters" type="button" class="admin-button-secondary">Limpar filtros</button>
+        </div>
+      </section>
+
       <section class="admin-metrics-grid" aria-label="Indicadores principais">
-        <article class="admin-metric-card"><span>Visitantes únicos</span><strong id="metric_visitors">0</strong><small>no período</small></article>
-        <article class="admin-metric-card"><span>Sessões</span><strong id="metric_sessions">0</strong><small>no período</small></article>
+        <article class="admin-metric-card"><span>Visitantes únicos</span><strong id="metric_visitors">0</strong><small>no recorte</small></article>
+        <article class="admin-metric-card"><span>Pesquisas</span><strong id="metric_researches">0</strong><small>TCO + Depreciação + Fipe+</small></article>
+        <article class="admin-metric-card"><span>Sessões</span><strong id="metric_sessions">0</strong><small>no recorte</small></article>
         <article class="admin-metric-card"><span>Visualizações</span><strong id="metric_page_views">0</strong><small>páginas registradas</small></article>
         <article class="admin-metric-card"><span>Simulações TCO</span><strong id="metric_tco">0</strong><small>concluídas</small></article>
         <article class="admin-metric-card"><span>Depreciação</span><strong id="metric_depreciacao">0</strong><small>consultas concluídas</small></article>
         <article class="admin-metric-card"><span>Fipe+</span><strong id="metric_fipe">0</strong><small>consultas concluídas</small></article>
         <article class="admin-metric-card"><span>PDFs</span><strong id="metric_pdf">0</strong><small>exportações registradas</small></article>
+        <article class="admin-metric-card"><span>Resultados reabertos</span><strong id="metric_result_opens">0</strong><small>consultas históricas S/D/F</small></article>
       </section>
 
       <section class="admin-panel admin-trend-panel">
@@ -95,13 +153,7 @@
       <section class="admin-two-columns">
         <article class="admin-panel">
           <div class="admin-panel-head compact">
-            <div><span class="admin-eyebrow">Ranking</span><h2>Veículos mais consultados</h2></div>
-            <select id="admin_vehicle_module_filter" aria-label="Filtrar veículos por módulo">
-              <option value="all">Todos</option>
-              <option value="tco">TCO</option>
-              <option value="depreciacao">Depreciação</option>
-              <option value="fipe_plus">Fipe+</option>
-            </select>
+            <div><span class="admin-eyebrow">Ranking</span><h2>Veículos mais pesquisados</h2><p class="admin-panel-help">Pesquisas concluídas e visitantes únicos no recorte atual.</p></div>
           </div>
           <div id="admin_top_vehicles" class="admin-ranking-list"></div>
         </article>
@@ -127,22 +179,34 @@
         </article>
       </section>
 
-      <section class="admin-panel">
-        <div class="admin-panel-head compact">
-          <div>
-            <span class="admin-eyebrow">Depreciação</span>
-            <h2>Curva própria × similaridade</h2>
-            <p class="admin-panel-help">Classificação da curva utilizada nas consultas de Depreciação. Eventos antigos sem metadado explícito permanecem identificados como legado.</p>
+      <section class="admin-two-columns">
+        <article class="admin-panel">
+          <div class="admin-panel-head compact">
+            <div>
+              <span class="admin-eyebrow">Visitantes / dispositivos</span>
+              <h2>Mais ativos</h2>
+              <p class="admin-panel-help">Ordenado por pesquisas relevantes, preservando identificação pseudônima.</p>
+            </div>
           </div>
-        </div>
-        <div id="admin_depreciation_curve_types" class="admin-ranking-list small"></div>
+          <div id="admin_top_active_visitors" class="admin-ranking-list small"></div>
+        </article>
+        <article class="admin-panel">
+          <div class="admin-panel-head compact">
+            <div>
+              <span class="admin-eyebrow">Depreciação</span>
+              <h2>Curva própria × similaridade</h2>
+              <p class="admin-panel-help">Classificação das consultas de Depreciação dentro do mesmo recorte de filtros.</p>
+            </div>
+          </div>
+          <div id="admin_depreciation_curve_types" class="admin-ranking-list small"></div>
+        </article>
       </section>
 
       <section class="admin-panel">
         <div class="admin-panel-head compact">
           <div>
             <span class="admin-eyebrow">Origem aproximada</span>
-            <h2>Localização dos acessos</h2>
+            <h2>Cidades/UFs com mais atividade</h2>
             <p class="admin-panel-help">Disponível somente quando a infraestrutura de hospedagem fornece cidade/UF aproximadas.</p>
           </div>
         </div>
@@ -151,13 +215,13 @@
 
       <section class="admin-panel">
         <div class="admin-panel-head">
-          <div><span class="admin-eyebrow">Visitantes</span><h2>Quem entrou no site</h2></div>
+          <div><span class="admin-eyebrow">Visitantes</span><h2>Visitantes no recorte atual</h2></div>
           <div class="admin-table-tools">
             <input id="admin_visitor_search" type="search" placeholder="Buscar visitante, cidade, UF...">
             <span id="admin_visitors_total" class="admin-table-count">0 visitantes</span>
           </div>
         </div>
-        <div class="admin-table-wrap">
+        <div class="admin-table-wrap admin-mobile-cards">
           <table class="admin-table">
             <thead><tr><th>Visitante</th><th>Local aproximado</th><th>Sessões</th><th>Eventos</th><th>Última atividade</th><th>Ambiente</th></tr></thead>
             <tbody id="admin_visitors_body"></tbody>
@@ -166,24 +230,33 @@
         <button id="admin_visitors_more" type="button" class="admin-load-more hidden">Carregar mais visitantes</button>
       </section>
 
-      <section class="admin-panel">
+      <section class="admin-panel" id="admin_activities_panel">
         <div class="admin-panel-head">
           <div>
-            <span class="admin-eyebrow">Linha do tempo</span>
+            <span class="admin-eyebrow">Atividades / Pesquisas</span>
             <h2 id="admin_events_title">Últimas atividades</h2>
+            <p class="admin-panel-help">Lista cronológica das ações relevantes dentro dos filtros aplicados. Clique em uma linha para ver os detalhes.</p>
           </div>
           <div class="admin-table-tools">
-            <select id="admin_event_module_filter" aria-label="Filtrar atividades por módulo">
-              <option value="">Todos os módulos</option>
-              <option value="tco">TCO</option>
-              <option value="depreciacao">Depreciação</option>
-              <option value="fipe_plus">Fipe+</option>
-              <option value="home">Início</option>
-            </select>
-            <button id="admin_clear_visitor_filter" type="button" class="admin-button-secondary hidden">Limpar visitante</button>
+            <button id="admin_clear_visitor_filter" type="button" class="admin-button-secondary hidden">Limpar visitante selecionado</button>
           </div>
         </div>
-        <div id="admin_events_feed" class="admin-events-feed"></div>
+        <div id="admin_events_feed" class="admin-table-wrap admin-activities-wrap admin-mobile-cards">
+          <table class="admin-table admin-activities-table">
+            <thead>
+              <tr>
+                <th>Data/hora</th>
+                <th>Visitante</th>
+                <th>Local</th>
+                <th>Atividade</th>
+                <th>Resultado</th>
+                <th>Pesquisa / veículo</th>
+              </tr>
+            </thead>
+            <tbody id="admin_activities_body"></tbody>
+          </table>
+          <div id="admin_activities_empty" class="admin-empty hidden">Nenhuma atividade encontrada neste período.</div>
+        </div>
         <button id="admin_events_more" type="button" class="admin-load-more hidden">Carregar mais atividades</button>
       </section>
 
@@ -193,6 +266,20 @@
     </main>
   </div>
 
-  <script src="{{ url_for('static', filename='js/admin_usage.js') }}?v=20260815_v50_13"></script>
+  <div id="admin_activity_modal" class="admin-modal hidden" aria-hidden="true">
+    <button type="button" class="admin-modal-backdrop" id="admin_activity_modal_backdrop" aria-label="Fechar detalhes"></button>
+    <section class="admin-modal-card" role="dialog" aria-modal="true" aria-labelledby="admin_activity_modal_title">
+      <div class="admin-modal-head">
+        <div>
+          <span class="admin-eyebrow">Detalhes da atividade</span>
+          <h2 id="admin_activity_modal_title">Atividade</h2>
+        </div>
+        <button type="button" id="admin_activity_modal_close" class="admin-modal-close" aria-label="Fechar">×</button>
+      </div>
+      <div id="admin_activity_modal_body" class="admin-modal-body"></div>
+    </section>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/admin_usage.js') }}?v=20260815_v50_17"></script>
 </body>
 </html>

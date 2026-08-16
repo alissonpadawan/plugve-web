@@ -8,7 +8,7 @@ def read(rel: str) -> str:
 
 
 def test_platform_version_is_v50_13():
-    assert 'CURVE_VERSION = "V50.13"' in read("config.py")
+    assert 'CURVE_VERSION = "V50.17"' in read("config.py")
 
 
 def test_tco_pdf_contains_original_result_identity_and_filename():
@@ -47,12 +47,12 @@ def test_admin_timeline_exposes_result_code_as_historical_snapshot_link():
     js = read("static/js/admin_usage.js")
     html = read("templates/admin_usage.html")
     css = read("static/css/admin_usage.css")
-    assert '"result_code": str(metadata.get("resultado_codigo") or "").strip().upper()' in service
+    assert '"result_code": stored_result_code or str(metadata.get("resultado_codigo") or "").strip().upper()' in service
     assert "event?.result_code || event?.metadata?.resultado_codigo" in js
     assert 'href="/resultado/${encodeURIComponent(code)}"' in js
     assert "admin-result-link" in js
     assert ".admin-result-link" in css
-    assert "Telemetria V50.13" in html
+    assert "Inteligência V50.17" in html
 
 
 def test_admin_only_links_codes_in_public_sdf_format():

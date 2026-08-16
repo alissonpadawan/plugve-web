@@ -171,3 +171,63 @@ def build_result_history_view(record: dict[str, Any]) -> dict[str, Any]:
         "payload": payload,
         "module_view": module_view,
     }
+
+
+def build_result_admin_summary(record: dict[str, Any]) -> dict[str, Any]:
+    """Resumo compacto do snapshot para o modal administrativo.
+
+    Deriva exclusivamente do snapshot imutável já persistido. Não consulta
+    fontes externas e não recalcula qualquer valor.
+    """
+    view = build_result_history_view(record)
+    result_type = view.get("result_type") or ""
+    mv = view.get("module_view") if isinstance(view.get("module_view"), dict) else {}
+    summary: dict[str, Any] = {
+        "code": view.get("code") or "",
+        "result_type": result_type,
+        "result_label": view.get("result_label") or "Resultado CurVE",
+        "created_at_display": view.get("created_at_display") or "",
+        "platform_version": view.get("platform_version") or "",
+        "payload_sha256_short": view.get("payload_sha256_short") or "",
+    }
+
+    if result_type == "S":
+        comparisons = []
+        for comparison in (mv.get("comparisons") or [])[:3]:
+            if not isinstance(comparison, dict):
+                continue
+            details = []
+            for item in (comparison.get("detalhes") or [])[:3]:
+                if not isinstance(item, dict):
+                    continue
+                details.append({
+                    "nome": str(item.get("nome") or ""),
+                    "codigo_fipe": str(item.get("codigo_fipe") or ""),
+                    "tco_final": str(item.get("tco_final") or ""),
+                    "custo_km": str(item.get("custo_km") or ""),
+                    "preco_inicial": str(item.get("preco_inicial") or ""),
+                    "valor_revenda": str(item.get("valor_revenda") or ""),
+                })
+            comparisons.append({
+                "titulo": str(comparison.get("titulo") or "Comparação"),
+                "detalhes": details,
+            })
+        summary["comparisons"] = comparisons
+        summary["vehicles"] = [
+            {
+                "role": str(v.get("role") or ""),
+                "modelo": str(v.get("modelo") or ""),
+                "marca": str(v.get("marca") or ""),
+                "codigo_fipe": str(v.get("codigo_fipe") or ""),
+                "ano_modelo": str(v.get("ano_modelo") or ""),
+            }
+            for v in (mv.get("vehicles") or [])[:5]
+            if isinstance(v, dict)
+        ]
+    elif result_type in {"D", "F"}:
+        summary["fields"] = [
+            {"label": str(item.get("label") or ""), "value": str(item.get("value") or "")}
+            for item in (mv.get("fields") or [])[:16]
+            if isinstance(item, dict)
+        ]
+    return summary

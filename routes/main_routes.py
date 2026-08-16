@@ -9,6 +9,7 @@ from services.result_history_service import (
     normalize_result_code,
 )
 from services.result_snapshot_service import ResultSnapshotError, get_result_snapshot_service
+from services.site_usage_tracking import record_current_usage_event
 
 main_bp = Blueprint("main", __name__)
 
@@ -76,6 +77,19 @@ def resultado_historico(codigo: str):
         ), 404
 
     view = build_result_history_view(stored)
+    try:
+        record_current_usage_event(
+            event_type="interaction",
+            module="resultado",
+            action="historical_result_opened",
+            metadata={
+                "resultado_codigo": codigo,
+                "resultado_tipo": str(stored.get("result_type") or ""),
+                "resultado_modulo": str(stored.get("module") or ""),
+            },
+        )
+    except Exception as analytics_error:
+        current_app.logger.debug("Telemetria de resultado histórico ignorada: %s", analytics_error)
     response = make_response(render_template("resultado_historico.html", resultado=view))
     response.headers["Cache-Control"] = "private, no-store, max-age=0"
     response.headers["X-Robots-Tag"] = "noindex, nofollow"
