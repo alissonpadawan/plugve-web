@@ -7,7 +7,7 @@ def read(rel: str) -> str:
 
 
 def test_platform_version_is_v50_14():
-    assert 'CURVE_VERSION = "V50.17"' in read("config.py")
+    assert 'CURVE_VERSION = "V50.18"' in read("config.py")
 
 
 def test_phev_profile_syncs_upper_energy_summary_live_and_persisted():
@@ -36,7 +36,7 @@ def test_tco_pdf_header_uses_vehicle_vs_vehicle_instead_of_explanatory_paragraph
 
 def test_public_result_lookup_is_search_icon_with_compact_overlay_not_text_nav_item():
     base = read("templates/base.html")
-    css = read("static/css/app.css")
+    css = read("static/css/result_search_modal.css")
     js = read("static/js/result_search_modal.js")
     assert 'id="result_search_trigger"' in base
     assert '>Consultar resultado</a>' not in base
@@ -54,6 +54,5 @@ def test_result_lookup_mask_formats_only_public_sdf_shape():
     assert 'const PREFIXES = new Set(["S", "D", "F"]);' in js
     assert 'const SUFFIX_CHARS = new Set("23456789ABCDEFGHJKLMNPQRSTUVWXYZ".split(""));' in js
     assert 'if (!prefix) return "";' in js
-    assert 'if (date.length < 8)' in js
-    assert 'if (date.length === 8) formatted += `-${suffix}`;' in js
+    assert 'date = (parts[1] || "").replace(/\\D/g, "").slice(0, 8);' in js
     assert 'return formatted.slice(0, 21);' in js

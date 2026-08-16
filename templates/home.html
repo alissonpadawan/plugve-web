@@ -10,6 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/result_search_modal.css') }}?v=20260816_v50_18">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/institucional.css') }}?v=20260725_v43_13">
   <style>
     :root{
@@ -83,9 +84,25 @@
         <a href="/consulta-fipe">Consulta Fipe+</a>
         <a href="/sobre">Sobre</a>
         <a href="/contato">Contato</a>
+        <button type="button" id="result_search_trigger" class="result-search-trigger{% if request.path.startswith('/resultado') %} active{% endif %}" aria-label="Consultar resultado por código" title="Consultar resultado">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"></circle><path d="m16 16 4 4"></path></svg>
+        </button>
       </nav>
     </div>
   </header>
+
+  <div id="result_search_overlay" class="result-search-overlay" hidden aria-hidden="true">
+    <section class="result-search-dialog" role="dialog" aria-modal="true" aria-labelledby="result_search_label">
+      <button type="button" id="result_search_close" class="result-search-close" aria-label="Fechar busca">×</button>
+      <label id="result_search_label" class="sr-only" for="result_search_input">Digite o código</label>
+      <div class="result-search-field-wrap">
+        <svg class="result-search-field-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"></circle><path d="m16 16 4 4"></path></svg>
+        <input id="result_search_input" class="result-search-input" type="text" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="21" placeholder="Digite o código" aria-describedby="result_search_error">
+      </div>
+      <p id="result_search_error" class="result-search-error" role="alert" aria-live="polite"></p>
+    </section>
+  </div>
+
   <main class="home-shell">
     <section class="home-hero" aria-label="CurVE — Decisão com dados">
       <img src="{{ url_for('static', filename='img/curve-home-main.webp') }}" alt="CurVE — Decisão com dados para mobilidade e análise veicular" width="1600" height="900" loading="eager" decoding="async" fetchpriority="high">
@@ -213,5 +230,6 @@
       window.addEventListener('resize', updateTopbar);
     })();
   </script>
+  <script src="{{ url_for('static', filename='js/result_search_modal.js') }}?v=20260816_v50_18"></script>
 </body>
 </html>
