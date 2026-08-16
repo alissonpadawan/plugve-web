@@ -3,7 +3,7 @@
 {% block title %}{{ resultado.code }} | CurVE{% endblock %}
 {% block head_extra %}
   <meta name="robots" content="noindex,nofollow">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/result_history.css') }}?v=20260815_v50_12">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/result_history.css') }}?v=20260816_v50_19">
 {% endblock %}
 
 {% block content %}
@@ -12,7 +12,7 @@
     <div>
       <span class="history-eyebrow">Resultado histórico · leitura imutável</span>
       <h1 id="history-result-title">{{ resultado.result_label }}</h1>
-      <p class="history-lead">Resultado originalmente gerado em <strong>{{ resultado.created_at_display }}</strong>. Nenhuma fonte atual foi consultada e nenhum cálculo foi refeito para abrir esta página.</p>
+      <p class="history-lead">Resultado originalmente gerado em <strong>{{ resultado.created_at_display }}</strong>.</p>
     </div>
     <div class="history-code-card" aria-label="Identificação do resultado">
       <span>Código do resultado</span>
@@ -21,10 +21,6 @@
     </div>
   </header>
 
-  <div class="history-message history-message-lock">
-    <strong>Snapshot preservado.</strong>
-    <span>Os valores abaixo são os mesmos armazenados no momento da geração. Mudanças posteriores em FIPE, inflação, tarifas, combustíveis, seguro ou metodologia não alteram este registro.</span>
-  </div>
 
   {% if resultado.result_type == 'S' %}
     {% set mv = resultado.module_view %}
@@ -179,33 +175,19 @@
 
   {% if resultado.module_view.input_items %}
     <details class="history-details history-section">
-      <summary>Parâmetros originais armazenados</summary>
+      <summary>Parâmetros da consulta</summary>
       <div class="history-table-wrap">
         <table class="history-table history-table-compact history-raw-table">
-          <thead><tr><th>Campo</th><th>Valor preservado</th></tr></thead>
+          <thead><tr><th>Parâmetro</th><th>Valor</th></tr></thead>
           <tbody>
             {% for item in resultado.module_view.input_items %}
-              <tr><th>{{ item.key }}</th><td>{{ item.value }}</td></tr>
+              <tr><th>{{ item.label }}</th><td>{{ item.value }}</td></tr>
             {% endfor %}
           </tbody>
         </table>
       </div>
     </details>
   {% endif %}
-
-  <details class="history-details history-section">
-    <summary>Integridade e dados técnicos do snapshot</summary>
-    <div class="history-integrity-grid">
-      <div><span>Versão da CurVE</span><strong>{{ resultado.platform_version }}</strong></div>
-      <div><span>Schema</span><strong>{{ resultado.schema_version }}</strong></div>
-      <div><span>SHA-256</span><code>{{ resultado.payload_sha256 }}</code></div>
-      <div><span>Tamanho do snapshot</span><strong>{{ resultado.payload_bytes }} bytes</strong></div>
-    </div>
-    <details class="history-raw-json">
-      <summary>Ver payload preservado</summary>
-      <pre>{{ resultado.payload | tojson(indent=2) }}</pre>
-    </details>
-  </details>
 
   <div class="history-actions">
     <a class="history-button history-button-primary" href="{{ url_for('main.consultar_resultado') }}">Consultar outro código</a>

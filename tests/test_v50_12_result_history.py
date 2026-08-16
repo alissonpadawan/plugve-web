@@ -117,13 +117,17 @@ def test_recovery_routes_are_snapshot_only_and_do_not_recalculate():
     assert "preco_energia" not in source
 
 
-def test_historical_template_is_read_only_has_no_runtime_data_fetch_and_exposes_integrity():
+def test_historical_template_is_read_only_and_hides_internal_snapshot_details():
     html = read("templates/resultado_historico.html")
     assert "Resultado histórico · leitura imutável" in html
-    assert "Nenhuma fonte atual foi consultada e nenhum cálculo foi refeito" in html
-    assert "resultado.payload_sha256" in html
-    assert "Parâmetros originais armazenados" in html
-    assert "Ver payload preservado" in html
+    assert "Resultado originalmente gerado em" in html
+    assert "Nenhuma fonte atual foi consultada e nenhum cálculo foi refeito" not in html
+    assert "Snapshot preservado" not in html
+    assert "resultado.payload_sha256" not in html
+    assert "Integridade e dados técnicos do snapshot" not in html
+    assert "Ver payload preservado" not in html
+    assert "Parâmetros da consulta" in html
+    assert "item.label" in html
     assert "Nova simulação" in html
     assert "fetch(" not in html
     assert "XMLHttpRequest" not in html
@@ -139,4 +143,4 @@ def test_platform_exposes_search_page_and_version_v50_12():
     assert ">Consultar resultado</a>" not in base
     assert 'action="{{ url_for(\'main.consultar_resultado\') }}"' in search
     assert "Resultado histórico, sem recálculo." in search
-    assert 'CURVE_VERSION = "V50.18"' in config
+    assert 'CURVE_VERSION = "V50.19"' in config

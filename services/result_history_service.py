@@ -60,15 +60,146 @@ def _format_percent(value: Any) -> str:
     return f"{number:.2f}%".replace(".", ",")
 
 
+_INPUT_LABELS = {
+    "anos": "Horizonte (anos)",
+    "km_ano": "Quilometragem anual (km)",
+    "estado_uf": "UF",
+    "municipio": "Município",
+    "tipo_comparacao": "Tipo de comparação",
+    "modelo_atual": "Veículo atual",
+    "modelo_ve": "Veículo VE",
+    "modelo_icev": "Veículo ICEV",
+    "codigo_fipe_atual": "Código FIPE do veículo atual",
+    "codigo_fipe_ve": "Código FIPE do VE",
+    "codigo_fipe_icev": "Código FIPE do ICEV",
+    "ano_modelo_atual": "Ano/modelo do veículo atual",
+    "ano_modelo_ve": "Ano/modelo do VE",
+    "ano_modelo_icev": "Ano/modelo do ICEV",
+    "preco_atual": "Valor do veículo atual",
+    "preco_ve": "Valor do VE",
+    "preco_icev": "Valor do ICEV",
+    "combustivel": "Preço do combustível",
+    "energia": "Preço da energia",
+    "aumento_combustivel": "Variação anual do combustível (%)",
+    "aumento_energia": "Variação anual da energia (%)",
+    "consumo_atual": "Consumo do veículo atual",
+    "consumo_ve": "Consumo do VE",
+    "consumo_icev": "Consumo do ICEV",
+    "combustivel_atual": "Combustível do veículo atual",
+    "combustivel_ve": "Combustível do VE",
+    "combustivel_icev": "Combustível do ICEV",
+    "depreciacao_atual": "Depreciação do veículo atual",
+    "depreciacao_ve": "Depreciação do VE",
+    "depreciacao_icev": "Depreciação do ICEV",
+    "ipva_atual": "IPVA do veículo atual",
+    "ipva_ve": "IPVA do VE",
+    "ipva_icev": "IPVA do ICEV",
+    "isencao_ipva_ve": "Isenção de IPVA do VE",
+    "manut_atual": "Manutenção do veículo atual",
+    "manut_ve": "Manutenção do VE",
+    "manut_icev": "Manutenção do ICEV",
+    "seguro_atual": "Seguro do veículo atual",
+    "seguro_ve": "Seguro do VE",
+    "seguro_icev": "Seguro do ICEV",
+    "phev_percent_eletrico": "Uso elétrico do PHEV (%)",
+    "phev_consumo_eletrico": "Consumo elétrico do PHEV (kWh/km)",
+    "phev_consumo_combustivel": "Consumo com combustível do PHEV (km/L)",
+    "phev_preco_combustivel": "Preço do combustível do PHEV (R$/L)",
+    "fuel_percent_etanol": "Uso de etanol no flex (%)",
+    "fuel_consumo_etanol": "Consumo com etanol (km/L)",
+    "fuel_consumo_gasolina": "Consumo com gasolina (km/L)",
+    "fuel_preco_etanol": "Preço do etanol (R$/L)",
+    "fuel_preco_gasolina": "Preço da gasolina (R$/L)",
+    "fuel_preco_diesel_s10": "Preço do diesel S10 (R$/L)",
+}
+
+_FINANCE_LABELS = {
+    "ativo": "Financiamento ativo",
+    "custos": "Custos do financiamento",
+    "entrada": "Entrada",
+    "entrada_pct": "Entrada (%)",
+    "juros_mensal": "Juros mensais",
+    "juros_total": "Juros totais",
+    "meses": "Prazo (meses)",
+    "parcela": "Parcela mensal",
+    "principal": "Valor financiado",
+    "total_pago": "Total pago",
+}
+
+_TECHNICAL_INPUT_PATTERNS = (
+    "_marca_codigo", "_modelo_codigo", "_ano_codigo",
+    "_editado_usuario", "_vehicle_key", "_prefixo_configurado",
+    "_configurado", "_perfil_obrigatorio",
+)
+
+def _is_public_input_key(key: str) -> bool:
+    if key.startswith("pbev_"):
+        return False
+    return not any(key.endswith(pattern) for pattern in _TECHNICAL_INPUT_PATTERNS)
+
+def _human_input_label(key: str) -> str:
+    if key in _INPUT_LABELS:
+        return _INPUT_LABELS[key]
+
+    for prefix, vehicle in (("fin_atual_", "Veículo atual"), ("fin_ve_", "VE"), ("fin_icev_", "ICEV")):
+        if key.startswith(prefix):
+            field = key[len(prefix):]
+            base = _FINANCE_LABELS.get(field, field.replace("_", " ").capitalize())
+            return f"{base} — {vehicle}"
+
+    for prefix, vehicle in (("seguro_atual_", "veículo atual"), ("seguro_ve_", "VE"), ("seguro_icev_", "ICEV")):
+        if key.startswith(prefix):
+            field = key[len(prefix):]
+            suffixes = {
+                "fonte": "Fonte do seguro",
+                "data_base": "Data-base do seguro",
+                "metodo": "Método do seguro",
+                "nivel": "Nível da estimativa de seguro",
+                "taxa": "Taxa do seguro",
+                "manual": "Seguro informado manualmente",
+            }
+            return f"{suffixes.get(field, field.replace('_', ' ').capitalize())} — {vehicle}"
+
+    return key.replace("_", " ").strip().capitalize()
+
+def _display_input_value(key: str, value: Any) -> str:
+    text = str(value).strip()
+    if not text:
+        return "—"
+
+    normalized = text.lower().replace(",", ".")
+    boolean_key = (
+        key.endswith("_ativo") or key.endswith("_manual") or
+        key.startswith("isencao_")
+    )
+    if boolean_key and normalized in {"0", "0.0", "false", "nao", "não"}:
+        return "Não"
+    if boolean_key and normalized in {"1", "1.0", "true", "sim"}:
+        return "Sim"
+
+    try:
+        if float(normalized) == 0:
+            return "—"
+    except (TypeError, ValueError):
+        pass
+    return text
+
 def _clean_items(mapping: dict[str, Any] | None) -> list[dict[str, str]]:
     source = mapping if isinstance(mapping, dict) else {}
     items: list[dict[str, str]] = []
     for key, value in sorted(source.items(), key=lambda item: str(item[0]).lower()):
+        key_text = str(key)
         if value in (None, ""):
             continue
         if isinstance(value, (dict, list, tuple)):
             continue
-        items.append({"key": str(key), "value": str(value)})
+        if not _is_public_input_key(key_text):
+            continue
+        items.append({
+            "key": key_text,
+            "label": _human_input_label(key_text),
+            "value": _display_input_value(key_text, value),
+        })
     return items
 
 
