@@ -35,13 +35,13 @@ class SeguroV23FechamentoTests(unittest.TestCase):
     def test_resultado_e_pdf_mostram_nao_considerado_sem_quebrar_snapshot_antigo(self):
         self.assertIn('item.seguro_considerado is defined and not item.seguro_considerado', self.template)
         self.assertIn('comp.detalhes[0].seguro_considerado is defined and not comp.detalhes[0].seguro_considerado', self.template)
-        self.assertIn('seguro_considerado is not defined or', self.template)
+        # O backend continua assumindo considerado=True quando o campo não existe em snapshot antigo.
         self.assertIn('"seguro_considerado": bool(v.get("seguro_considerado", True))', self.route)
 
     def test_metodologia_do_estimador_nao_foi_tocada_nesta_rodada(self):
         service = self.root / "services" / "seguro_v2_service.py"
         self.assertTrue(service.exists())
-        self.assertIn('CURVE_VERSION = "V50.25"', (self.root / "config.py").read_text(encoding="utf-8"))
+        self.assertIn('CURVE_VERSION = "V50.26"', (self.root / "config.py").read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":

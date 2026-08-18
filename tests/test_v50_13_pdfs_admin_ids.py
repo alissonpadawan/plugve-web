@@ -8,14 +8,16 @@ def read(rel: str) -> str:
 
 
 def test_platform_version_is_v50_13():
-    assert 'CURVE_VERSION = "V50.25"' in read("config.py")
+    assert 'CURVE_VERSION = "V50.26"' in read("config.py")
 
 
 def test_tco_pdf_contains_original_result_identity_and_filename():
     html = read("templates/simular.html")
     assert "resultado.resultado_codigo" in html
     assert "resultado.resultado_gerado_em_texto" in html
-    assert "Resultado gerado em:" in html
+    # V50.26 deixa no canto do PDF somente o código; a data segue disponível no resultado/snapshot.
+    assert 'class="tco-pdf-meta">{% if resultado.resultado_codigo %}<strong>Código:</strong>' in html
+    assert "Resultado gerado em:" not in html
     assert "codigoResultadoTCO" in html
     assert "CurVE_Simulacao_${codigoResultadoTCO}" in html
     assert 'metadata: {resultado_codigo: codigoResultadoTCO || ""}' in html

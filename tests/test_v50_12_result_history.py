@@ -143,4 +143,4 @@ def test_platform_exposes_search_page_and_version_v50_12():
     assert ">Consultar resultado</a>" not in base
     assert 'action="{{ url_for(\'main.consultar_resultado\') }}"' in search
     assert "Resultado histórico, sem recálculo." in search
-    assert 'CURVE_VERSION = "V50.25"' in config
+    assert 'CURVE_VERSION = "V50.26"' in config

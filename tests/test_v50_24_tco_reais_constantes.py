@@ -120,14 +120,16 @@ def test_financiamento_price_permanece_nominal_e_juros_sao_deflacionados_mes_a_m
     assert [m["mes"] for m in got["memoria_mensal"]] == [1, 2, 3]
 
 
-def test_interface_e_pdf_explicitam_reais_constantes_sem_vpl():
+def test_interface_mantem_taxas_reais_e_auditoria_preserva_convencao_apos_limpeza_visual():
     assert "Variação real anual da energia (%)" in SIMULAR
     assert "Variação real anual dos combustíveis (%)" in SIMULAR
     assert 'value="-0,96"' in SIMULAR
     assert 'value="-0,09"' in SIMULAR
-    assert "TCO acumulado em reais constantes da data-base da simulação" in SIMULAR
-    assert "Valores monetários acumulados expressos em reais constantes da data-base da simulação" in SIMULAR
-    assert "sem TMA/VPL" in SIMULAR
+    # V50.26 removeu essas notas da interface/PDF, mas a metodologia permanece na auditoria/backend.
+    assert "TCO acumulado em reais constantes da data-base da simulação" not in SIMULAR
+    assert "Valores monetários acumulados expressos em reais constantes da data-base da simulação" not in SIMULAR
+    assert "Convenção monetária" in AUDITORIA
+    assert 'TCO_CONVENCAO_MONETARIA = "reais_constantes_data_base"' in ROUTE
 
 
 def test_auditoria_registra_convencao_calibracao_e_juros_nominais_reais():
@@ -172,5 +174,5 @@ def test_seguro_manual_permanece_percentual_da_trajetoria_real_sem_inflacao_extr
 
 def test_versionamento_metodologico_e_site():
     cfg = (ROOT / "config.py").read_text(encoding="utf-8")
-    assert 'CURVE_VERSION = "V50.25"' in cfg
+    assert 'CURVE_VERSION = "V50.26"' in cfg
     assert 'TCO_METODOLOGIA_MONETARIA_VERSAO = "TCO_REAL_BASE_V1"' in ROUTE

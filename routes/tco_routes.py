@@ -1290,8 +1290,8 @@ def montar_comparacao_componentes(v1: dict, v2: dict) -> list:
         row("Valor de revenda", "revenda", maior_melhor=True, ajuda="Maior valor residual é favorável."),
         row("Custo por km", "custo_km", tipo="km", ajuda="Custo total dividido pela quilometragem total."),
         row("Diferença a cada 10.000 km", "custo_km_10000", tipo="moeda", ajuda="Leitura financeira do custo por km multiplicado por 10.000 km."),
-        row("CO₂ fóssil operacional", "co2_fossil", tipo="ton", ajuda="Emissões operacionais estimadas; não é ACV completo."),
-        row("CO₂ biogênico operacional", "co2_biogenico", tipo="ton", ajuda="Parcela biogênica dos biocombustíveis presentes na gasolina C E30, etanol hidratado e diesel B15; informada separadamente do indicador fóssil.", informativo=True),
+        row("CO₂ fóssil operacional", "co2_fossil", tipo="ton"),
+        row("CO₂ biogênico operacional", "co2_biogenico", tipo="ton", informativo=True),
     ]
 
     # A chave custo_km_10000 é derivada para simplificar a tabela.
@@ -2279,7 +2279,7 @@ def montar_bloco_resultado(titulo, v1, v2):
         linha_comparativa("Custo total no horizonte", v1["tco_final"], v2["tco_final"], ajuda="Custo total de propriedade estimado no período."),
         linha_comparativa("Custo total por km", v1["custo_km"], v2["custo_km"], ajuda="Custo total dividido pela quilometragem total simulada."),
         linha_comparativa("Gasto operacional acumulado", v1["gasto_operacional_final"], v2["gasto_operacional_final"], ajuda="Energia ou combustível, manutenção, IPVA, seguro e juros no horizonte."),
-        {"rotulo": "CO₂ fóssil operacional acumulado", "valor_1": toneladas_format(v1.get("co2_total_t", 0)), "valor_2": toneladas_format(v2.get("co2_total_t", 0)), "melhor": melhor_indice(v1.get("co2_total_t", 0), v2.get("co2_total_t", 0)), "ajuda": "Indicador principal de CO₂ fóssil operacional; a parcela biogênica dos biocombustíveis é reportada separadamente."},
+        {"rotulo": "CO₂ fóssil operacional acumulado", "valor_1": toneladas_format(v1.get("co2_total_t", 0)), "valor_2": toneladas_format(v2.get("co2_total_t", 0)), "melhor": melhor_indice(v1.get("co2_total_t", 0), v2.get("co2_total_t", 0)), "ajuda": ""},
         linha_comparativa("Perda por depreciação", v1["perda_depreciacao_final"], v2["perda_depreciacao_final"], ajuda="Diferença entre o valor inicial e o valor estimado de revenda."),
         linha_comparativa("Valor estimado de revenda", v1["valor_revenda_final"], v2["valor_revenda_final"], maior_melhor=True, ajuda="Maior valor é favorável."),
     ]
@@ -2298,8 +2298,8 @@ def montar_bloco_resultado(titulo, v1, v2):
         linha_componente("Valor de revenda", comp1.get("valor_revenda", comp1.get("revenda", 0)), comp2.get("valor_revenda", comp2.get("revenda", 0)), maior_melhor=True),
         linha_componente("Custo total", comp1.get("tco", comp1.get("tco_total", 0)), comp2.get("tco", comp2.get("tco_total", 0))),
         linha_componente("Custo por km", v1.get("custo_km", 0), v2.get("custo_km", 0), tipo="km"),
-        linha_componente("CO₂ fóssil operacional", v1.get("co2_total_t", 0), v2.get("co2_total_t", 0), tipo="co2", ajuda="Não inclui fabricação, bateria, manutenção, descarte nem a parcela biogênica dos biocombustíveis."),
-        linha_componente("CO₂ biogênico operacional", v1.get("co2_biogenico_total_t", 0), v2.get("co2_biogenico_total_t", 0), tipo="co2", ajuda="Parcela biogênica da gasolina C E30, do etanol hidratado e do diesel B15; reportada separadamente do indicador fóssil principal."),
+        linha_componente("CO₂ fóssil operacional", v1.get("co2_total_t", 0), v2.get("co2_total_t", 0), tipo="co2"),
+        linha_componente("CO₂ biogênico operacional", v1.get("co2_biogenico_total_t", 0), v2.get("co2_biogenico_total_t", 0), tipo="co2"),
     ]
     # Evita poluir o relatório com componentes inexistentes ou não aplicáveis
     # (ex.: financiamento/juros igual a zero para os dois veículos).
