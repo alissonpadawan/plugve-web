@@ -1,0 +1,23 @@
+dimensao,chave,minimo,maximo,taxa_percentual,periodo,recorte
+mercado,geral,,,4.6,maio de 2026,IPSA automóvel geral
+idade,zero_km,0,0,3.0,maio de 2026,veículo zero km
+idade,0_2,0,2,3.8,maio de 2026,veículo com 0 a 2 anos
+idade,3_5,3,5,5.0,maio de 2026,veículo com 3 a 5 anos
+idade,6_10,6,10,6.2,maio de 2026,veículo com 6 a 10 anos
+valor_fipe,31_50,31000,50000,8.5,maio de 2026,FIPE de R$ 31 mil a R$ 50 mil
+valor_fipe,51_80,50000.01,80000,6.1,maio de 2026,FIPE de R$ 51 mil a R$ 80 mil
+valor_fipe,81_150,80000.01,150000,3.8,maio de 2026,FIPE de R$ 81 mil a R$ 150 mil
+valor_fipe,151_mais,150000.01,,2.7,maio de 2026,FIPE acima de R$ 151 mil
+tecnologia,gasolina,,,3.5,maio de 2026,veículos com até 2 anos
+tecnologia,diesel,,,3.0,maio de 2026,veículos com até 2 anos
+tecnologia,hibrido,,,2.6,maio de 2026,veículos com até 2 anos
+tecnologia,eletrico,,,3.7,maio de 2026,veículos com até 2 anos
+regiao_metro,salvador,,,5.1,maio de 2026,Região Metropolitana de Salvador
+regiao_metro,recife,,,4.0,maio de 2026,Região Metropolitana de Recife
+regiao_metro,belem,,,3.3,maio de 2026,Região Metropolitana de Belém
+regiao_metro,belo_horizonte,,,4.5,maio de 2026,Região Metropolitana de Belo Horizonte
+regiao_metro,porto_alegre,,,3.5,maio de 2026,Região Metropolitana de Porto Alegre
+regiao_metro,rio_de_janeiro,,,6.1,maio de 2026,Região Metropolitana do Rio de Janeiro
+regiao_metro,fortaleza,,,3.4,maio de 2026,Região Metropolitana de Fortaleza
+regiao_metro,curitiba,,,2.9,maio de 2026,Região Metropolitana de Curitiba
+regiao_metro,sao_paulo,,,4.8,maio de 2026,Região Metropolitana de São Paulo

@@ -53,13 +53,14 @@ def test_pdf_report_header_and_footer_are_not_hidden_by_generic_print_rule():
     assert '.curve-header, .curve-footer, .institutional-footer, #form_simulacao_tco' in SIMULAR
 
 
-def test_new_growth_defaults_are_present_in_ui_and_backend():
-    assert 'value="4,60"' in SIMULAR
-    assert 'value="5,60"' in SIMULAR
-    assert 'Premissa operacional inicial: 4,60% a.a.' in SIMULAR
-    assert 'Premissa operacional inicial: 5,60% a.a.' in SIMULAR
-    assert 'AUMENTO_ENERGIA_PADRAO_PERCENTUAL = 4.6' in TCO
-    assert 'AUMENTO_COMBUSTIVEL_PADRAO_PERCENTUAL = 5.6' in TCO
+def test_real_growth_defaults_are_present_in_ui_and_backend():
+    assert 'value="-0,96"' in SIMULAR
+    assert 'value="-0,09"' in SIMULAR
+    assert 'Premissa real inicial: -0,96% a.a.' in SIMULAR
+    assert 'Premissa real inicial: -0,09% a.a.' in SIMULAR
+    assert 'TCO_ENERGIA_REAL_PADRAO_PERCENTUAL' in TCO
+    assert 'TCO_COMBUSTIVEL_REAL_PADRAO_PERCENTUAL' in TCO
+    assert 'TCO_CONVENCAO_MONETARIA = "reais_constantes_data_base"' in TCO
 
 
 def test_annual_component_palette_is_explicit_and_muted():

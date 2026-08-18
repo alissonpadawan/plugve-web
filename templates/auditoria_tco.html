@@ -124,9 +124,41 @@ diferença_percentual = {{ comp.economia_percentual }}</p>
       </section>
     {% endfor %}
 
+    {% set monetaria = auditoria.metodologia_monetaria|default(None) %}
     <section class="audit-section">
       <h2>1. Dados de entrada e parâmetros</h2>
+      {% if monetaria %}
       <div class="audit-grid">
+        <div class="audit-card">
+          <h3>Convenção monetária</h3>
+          <dl class="audit-dl">
+            <dt>convenção</dt><dd>{{ auditoria.metodologia_monetaria.convencao_monetaria_rotulo }}</dd>
+            <dt>versão metodológica</dt><dd>{{ auditoria.metodologia_monetaria.metodologia_monetaria_versao }}</dd>
+            <dt>data-base</dt><dd>{{ auditoria.metodologia_monetaria.data_base }}</dd>
+            <dt>moeda</dt><dd>{{ auditoria.metodologia_monetaria.moeda }}</dd>
+            <dt>fonte da inflação</dt><dd>{{ auditoria.metodologia_monetaria.fonte_inflacao }}</dd>
+            <dt>recorte</dt><dd>{{ auditoria.metodologia_monetaria.recorte_inflacao }}</dd>
+            <dt>período de calibração</dt><dd>{{ auditoria.metodologia_monetaria.periodo_calibracao }}</dd>
+            <dt>IPCA geral equivalente</dt><dd>{{ auditoria.metodologia_monetaria.inflacao_geral_equivalente_percentual|round(4) }}% a.a.</dd>
+            <dt>TMA</dt><dd>não aplicada</dd>
+            <dt>VPL</dt><dd>não calculado</dd>
+          </dl>
+        </div>
+        <div class="audit-card">
+          <h3>Calibração das variações reais</h3>
+          <dl class="audit-dl">
+            <dt>energia — referência</dt><dd>{{ auditoria.metodologia_monetaria.energia.item_sidra }}</dd>
+            <dt>energia nominal de origem</dt><dd>{{ auditoria.metodologia_monetaria.energia.taxa_nominal_origem_percentual|round(4) }}% a.a.</dd>
+            <dt>energia real usada</dt><dd>{{ auditoria.metodologia_monetaria.energia.taxa_real_utilizada_percentual|round(4) }}% a.a.</dd>
+            <dt>combustíveis — referência</dt><dd>{{ auditoria.metodologia_monetaria.combustiveis.item_sidra }}</dd>
+            <dt>combustíveis nominal de origem</dt><dd>{{ auditoria.metodologia_monetaria.combustiveis.taxa_nominal_origem_percentual|round(4) }}% a.a.</dd>
+            <dt>combustíveis real usada</dt><dd>{{ auditoria.metodologia_monetaria.combustiveis.taxa_real_utilizada_percentual|round(4) }}% a.a.</dd>
+            <dt>financiamento</dt><dd>contrato Price nominal; juros deflacionados mês a mês antes da soma no TCO</dd>
+          </dl>
+        </div>
+      </div>
+      {% endif %}
+      <div class="audit-grid" style="margin-top:14px">
         <div class="audit-card">
           <h3>Localização e uso</h3>
           <dl class="audit-dl">
@@ -138,13 +170,23 @@ diferença_percentual = {{ comp.economia_percentual }}</p>
           </dl>
         </div>
         <div class="audit-card">
-          <h3>Energia, combustível e reajustes</h3>
-          <dl class="audit-dl">
-            <dt>tarifa energia inicial</dt><dd>{{ auditoria.parametros.energia or '—' }}</dd>
-            <dt>combustível inicial</dt><dd>{{ auditoria.parametros.combustivel or '—' }}</dd>
-            <dt>aumento energia</dt><dd>{{ auditoria.parametros.aumento_energia }}% a.a.</dd>
-            <dt>aumento combustível</dt><dd>{{ auditoria.parametros.aumento_combustivel }}% a.a.</dd>
-          </dl>
+          {% if monetaria %}
+            <h3>Energia, combustível e variações reais</h3>
+            <dl class="audit-dl">
+              <dt>tarifa energia inicial</dt><dd>{{ auditoria.parametros.energia or '—' }}</dd>
+              <dt>combustível inicial</dt><dd>{{ auditoria.parametros.combustivel or '—' }}</dd>
+              <dt>variação real energia</dt><dd>{{ auditoria.parametros.variacao_real_energia }}% a.a.</dd>
+              <dt>variação real combustíveis</dt><dd>{{ auditoria.parametros.variacao_real_combustiveis }}% a.a.</dd>
+            </dl>
+          {% else %}
+            <h3>Energia, combustível e reajustes</h3>
+            <dl class="audit-dl">
+              <dt>tarifa energia inicial</dt><dd>{{ auditoria.parametros.energia or '—' }}</dd>
+              <dt>combustível inicial</dt><dd>{{ auditoria.parametros.combustivel or '—' }}</dd>
+              <dt>aumento energia</dt><dd>{{ auditoria.parametros.aumento_energia }}% a.a.</dd>
+              <dt>aumento combustível</dt><dd>{{ auditoria.parametros.aumento_combustivel }}% a.a.</dd>
+            </dl>
+          {% endif %}
         </div>
       </div>
       <div class="audit-grid" style="margin-top:14px">
@@ -244,15 +286,51 @@ diferença_percentual = {{ comp.economia_percentual }}</p>
             <h3>5.{{ loop.index + 1 }} Memória anual — {{ veic.nome }}</h3>
             {% if veic.codigo_fipe %}<p class="audit-note">Código FIPE: <strong>{{ veic.codigo_fipe }}</strong></p>{% endif %}
             <div class="audit-table-wrap">
-              <table class="audit-table">
-                <thead><tr><th>Ano</th><th>Uso</th><th>IPVA</th><th>Seguro</th><th>Manut.</th><th>Juros</th><th>Deprec.</th><th>Custo total</th><th>CO₂</th></tr></thead>
-                <tbody>
-                  {% for linha in veic.memoria %}
-                    <tr><td>{{ linha.ano }}</td><td>{{ linha.uso }}</td><td>{{ linha.ipva }}</td><td>{{ linha.seguro }}</td><td>{{ linha.manutencao }}</td><td>{{ linha.financiamento }}</td><td>{{ linha.depreciacao_acumulada }}</td><td>{{ linha.tco }}</td><td>{{ linha.co2_fossil_acumulado }}</td></tr>
-                  {% endfor %}
-                </tbody>
-              </table>
+              {% if monetaria %}
+                <table class="audit-table">
+                  <thead><tr><th>Ano</th><th>Valor veículo (início)</th><th>Energia</th><th>Combustível</th><th>Uso</th><th>IPVA</th><th>Seguro</th><th>Manut.</th><th>Juros nominais</th><th>Juros reais</th><th>Total anual real</th><th>Deprec.</th><th>Custo total real</th><th>CO₂</th></tr></thead>
+                  <tbody>
+                    {% for linha in veic.memoria %}
+                      <tr><td>{{ linha.ano }}</td><td>{{ linha.valor_veiculo_inicio }}</td><td>{{ linha.preco_energia }}</td><td>{{ linha.preco_combustivel }}</td><td>{{ linha.uso }}</td><td>{{ linha.ipva }}</td><td>{{ linha.seguro }}</td><td>{{ linha.manutencao }}</td><td>{{ linha.financiamento_nominal }}</td><td>{{ linha.financiamento }}</td><td>{{ linha.operacional_ano }}</td><td>{{ linha.depreciacao_acumulada }}</td><td>{{ linha.tco }}</td><td>{{ linha.co2_fossil_acumulado }}</td></tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              {% else %}
+                {# Auditoria histórica anterior à V50.24: manter a estrutura e os rótulos da metodologia registrada no snapshot. #}
+                <table class="audit-table">
+                  <thead><tr><th>Ano</th><th>Uso</th><th>IPVA</th><th>Seguro</th><th>Manut.</th><th>Financ.</th><th>Deprec.</th><th>Custo total</th><th>CO₂</th></tr></thead>
+                  <tbody>
+                    {% for linha in veic.memoria %}
+                      <tr><td>{{ linha.ano }}</td><td>{{ linha.uso }}</td><td>{{ linha.ipva }}</td><td>{{ linha.seguro }}</td><td>{{ linha.manutencao }}</td><td>{{ linha.financiamento }}</td><td>{{ linha.depreciacao_acumulada }}</td><td>{{ linha.tco }}</td><td>{{ linha.co2_fossil_acumulado }}</td></tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              {% endif %}
             </div>
+            {% if veic.memoria and veic.memoria[0].ipva_regra %}
+              <h3 style="margin-top:14px">Memória anual do IPVA</h3>
+              <p class="audit-note">As regras tributárias cadastradas na data-base são reaplicadas ao estado projetado do veículo em cada ano; não são presumidas alterações legislativas futuras desconhecidas.</p>
+              <div class="audit-table-wrap">
+                <table class="audit-table">
+                  <thead><tr><th>Ano</th><th>Exercício</th><th>Idade</th><th>UF</th><th>Valor-base</th><th>Alíquota</th><th>IPVA</th><th>Isento?</th><th>Critério/regra</th></tr></thead>
+                  <tbody>
+                    {% for linha in veic.memoria %}
+                      <tr>
+                        <td>{{ linha.ano }}</td>
+                        <td>{{ linha.ipva_ano_calendario }}</td>
+                        <td>{{ linha.ipva_idade_veiculo }}</td>
+                        <td>{{ linha.ipva_uf }}</td>
+                        <td>{{ linha.ipva_valor_base }}</td>
+                        <td>{{ linha.ipva_aliquota }}</td>
+                        <td>{{ linha.ipva }}</td>
+                        <td>{{ linha.ipva_isento }}</td>
+                        <td style="text-align:left"><strong>{{ linha.ipva_criterio }}</strong><small>{{ linha.ipva_regra }}{% if linha.ipva_observacao %} — {{ linha.ipva_observacao }}{% endif %}</small></td>
+                      </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            {% endif %}
           </div>
         {% endfor %}
       </section>

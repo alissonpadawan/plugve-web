@@ -1176,17 +1176,20 @@
                 <div>
                   <label class="block text-sm font-medium">IPVA atual (anual)</label>
                   <input type="text" name="ipva_atual" id="ipva_atual_input" class="mt-1 p-2 border rounded w-full" placeholder="Calculado automaticamente">
+                  <input type="hidden" name="ipva_atual_manual" id="ipva_atual_manual" value="0">
                 </div>
 
                 <div>
                   <label class="block text-sm font-medium">Seguro atual (anual)</label>
                   <input type="text" name="seguro_atual" id="seguro_atual" class="mt-1 p-2 border rounded w-full" placeholder="ex: 2800">
                   <input type="hidden" name="seguro_atual_manual" id="seguro_atual_manual" value="0">
+                  <input type="hidden" name="seguro_atual_considerado" id="seguro_atual_considerado" value="1">
                   <input type="hidden" name="seguro_atual_fonte" id="seguro_atual_fonte" value="">
                   <input type="hidden" name="seguro_atual_metodo" id="seguro_atual_metodo" value="">
                   <input type="hidden" name="seguro_atual_data_base" id="seguro_atual_data_base" value="">
                   <input type="hidden" name="seguro_atual_nivel" id="seguro_atual_nivel" value="">
                   <input type="hidden" name="seguro_atual_taxa" id="seguro_atual_taxa" value="">
+                  <input type="hidden" name="seguro_atual_confianca" id="seguro_atual_confianca" value="">
                   <p id="seguro_status_atual" class="mt-1 text-[11px] text-gray-500 hidden"></p>
                 </div>
 
@@ -1297,6 +1300,7 @@
                 <label class="block text-sm font-medium">IPVA anual VE</label>
                 <div class="plugve-inline-action-field">
                   <input type="text" name="ipva_ve" id="ipva_ve_input" class="plugve-inline-action-input" placeholder="Calculado automaticamente">
+                  <input type="hidden" name="ipva_ve_manual" id="ipva_ve_manual" value="0">
                   <label class="plugve-inline-check">
                     <input type="checkbox" name="isencao_ipva_ve" id="isencao_ipva_checkbox">
                     Isenção VE
@@ -1308,11 +1312,13 @@
                 <label class="block text-sm font-medium">Seguro anual VE</label>
                 <input type="text" name="seguro_ve" id="seguro_ve" class="mt-1 p-2 border rounded w-full" placeholder="ex: 4000">
                 <input type="hidden" name="seguro_ve_manual" id="seguro_ve_manual" value="0">
+                <input type="hidden" name="seguro_ve_considerado" id="seguro_ve_considerado" value="1">
                 <input type="hidden" name="seguro_ve_fonte" id="seguro_ve_fonte" value="">
                 <input type="hidden" name="seguro_ve_metodo" id="seguro_ve_metodo" value="">
                 <input type="hidden" name="seguro_ve_data_base" id="seguro_ve_data_base" value="">
                 <input type="hidden" name="seguro_ve_nivel" id="seguro_ve_nivel" value="">
                 <input type="hidden" name="seguro_ve_taxa" id="seguro_ve_taxa" value="">
+                  <input type="hidden" name="seguro_ve_confianca" id="seguro_ve_confianca" value="">
                 <p id="seguro_status_ve" class="mt-1 text-[11px] text-gray-500 hidden"></p>
               </div>
 
@@ -1414,17 +1420,20 @@
               <div class="plugve-align-pair" data-plugve-align="ipva">
                 <label class="block text-sm font-medium">IPVA anual ICEV</label>
                 <input type="text" name="ipva_icev" id="ipva_icev_input" class="mt-1 p-2 border rounded w-full" placeholder="Calculado automaticamente">
+                <input type="hidden" name="ipva_icev_manual" id="ipva_icev_manual" value="0">
               </div>
 
               <div class="plugve-align-pair" data-plugve-align="seguro">
                 <label class="block text-sm font-medium">Seguro anual ICEV</label>
                 <input type="text" name="seguro_icev" id="seguro_icev" class="mt-1 p-2 border rounded w-full" placeholder="ex: 3000">
                 <input type="hidden" name="seguro_icev_manual" id="seguro_icev_manual" value="0">
+                <input type="hidden" name="seguro_icev_considerado" id="seguro_icev_considerado" value="1">
                 <input type="hidden" name="seguro_icev_fonte" id="seguro_icev_fonte" value="">
                 <input type="hidden" name="seguro_icev_metodo" id="seguro_icev_metodo" value="">
                 <input type="hidden" name="seguro_icev_data_base" id="seguro_icev_data_base" value="">
                 <input type="hidden" name="seguro_icev_nivel" id="seguro_icev_nivel" value="">
                 <input type="hidden" name="seguro_icev_taxa" id="seguro_icev_taxa" value="">
+                  <input type="hidden" name="seguro_icev_confianca" id="seguro_icev_confianca" value="">
                 <p id="seguro_status_icev" class="mt-1 text-[11px] text-gray-500 hidden"></p>
               </div>
 
@@ -1586,18 +1595,18 @@
             </div>
 
             <div>
-              <label class="block text-sm font-medium">Aumento anual energia (%)</label>
-              <input type="text" name="aumento_energia" id="aumento_energia_input" value="4,60" class="mt-1 p-2 border rounded w-full" required>
+              <label class="block text-sm font-medium">Variação real anual da energia (%)</label>
+              <input type="text" name="aumento_energia" id="aumento_energia_input" value="-0,96" class="mt-1 p-2 border rounded w-full" required>
               <p id="status_aumento_energia" class="text-[11px] text-gray-500 mt-1">
-                Preenchido automaticamente por premissa operacional inicial. Você pode ajustar.
+                Variação acima/abaixo da inflação geral de referência. Você pode ajustar.
               </p>
             </div>
 
             <div>
-              <label class="block text-sm font-medium">Aumento anual combustível (%)</label>
-              <input type="text" name="aumento_combustivel" id="aumento_combustivel_input" value="5,60" class="mt-1 p-2 border rounded w-full" required>
+              <label class="block text-sm font-medium">Variação real anual dos combustíveis (%)</label>
+              <input type="text" name="aumento_combustivel" id="aumento_combustivel_input" value="-0,09" class="mt-1 p-2 border rounded w-full" required>
               <p id="status_aumento_combustivel" class="text-[11px] text-gray-500 mt-1">
-                Preenchido automaticamente por premissa operacional inicial. Você pode ajustar.
+                Variação acima/abaixo da inflação geral de referência. Você pode ajustar.
               </p>
             </div>
 
@@ -1858,6 +1867,9 @@
           {% if resultado.resultado_codigo %}
             <p class="text-xs text-slate-500 mt-1"><strong>Código do resultado:</strong> {{ resultado.resultado_codigo }}{% if resultado.resultado_gerado_em_texto %} · gerado em {{ resultado.resultado_gerado_em_texto }}{% endif %}</p>
           {% endif %}
+          {% if resultado.metodologia_monetaria %}
+            <p class="text-xs text-slate-500 mt-1">TCO acumulado em reais constantes da data-base da simulação ({{ resultado.metodologia_monetaria.data_base }}), sem TMA/VPL.</p>
+          {% endif %}
         </div>
         <div class="plugve-result-toolbar no-print">
           <button type="button" id="btn_nova_consulta_tco" class="px-4 py-2 rounded-lg border border-red-500 text-red-600 font-semibold hover:bg-red-50">
@@ -2088,8 +2100,8 @@
                         <h5>{{ item.nome_curto }}</h5>
                         <dl>
                           <div><dt>Depreciação anual</dt><dd>{{ item.taxa_depreciacao }}</dd></div>
-                          <div><dt>IPVA projetado</dt><dd>{{ item.taxa_ipva }} do valor</dd></div>
-                          <div><dt>Seguro projetado</dt><dd>{{ item.taxa_seguro }} do valor{% if item.seguro_fonte %}<small>{{ item.seguro_fonte }}{% if item.seguro_nivel_agregacao %} — {{ item.seguro_nivel_agregacao }}{% endif %}</small>{% endif %}</dd></div>
+                          <div><dt>IPVA projetado</dt><dd>{% if item.ipva_reavaliado_anualmente %}Reavaliado ano a ano<small>Regras cadastradas na data-base aplicadas à idade e ao valor projetados.</small>{% else %}{{ item.taxa_ipva }} do valor{% endif %}</dd></div>
+                          <div><dt>Seguro projetado</dt><dd>{% if item.seguro_considerado is defined and not item.seguro_considerado %}Não considerado{% elif item.seguro_reestimado_anualmente %}{{ item.taxa_seguro }} inicial · reestimado ano a ano{% else %}{{ item.taxa_seguro }} do valor{% endif %}{% if (item.seguro_considerado is not defined or item.seguro_considerado) and item.seguro_fonte %}<small>{{ item.seguro_fonte }}{% if item.seguro_nivel_agregacao %} — {{ item.seguro_nivel_agregacao }}{% endif %}{% if item.seguro_confianca %} · Confiança: {{ item.seguro_confianca|capitalize }}{% endif %}{% if item.seguro_data_base %} · Base: {{ item.seguro_data_base }}{% endif %}</small>{% endif %}</dd></div>
                           {% if item.financiamento_ativo %}
                             <div><dt>Entrada</dt><dd>{{ item.entrada_financiamento }}</dd></div>
                             <div><dt>Taxa mensal</dt><dd>{{ item.taxa_financiamento }}</dd></div>
@@ -2369,19 +2381,29 @@
                   <tr class="tco-pdf-group-row"><td colspan="3">Parâmetros comuns da simulação</td></tr>
                   <tr><td><b>Horizonte</b></td><td colspan="2">{{ resultado.form_values.get('anos', '') }} ano(s)</td></tr>
                   <tr><td><b>Rodagem anual</b></td><td colspan="2">{{ resultado.form_values.get('km_ano', '') }} km/ano</td></tr>
-                  <tr><td><b>Aumento anual da energia</b></td><td colspan="2">{{ resultado.form_values.get('aumento_energia', '4,60') }}% a.a.</td></tr>
-                  <tr><td><b>Aumento anual do combustível</b></td><td colspan="2">{{ resultado.form_values.get('aumento_combustivel', '5,60') }}% a.a.</td></tr>
+                  {% if resultado.metodologia_monetaria %}
+                    <tr><td><b>Base monetária</b></td><td colspan="2">Reais constantes da data-base da simulação ({{ resultado.metodologia_monetaria.data_base }})</td></tr>
+                    <tr><td><b>Variação real anual da energia</b></td><td colspan="2">{{ resultado.form_values.get('aumento_energia', '-0,96') }}% a.a.</td></tr>
+                    <tr><td><b>Variação real anual dos combustíveis</b></td><td colspan="2">{{ resultado.form_values.get('aumento_combustivel', '-0,09') }}% a.a.</td></tr>
+                  {% else %}
+                    {# Snapshot histórico anterior à V50.24: preservar a semântica original e não atribuir retroativamente a convenção em reais constantes. #}
+                    <tr><td><b>Aumento anual da energia</b></td><td colspan="2">{{ resultado.form_values.get('aumento_energia', '4,6') }}% a.a.</td></tr>
+                    <tr><td><b>Aumento anual do combustível</b></td><td colspan="2">{{ resultado.form_values.get('aumento_combustivel', '5,6') }}% a.a.</td></tr>
+                  {% endif %}
                   {% if comp.impacto_ambiental %}
                     <tr><td><b>Fator elétrico SIN</b></td><td colspan="2">{{ comp.impacto_ambiental.fatores.energia }} — data-base {{ comp.impacto_ambiental.fatores.energia_data_base }}</td></tr>
                     <tr><td><b>Combustíveis comerciais</b></td><td colspan="2">{{ comp.impacto_ambiental.fatores.mistura_gasolina }}; {{ comp.impacto_ambiental.fatores.mistura_diesel }}</td></tr>
                   {% endif %}
                   <tr class="tco-pdf-group-row"><td colspan="3">Premissas por veículo</td></tr>
                   <tr><td><b>Depreciação anual</b></td><td>{{ comp.detalhes[0].taxa_depreciacao }}</td><td>{{ comp.detalhes[1].taxa_depreciacao }}</td></tr>
-                  <tr><td><b>IPVA projetado</b></td><td>{{ comp.detalhes[0].taxa_ipva }} do valor</td><td>{{ comp.detalhes[1].taxa_ipva }} do valor</td></tr>
-                  <tr><td><b>Seguro projetado</b><small>Estimativa de referência; não representa cotação individual.</small></td><td>{{ comp.detalhes[0].taxa_seguro }} do valor{% if comp.detalhes[0].seguro_fonte %}<small>{{ comp.detalhes[0].seguro_fonte }} — {{ comp.detalhes[0].seguro_nivel_agregacao or 'UF — automóvel' }}</small>{% endif %}</td><td>{{ comp.detalhes[1].taxa_seguro }} do valor{% if comp.detalhes[1].seguro_fonte %}<small>{{ comp.detalhes[1].seguro_fonte }} — {{ comp.detalhes[1].seguro_nivel_agregacao or 'UF — automóvel' }}</small>{% endif %}</td></tr>
+                  <tr><td><b>IPVA projetado</b></td><td>{% if comp.detalhes[0].ipva_reavaliado_anualmente %}Reavaliado ano a ano{% else %}{{ comp.detalhes[0].taxa_ipva }} do valor{% endif %}</td><td>{% if comp.detalhes[1].ipva_reavaliado_anualmente %}Reavaliado ano a ano{% else %}{{ comp.detalhes[1].taxa_ipva }} do valor{% endif %}</td></tr>
+                  <tr><td><b>Seguro projetado</b><small>Estimativa de referência; não representa cotação individual.</small></td><td>{% if comp.detalhes[0].seguro_considerado is defined and not comp.detalhes[0].seguro_considerado %}Não considerado{% elif comp.detalhes[0].seguro_reestimado_anualmente %}{{ comp.detalhes[0].taxa_seguro }} inicial · reestimado ano a ano{% else %}{{ comp.detalhes[0].taxa_seguro }} do valor{% endif %}{% if (comp.detalhes[0].seguro_considerado is not defined or comp.detalhes[0].seguro_considerado) and comp.detalhes[0].seguro_fonte %}<small>{{ comp.detalhes[0].seguro_fonte }} — {{ comp.detalhes[0].seguro_nivel_agregacao or 'Referência automóvel' }}{% if comp.detalhes[0].seguro_confianca %} · Confiança: {{ comp.detalhes[0].seguro_confianca|capitalize }}{% endif %}{% if comp.detalhes[0].seguro_data_base %} · Base: {{ comp.detalhes[0].seguro_data_base }}{% endif %}</small>{% endif %}</td><td>{% if comp.detalhes[1].seguro_considerado is defined and not comp.detalhes[1].seguro_considerado %}Não considerado{% elif comp.detalhes[1].seguro_reestimado_anualmente %}{{ comp.detalhes[1].taxa_seguro }} inicial · reestimado ano a ano{% else %}{{ comp.detalhes[1].taxa_seguro }} do valor{% endif %}{% if (comp.detalhes[1].seguro_considerado is not defined or comp.detalhes[1].seguro_considerado) and comp.detalhes[1].seguro_fonte %}<small>{{ comp.detalhes[1].seguro_fonte }} — {{ comp.detalhes[1].seguro_nivel_agregacao or 'Referência automóvel' }}{% if comp.detalhes[1].seguro_confianca %} · Confiança: {{ comp.detalhes[1].seguro_confianca|capitalize }}{% endif %}{% if comp.detalhes[1].seguro_data_base %} · Base: {{ comp.detalhes[1].seguro_data_base }}{% endif %}</small>{% endif %}</td></tr>
                   <tr><td><b>Financiamento</b></td><td>{{ 'Considerado' if comp.detalhes[0].financiamento_ativo else 'Não considerado' }}</td><td>{{ 'Considerado' if comp.detalhes[1].financiamento_ativo else 'Não considerado' }}</td></tr>
                 </tbody>
               </table>
+              {% if resultado.metodologia_monetaria %}
+                <p class="tco-pdf-note">Valores monetários acumulados expressos em reais constantes da data-base da simulação. As taxas de energia e combustíveis são variações reais anuais; não há aplicação de TMA ou cálculo de VPL.</p>
+              {% endif %}
             {% endif %}
             <footer class="tco-pdf-footer"><span>CurVE © 2026 - Instituto Federal de Goiás</span><span>Impacto, depreciação e revenda</span></footer>
           </article>
@@ -2860,7 +2882,7 @@
       atualizarLogosFontesPlugVE();
     }
 
-    const PLUGVE_TCO_STORAGE_KEY = "plugve_tco_form_state_v26";
+    const PLUGVE_TCO_STORAGE_KEY = "plugve_tco_form_state_v27";
     const PLUGVE_TCO_FIN_PREFIXES = ["atual", "ve", "icev"];
 
     function limparEstadoPersistenteTCO() {
@@ -3355,6 +3377,12 @@
     async function restaurarEstadoFormularioTCO(forcarFipe = false) {
       const estado = estadoCombinadoFormularioTCO();
       aplicarEstadoFormularioTCO(estado);
+      ["ve", "icev", "atual"].forEach(prefixo => {
+        const manual = campoSeguroManualPorPrefixo(prefixo)?.value === "1";
+        const seguro = campoSeguroPorPrefixo(prefixo);
+        if (seguro) seguro.dataset.editadoManual = manual ? "1" : "0";
+        if (manual) atualizarStatusSeguroManualTCO(prefixo);
+      });
       atualizarTodosResumosFinanciamento();
 
       if (restauracaoFipeTCOConcluida && !forcarFipe) return;
@@ -3582,6 +3610,30 @@
       return document.getElementById(`seguro_${prefixo}_manual`);
     }
 
+    function campoSeguroConsideradoPorPrefixo(prefixo) {
+      return document.getElementById(`seguro_${prefixo}_considerado`);
+    }
+
+    function marcarSeguroConsiderado(prefixo, considerado) {
+      const consideradoEl = campoSeguroConsideradoPorPrefixo(prefixo);
+      if (consideradoEl) consideradoEl.value = considerado ? "1" : "0";
+    }
+
+    function seguroConsideradoPorPrefixo(prefixo) {
+      const consideradoEl = campoSeguroConsideradoPorPrefixo(prefixo);
+      return !consideradoEl || consideradoEl.value !== "0";
+    }
+
+    function atualizarStatusSeguroManualTCO(prefixo) {
+      const status = statusSeguroPorPrefixo(prefixo);
+      if (!status) return;
+      status.textContent = seguroConsideradoPorPrefixo(prefixo)
+        ? "Valor informado pelo usuário."
+        : "Seguro não considerado.";
+      status.title = "";
+      status.classList.remove("hidden");
+    }
+
     function marcarSeguroManual(prefixo, manual) {
       const seguroEl = campoSeguroPorPrefixo(prefixo);
       const manualEl = campoSeguroManualPorPrefixo(prefixo);
@@ -3594,7 +3646,7 @@
     }
 
     function limparMetadadosSeguroAutomaticoTCO(prefixo) {
-      ["fonte", "metodo", "data_base", "nivel", "taxa"].forEach(sufixo => {
+      ["fonte", "metodo", "data_base", "nivel", "taxa", "confianca"].forEach(sufixo => {
         const el = document.getElementById(`seguro_${prefixo}_${sufixo}`);
         if (el) el.value = "";
       });
@@ -3603,10 +3655,11 @@
     function salvarMetadadosSeguroAutomaticoTCO(prefixo, estimativa) {
       const mapa = {
         fonte: estimativa?.fonte || "",
-        metodo: estimativa?.metodo || "taxa_uf_autoseg_vez_fator_relativo_ipsa_tecnologia",
+        metodo: estimativa?.metodo || "ipsa_mediana_atual_fatores_autoseg_credibilidade_v2",
         data_base: estimativa?.data_base || "",
         nivel: estimativa?.nivel_agregacao || "",
         taxa: estimativa?.taxa_efetiva ?? "",
+        confianca: estimativa?.confianca || "",
       };
       Object.entries(mapa).forEach(([sufixo, valor]) => {
         const el = document.getElementById(`seguro_${prefixo}_${sufixo}`);
@@ -3615,12 +3668,19 @@
     }
 
     function anoModeloSeguroPorPrefixoTCO(prefixo) {
-      const valorAnoModelo = document.getElementById(`ano_modelo_${prefixo}`)?.value;
-      if (valorAnoModelo) return valorAnoModelo;
       const selectAno = document.getElementById(`${prefixo}_ano`);
+      const codigoAno = selectAno?.value || "";
+      const valorAnoModelo = document.getElementById(`ano_modelo_${prefixo}`)?.value || "";
+      // A FIPE usa 32000 para zero km. O campo de cálculo guarda apenas o ano
+      // civil; preservamos aqui o sinal "Zero km" para aplicar a faixa IPSA
+      // correta no seguro sem alterar os demais cálculos.
+      if (typeof codigoAnoFipeZeroKm === "function" && codigoAnoFipeZeroKm(codigoAno)) {
+        return `Zero km ${valorAnoModelo || new Date().getFullYear()}`;
+      }
+      if (valorAnoModelo) return valorAnoModelo;
       if (!selectAno) return "";
       const opt = selectAno.options?.[selectAno.selectedIndex];
-      return opt?.dataset?.nomeOriginal || opt?.textContent || selectAno.value || "";
+      return opt?.dataset?.nomeOriginal || opt?.textContent || codigoAno || "";
     }
 
     function tecnologiaSeguroPorPrefixoTCO(prefixo) {
@@ -3652,10 +3712,7 @@
       if (!preco || preco <= 0) return;
       const jaManual = seguroEl.dataset.editadoManual === "1" || campoSeguroManualPorPrefixo(prefixo)?.value === "1";
       if (jaManual && !forcar) {
-        if (status) {
-          status.classList.add("hidden");
-          status.textContent = "";
-        }
+        atualizarStatusSeguroManualTCO(prefixo);
         return;
       }
 
@@ -3672,6 +3729,7 @@
             veiculo: {
               valor_fipe: preco,
               ano_modelo: anoModeloSeguroPorPrefixoTCO(prefixo),
+              codigo_fipe: document.getElementById(`codigo_fipe_${prefixo}`)?.value || "",
               codigo_modelo: document.getElementById(`${prefixo}_modelo`)?.value || "",
               tecnologia: tecnologiaSeguroPorPrefixoTCO(prefixo),
             },
@@ -3691,10 +3749,14 @@
         seguroEl.dataset.editadoManual = "0";
         const manualEl = campoSeguroManualPorPrefixo(prefixo);
         if (manualEl) manualEl.value = "0";
+        marcarSeguroConsiderado(prefixo, true);
         salvarMetadadosSeguroAutomaticoTCO(prefixo, estimativa);
         if (status) {
-          status.classList.add("hidden");
-          status.textContent = "";
+          const conf = String(estimativa?.confianca || "referencia").toLowerCase();
+          const confRotulo = conf === "alta" ? "Alta" : conf === "media" ? "Média" : conf === "fallback" ? "Fallback" : "Referência";
+          status.textContent = estimativa?.resumo || `Seguro estimado · confiança ${confRotulo}`;
+          status.title = [estimativa?.fonte, estimativa?.nivel_agregacao, estimativa?.data_base].filter(Boolean).join(" · ");
+          status.classList.remove("hidden");
         }
       } catch (e) {
         if (seguroEl.dataset.editadoManual !== "1") seguroEl.value = "";
@@ -3719,7 +3781,9 @@
         if (el) el.value = "";
       });
       atualizarCodigoFipeTCO(prefixo, "");
+      marcarIpvaManualTCO(prefixo, false);
       marcarSeguroManual(prefixo, false);
+      marcarSeguroConsiderado(prefixo, true);
       limparMetadadosSeguroAutomaticoTCO(prefixo);
       const seguroLimpo = campoSeguroPorPrefixo(prefixo);
       if (seguroLimpo) { delete seguroLimpo.dataset.autoSeguro; delete seguroLimpo.dataset.editadoManual; }
@@ -3802,6 +3866,7 @@
         if (el) el.value = "";
       });
       atualizarCodigoFipeTCO(prefixo, "");
+      marcarIpvaManualTCO(prefixo, false);
 
       const consumoId = prefixo === "ve" ? "consumo_ve" : prefixo === "icev" ? "consumo_icev" : "consumo_atual";
       const consumo = document.getElementById(consumoId);
@@ -3814,6 +3879,7 @@
       }
 
       marcarSeguroManual(prefixo, false);
+      marcarSeguroConsiderado(prefixo, true);
       limparMetadadosSeguroAutomaticoTCO(prefixo);
       const seguroLimpo = campoSeguroPorPrefixo(prefixo);
       if (seguroLimpo) { delete seguroLimpo.dataset.autoSeguro; delete seguroLimpo.dataset.editadoManual; }
@@ -3836,11 +3902,11 @@
       const statusEnergia = document.getElementById("status_aumento_energia");
       const statusCombustivel = document.getElementById("status_aumento_combustivel");
 
-      if (campoEnergia && !campoEnergia.dataset.editado) campoEnergia.value = "4,60";
-      if (campoCombustivel && !campoCombustivel.dataset.editado) campoCombustivel.value = "5,60";
+      if (campoEnergia && !campoEnergia.dataset.editado) campoEnergia.value = "-0,96";
+      if (campoCombustivel && !campoCombustivel.dataset.editado) campoCombustivel.value = "-0,09";
 
-      if (statusEnergia) statusEnergia.textContent = "Premissa operacional inicial: 4,60% a.a. Pode ajustar manualmente.";
-      if (statusCombustivel) statusCombustivel.textContent = "Premissa operacional inicial: 5,60% a.a. Pode ajustar manualmente.";
+      if (statusEnergia) statusEnergia.textContent = "Premissa real inicial: -0,96% a.a. em relação à inflação geral. Pode ajustar manualmente.";
+      if (statusCombustivel) statusCombustivel.textContent = "Premissa real inicial: -0,09% a.a. em relação à inflação geral. Pode ajustar manualmente.";
     }
 
     function mostrarElemento(id, mostrar) {
@@ -4160,6 +4226,33 @@
       }
     }
 
+    function campoIpvaPorPrefixoTCO(prefixo) {
+      if (prefixo === "ve") return document.getElementById("ipva_ve_input");
+      if (prefixo === "icev") return document.getElementById("ipva_icev_input");
+      return document.getElementById("ipva_atual_input");
+    }
+
+    function marcarIpvaManualTCO(prefixo, manual) {
+      const marcador = document.getElementById(`ipva_${prefixo}_manual`);
+      const campo = campoIpvaPorPrefixoTCO(prefixo);
+      const valor = manual ? "1" : "0";
+      if (marcador) marcador.value = valor;
+      if (campo) campo.dataset.editadoManual = valor;
+    }
+
+    function tipoPropulsaoIpvaPorPrefixoTCO(prefixo, combustivel) {
+      const modelo = document.getElementById(`modelo_${prefixo}`)?.value || "";
+      const codigoAno = document.getElementById(`${prefixo}_ano`)?.value || "";
+      if (prefixo === "ve") {
+        const canonico = document.getElementById("tipo_veiculo_ve")?.value || "";
+        if (canonico) return canonico;
+      }
+      if (typeof classificarTipoVeiculoTCO === "function") {
+        return classificarTipoVeiculoTCO(modelo, combustivel || "", codigoAno, "", prefixo);
+      }
+      return combustivel || "";
+    }
+
     async function atualizarIpva(prefixo) {
       const uf = document.getElementById("estado_uf").value;
       if (!uf) return;
@@ -4186,12 +4279,24 @@
       if (!valor || !ipvaInput) return;
 
       try {
-        const params = new URLSearchParams({ uf: uf, valor: valor, ano: ano || "", combustivel: combustivel || "" });
+        const codigoAno = document.getElementById(`${prefixo}_ano`)?.value || "";
+        const tipoPropulsao = tipoPropulsaoIpvaPorPrefixoTCO(prefixo, combustivel);
+        const params = new URLSearchParams({
+          uf: uf,
+          valor: valor,
+          ano: ano || "",
+          combustivel: combustivel || "",
+          tipo_propulsao: tipoPropulsao || "",
+          ano_aquisicao: ano || "",
+          valor_primeira_compra: valor,
+          zero_km: (typeof codigoAnoFipeZeroKm === "function" && codigoAnoFipeZeroKm(codigoAno)) ? "1" : "0"
+        });
         const resp = await fetch(`/ipva_estimado?${params.toString()}`);
         const data = await resp.json();
 
         if (data && typeof data.ipva === "number") {
           ipvaInput.value = formatarMoedaBR(data.ipva);
+          marcarIpvaManualTCO(prefixo, false);
         }
       } catch (e) {
         console.error("Erro ao calcular IPVA estimado:", e);
@@ -6350,7 +6455,10 @@
       const btnSalvar = document.getElementById("btn_salvar_phev_tco");
 
       if (slider) slider.style.setProperty("--phev-electric-pct", `${eletricoPct}%`);
-      renderizarParticipacaoEnergiaPhevPlugVE(eletricoPct);
+      // V50.20: o resumo compacto PHEV deve acompanhar o slider durante o arraste.
+      // Diferente do valor persistido (gravado apenas em Salvar/Próximo), o override
+      // abaixo é somente visual e espelha exatamente o estado temporário do modal.
+      renderizarCardPhevTCO(eletricoPct);
       if (pctEle) pctEle.textContent = `${eletricoPct}% elétrico`;
       if (pctComb) pctComb.textContent = `${combustPct}% combustível`;
 
@@ -6385,7 +6493,7 @@
       setValorPhevTCO("phev_consumo_combustivel", document.getElementById("phev_modal_consumo_combustivel")?.value || "");
     }
 
-    function renderizarCardPhevTCO() {
+    function renderizarCardPhevTCO(eletricoPctOverride = null) {
       const card = document.getElementById("plugve_phev_card");
       if (!card) return;
       const ativo = ehPhevSelecionadoTCO();
@@ -6395,7 +6503,8 @@
         return;
       }
 
-      const eletricoPct = Math.max(0, Math.min(100, Number(document.getElementById("phev_percent_eletrico")?.value || 100)));
+      const valorPersistido = Number(document.getElementById("phev_percent_eletrico")?.value || 100);
+      const eletricoPct = Math.max(0, Math.min(100, Number(eletricoPctOverride ?? valorPersistido)));
       const combustPct = 100 - eletricoPct;
       const barEle = document.getElementById("phev_bar_eletrico");
       const barComb = document.getElementById("phev_bar_combustivel");
@@ -6412,7 +6521,7 @@
       if (PBEV_DEBUG_TCO.ve?.autopreencher === true && PBEV_DEBUG_TCO.ve?.nivel_match === "alto") {
         pbevRenderizarSeloComprovacaoTCO("ve", PBEV_DEBUG_TCO.ve);
       }
-      renderizarParticipacaoEnergiaPhevPlugVE();
+      renderizarParticipacaoEnergiaPhevPlugVE(eletricoPct);
     }
 
     function abrirModalPhevTCO() {
@@ -7007,15 +7116,18 @@
       ["ve", "icev", "atual"].forEach(prefixo => {
         const seguro = campoSeguroPorPrefixo(prefixo);
         const preco = campoPrecoPorPrefixo(prefixo);
+        const ipva = campoIpvaPorPrefixoTCO(prefixo);
+        if (ipva) {
+          ipva.addEventListener("input", function () {
+            marcarIpvaManualTCO(prefixo, true);
+          });
+        }
         if (seguro) {
           seguro.addEventListener("input", function () {
             marcarSeguroManual(prefixo, true);
+            marcarSeguroConsiderado(prefixo, String(this.value || "").trim() !== "");
             limparMetadadosSeguroAutomaticoTCO(prefixo);
-            const status = statusSeguroPorPrefixo(prefixo);
-            if (status) {
-              status.textContent = "Valor informado pelo usuário.";
-              status.classList.remove("hidden");
-            }
+            atualizarStatusSeguroManualTCO(prefixo);
           });
         }
         if (preco) {

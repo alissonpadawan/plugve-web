@@ -21,7 +21,7 @@ from functools import lru_cache
 
 from services.fipe_service import FipeService, FipeApiError
 from services.ipva_service import IpvaService
-from services.seguro_autoseg_service import estimar_seguro_autoseg_referencia
+from services.seguro_v2_service import estimar_seguro_v2, METODO_V2
 from services.sobre_engagement_service import (
     COMMENT_MAX_LENGTH,
     PAGE_SIZE as SOBRE_COMMENTS_PAGE_SIZE,
@@ -64,9 +64,58 @@ CAMINHO_MUNICIPIOS = os.path.join(BASE_DIR, "data", "municipios.xlsx")
 # 2) HELPERS (FUNÇÕES PEQUENAS)
 # ============================================================
 
-# 2.1) Converter número com vírgula/ponto
-AUMENTO_ENERGIA_PADRAO_PERCENTUAL = 4.6
-AUMENTO_COMBUSTIVEL_PADRAO_PERCENTUAL = 5.6
+# 2.1) Convenção monetária e premissas reais do TCO
+# V50.24: o TCO é acumulado em reais constantes da data-base da simulação.
+# As séries abaixo reproduzem as premissas nominais históricas de 4,6% (energia)
+# e 5,6% (combustíveis) a partir das variações anuais nacionais do IPCA/SIDRA
+# entre jan/2020 e dez/2025. O período contém seis variações anuais completas.
+TCO_CONVENCAO_MONETARIA = "reais_constantes_data_base"
+TCO_CONVENCAO_MONETARIA_ROTULO = "TCO acumulado em reais constantes da data-base da simulação"
+TCO_METODOLOGIA_MONETARIA_VERSAO = "TCO_REAL_BASE_V1"
+TCO_MOEDA = "BRL"
+TCO_INFLACAO_FONTE = "IBGE/SIDRA — IPCA, Tabela 7060"
+TCO_INFLACAO_RECORTE = "Brasil"
+TCO_CALIBRACAO_INICIO = "2020-01"
+TCO_CALIBRACAO_FIM = "2025-12"
+TCO_CALIBRACAO_ANOS = 6
+TCO_ENERGIA_ITEM_SIDRA = "2202003 — Energia elétrica residencial"
+TCO_COMBUSTIVEL_ITEM_SIDRA = "5104 — Combustíveis (veículos)"
+
+TCO_IPCA_GERAL_ANUAL_PERCENTUAL = (4.52, 10.06, 5.79, 4.62, 4.83, 4.26)
+TCO_ENERGIA_NOMINAL_ANUAL_PERCENTUAL = (9.14, 21.21, -19.01, 9.52, -0.37, 12.31)
+TCO_COMBUSTIVEL_NOMINAL_ANUAL_PERCENTUAL = (-0.06, 49.02, -23.87, 8.37, 10.09, 2.30)
+
+
+def taxa_anual_equivalente_percentual(taxas_anuais_percentuais) -> float:
+    fator = 1.0
+    taxas = list(taxas_anuais_percentuais or [])
+    if not taxas:
+        return 0.0
+    for taxa in taxas:
+        fator *= 1.0 + (float(taxa) / 100.0)
+    return ((fator ** (1.0 / len(taxas))) - 1.0) * 100.0
+
+
+def taxa_real_percentual(taxa_nominal_percentual: float, inflacao_percentual: float) -> float:
+    denominador = 1.0 + (float(inflacao_percentual) / 100.0)
+    if denominador <= 0:
+        raise ValueError("Inflação de referência inválida para conversão nominal-real.")
+    return (((1.0 + float(taxa_nominal_percentual) / 100.0) / denominador) - 1.0) * 100.0
+
+
+TCO_INFLACAO_GERAL_EQUIVALENTE_PERCENTUAL = taxa_anual_equivalente_percentual(TCO_IPCA_GERAL_ANUAL_PERCENTUAL)
+TCO_ENERGIA_NOMINAL_ORIGEM_PERCENTUAL = taxa_anual_equivalente_percentual(TCO_ENERGIA_NOMINAL_ANUAL_PERCENTUAL)
+TCO_COMBUSTIVEL_NOMINAL_ORIGEM_PERCENTUAL = taxa_anual_equivalente_percentual(TCO_COMBUSTIVEL_NOMINAL_ANUAL_PERCENTUAL)
+TCO_ENERGIA_REAL_CALCULADA_PERCENTUAL = taxa_real_percentual(TCO_ENERGIA_NOMINAL_ORIGEM_PERCENTUAL, TCO_INFLACAO_GERAL_EQUIVALENTE_PERCENTUAL)
+TCO_COMBUSTIVEL_REAL_CALCULADA_PERCENTUAL = taxa_real_percentual(TCO_COMBUSTIVEL_NOMINAL_ORIGEM_PERCENTUAL, TCO_INFLACAO_GERAL_EQUIVALENTE_PERCENTUAL)
+# A interface trabalha com duas casas decimais; a auditoria conserva também o valor calculado integral.
+TCO_ENERGIA_REAL_PADRAO_PERCENTUAL = round(TCO_ENERGIA_REAL_CALCULADA_PERCENTUAL, 2)
+TCO_COMBUSTIVEL_REAL_PADRAO_PERCENTUAL = round(TCO_COMBUSTIVEL_REAL_CALCULADA_PERCENTUAL, 2)
+
+# Aliases mantidos para compatibilidade com nomes internos/formulário históricos.
+# A partir da V50.24, esses campos significam VARIAÇÃO REAL anual.
+AUMENTO_ENERGIA_PADRAO_PERCENTUAL = TCO_ENERGIA_REAL_PADRAO_PERCENTUAL
+AUMENTO_COMBUSTIVEL_PADRAO_PERCENTUAL = TCO_COMBUSTIVEL_REAL_PADRAO_PERCENTUAL
 AUMENTO_ENERGIA_PADRAO = AUMENTO_ENERGIA_PADRAO_PERCENTUAL / 100.0
 AUMENTO_COMBUSTIVEL_PADRAO = AUMENTO_COMBUSTIVEL_PADRAO_PERCENTUAL / 100.0
 
@@ -139,6 +188,19 @@ def _prefixo_seguro_campo(campo: str) -> str:
     return ""
 
 
+def _seguro_considerado_formulario(dados_form, campo: str) -> bool:
+    """Distingue ausência deliberada do seguro de um prêmio manual igual a zero.
+
+    Formulários anteriores à V50.23 não enviavam o marcador explícito; nesses
+    casos preservamos o comportamento histórico e consideramos o componente.
+    """
+    prefixo = _prefixo_seguro_campo(campo)
+    marcador = f"seguro_{prefixo}_considerado" if prefixo else ""
+    if not marcador or marcador not in dados_form:
+        return True
+    return _flag_formulario_ativo(dados_form, marcador)
+
+
 def tecnologia_seguro_formulario(dados_form, prefixo: str) -> str:
     prefixo = str(prefixo or "").strip().lower()
     modelo = str(dados_form.get(f"modelo_{prefixo}") or "").upper()
@@ -156,47 +218,248 @@ def tecnologia_seguro_formulario(dados_form, prefixo: str) -> str:
     return "gasolina"
 
 
+def _ano_modelo_seguro_formulario(dados_form, prefixo: str):
+    """Preserva a condição Zero km para o estimador de seguro.
+
+    A interface usa o ano civil no campo de cálculo, mas a FIPE identifica zero km
+    pelo código 32000. O Seguro V2 possui uma faixa IPSA própria para zero km,
+    portanto essa informação não pode se perder no POST.
+    """
+    codigo_ano = str(dados_form.get(f"{prefixo}_ano_codigo") or dados_form.get(f"{prefixo}_ano") or "").strip()
+    ano_modelo = dados_form.get(f"ano_modelo_{prefixo}") or ""
+    if codigo_ano.startswith("32000") or codigo_ano == "32000":
+        ano_num = str(ano_modelo or datetime.now().year).strip()
+        return f"Zero km {ano_num}"
+    return ano_modelo or codigo_ano or ""
+
+
+def _tipo_propulsao_ipva_formulario(dados_form, prefixo: str) -> str:
+    """Classifica a propulsão para o mesmo motor central de IPVA.
+
+    Não cria regra tributária no TCO: apenas traduz a seleção já conhecida pela
+    CurVE para o vocabulário aceito por ``IpvaService``.
+    """
+    prefixo = str(prefixo or "").strip().lower()
+    modelo = str(dados_form.get(f"modelo_{prefixo}") or "").strip()
+    combustivel = str(dados_form.get(f"combustivel_{prefixo}") or "").strip()
+    codigo_ano = str(dados_form.get(f"{prefixo}_ano") or dados_form.get(f"{prefixo}_ano_codigo") or "").strip()
+    tipo_canonico = str(dados_form.get("tipo_veiculo_ve") or "").strip().lower() if prefixo == "ve" else ""
+
+    if tipo_canonico == "phev":
+        return "PHEV"
+    if tipo_canonico == "eletrico":
+        return "BEV"
+
+    tipo = classificar_tipo_veiculo(modelo=modelo, combustivel=combustivel, codigo_ano=codigo_ano)
+    if tipo == TIPO_EV_PURO:
+        return "BEV"
+    if tipo == TIPO_PHEV:
+        return "PHEV"
+    if tipo == TIPO_HEV:
+        return "HEV"
+    return combustivel
+
+
+def _ipva_manual_formulario(dados_form, prefixo: str) -> bool | None:
+    """Retorna True/False quando o formulário V50.25 informa a origem do IPVA.
+
+    ``None`` identifica formulários legados sem o novo marcador e preserva o
+    comportamento antigo nesses contratos internos. Snapshots históricos não
+    passam por esta função porque nunca são recalculados.
+    """
+    campo = f"ipva_{prefixo}_manual"
+    if campo not in dados_form:
+        return None
+    return _flag_formulario_ativo(dados_form, campo)
+
+
+def metadados_ipva_formulario(dados_form, prefixo: str, preco: float) -> dict:
+    prefixo = str(prefixo or "").strip().lower()
+    codigo_ano = str(dados_form.get(f"{prefixo}_ano") or dados_form.get(f"{prefixo}_ano_codigo") or "").strip()
+    ano_modelo = _ano_modelo_seguro_formulario(dados_form, prefixo)
+    manual = _ipva_manual_formulario(dados_form, prefixo)
+    isencao_manual = prefixo == "ve" and "isencao_ipva_ve" in dados_form
+
+    if isencao_manual:
+        origem = "isencao_manual"
+    elif manual is True:
+        origem = "manual"
+    elif manual is False:
+        origem = "automatico"
+    else:
+        origem = "legado"
+
+    return {
+        "origem": origem,
+        "reavaliar_anualmente": origem == "automatico",
+        "ano_fabricacao": ano_modelo,
+        "ano_aquisicao": ano_modelo,
+        "valor_primeira_compra": max(0.0, float(preco or 0.0)),
+        "combustivel": str(dados_form.get(f"combustivel_{prefixo}") or "").strip(),
+        "tipo_propulsao": _tipo_propulsao_ipva_formulario(dados_form, prefixo),
+        "potencia_cv": dados_form.get(f"potencia_cv_{prefixo}") or None,
+        "cilindrada_cc": dados_form.get(f"cilindrada_cc_{prefixo}") or None,
+        "motor": str(dados_form.get(f"motor_{prefixo}") or "").strip(),
+        "categoria": str(dados_form.get(f"categoria_{prefixo}") or "").strip(),
+        "uso": str(dados_form.get(f"uso_{prefixo}") or "particular").strip() or "particular",
+        "compra_local": dados_form.get(f"compra_local_{prefixo}") or None,
+        "zero_km": codigo_ano.startswith("32000") or str(ano_modelo).lower().startswith("zero km"),
+        "regra_temporal": "Regras tributárias cadastradas na data-base, reaplicadas ao estado projetado do veículo.",
+    }
+
+
+def _ano_base_simulacao(data_base_monetaria: str) -> int:
+    try:
+        return int(str(data_base_monetaria or "")[:4])
+    except (TypeError, ValueError):
+        return date.today().year
+
+
+def calcular_ipva_projetado_ano(
+    *,
+    veiculo: dict,
+    comum: dict,
+    valor_mercado: float,
+    ano_indice: int,
+    taxa_ipva_legada: float,
+) -> dict:
+    """Reaplica o ``IpvaService`` ao estado projetado do veículo no ano ``t``.
+
+    A função não contém alíquotas nem limiares estaduais. Toda regra tributária
+    continua concentrada em ``IpvaService``. Para formulários antigos sem o
+    marcador de origem do IPVA, mantém-se a taxa relativa da V50.24 por
+    compatibilidade; novas simulações da V50.25 usam a reavaliação anual.
+    """
+    meta = dict(veiculo.get("ipva_meta") or {})
+    origem = str(meta.get("origem") or "legado")
+    valor = max(0.0, float(valor_mercado or 0.0))
+    ano_calendario = _ano_base_simulacao(str(comum.get("data_base_monetaria") or "")) + max(0, int(ano_indice) - 1)
+    uf = str(comum.get("uf") or "").strip().upper()
+
+    def resultado_legado(motivo: str = "compatibilidade_legada") -> dict:
+        ipva = valor * max(0.0, float(taxa_ipva_legada or 0.0))
+        return {
+            "ipva": ipva,
+            "aliquota": max(0.0, float(taxa_ipva_legada or 0.0)),
+            "aliquota_percentual": max(0.0, float(taxa_ipva_legada or 0.0)) * 100.0,
+            "criterio": motivo,
+            "regra": "Taxa efetiva inicial preservada por compatibilidade com formulário legado.",
+            "ano_fabricacao": None,
+            "ano_calendario": ano_calendario,
+            "idade_veiculo": None,
+            "isento": ipva <= 0.0,
+            "isencao_idade": False,
+            "beneficio_tecnologia": False,
+            "observacao": "Formulário sem marcador V50.25 de origem do IPVA; cálculo histórico preservado.",
+            "origem": origem,
+            "reavaliado_anualmente": False,
+        }
+
+    if origem == "isencao_manual":
+        return {
+            "ipva": 0.0,
+            "aliquota": 0.0,
+            "aliquota_percentual": 0.0,
+            "criterio": "isencao_manual",
+            "regra": "Isenção de IPVA informada pelo usuário.",
+            "ano_fabricacao": None,
+            "ano_calendario": ano_calendario,
+            "idade_veiculo": None,
+            "isento": True,
+            "isencao_idade": False,
+            "beneficio_tecnologia": False,
+            "observacao": "Override explícito do usuário preservado em todo o horizonte.",
+            "origem": origem,
+            "reavaliado_anualmente": False,
+        }
+
+    if origem == "legado" or not uf or not meta.get("ano_fabricacao"):
+        return resultado_legado("compatibilidade_legada" if origem == "legado" else "dados_insuficientes_fallback")
+
+    try:
+        resultado_motor = IpvaService.calcular(
+            uf=uf,
+            valor_veiculo=valor,
+            ano_fabricacao=meta.get("ano_fabricacao"),
+            combustivel=meta.get("combustivel") or veiculo.get("combustivel") or "",
+            tipo_propulsao=meta.get("tipo_propulsao") or "",
+            potencia_cv=meta.get("potencia_cv"),
+            cilindrada_cc=meta.get("cilindrada_cc"),
+            motor=meta.get("motor") or "",
+            categoria=meta.get("categoria") or "",
+            uso=meta.get("uso") or "particular",
+            ano_calendario=ano_calendario,
+            ano_aquisicao=meta.get("ano_aquisicao"),
+            valor_primeira_compra=meta.get("valor_primeira_compra") or veiculo.get("preco") or valor,
+            compra_local=meta.get("compra_local"),
+            zero_km=meta.get("zero_km"),
+        )
+        resultado = dict(resultado_motor or {})
+        resultado["origem"] = origem
+        resultado["reavaliado_anualmente"] = True
+
+        # Valor manual continua definindo a taxa econômica informada pelo usuário,
+        # mas a elegibilidade/isenção cadastrada é reavaliada a cada ano.
+        if origem == "manual":
+            isento = bool(resultado.get("isento"))
+            aliquota_manual = max(0.0, float(taxa_ipva_legada or 0.0))
+            resultado["ipva"] = 0.0 if isento else valor * aliquota_manual
+            resultado["aliquota"] = 0.0 if isento else aliquota_manual
+            resultado["aliquota_percentual"] = (0.0 if isento else aliquota_manual * 100.0)
+            resultado["criterio_motor"] = resultado.get("criterio")
+            resultado["regra_motor"] = resultado.get("regra")
+            resultado["criterio"] = "manual_com_reavaliacao_elegibilidade"
+            resultado["regra"] = (
+                "Valor/taxa informado pelo usuário preservado enquanto houver incidência; "
+                f"elegibilidade anual reaplicada pelo motor: {resultado.get('regra_motor') or 'regra cadastrada'}."
+            )
+        return resultado
+    except Exception as exc:
+        fallback = resultado_legado("fallback_erro_motor_ipva")
+        fallback["observacao"] = f"Falha ao reaplicar IpvaService no ano projetado; taxa inicial preservada ({type(exc).__name__})."
+        return fallback
+
+
 def estimativa_seguro_backend(dados_form, campo: str, preco: float) -> dict:
     prefixo = _prefixo_seguro_campo(campo)
     uf = str(dados_form.get("estado_uf") or dados_form.get("uf") or "").strip().upper()
-    ano_modelo = (
-        dados_form.get(f"ano_modelo_{prefixo}")
-        or dados_form.get(f"{prefixo}_ano_codigo")
-        or dados_form.get(f"{prefixo}_ano")
-        or ""
-    )
+    ano_modelo = _ano_modelo_seguro_formulario(dados_form, prefixo)
     try:
         classificador = globals().get("tecnologia_seguro_formulario")
         tecnologia = classificador(dados_form, prefixo) if callable(classificador) else "gasolina"
         try:
-            estimativa = estimar_seguro_autoseg_referencia(
+            estimativa = estimar_seguro_v2(
+                valor_fipe=max(0.0, float(preco or 0.0)),
+                uf=uf,
+                municipio=str(dados_form.get("municipio") or ""),
+                ano_modelo=ano_modelo,
+                tecnologia=tecnologia,
+                codigo_fipe=str(dados_form.get(f"codigo_fipe_{prefixo}") or ""),
+            )
+        except TypeError:
+            # Compatibilidade defensiva com chamadas antigas durante migração.
+            estimativa = estimar_seguro_v2(
                 valor_fipe=max(0.0, float(preco or 0.0)),
                 uf=uf,
                 ano_modelo=ano_modelo,
                 tecnologia=tecnologia,
             )
-        except TypeError:
-            # Compatibilidade com adaptadores/testes antigos que ainda expõem
-            # o contrato V1 sem o argumento opcional `tecnologia`.
-            estimativa = estimar_seguro_autoseg_referencia(
-                valor_fipe=max(0.0, float(preco or 0.0)),
-                uf=uf,
-                ano_modelo=ano_modelo,
-            )
-        return estimativa.to_dict()
+        return estimativa
     except (TypeError, ValueError):
         return {}
 
 
 def seguro_formulario_ou_padrao(dados_form, campo: str, preco: float) -> float:
-    """Retorna seguro informado/estimado sem qualquer fallback percentual fixo.
+    """Retorna seguro informado/estimado sem fallback percentual fixo universal.
 
-    A interface normalmente envia a estimativa AUTOSEG/SUSEP já calculada. Se
-    esse valor não chegar (por exemplo, POST externo ou JS desabilitado), o
-    backend reproduz a mesma estimativa V1. Se nem isso for possível, o
-    componente não recai silenciosamente em um percentual fixo universal.
+    A interface normalmente envia a estimativa Seguro V2 já calculada. Se esse
+    valor não chegar (por exemplo, POST externo ou JS desabilitado), o backend
+    reproduz a estimativa IPSA + AUTOSEG. O valor manual informado pelo usuário
+    sempre prevalece.
     """
     valor_bruto = dados_form.get(campo, "")
+    if not _seguro_considerado_formulario(dados_form, campo):
+        return 0.0
     if _flag_formulario_ativo(dados_form, f"{campo}_manual"):
         return max(0.0, conv(valor_bruto))
     valor = conv(valor_bruto)
@@ -207,6 +470,17 @@ def seguro_formulario_ou_padrao(dados_form, campo: str, preco: float) -> float:
 
 
 def metadados_seguro_formulario(dados_form, campo: str, preco: float) -> dict:
+    if not _seguro_considerado_formulario(dados_form, campo):
+        return {
+            "origem": "nao_considerado",
+            "fonte": "Seguro não considerado",
+            "metodo": "nao_considerado",
+            "data_base": "",
+            "nivel_agregacao": "nao_considerado",
+            "taxa_efetiva": 0.0,
+            "confianca": "nao_aplicavel",
+            "considerado": False,
+        }
     if _flag_formulario_ativo(dados_form, f"{campo}_manual"):
         return {
             "origem": "usuario",
@@ -215,6 +489,8 @@ def metadados_seguro_formulario(dados_form, campo: str, preco: float) -> dict:
             "data_base": "",
             "nivel_agregacao": "manual",
             "taxa_efetiva": taxa_relativa(conv(dados_form.get(campo, 0)), preco) * 100.0 if preco else 0.0,
+            "confianca": "manual",
+            "considerado": True,
         }
     prefixo = _prefixo_seguro_campo(campo)
     fonte_form = str(dados_form.get(f"seguro_{prefixo}_fonte") or "").strip()
@@ -222,19 +498,23 @@ def metadados_seguro_formulario(dados_form, campo: str, preco: float) -> dict:
         return {
             "origem": "automatico",
             "fonte": fonte_form,
-            "metodo": str(dados_form.get(f"seguro_{prefixo}_metodo") or "taxa_uf_autoseg_vez_fator_relativo_ipsa_tecnologia").strip(),
+            "metodo": str(dados_form.get(f"seguro_{prefixo}_metodo") or "ipsa_mediana_atual_fatores_autoseg_credibilidade_v2").strip(),
             "data_base": str(dados_form.get(f"seguro_{prefixo}_data_base") or "").strip(),
             "nivel_agregacao": str(dados_form.get(f"seguro_{prefixo}_nivel") or "").strip(),
             "taxa_efetiva": conv(dados_form.get(f"seguro_{prefixo}_taxa") or 0),
+            "confianca": str(dados_form.get(f"seguro_{prefixo}_confianca") or "").strip(),
+            "considerado": True,
         }
     estimativa = estimativa_seguro_backend(dados_form, campo, preco)
     return {
         "origem": "automatico" if estimativa else "nao_estimado",
         "fonte": estimativa.get("fonte") or "",
-        "metodo": estimativa.get("metodo") or "taxa_uf_autoseg_vez_fator_relativo_ipsa_tecnologia",
+        "metodo": estimativa.get("metodo") or "ipsa_mediana_atual_fatores_autoseg_credibilidade_v2",
         "data_base": estimativa.get("data_base") or "",
         "nivel_agregacao": estimativa.get("nivel_agregacao") or "",
         "taxa_efetiva": float(estimativa.get("taxa_efetiva") or 0.0),
+        "confianca": estimativa.get("confianca") or "",
+        "considerado": True,
     }
 
 
@@ -924,11 +1204,29 @@ def extrair_componentes_horizonte(v: dict) -> dict:
 def formatar_linha_anual(memoria: dict) -> dict:
     return {
         "ano": memoria.get("rotulo") or f"Ano {memoria.get('ano', '')}",
+        "valor_veiculo_inicio": real_format(memoria.get("valor_mercado_inicio_ano", 0)),
+        "preco_energia": real_format(memoria.get("preco_energia", 0)),
+        "preco_combustivel": real_format(memoria.get("preco_combustivel", 0)),
         "uso": real_format(memoria.get("uso", memoria.get("energia_combustivel", 0))),
         "ipva": real_format(memoria.get("ipva", 0)),
+        "ipva_ano_calendario": memoria.get("ipva_ano_calendario") or "—",
+        "ipva_uf": memoria.get("ipva_uf") or "—",
+        "ipva_idade_veiculo": memoria.get("ipva_idade_veiculo") if memoria.get("ipva_idade_veiculo") is not None else "—",
+        "ipva_valor_base": real_format(memoria.get("ipva_valor_base", memoria.get("valor_mercado_inicio_ano", 0))),
+        "ipva_aliquota": percentual_format(memoria.get("taxa_ipva", 0)),
+        "ipva_criterio": memoria.get("ipva_criterio") or "",
+        "ipva_regra": memoria.get("ipva_regra") or "",
+        "ipva_isento": "Sim" if memoria.get("ipva_isento") else "Não",
+        "ipva_isencao_idade": "Sim" if memoria.get("ipva_isencao_idade") else "Não",
+        "ipva_beneficio_tecnologia": "Sim" if memoria.get("ipva_beneficio_tecnologia") else "Não",
+        "ipva_observacao": memoria.get("ipva_observacao") or "",
+        "ipva_origem": memoria.get("ipva_origem") or "",
+        "ipva_reavaliado_anualmente": bool(memoria.get("ipva_reavaliado_anualmente")),
         "seguro": real_format(memoria.get("seguro", 0)),
         "manutencao": real_format(memoria.get("manutencao", 0)),
-        "financiamento": real_format(memoria.get("financiamento_juros", 0)),
+        "financiamento_nominal": real_format(memoria.get("financiamento_juros_nominais", 0)),
+        "financiamento": real_format(memoria.get("financiamento_juros_reais", memoria.get("financiamento_juros", 0))),
+        "operacional_ano": real_format(memoria.get("gasto_operacional_ano", 0)),
         "operacional_acumulado": real_format(memoria.get("gasto_operacional_acumulado", 0)),
         "depreciacao_acumulada": real_format(memoria.get("depreciacao_acumulada", 0)),
         "revenda": real_format(memoria.get("valor_revenda", 0)),
@@ -1155,6 +1453,73 @@ def juros_financiamento_por_ano(financiamento: dict, anos: int) -> list:
     return juros_anuais
 
 
+def juros_financiamento_monetario_por_ano(
+    financiamento: dict,
+    anos: int,
+    inflacao_anual_percentual: float = TCO_INFLACAO_GERAL_EQUIVALENTE_PERCENTUAL,
+) -> dict:
+    """Mantém o contrato Price nominal e converte apenas os juros para reais da data-base.
+
+    A primeira parcela ocorre no mês 1; por isso, o juro da primeira parcela é
+    deflacionado por um mês. O principal e a parcela contratual não são alterados.
+    """
+    anos = max(0, int(anos or 0))
+    zeros = [0.0] * anos
+    if not financiamento or not financiamento.get("ativo"):
+        return {"nominais": zeros[:], "reais": zeros[:], "memoria_mensal": []}
+
+    principal = max(0.0, float(financiamento.get("principal", 0.0) or 0.0))
+    taxa = max(0.0, float(financiamento.get("taxa_mensal", 0.0) or 0.0))
+    meses = max(0, int(financiamento.get("meses", 0) or 0))
+    parcela = max(0.0, float(financiamento.get("parcela", 0.0) or 0.0))
+    inflacao_anual = float(inflacao_anual_percentual or 0.0) / 100.0
+    if inflacao_anual <= -1.0:
+        raise ValueError("Inflação anual inválida para deflação dos juros do financiamento.")
+    inflacao_mensal = (1.0 + inflacao_anual) ** (1.0 / 12.0) - 1.0
+
+    juros_nominais = zeros[:]
+    juros_reais = zeros[:]
+    memoria_mensal = []
+    saldo = principal
+    if principal <= 0 or meses <= 0 or parcela <= 0:
+        return {"nominais": juros_nominais, "reais": juros_reais, "memoria_mensal": memoria_mensal}
+
+    for mes in range(1, min(meses, anos * 12) + 1):
+        juros_nominal_mes = saldo * taxa if taxa > 0 else 0.0
+        amortizacao = parcela - juros_nominal_mes if taxa > 0 else parcela
+        if amortizacao < 0:
+            amortizacao = 0.0
+        fator_inflacao = (1.0 + inflacao_mensal) ** mes
+        juros_real_mes = juros_nominal_mes / fator_inflacao if fator_inflacao > 0 else juros_nominal_mes
+        saldo_apos = max(0.0, saldo - amortizacao)
+        ano_idx = (mes - 1) // 12
+        if 0 <= ano_idx < anos:
+            juros_nominais[ano_idx] += juros_nominal_mes
+            juros_reais[ano_idx] += juros_real_mes
+        memoria_mensal.append({
+            "mes": mes,
+            "ano_tco": ano_idx + 1,
+            "saldo_inicial": saldo,
+            "parcela_nominal": parcela,
+            "juros_nominais": juros_nominal_mes,
+            "amortizacao_nominal": amortizacao,
+            "fator_inflacao": fator_inflacao,
+            "juros_reais_data_base": juros_real_mes,
+            "saldo_final": saldo_apos,
+        })
+        saldo = saldo_apos
+        if saldo <= 0:
+            break
+
+    return {
+        "nominais": juros_nominais,
+        "reais": juros_reais,
+        "memoria_mensal": memoria_mensal,
+        "inflacao_anual_percentual": float(inflacao_anual_percentual or 0.0),
+        "inflacao_mensal": inflacao_mensal,
+    }
+
+
 def nome_curto(nome: str, limite: int = 36) -> str:
     nome = limpar_nome_veiculo(nome)
     return nome if len(nome) <= limite else nome[: limite - 1].rstrip() + "…"
@@ -1189,9 +1554,9 @@ def html_grafico(fig):
 
 
 # 4.4) Projeção genérica de um veículo
-# Regra: energia e combustível sobem a.a.; IPVA e seguro acompanham o valor de mercado do veículo.
+# Regra V50.24: energia e combustível variam em termos reais a.a.; IPVA e seguro acompanham o valor de mercado do veículo.
 # 4.4) Projeção genérica de um veículo
-# Regra V26: energia e combustível sobem a.a.; IPVA e seguro acompanham o valor de mercado do veículo.
+# A depreciação permanece na trajetória da data-base e não recebe inflação futura adicional.
 def calcular_projecao_veiculo(veiculo, comum):
     nome = limpar_nome_veiculo(veiculo.get("nome", "Veículo"))
     tipo = veiculo.get("tipo", "icev")  # ve, phev ou icev
@@ -1200,17 +1565,24 @@ def calcular_projecao_veiculo(veiculo, comum):
     consumo = max(0.0, float(veiculo.get("consumo", 0) or 0))
     manut = max(0.0, float(veiculo.get("manut", 0) or 0))
     ipva_inicial = max(0.0, float(veiculo.get("ipva", 0) or 0))
+    ipva_meta = dict(veiculo.get("ipva_meta") or {})
     seguro_inicial = max(0.0, float(veiculo.get("seguro", 0) or 0))
     seguro_meta = dict(veiculo.get("seguro_meta") or {})
     depreciacao = max(0.0, min(float(veiculo.get("depreciacao", 0) or 0), 0.95))
     financiamento = veiculo.get("financiamento") or {}
     combustivel_descricao = veiculo.get("combustivel", "")
     codigo_fipe = str(veiculo.get("codigo_fipe") or "").strip()
+    ano_modelo_seguro = veiculo.get("ano_modelo") or ""
+    tecnologia_seguro = veiculo.get("tecnologia_seguro") or "gasolina"
 
     energia_inicial = max(0.0, float(comum.get("energia", 0) or 0))
     combustivel_inicial = max(0.0, float(comum.get("combustivel", 0) or 0))
-    aumento_energia = float(comum.get("aumento_energia", 0) or 0)
-    aumento_combustivel = float(comum.get("aumento_combustivel", 0) or 0)
+    # A partir da V50.24, os campos históricos "aumento_*" representam
+    # variações REAIS anuais escolhidas pelo usuário (ou defaults calibrados).
+    aumento_energia = float(comum.get("aumento_energia", AUMENTO_ENERGIA_PADRAO) or 0)
+    aumento_combustivel = float(comum.get("aumento_combustivel", AUMENTO_COMBUSTIVEL_PADRAO) or 0)
+    inflacao_geral_percentual = float(comum.get("inflacao_geral_percentual", TCO_INFLACAO_GERAL_EQUIVALENTE_PERCENTUAL) or 0)
+    data_base_monetaria = str(comum.get("data_base_monetaria") or date.today().isoformat())
     anos = max(1, int(comum.get("anos", 1) or 1))
     km_ano = max(0, int(comum.get("km_ano", 0) or 0))
 
@@ -1240,6 +1612,12 @@ def calcular_projecao_veiculo(veiculo, comum):
 
     taxa_ipva = taxa_relativa(ipva_inicial, preco)
     taxa_seguro = taxa_relativa(seguro_inicial, preco)
+    seguro_considerado = bool(seguro_meta.get("considerado", True)) and str(seguro_meta.get("origem") or "") != "nao_considerado"
+    seguro_automatico_v2 = (
+        seguro_considerado
+        and str(seguro_meta.get("origem") or "") == "automatico"
+        and str(seguro_meta.get("metodo") or "") == METODO_V2
+    )
 
     valor_mercado = preco
     gasto_operacional_acumulado = 0.0
@@ -1256,11 +1634,13 @@ def calcular_projecao_veiculo(veiculo, comum):
     gasto_operacional_lista = []
     custo_uso_lista = []
     ipva_lista = []
+    ipva_memoria_lista = []
     seguro_lista = []
     manut_lista = []
     preco_energia_lista = []
     preco_combustivel_lista = []
-    financiamento_juros_lista = []
+    financiamento_juros_lista = []  # juros em reais constantes da data-base
+    financiamento_juros_nominais_lista = []
     co2_anual_kg_lista = []
     co2_acumulado_t_lista = []
     co2_biogenico_t_lista = []
@@ -1274,15 +1654,49 @@ def calcular_projecao_veiculo(veiculo, comum):
         "etanol_biogenico": 0.0,
         "diesel_biogenico": 0.0,
     }
-    financiamento_juros_anuais = juros_financiamento_por_ano(financiamento, anos)
+    financiamento_fluxo_monetario = juros_financiamento_monetario_por_ano(
+        financiamento, anos, inflacao_geral_percentual
+    )
+    financiamento_juros_nominais_anuais = financiamento_fluxo_monetario.get("nominais") or ([0.0] * anos)
+    financiamento_juros_reais_anuais = financiamento_fluxo_monetario.get("reais") or ([0.0] * anos)
 
     for ano in range(1, anos + 1):
         valor_mercado_inicio_ano = valor_mercado
         energia_ano = energia_inicial * ((1 + aumento_energia) ** (ano - 1))
         combustivel_ano = combustivel_inicial * ((1 + aumento_combustivel) ** (ano - 1))
+        preco_combustivel_utilizado = combustivel_ano
+        precos_combustiveis_detalhe = {}
 
-        ipva_ano = valor_mercado * taxa_ipva
-        seguro_ano = valor_mercado * taxa_seguro
+        ipva_resultado_ano = calcular_ipva_projetado_ano(
+            veiculo=veiculo,
+            comum=comum,
+            valor_mercado=valor_mercado,
+            ano_indice=ano,
+            taxa_ipva_legada=taxa_ipva,
+        )
+        ipva_ano = max(0.0, float(ipva_resultado_ano.get("ipva") or 0.0))
+        taxa_ipva_ano = max(0.0, float(ipva_resultado_ano.get("aliquota") or 0.0))
+        taxa_seguro_ano = taxa_seguro
+        if not seguro_considerado:
+            seguro_ano = 0.0
+            taxa_seguro_ano = 0.0
+        elif seguro_automatico_v2 and valor_mercado > 0:
+            try:
+                est_seguro_ano = estimar_seguro_v2(
+                    valor_fipe=valor_mercado,
+                    uf=str(comum.get("uf") or ""),
+                    municipio=str(comum.get("municipio") or ""),
+                    ano_modelo=ano_modelo_seguro,
+                    tecnologia=tecnologia_seguro,
+                    codigo_fipe=codigo_fipe,
+                    ano_referencia=datetime.now().year + (ano - 1),
+                )
+                seguro_ano = max(0.0, float(est_seguro_ano.get("valor_anual") or 0.0))
+                taxa_seguro_ano = max(0.0, float(est_seguro_ano.get("taxa_efetiva") or 0.0)) / 100.0
+            except Exception:
+                seguro_ano = valor_mercado * taxa_seguro
+        else:
+            seguro_ano = valor_mercado * taxa_seguro
 
         co2_energia_kg = 0.0
         co2_gasolina_kg = 0.0
@@ -1304,6 +1718,8 @@ def calcular_projecao_veiculo(veiculo, comum):
                 co2_energia_kg = km_ano * frac_eletrico * consumo_eletrico_uso * FATOR_CO2_ENERGIA_KG_KWH if frac_eletrico > 0 and consumo_eletrico_uso > 0 else 0.0
 
                 preco_combustivel_ano = (phev_preco_combustivel or combustivel_inicial) * ((1 + aumento_combustivel) ** (ano - 1))
+                preco_combustivel_utilizado = preco_combustivel_ano
+                precos_combustiveis_detalhe = {"termico": preco_combustivel_ano}
                 litros_combustivel = (km_ano * frac_combustivel / phev_consumo_combustivel) if frac_combustivel > 0 and phev_consumo_combustivel > 0 else 0.0
                 custo_combustivel = litros_combustivel * preco_combustivel_ano if litros_combustivel > 0 and preco_combustivel_ano > 0 else 0.0
                 fatores_phev = fatores_combustivel_operacional_kg_l(combustivel_descricao, "gasolina")
@@ -1325,11 +1741,15 @@ def calcular_projecao_veiculo(veiculo, comum):
                 co2_energia_kg = km_ano * consumo * FATOR_CO2_ENERGIA_KG_KWH if consumo > 0 else 0.0
         elif usar_perfil_flex:
             fator_reajuste = (1 + aumento_combustivel) ** (ano - 1)
+            preco_gasolina_ano = flex_preco_gasolina * fator_reajuste
+            preco_etanol_ano = flex_preco_etanol * fator_reajuste
+            preco_combustivel_utilizado = preco_gasolina_ano
+            precos_combustiveis_detalhe = {"gasolina": preco_gasolina_ano, "etanol": preco_etanol_ano}
             custo_uso = custo_uso_combustivel_flex(
                 km_ano=km_ano,
                 etanol_pct=flex_etanol_pct,
-                preco_gasolina=flex_preco_gasolina * fator_reajuste,
-                preco_etanol=flex_preco_etanol * fator_reajuste,
+                preco_gasolina=preco_gasolina_ano,
+                preco_etanol=preco_etanol_ano,
                 consumo_gasolina=flex_consumo_gasolina,
                 consumo_etanol=flex_consumo_etanol,
             )
@@ -1372,7 +1792,8 @@ def calcular_projecao_veiculo(veiculo, comum):
         co2_componentes_kg["etanol_biogenico"] += co2_etanol_biogenico_kg
         co2_componentes_kg["diesel_biogenico"] += co2_diesel_biogenico_kg
 
-        juros_financiamento_ano = financiamento_juros_anuais[ano - 1] if ano - 1 < len(financiamento_juros_anuais) else 0.0
+        juros_financiamento_nominal_ano = financiamento_juros_nominais_anuais[ano - 1] if ano - 1 < len(financiamento_juros_nominais_anuais) else 0.0
+        juros_financiamento_ano = financiamento_juros_reais_anuais[ano - 1] if ano - 1 < len(financiamento_juros_reais_anuais) else 0.0
         custo_anual = custo_uso + manut + ipva_ano + seguro_ano + juros_financiamento_ano
         gasto_operacional_acumulado += custo_anual
 
@@ -1391,11 +1812,13 @@ def calcular_projecao_veiculo(veiculo, comum):
         gasto_operacional_lista.append(gasto_operacional_acumulado)
         custo_uso_lista.append(custo_uso)
         ipva_lista.append(ipva_ano)
+        ipva_memoria_lista.append(dict(ipva_resultado_ano))
         seguro_lista.append(seguro_ano)
         manut_lista.append(manut)
         preco_energia_lista.append(energia_ano)
-        preco_combustivel_lista.append(combustivel_ano)
+        preco_combustivel_lista.append(preco_combustivel_utilizado)
         financiamento_juros_lista.append(juros_financiamento_ano)
+        financiamento_juros_nominais_lista.append(juros_financiamento_nominal_ano)
         co2_anual_kg_lista.append(co2_anual_kg)
         co2_acumulado_t_lista.append(co2_acumulado_kg / 1000.0)
         co2_biogenico_t_lista.append(co2_biogenico_acumulado_kg / 1000.0)
@@ -1406,17 +1829,38 @@ def calcular_projecao_veiculo(veiculo, comum):
             "uso": custo_uso,
             "energia_combustivel": custo_uso,
             "ipva": ipva_ano,
+            "taxa_ipva": taxa_ipva_ano,
+            "ipva_aliquota_percentual": float(ipva_resultado_ano.get("aliquota_percentual") or 0.0),
+            "ipva_ano_calendario": ipva_resultado_ano.get("ano_calendario"),
+            "ipva_uf": str(ipva_resultado_ano.get("uf") or comum.get("uf") or ""),
+            "ipva_idade_veiculo": ipva_resultado_ano.get("idade_veiculo"),
+            "ipva_valor_base": float(ipva_resultado_ano.get("valor_base") or valor_mercado_inicio_ano or 0.0),
+            "ipva_criterio": str(ipva_resultado_ano.get("criterio") or ""),
+            "ipva_regra": str(ipva_resultado_ano.get("regra") or ""),
+            "ipva_isento": bool(ipva_resultado_ano.get("isento")),
+            "ipva_isencao_idade": bool(ipva_resultado_ano.get("isencao_idade")),
+            "ipva_beneficio_tecnologia": bool(ipva_resultado_ano.get("beneficio_tecnologia")),
+            "ipva_observacao": str(ipva_resultado_ano.get("observacao") or ""),
+            "ipva_origem": str(ipva_resultado_ano.get("origem") or ipva_meta.get("origem") or ""),
+            "ipva_reavaliado_anualmente": bool(ipva_resultado_ano.get("reavaliado_anualmente")),
             "seguro": seguro_ano,
+            "taxa_seguro": taxa_seguro_ano,
             "manutencao": manut,
             "financiamento_juros": juros_financiamento_ano,
+            "financiamento_juros_reais": juros_financiamento_ano,
+            "financiamento_juros_nominais": juros_financiamento_nominal_ano,
             "gasto_operacional_ano": custo_anual,
             "gasto_operacional_acumulado": gasto_operacional_acumulado,
             "depreciacao_ano": depreciacao_ano,
             "depreciacao_acumulada": perda_depreciacao,
             "valor_revenda": valor_mercado,
             "tco_acumulado": tco_com_depreciacao,
+            "valor_mercado_inicio_ano": valor_mercado_inicio_ano,
             "preco_energia": energia_ano,
-            "preco_combustivel": combustivel_ano,
+            "preco_combustivel": preco_combustivel_utilizado,
+            "precos_combustiveis": precos_combustiveis_detalhe,
+            "convencao_monetaria": TCO_CONVENCAO_MONETARIA,
+            "data_base_monetaria": data_base_monetaria,
             "co2_fossil_t": co2_anual_kg / 1000.0,
             "co2_fossil_acumulado_t": co2_acumulado_kg / 1000.0,
             "co2_biogenico_t": co2_biogenico_anual_kg / 1000.0,
@@ -1439,6 +1883,7 @@ def calcular_projecao_veiculo(veiculo, comum):
     tco_final = tco_lista[-1] if tco_lista else 0.0
     tco_final_s = tco_lista_s[-1] if tco_lista_s else 0.0
     juros_financiamento_horizonte = sum(financiamento_juros_lista)
+    juros_financiamento_nominais_horizonte = sum(financiamento_juros_nominais_lista)
     co2_total_t = co2_acumulado_kg / 1000.0
     co2_biogenico_total_t = co2_biogenico_acumulado_kg / 1000.0
     co2_anual_medio_t = co2_total_t / anos if anos > 0 else 0.0
@@ -1451,6 +1896,8 @@ def calcular_projecao_veiculo(veiculo, comum):
         "seguro": sum(seguro_lista),
         "manutencao": sum(manut_lista),
         "financiamento_juros": juros_financiamento_horizonte,
+        "financiamento_juros_reais": juros_financiamento_horizonte,
+        "financiamento_juros_nominais": juros_financiamento_nominais_horizonte,
         "depreciacao": perda_depreciacao_final,
         "operacional": gasto_operacional_final,
         "gasto_operacional": gasto_operacional_final,
@@ -1473,13 +1920,25 @@ def calcular_projecao_veiculo(veiculo, comum):
         "preco_inicial": preco,
         "taxa_depreciacao": depreciacao,
         "taxa_ipva": taxa_ipva,
+        "ipva_meta": ipva_meta,
+        "ipva_reavaliado_anualmente": str(ipva_meta.get("origem") or "") in {"automatico", "manual"},
+        "ipva_memoria_lista": ipva_memoria_lista,
         "taxa_seguro": taxa_seguro,
         "seguro_meta": seguro_meta,
+        "seguro_considerado": seguro_considerado,
         "valor_revenda_final": valor_revenda_final,
         "perda_depreciacao_final": perda_depreciacao_final,
         "gasto_operacional_final": gasto_operacional_final,
         "financiamento": financiamento,
         "juros_financiamento_horizonte": juros_financiamento_horizonte,
+        "juros_financiamento_nominais_horizonte": juros_financiamento_nominais_horizonte,
+        "financiamento_memoria_mensal": financiamento_fluxo_monetario.get("memoria_mensal") or [],
+        "convencao_monetaria": TCO_CONVENCAO_MONETARIA,
+        "metodologia_monetaria_versao": TCO_METODOLOGIA_MONETARIA_VERSAO,
+        "data_base_monetaria": data_base_monetaria,
+        "inflacao_geral_percentual": inflacao_geral_percentual,
+        "variacao_real_energia_percentual": aumento_energia * 100.0,
+        "variacao_real_combustivel_percentual": aumento_combustivel * 100.0,
         "anos_lista": anos_lista,
         "anos_eixo": anos_eixo,
         "anos_horizonte": anos,
@@ -1502,6 +1961,7 @@ def calcular_projecao_veiculo(veiculo, comum):
         "preco_energia_lista": preco_energia_lista,
         "preco_combustivel_lista": preco_combustivel_lista,
         "financiamento_juros_lista": financiamento_juros_lista,
+        "financiamento_juros_nominais_lista": financiamento_juros_nominais_lista,
         "memoria_anual": memoria_anual,
         "memoria_anual_formatada": [formatar_linha_anual(m) for m in memoria_anual],
         "componentes_tco": componentes_tco,
@@ -1734,11 +2194,19 @@ def montar_bloco_resultado(titulo, v1, v2):
             "valor_revenda": real_format(v["valor_revenda_final"]),
             "taxa_depreciacao": percentual_format(v["taxa_depreciacao"]),
             "taxa_ipva": percentual_format(v["taxa_ipva"]),
+            "ipva_reavaliado_anualmente": bool(v.get("ipva_reavaliado_anualmente")),
+            "ipva_origem": str((v.get("ipva_meta") or {}).get("origem") or ""),
             "taxa_seguro": percentual_format(v["taxa_seguro"]),
+            "seguro_considerado": bool(v.get("seguro_considerado", True)),
             "seguro_fonte": str((v.get("seguro_meta") or {}).get("fonte") or ""),
+            "seguro_confianca": str((v.get("seguro_meta") or {}).get("confianca") or ""),
             "seguro_metodo": str((v.get("seguro_meta") or {}).get("metodo") or ""),
             "seguro_data_base": str((v.get("seguro_meta") or {}).get("data_base") or ""),
             "seguro_nivel_agregacao": str((v.get("seguro_meta") or {}).get("nivel_agregacao") or ""),
+            "seguro_reestimado_anualmente": (
+                str((v.get("seguro_meta") or {}).get("origem") or "") == "automatico"
+                and str((v.get("seguro_meta") or {}).get("metodo") or "") == METODO_V2
+            ),
             "financiamento_ativo": bool(financiamento.get("ativo")),
             "valor_financiado": real_format(financiamento.get("principal", 0)),
             "entrada_financiamento": real_format(financiamento.get("entrada", 0)),
@@ -1919,8 +2387,8 @@ def montar_bloco_resultado(titulo, v1, v2):
         })
 
     auditoria_veiculos = [
-        {"nome": v1["nome"], "codigo_fipe": str(v1.get("codigo_fipe") or "").strip(), "tipo": v1.get("tipo", ""), "componentes": comp1, "seguro_meta": v1.get("seguro_meta") or {}, "memoria": [formatar_linha_anual(m) for m in mem1]},
-        {"nome": v2["nome"], "codigo_fipe": str(v2.get("codigo_fipe") or "").strip(), "tipo": v2.get("tipo", ""), "componentes": comp2, "seguro_meta": v2.get("seguro_meta") or {}, "memoria": [formatar_linha_anual(m) for m in mem2]},
+        {"nome": v1["nome"], "codigo_fipe": str(v1.get("codigo_fipe") or "").strip(), "tipo": v1.get("tipo", ""), "componentes": comp1, "seguro_meta": v1.get("seguro_meta") or {}, "metodologia_monetaria": {"convencao": v1.get("convencao_monetaria"), "versao": v1.get("metodologia_monetaria_versao"), "data_base": v1.get("data_base_monetaria"), "inflacao_geral_percentual": v1.get("inflacao_geral_percentual")}, "memoria": [formatar_linha_anual(m) for m in mem1], "memoria_raw": mem1},
+        {"nome": v2["nome"], "codigo_fipe": str(v2.get("codigo_fipe") or "").strip(), "tipo": v2.get("tipo", ""), "componentes": comp2, "seguro_meta": v2.get("seguro_meta") or {}, "metodologia_monetaria": {"convencao": v2.get("convencao_monetaria"), "versao": v2.get("metodologia_monetaria_versao"), "data_base": v2.get("data_base_monetaria"), "inflacao_geral_percentual": v2.get("inflacao_geral_percentual")}, "memoria": [formatar_linha_anual(m) for m in mem2], "memoria_raw": mem2},
     ]
 
     return {
@@ -1990,10 +2458,18 @@ def extrair_parametros_comuns(dados_form):
     return {
         "energia": conv(dados_form.get("energia", 0)),
         "combustivel": conv(dados_form.get("combustivel", 0)),
+        # Os nomes dos campos são mantidos por compatibilidade; desde V50.24,
+        # o usuário informa diretamente a VARIAÇÃO REAL anual.
         "aumento_energia": percentual_form_ao_ano(dados_form, "aumento_energia", AUMENTO_ENERGIA_PADRAO_PERCENTUAL),
         "aumento_combustivel": percentual_form_ao_ano(dados_form, "aumento_combustivel", AUMENTO_COMBUSTIVEL_PADRAO_PERCENTUAL),
+        "convencao_monetaria": TCO_CONVENCAO_MONETARIA,
+        "metodologia_monetaria_versao": TCO_METODOLOGIA_MONETARIA_VERSAO,
+        "data_base_monetaria": date.today().isoformat(),
+        "inflacao_geral_percentual": TCO_INFLACAO_GERAL_EQUIVALENTE_PERCENTUAL,
         "anos": int(dados_form.get("anos", 1)),
         "km_ano": int(dados_form.get("km_ano", 0)),
+        "uf": str(dados_form.get("estado_uf") or dados_form.get("uf") or "").strip().upper(),
+        "municipio": str(dados_form.get("municipio") or "").strip(),
         "fuel": {
             "tipo": str(dados_form.get("fuel_tipo_detectado", "") or "").strip().lower(),
             "flex_configurado": bool_form(dados_form, "fuel_flex_configurado"),
@@ -2016,6 +2492,46 @@ def extrair_parametros_comuns(dados_form):
     }
 
 
+def montar_metadados_monetarios_tco(dados_form=None) -> dict:
+    dados_form = dados_form or {}
+    real_energia = percentual_form_ao_ano(dados_form, "aumento_energia", AUMENTO_ENERGIA_PADRAO_PERCENTUAL) * 100.0
+    real_combustivel = percentual_form_ao_ano(dados_form, "aumento_combustivel", AUMENTO_COMBUSTIVEL_PADRAO_PERCENTUAL) * 100.0
+    return {
+        "convencao_monetaria": TCO_CONVENCAO_MONETARIA,
+        "convencao_monetaria_rotulo": TCO_CONVENCAO_MONETARIA_ROTULO,
+        "metodologia_monetaria_versao": TCO_METODOLOGIA_MONETARIA_VERSAO,
+        "moeda": TCO_MOEDA,
+        "data_base": date.today().isoformat(),
+        "fonte_inflacao": TCO_INFLACAO_FONTE,
+        "recorte_inflacao": TCO_INFLACAO_RECORTE,
+        "periodo_calibracao": f"{TCO_CALIBRACAO_INICIO} a {TCO_CALIBRACAO_FIM}",
+        "anos_calibracao": TCO_CALIBRACAO_ANOS,
+        "inflacao_geral_equivalente_percentual": TCO_INFLACAO_GERAL_EQUIVALENTE_PERCENTUAL,
+        "energia": {
+            "item_sidra": TCO_ENERGIA_ITEM_SIDRA,
+            "taxa_nominal_origem_percentual": TCO_ENERGIA_NOMINAL_ORIGEM_PERCENTUAL,
+            "taxa_real_calculada_percentual": TCO_ENERGIA_REAL_CALCULADA_PERCENTUAL,
+            "taxa_real_padrao_percentual": TCO_ENERGIA_REAL_PADRAO_PERCENTUAL,
+            "taxa_real_utilizada_percentual": real_energia,
+        },
+        "combustiveis": {
+            "item_sidra": TCO_COMBUSTIVEL_ITEM_SIDRA,
+            "taxa_nominal_origem_percentual": TCO_COMBUSTIVEL_NOMINAL_ORIGEM_PERCENTUAL,
+            "taxa_real_calculada_percentual": TCO_COMBUSTIVEL_REAL_CALCULADA_PERCENTUAL,
+            "taxa_real_padrao_percentual": TCO_COMBUSTIVEL_REAL_PADRAO_PERCENTUAL,
+            "taxa_real_utilizada_percentual": real_combustivel,
+        },
+        "manutencao": "Valor anual constante em reais da data-base da simulação.",
+        "ipva": "Reaplicado ano a ano pelo IpvaService sobre o valor projetado, usando as regras cadastradas na data-base; sem inflação geral adicional.",
+        "ipva_metodologia_versao": "IPVA_ANUAL_V1",
+        "seguro": "Seguro V2 preservado; reestimado sobre a trajetória do valor do veículo, sem inflação geral adicional.",
+        "seguro_manual": "Valor inicial informado é convertido em taxa relativa à FIPE e acompanha a trajetória real do valor do veículo.",
+        "financiamento": "Contrato Price nominal preservado; somente os juros incorporados ao TCO são deflacionados mês a mês para reais da data-base.",
+        "tma_aplicada": False,
+        "vpl_calculado": False,
+    }
+
+
 # 4.9) Monta veículo elétrico futuro
 def montar_veiculo_ve(dados_form):
     ipva_ve = 0.0 if "isencao_ipva_ve" in dados_form else conv(dados_form.get("ipva_ve", 0))
@@ -2028,6 +2544,8 @@ def montar_veiculo_ve(dados_form):
     return {
         "nome": modelo,
         "codigo_fipe": str(dados_form.get("codigo_fipe_ve") or "").strip(),
+        "ano_modelo": _ano_modelo_seguro_formulario(dados_form, "ve"),
+        "tecnologia_seguro": tecnologia_seguro_formulario(dados_form, "ve"),
         "tipo": tipo,
         "prefixo": "ve",
         "combustivel": combustivel,
@@ -2035,6 +2553,7 @@ def montar_veiculo_ve(dados_form):
         "consumo": conv(dados_form.get("consumo_ve", 0)),
         "manut": conv(dados_form.get("manut_ve", 0)),
         "ipva": ipva_ve,
+        "ipva_meta": metadados_ipva_formulario(dados_form, "ve", preco),
         "seguro": seguro_formulario_ou_padrao(dados_form, "seguro_ve", preco),
         "seguro_meta": metadados_seguro_formulario(dados_form, "seguro_ve", preco),
         "depreciacao": conv(dados_form.get("depreciacao_ve", 0)) / 100.0,
@@ -2048,6 +2567,8 @@ def montar_veiculo_icev(dados_form):
     return {
         "nome": limpar_nome_veiculo(dados_form.get("modelo_icev", "Veículo a combustão")),
         "codigo_fipe": str(dados_form.get("codigo_fipe_icev") or "").strip(),
+        "ano_modelo": _ano_modelo_seguro_formulario(dados_form, "icev"),
+        "tecnologia_seguro": tecnologia_seguro_formulario(dados_form, "icev"),
         "tipo": "icev",
         "prefixo": "icev",
         "combustivel": dados_form.get("combustivel_icev", ""),
@@ -2055,6 +2576,7 @@ def montar_veiculo_icev(dados_form):
         "consumo": conv(dados_form.get("consumo_icev", 1)),
         "manut": conv(dados_form.get("manut_icev", 0)),
         "ipva": conv(dados_form.get("ipva_icev", 0)),
+        "ipva_meta": metadados_ipva_formulario(dados_form, "icev", preco),
         "seguro": seguro_formulario_ou_padrao(dados_form, "seguro_icev", preco),
         "seguro_meta": metadados_seguro_formulario(dados_form, "seguro_icev", preco),
         "depreciacao": conv(dados_form.get("depreciacao_icev", 0)) / 100.0,
@@ -2068,6 +2590,8 @@ def montar_veiculo_atual(dados_form):
     return {
         "nome": limpar_nome_veiculo(dados_form.get("modelo_atual", "Meu carro atual")),
         "codigo_fipe": str(dados_form.get("codigo_fipe_atual") or "").strip(),
+        "ano_modelo": _ano_modelo_seguro_formulario(dados_form, "atual"),
+        "tecnologia_seguro": tecnologia_seguro_formulario(dados_form, "atual"),
         "tipo": "icev",
         "prefixo": "atual",
         "combustivel": dados_form.get("combustivel_atual", ""),
@@ -2075,6 +2599,7 @@ def montar_veiculo_atual(dados_form):
         "consumo": conv(dados_form.get("consumo_atual", 1)),
         "manut": conv(dados_form.get("manut_atual", 0)),
         "ipva": conv(dados_form.get("ipva_atual", 0)),
+        "ipva_meta": metadados_ipva_formulario(dados_form, "atual", preco),
         "seguro": seguro_formulario_ou_padrao(dados_form, "seguro_atual", preco),
         "seguro_meta": metadados_seguro_formulario(dados_form, "seguro_atual", preco),
         "depreciacao": conv(dados_form.get("depreciacao_atual", 0)) / 100.0,
@@ -2087,6 +2612,7 @@ def montar_veiculo_atual(dados_form):
 # ============================================================
 def montar_payload_auditoria_tco(resultado_final: dict) -> dict:
     form = resultado_final.get("form_values") or {}
+    metodologia_monetaria = resultado_final.get("metodologia_monetaria") or montar_metadados_monetarios_tco(form)
 
     flex_pct_etanol = conv(form.get("fuel_percent_etanol") or 0)
     phev_pct_eletrico = conv(form.get("phev_percent_eletrico") or 0)
@@ -2097,8 +2623,9 @@ def montar_payload_auditoria_tco(resultado_final: dict) -> dict:
         "h = horizonte de análise, em anos",
         "km_a = quilometragem anual informada pelo usuário",
         "km_total = km_a × h",
-        "tarifa_n = tarifa inicial de energia × (1 + aumento_energia)^(n-1)",
-        "preço_comb_n = preço inicial do combustível × (1 + aumento_combustível)^(n-1)",
+        "tarifa_n(real) = tarifa inicial × (1 + variação_real_energia)^(n-1)",
+        "preço_comb_n(real) = preço inicial × (1 + variação_real_combustíveis)^(n-1)",
+        "g_real = (1 + g_nominal) / (1 + inflação_geral_equivalente) - 1",
         "",
         "Custo elétrico anual:",
         "C_energia,n = km_a × consumo_kWh_km × tarifa_n",
@@ -2116,19 +2643,25 @@ def montar_payload_auditoria_tco(resultado_final: dict) -> dict:
         "C_PHEV,n = km_a × p_elétrico × consumo_kWh_km × tarifa_n + km_a × p_combustível / consumo_combustível × preço_combustível,n",
         "",
         "Tributos, seguro e manutenção:",
-        "IPVA_n = VF_(n-1) × taxa_IPVA",
-        "Seguro_n = VF_(n-1) × taxa_seguro",
+        "IPVA_n = IpvaService(estado projetado_n, regras cadastradas na data-base)",
+        "IPVA_n = Z_n × taxa_n × VF_(n-1), com incidência/isenção e regra reavaliadas em cada ano",
+        "Seguro_n (automático V2) = estimador Seguro V2 aplicado ao valor de mercado, idade e localização no ano n",
+        "Seguro_n (manual/fallback) = VF_(n-1) × taxa_seguro inicial",
+        "Seguro_n (não considerado) = 0",
         "Manutenção_n = manutenção anual informada",
         "",
         "Financiamento:",
         "Parcela Price = PV × [i × (1+i)^N] / [(1+i)^N - 1]",
         "Juros_m = saldo_m × i",
         "Amortização_m = parcela - Juros_m",
-        "Juros_ano = soma dos juros mensais do ano",
-        "O principal financiado não é somado novamente ao custo total; entra apenas o custo financeiro.",
+        "Juros_nominal,m = saldo_m × i (contrato Price preservado)",
+        "inflação_mensal = (1 + inflação_anual_equivalente)^(1/12) - 1",
+        "Juros_real,m = Juros_nominal,m / (1 + inflação_mensal)^m",
+        "Juros_real,ano = soma dos juros reais mensais do ano",
+        "O principal financiado não é somado novamente ao custo total; entra apenas o custo financeiro em reais da data-base.",
         "",
-        "Custo total:",
-        "Gasto_operacional_acum,n = Σ(C_uso,n + IPVA_n + Seguro_n + Manutenção_n + Juros_n)",
+        "Custo total em reais constantes da data-base:",
+        "Gasto_operacional_acum,n = Σ(C_uso,n + IPVA_n + Seguro_n + Manutenção_n + Juros_real,n)",
         "Depreciação_acum,n = VI - VF_n",
         "Custo_total_n = Gasto_operacional_acum,n + Depreciação_acum,n",
         "Custo_km = Custo_total_h / km_total",
@@ -2146,6 +2679,7 @@ def montar_payload_auditoria_tco(resultado_final: dict) -> dict:
     payload = {
         "gerado_em": datetime.now().strftime("%d/%m/%Y %H:%M"),
         "codigo_resultado": resultado_final.get("resultado_codigo") or "",
+        "metodologia_monetaria": metodologia_monetaria,
         "resultado_gerado_em": resultado_final.get("resultado_gerado_em") or "",
         "tipo_comparacao": resultado_final.get("tipo_comparacao", ""),
         "parametros": {
@@ -2157,6 +2691,8 @@ def montar_payload_auditoria_tco(resultado_final: dict) -> dict:
             "combustivel": form.get("combustivel") or "",
             "aumento_energia": form.get("aumento_energia") or f"{AUMENTO_ENERGIA_PADRAO_PERCENTUAL:.2f}".replace(".", ","),
             "aumento_combustivel": form.get("aumento_combustivel") or f"{AUMENTO_COMBUSTIVEL_PADRAO_PERCENTUAL:.2f}".replace(".", ","),
+            "variacao_real_energia": form.get("aumento_energia") or f"{AUMENTO_ENERGIA_PADRAO_PERCENTUAL:.2f}".replace(".", ","),
+            "variacao_real_combustiveis": form.get("aumento_combustivel") or f"{AUMENTO_COMBUSTIVEL_PADRAO_PERCENTUAL:.2f}".replace(".", ","),
         },
         "perfis": {
             "flex_configurado": form.get("fuel_flex_configurado") or "0",
@@ -2176,6 +2712,12 @@ def montar_payload_auditoria_tco(resultado_final: dict) -> dict:
         "equacoes": equacoes,
         "comparacoes": [],
         "notas": [
+            "Convenção monetária: TCO acumulado em reais constantes da data-base da simulação.",
+            "A inflação geral é usada somente para uniformizar a unidade monetária; a CurVE não aplica TMA, custo de oportunidade ou VPL.",
+            "Energia e combustíveis usam variações reais anuais; os defaults são derivados das premissas nominais históricas e do IPCA geral equivalente no mesmo período de calibração.",
+            "Manutenção permanece constante em reais da data-base; o IPVA é reaplicado ano a ano pelo IpvaService sobre o valor projetado e o Seguro V2 acompanha sua metodologia própria, sem inflação geral adicional.",
+            "Na projeção do IPVA, idade, valor e estado do veículo evoluem; as regras tributárias cadastradas na data-base são mantidas, sem presumir alterações legislativas futuras desconhecidas.",
+            "O financiamento mantém o contrato Price nominal; apenas os juros incorporados ao TCO são deflacionados mês a mês para reais da data-base.",
             "O resumo numérico usa os valores finais da memória anual da simulação.",
             "A memória anual permite reconstituir o custo total apresentado no resultado e validar a transição entre valor inicial, valor de revenda, gasto operacional e depreciação acumulada.",
             "A auditoria TCO não recalcula histórico FIPE pesado; as curvas de depreciação continuam vindo do fluxo próprio do painel local e/ou do repositório de curvas prontas.",
@@ -2274,7 +2816,7 @@ def _veiculo_telemetria_tco(form, prefixo: str, role: str, tecnologia: str = "")
         "codigo_fipe": form.get(f"codigo_fipe_{prefixo}") or "",
         "marca": form.get(f"{prefixo}_marca_nome") or "",
         "modelo": form.get(f"modelo_{prefixo}") or "",
-        "ano_modelo": form.get(f"ano_modelo_{prefixo}") or form.get(f"{prefixo}_ano_codigo") or "",
+        "ano_modelo": _ano_modelo_seguro_formulario(form, prefixo),
         "combustivel": form.get(f"combustivel_{prefixo}") or "",
         "tecnologia": tecnologia_analitica,
     }
@@ -2317,6 +2859,7 @@ def _registrar_snapshot_tco(resultado_final: dict, form, tipo_comparacao: str) -
         "veiculos": _veiculos_telemetria_tco(form, tipo_comparacao),
         "resultado": _remover_html_graficos_snapshot({
             "tipo_comparacao": resultado_final.get("tipo_comparacao"),
+            "metodologia_monetaria": resultado_final.get("metodologia_monetaria") or {},
             "comparacoes": resultado_final.get("comparacoes") or [],
         }),
         "auditoria": _remover_html_graficos_snapshot(montar_payload_auditoria_tco(resultado_final)),
@@ -2424,6 +2967,7 @@ def simular():
                 "tipo_comparacao": tipo_comparacao,
                 "comparacoes": comparacoes,
                 "form_values": request.form.to_dict(flat=True),
+                "metodologia_monetaria": montar_metadados_monetarios_tco(request.form),
             }
             if comparacoes:
                 try:

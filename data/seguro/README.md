@@ -1,49 +1,43 @@
-# Seguro — referência simples UF + tecnologia
+# Seguro automotivo na CurVE
 
-Esta versão remove o percentual universal de seguro e mantém uma estimativa automática simples, editável e auditável.
+## V50.22 — Seguro V2 validado e regionalizado
 
-## 1. Componente geográfico
+A estimativa automática combina:
 
-Para cada UF, a taxa-base é obtida a partir da referência regional AUTOSEG/SUSEP:
+- **IPSA/TEx de maio de 2026** como referência contemporânea por idade, faixa FIPE e, em veículos de até 2 anos, tecnologia/propulsão;
+- **IPSA/TEx de maio de 2026 por região metropolitana** para Salvador, Recife, Belém, Belo Horizonte, Porto Alegre, Rio de Janeiro, Fortaleza, Curitiba e São Paulo quando a cidade selecionada é a capital correspondente;
+- **AUTOSEG/SUSEP 2021A** como evidência histórica relativa por código FIPE, região e cidade;
+- redução dos fatores históricos por exposição e distância temporal;
+- fallbacks progressivos quando o modelo específico não possui amostra suficiente.
 
-`taxa_UF = prêmio médio / importância segurada média`
+Arquivos:
 
-Na ausência de UF válida, utiliza-se a referência nacional (`BR`).
+- `ipsa_v2_referencias.csv` — referências atuais parametrizadas;
+- `seguro_autoseg_2021A_curve_compact.sqlite` — base AUTOSEG compacta;
+- `autoseg_taxas_uf_v1.csv` e `ipsa_tecnologia_v1.csv` — estimador legado mantido apenas para contingência técnica/compatibilidade.
 
-Base regional desta V1:
-- automóvel/CASCO;
-- 1º semestre de 2020;
-- tabela regionalizada elaborada a partir de informações de mercado da SUSEP.
+A tabela municipal AUTOSEG não possui importância segurada média. Por isso, município histórico é usado somente como fator relativo sobre o nível regional. Quando há referência metropolitana contemporânea do IPSA, ela substitui os ajustes geográficos históricos para evitar dupla contagem; o fator histórico específico do modelo pode continuar sendo aplicado.
 
-## 2. Ajuste de tecnologia
+### Continuidade numérica das faixas FIPE
 
-A tecnologia não recebe percentual autoral. O ajuste é relativo ao comparativo do IPSA/TEx de abril de 2026 para veículos com até 2 anos:
+O IPSA publica faixas discretas de valor. Para evitar que uma diferença de R$ 1 no valor FIPE provoque um salto artificial relevante no seguro, a V50.22 interpola linearmente somente em uma janela de ±5% ao redor dos limites R$ 50 mil, R$ 80 mil e R$ 150 mil. Fora dessas janelas, a taxa publicada da faixa é preservada integralmente. Essa interpolação é apenas um tratamento de continuidade numérica; não representa uma nova fonte de mercado.
 
-- Gasolina: 3,4% → fator 1,0000
-- Diesel: 2,7% → fator 0,7941
-- Híbrido: 2,5% → fator 0,7353
-- Elétrico: 3,7% → fator 1,0882
+### Veículos com mais de 10 anos
 
-A gasolina é a referência de normalização.
+O relatório detalhado não fornece faixa etária específica acima de 10 anos. A V50.22 não retorna ao preço absoluto regional antigo por causa disso. Usa apenas as dimensões contemporâneas ainda aplicáveis — referência geral de mercado e faixa FIPE — e pode manter fatores históricos AUTOSEG reduzidos por credibilidade. A confiança é limitada a **Referência**.
 
-`fator_tecnologia = IPSA_tecnologia / IPSA_gasolina`
+### Estimativa conceitual
 
-## 3. Estimativa final
+`taxa_atual = mediana(IPSA aplicável)`
 
-`taxa_final = taxa_UF × fator_tecnologia`
+`taxa_V2 = taxa_atual × ajuste_geográfico × ajuste_modelo`
 
-`seguro_estimado = valor_FIPE × taxa_final`
+Quando não há geografia contemporânea IPSA, o ajuste geográfico pode usar região/cidade AUTOSEG histórica reduzida por credibilidade.
 
-Mapeamento operacional:
-- BEV/EV → elétrico;
-- PHEV/HEV/MHEV → híbrido;
-- diesel → diesel;
-- gasolina/flex/etanol e demais ICEV → gasolina.
+`seguro = valor_FIPE × taxa_V2`
 
-O AUTOSEG/SUSEP continua determinando a variação geográfica. O IPSA/TEx é usado apenas como ajuste relativo da tecnologia.
+A estimativa não é cotação individual e permanece editável pelo usuário.
 
-## Limitações
+### Referência temporal
 
-Esta é uma versão rápida, não uma cotação individual. O recorte tecnológico do IPSA considera veículos com até 2 anos e a base regional AUTOSEG é de 2020. Uma versão posterior deve substituir esta combinação por agregações AUTOSEG granulares por código FIPE/modelo, ano, região e exposição mínima.
-
-O valor permanece editável pelo usuário.
+Em agosto de 2026 a página pública do IPSA já anuncia o relatório de junho/2026. A CurVE V50.22 mantém **maio/2026** como base numérica porque é o relatório detalhado completo efetivamente auditado e parametrizado nesta versão. A atualização para junho deve ocorrer somente após ingestão/auditoria do relatório detalhado, sem misturar meses diferentes na mesma calibração.

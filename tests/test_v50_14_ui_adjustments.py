@@ -7,24 +7,26 @@ def read(rel: str) -> str:
 
 
 def test_platform_version_is_v50_14():
-    assert 'CURVE_VERSION = "V50.19"' in read("config.py")
+    assert 'CURVE_VERSION = "V50.25"' in read("config.py")
 
 
-def test_phev_profile_syncs_upper_energy_summary_live_and_persisted():
+def test_phev_profile_syncs_actual_compact_phev_card_live_and_persisted():
     html = read("templates/simular.html")
-    assert 'id="energia_bar_eletrico"' in html
-    assert 'id="energia_bar_combustivel"' in html
-    assert 'id="energia_compact_left"' in html
-    assert 'function renderizarParticipacaoEnergiaPhevPlugVE(eletricoPctOverride = null)' in html
-    assert 'barEletrico.style.width = `${eletricoPct}%`' in html
-    assert 'barCombustivel.style.width = `${combustPct}%`' in html
-    assert 'esquerda.textContent = `${eletricoPct}% elétrico`' in html
-    assert 'direita.textContent = `${combustPct}% combustível`' in html
-    # O slider atualiza a barra superior ainda durante a edição.
-    assert 'renderizarParticipacaoEnergiaPhevPlugVE(eletricoPct);' in html
-    # Fora de um PHEV, o resumo retorna a 100% elétrico.
-    assert 'const eletricoPct = phevAtivo' in html
-    assert ': 100;' in html
+    # V50.20: a barra visual que o usuário enxerga no card Híbrido plug-in usa
+    # phev_bar_*, não energia_bar_*. A correção anterior cobria a barra errada.
+    assert 'id="phev_bar_eletrico"' in html
+    assert 'id="phev_bar_combustivel"' in html
+    assert 'id="phev_compact_left"' in html
+    assert 'id="phev_compact_right"' in html
+    assert 'function renderizarCardPhevTCO(eletricoPctOverride = null)' in html
+    assert 'Number(eletricoPctOverride ?? valorPersistido)' in html
+    assert 'barEle.style.width = `${eletricoPct}%`' in html
+    assert 'barComb.style.width = `${combustPct}%`' in html
+    assert 'left.textContent = `${eletricoPct}% elétrico${precoEnergiaTexto}`' in html
+    assert 'right.textContent = `${combustPct}% combustível${precoCombustivelTexto}`' in html
+    # Durante o input, o override temporário redesenha o card sem persistir o hidden.
+    assert 'renderizarCardPhevTCO(eletricoPct);' in html
+    assert 'setValorPhevTCO("phev_percent_eletrico", String(eletricoPct));' in html  # apenas no salvar
 
 
 def test_tco_pdf_header_uses_vehicle_vs_vehicle_instead_of_explanatory_paragraph():

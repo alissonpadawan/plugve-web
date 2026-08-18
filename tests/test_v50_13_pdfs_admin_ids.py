@@ -8,7 +8,7 @@ def read(rel: str) -> str:
 
 
 def test_platform_version_is_v50_13():
-    assert 'CURVE_VERSION = "V50.19"' in read("config.py")
+    assert 'CURVE_VERSION = "V50.25"' in read("config.py")
 
 
 def test_tco_pdf_contains_original_result_identity_and_filename():

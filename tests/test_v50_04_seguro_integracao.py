@@ -32,13 +32,16 @@ class SeguroIntegracaoV50_04Tests(unittest.TestCase):
         self.assertNotIn('Estimativa SUSEP/AUTOSEG —', text)
         self.assertIn('Valor informado pelo usuário.', text)
 
-    def test_projection_keeps_rate_relative_to_projected_market_value(self):
+    def test_projection_reestimates_v2_automatic_and_preserves_manual_fallback(self):
         path = ROOT / "routes" / "tco_routes.py"
         text = path.read_text(encoding="utf-8")
         tree = ast.parse(text)
         fn = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == "calcular_projecao_veiculo")
         body = ast.get_source_segment(text, fn) or ""
         self.assertIn("taxa_seguro = taxa_relativa(seguro_inicial, preco)", body)
+        self.assertIn("seguro_automatico_v2", body)
+        self.assertIn("est_seguro_ano = estimar_seguro_v2", body)
+        self.assertIn("ano_referencia=datetime.now().year + (ano - 1)", body)
         self.assertIn("seguro_ano = valor_mercado * taxa_seguro", body)
         self.assertIn('"seguro_lista": seguro_lista', body)
 
