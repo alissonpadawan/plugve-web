@@ -41,7 +41,7 @@ class SeguroV23FechamentoTests(unittest.TestCase):
     def test_metodologia_do_estimador_nao_foi_tocada_nesta_rodada(self):
         service = self.root / "services" / "seguro_v2_service.py"
         self.assertTrue(service.exists())
-        self.assertIn('CURVE_VERSION = "V50.26"', (self.root / "config.py").read_text(encoding="utf-8"))
+        self.assertIn('CURVE_VERSION = "V50.27"', (self.root / "config.py").read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":

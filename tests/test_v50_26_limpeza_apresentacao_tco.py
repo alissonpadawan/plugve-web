@@ -7,7 +7,7 @@ CONFIG = (ROOT / "config.py").read_text(encoding="utf-8")
 
 
 def test_versao_v50_26():
-    assert 'CURVE_VERSION = "V50.26"' in CONFIG
+    assert 'CURVE_VERSION = "V50.27"' in CONFIG
 
 
 def test_resultado_site_mostra_municipio_e_remove_nota_monetaria():

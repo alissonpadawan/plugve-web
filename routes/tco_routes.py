@@ -1916,7 +1916,27 @@ def calcular_projecao_veiculo(veiculo, comum):
         "nome": nome,
         "nome_curto": nome_curto(nome),
         "codigo_fipe": codigo_fipe,
+        "referencia_fipe": str(veiculo.get("referencia_fipe") or "").strip(),
+        "origem_curva": str(veiculo.get("origem_curva") or "").strip(),
         "tipo": tipo,
+        "prefixo": str(veiculo.get("prefixo") or ""),
+        "combustivel": combustivel_descricao,
+        "consumo": consumo,
+        "manutencao_anual": manut,
+        "preco_energia_inicial": energia_inicial if tipo in {"ve", "phev"} else 0.0,
+        "preco_combustivel_inicial": (phev_preco_combustivel or combustivel_inicial) if tipo == "phev" else (0.0 if usar_perfil_flex else combustivel_inicial),
+        "perfil_flex_ativo": usar_perfil_flex,
+        "flex_percent_etanol": flex_etanol_pct,
+        "flex_percent_gasolina": 100.0 - flex_etanol_pct,
+        "flex_preco_gasolina": flex_preco_gasolina,
+        "flex_preco_etanol": flex_preco_etanol,
+        "flex_consumo_gasolina": flex_consumo_gasolina,
+        "flex_consumo_etanol": flex_consumo_etanol,
+        "perfil_phev_ativo": usar_perfil_phev,
+        "phev_percent_eletrico": phev_eletrico_pct,
+        "phev_percent_combustivel": phev_combustivel_pct,
+        "phev_consumo_eletrico": phev_consumo_eletrico,
+        "phev_consumo_combustivel": phev_consumo_combustivel,
         "preco_inicial": preco,
         "taxa_depreciacao": depreciacao,
         "taxa_ipva": taxa_ipva,
@@ -2177,12 +2197,77 @@ def montar_bloco_resultado(titulo, v1, v2):
 
     def resumo(v):
         financiamento = v.get("financiamento") or {}
+        tipo = str(v.get("tipo") or "").lower()
+        combustivel_txt = str(v.get("combustivel") or "").strip()
+
+        def preco_unidade(valor, unidade):
+            valor = float(valor or 0.0)
+            return f"R$ {numero_format(valor, 2)}/{unidade}" if valor > 0 else "—"
+
+        if v.get("perfil_flex_ativo"):
+            preco_combustiveis = (
+                f"Etanol {preco_unidade(v.get('flex_preco_etanol'), 'L')} · "
+                f"Gasolina {preco_unidade(v.get('flex_preco_gasolina'), 'L')}"
+            )
+            perfil_flex = (
+                f"{numero_format(v.get('flex_percent_etanol'), 0)}% etanol / "
+                f"{numero_format(v.get('flex_percent_gasolina'), 0)}% gasolina"
+            )
+            consumo_texto = (
+                f"Etanol {numero_format(v.get('flex_consumo_etanol'), 1)} km/L · "
+                f"Gasolina {numero_format(v.get('flex_consumo_gasolina'), 1)} km/L"
+            )
+        elif v.get("perfil_phev_ativo"):
+            rotulo_comb = "Diesel" if "diesel" in combustivel_txt.lower() else ("Etanol" if "etanol" in combustivel_txt.lower() or "alcool" in combustivel_txt.lower() else "Gasolina")
+            preco_combustiveis = f"{rotulo_comb} {preco_unidade(v.get('preco_combustivel_inicial'), 'L')}"
+            perfil_flex = "—"
+            consumo_texto = (
+                f"Elétrico {numero_format(v.get('phev_consumo_eletrico'), 3)} kWh/km · "
+                f"Térmico {numero_format(v.get('phev_consumo_combustivel'), 1)} km/L"
+            )
+        elif tipo == "ve":
+            preco_combustiveis = "—"
+            perfil_flex = "—"
+            consumo_texto = f"{numero_format(v.get('consumo'), 3)} kWh/km"
+        else:
+            rotulo_comb = "Diesel" if "diesel" in combustivel_txt.lower() else ("Etanol" if "etanol" in combustivel_txt.lower() or "alcool" in combustivel_txt.lower() else "Gasolina")
+            preco_combustiveis = f"{rotulo_comb} {preco_unidade(v.get('preco_combustivel_inicial'), 'L')}"
+            perfil_flex = "—"
+            consumo_texto = f"{numero_format(v.get('consumo'), 1)} km/L"
+
+        seguro_meta = v.get("seguro_meta") or {}
+        seguro_data_base = str(seguro_meta.get("data_base") or "").strip()
+        seguro_referencia_curta = ""
+        if seguro_data_base:
+            parte_ipsa = seguro_data_base.split(";", 1)[0].strip()
+            seguro_referencia_curta = parte_ipsa.replace("IPSA:", "IPSA").replace("maio de 2026", "mai/2026")
+        nivel_seguro = str(seguro_meta.get("nivel_agregacao") or "").strip()
+        nivel_seguro_curto = nivel_seguro
+        for antigo, novo in (
+            ("IPSA maio/2026 + ", ""),
+            ("IPSA maio/2026", ""),
+            ("código FIPE histórico AUTOSEG", "Código FIPE"),
+            ("grupo histórico AUTOSEG", "Grupo"),
+            ("ajuste municipal AUTOSEG", "Município"),
+            ("ajuste regional AUTOSEG", "Região"),
+            ("AUTOSEG", ""),
+        ):
+            nivel_seguro_curto = nivel_seguro_curto.replace(antigo, novo)
+        nivel_seguro_curto = " ".join(nivel_seguro_curto.replace(" + + ", " + ").split()).strip(" +")
+
         return {
             "nome": v["nome"],
             "nome_curto": v["nome_curto"],
             "codigo_fipe": str(v.get("codigo_fipe") or "").strip(),
+            "referencia_fipe": str(v.get("referencia_fipe") or "").strip() or "—",
+            "origem_curva": str(v.get("origem_curva") or "").strip() or "—",
             "tipo": v.get("tipo", ""),
             "combustivel": v.get("combustivel", ""),
+            "preco_energia": preco_unidade(v.get("preco_energia_inicial"), "kWh"),
+            "precos_combustiveis": preco_combustiveis,
+            "perfil_flex": perfil_flex,
+            "consumo_utilizado": consumo_texto,
+            "manutencao_anual": real_format(v.get("manutencao_anual", 0)) + "/ano" if float(v.get("manutencao_anual", 0) or 0) > 0 else "Não considerada",
             "tema_classe": classe_visual_veiculo(v),
             "tco_final": real_format(v["tco_final"]),
             "custo_km": real_format(v["custo_km"]),
@@ -2203,6 +2288,8 @@ def montar_bloco_resultado(titulo, v1, v2):
             "seguro_metodo": str((v.get("seguro_meta") or {}).get("metodo") or ""),
             "seguro_data_base": str((v.get("seguro_meta") or {}).get("data_base") or ""),
             "seguro_nivel_agregacao": str((v.get("seguro_meta") or {}).get("nivel_agregacao") or ""),
+            "seguro_referencia_curta": seguro_referencia_curta,
+            "seguro_nivel_curto": nivel_seguro_curto,
             "seguro_reestimado_anualmente": (
                 str((v.get("seguro_meta") or {}).get("origem") or "") == "automatico"
                 and str((v.get("seguro_meta") or {}).get("metodo") or "") == METODO_V2
@@ -2544,6 +2631,8 @@ def montar_veiculo_ve(dados_form):
     return {
         "nome": modelo,
         "codigo_fipe": str(dados_form.get("codigo_fipe_ve") or "").strip(),
+        "referencia_fipe": str(dados_form.get("referencia_fipe_ve") or "").strip(),
+        "origem_curva": str(dados_form.get("origem_curva_ve") or "").strip(),
         "ano_modelo": _ano_modelo_seguro_formulario(dados_form, "ve"),
         "tecnologia_seguro": tecnologia_seguro_formulario(dados_form, "ve"),
         "tipo": tipo,
@@ -2567,6 +2656,8 @@ def montar_veiculo_icev(dados_form):
     return {
         "nome": limpar_nome_veiculo(dados_form.get("modelo_icev", "Veículo a combustão")),
         "codigo_fipe": str(dados_form.get("codigo_fipe_icev") or "").strip(),
+        "referencia_fipe": str(dados_form.get("referencia_fipe_icev") or "").strip(),
+        "origem_curva": str(dados_form.get("origem_curva_icev") or "").strip(),
         "ano_modelo": _ano_modelo_seguro_formulario(dados_form, "icev"),
         "tecnologia_seguro": tecnologia_seguro_formulario(dados_form, "icev"),
         "tipo": "icev",
@@ -2590,6 +2681,8 @@ def montar_veiculo_atual(dados_form):
     return {
         "nome": limpar_nome_veiculo(dados_form.get("modelo_atual", "Meu carro atual")),
         "codigo_fipe": str(dados_form.get("codigo_fipe_atual") or "").strip(),
+        "referencia_fipe": str(dados_form.get("referencia_fipe_atual") or "").strip(),
+        "origem_curva": str(dados_form.get("origem_curva_atual") or "").strip(),
         "ano_modelo": _ano_modelo_seguro_formulario(dados_form, "atual"),
         "tecnologia_seguro": tecnologia_seguro_formulario(dados_form, "atual"),
         "tipo": "icev",

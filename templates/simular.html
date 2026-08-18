@@ -1124,6 +1124,8 @@
               <div class="space-y-2">
                 <input type="hidden" name="modelo_atual" id="modelo_atual">
                 <input type="hidden" name="codigo_fipe_atual" id="codigo_fipe_atual" value="{{ request.form.get('codigo_fipe_atual', '') }}">
+                <input type="hidden" name="referencia_fipe_atual" id="referencia_fipe_atual" value="{{ request.form.get('referencia_fipe_atual', '') }}">
+                <input type="hidden" name="origem_curva_atual" id="origem_curva_atual" value="{{ request.form.get('origem_curva_atual', '') }}">
                 <input type="hidden" name="ano_modelo_atual" id="ano_modelo_atual">
                 <input type="hidden" name="combustivel_atual" id="combustivel_atual">
 
@@ -1246,6 +1248,8 @@
             <div id="dados_ve_box" class="space-y-2 plugve-progress-hidden mt-5 border rounded-lg p-4 bg-white shadow-sm">
               <input type="hidden" name="modelo_ve" id="modelo_ve">
               <input type="hidden" name="codigo_fipe_ve" id="codigo_fipe_ve" value="{{ request.form.get('codigo_fipe_ve', '') }}">
+                <input type="hidden" name="referencia_fipe_ve" id="referencia_fipe_ve" value="{{ request.form.get('referencia_fipe_ve', '') }}">
+                <input type="hidden" name="origem_curva_ve" id="origem_curva_ve" value="{{ request.form.get('origem_curva_ve', '') }}">
               <input type="hidden" name="ano_modelo_ve" id="ano_modelo_ve">
               <input type="hidden" name="combustivel_ve" id="combustivel_ve">
               <input type="hidden" name="tipo_veiculo_ve" id="tipo_veiculo_ve" value="">
@@ -1368,6 +1372,8 @@
             <div id="dados_icev_box" class="space-y-2 plugve-progress-hidden mt-5 border rounded-lg p-4 bg-white shadow-sm">
               <input type="hidden" name="modelo_icev" id="modelo_icev">
               <input type="hidden" name="codigo_fipe_icev" id="codigo_fipe_icev" value="{{ request.form.get('codigo_fipe_icev', '') }}">
+                <input type="hidden" name="referencia_fipe_icev" id="referencia_fipe_icev" value="{{ request.form.get('referencia_fipe_icev', '') }}">
+                <input type="hidden" name="origem_curva_icev" id="origem_curva_icev" value="{{ request.form.get('origem_curva_icev', '') }}">
               <input type="hidden" name="ano_modelo_icev" id="ano_modelo_icev">
               <input type="hidden" name="combustivel_icev" id="combustivel_icev">
 
@@ -2098,9 +2104,18 @@
                       <div>
                         <h5>{{ item.nome_curto }}</h5>
                         <dl>
+                          {% if item.preco_energia is defined %}
+                            {% if item.preco_energia != '—' %}<div><dt>Preço energia</dt><dd>{{ item.preco_energia }}</dd></div>{% endif %}
+                            {% if item.precos_combustiveis != '—' %}<div><dt>Preços combustíveis</dt><dd>{{ item.precos_combustiveis }}</dd></div>{% endif %}
+                            {% if item.perfil_flex != '—' %}<div><dt>Perfil flex</dt><dd>{{ item.perfil_flex }}</dd></div>{% endif %}
+                            <div><dt>Consumo</dt><dd>{{ item.consumo_utilizado }}</dd></div>
+                            <div><dt>Manutenção</dt><dd>{{ item.manutencao_anual }}</dd></div>
+                            <div><dt>Referência FIPE</dt><dd>{{ item.referencia_fipe }}</dd></div>
+                            <div><dt>Origem da curva</dt><dd>{{ item.origem_curva }}</dd></div>
+                          {% endif %}
                           <div><dt>Depreciação anual</dt><dd>{{ item.taxa_depreciacao }}</dd></div>
                           <div><dt>IPVA projetado</dt><dd>{% if item.ipva_reavaliado_anualmente %}Reavaliado ano a ano<small>Regras cadastradas na data-base aplicadas à idade e ao valor projetados.</small>{% else %}{{ item.taxa_ipva }} do valor{% endif %}</dd></div>
-                          <div><dt>Seguro projetado</dt><dd>{% if item.seguro_considerado is defined and not item.seguro_considerado %}Não considerado{% elif item.seguro_reestimado_anualmente %}{{ item.taxa_seguro }} inicial<small>Fonte: IPSA + AUTOSEG/SUSEP</small>{% else %}{{ item.taxa_seguro }} do valor{% if item.seguro_fonte %}<small>Fonte: {{ item.seguro_fonte }}</small>{% endif %}{% endif %}</dd></div>
+                          <div><dt>Seguro projetado</dt><dd>{% if item.seguro_considerado is defined and not item.seguro_considerado %}Não considerado{% elif item.seguro_reestimado_anualmente %}{{ item.taxa_seguro }} inicial<small>Fonte: IPSA + AUTOSEG/SUSEP{% if item.seguro_referencia_curta %} · {{ item.seguro_referencia_curta }}{% endif %}{% if item.seguro_nivel_curto %} · Nível: {{ item.seguro_nivel_curto }}{% endif %}</small>{% else %}{{ item.taxa_seguro }} do valor{% if item.seguro_fonte %}<small>Fonte: {{ item.seguro_fonte }}</small>{% endif %}{% endif %}</dd></div>
                           {% if item.financiamento_ativo %}
                             <div><dt>Entrada</dt><dd>{{ item.entrada_financiamento }}</dd></div>
                             <div><dt>Taxa mensal</dt><dd>{{ item.taxa_financiamento }}</dd></div>
@@ -2391,9 +2406,18 @@
                     <tr><td><b>Combustíveis comerciais</b></td><td colspan="2">{{ comp.impacto_ambiental.fatores.mistura_gasolina }}; {{ comp.impacto_ambiental.fatores.mistura_diesel }}</td></tr>
                   {% endif %}
                   <tr class="tco-pdf-group-row"><td colspan="3">Premissas por veículo</td></tr>
+                  {% if comp.detalhes[0].preco_energia is defined %}
+                    {% if comp.detalhes[0].preco_energia != '—' or comp.detalhes[1].preco_energia != '—' %}<tr><td><b>Preço energia</b></td><td>{{ comp.detalhes[0].preco_energia }}</td><td>{{ comp.detalhes[1].preco_energia }}</td></tr>{% endif %}
+                    {% if comp.detalhes[0].precos_combustiveis != '—' or comp.detalhes[1].precos_combustiveis != '—' %}<tr><td><b>Preços combustíveis</b></td><td>{{ comp.detalhes[0].precos_combustiveis }}</td><td>{{ comp.detalhes[1].precos_combustiveis }}</td></tr>{% endif %}
+                    {% if comp.detalhes[0].perfil_flex != '—' or comp.detalhes[1].perfil_flex != '—' %}<tr><td><b>Perfil flex</b></td><td>{{ comp.detalhes[0].perfil_flex }}</td><td>{{ comp.detalhes[1].perfil_flex }}</td></tr>{% endif %}
+                    <tr><td><b>Consumo</b></td><td>{{ comp.detalhes[0].consumo_utilizado }}</td><td>{{ comp.detalhes[1].consumo_utilizado }}</td></tr>
+                    <tr><td><b>Manutenção</b></td><td>{{ comp.detalhes[0].manutencao_anual }}</td><td>{{ comp.detalhes[1].manutencao_anual }}</td></tr>
+                    <tr><td><b>Referência FIPE</b></td><td>{{ comp.detalhes[0].referencia_fipe }}</td><td>{{ comp.detalhes[1].referencia_fipe }}</td></tr>
+                    <tr><td><b>Origem da curva</b></td><td>{{ comp.detalhes[0].origem_curva }}</td><td>{{ comp.detalhes[1].origem_curva }}</td></tr>
+                  {% endif %}
                   <tr><td><b>Depreciação anual</b></td><td>{{ comp.detalhes[0].taxa_depreciacao }}</td><td>{{ comp.detalhes[1].taxa_depreciacao }}</td></tr>
                   <tr><td><b>IPVA projetado</b></td><td>{% if comp.detalhes[0].ipva_reavaliado_anualmente %}Reavaliado ano a ano{% else %}{{ comp.detalhes[0].taxa_ipva }} do valor{% endif %}</td><td>{% if comp.detalhes[1].ipva_reavaliado_anualmente %}Reavaliado ano a ano{% else %}{{ comp.detalhes[1].taxa_ipva }} do valor{% endif %}</td></tr>
-                  <tr><td><b>Seguro projetado</b></td><td>{% if comp.detalhes[0].seguro_considerado is defined and not comp.detalhes[0].seguro_considerado %}Não considerado{% elif comp.detalhes[0].seguro_reestimado_anualmente %}{{ comp.detalhes[0].taxa_seguro }} inicial<small>Fonte: IPSA + AUTOSEG/SUSEP</small>{% else %}{{ comp.detalhes[0].taxa_seguro }} do valor{% if comp.detalhes[0].seguro_fonte %}<small>Fonte: {{ comp.detalhes[0].seguro_fonte }}</small>{% endif %}{% endif %}</td><td>{% if comp.detalhes[1].seguro_considerado is defined and not comp.detalhes[1].seguro_considerado %}Não considerado{% elif comp.detalhes[1].seguro_reestimado_anualmente %}{{ comp.detalhes[1].taxa_seguro }} inicial<small>Fonte: IPSA + AUTOSEG/SUSEP</small>{% else %}{{ comp.detalhes[1].taxa_seguro }} do valor{% if comp.detalhes[1].seguro_fonte %}<small>Fonte: {{ comp.detalhes[1].seguro_fonte }}</small>{% endif %}{% endif %}</td></tr>
+                  <tr><td><b>Seguro projetado</b></td><td>{% if comp.detalhes[0].seguro_considerado is defined and not comp.detalhes[0].seguro_considerado %}Não considerado{% elif comp.detalhes[0].seguro_reestimado_anualmente %}{{ comp.detalhes[0].taxa_seguro }} inicial<small>Fonte: IPSA + AUTOSEG/SUSEP{% if comp.detalhes[0].seguro_referencia_curta %} · {{ comp.detalhes[0].seguro_referencia_curta }}{% endif %}{% if comp.detalhes[0].seguro_nivel_curto %} · Nível: {{ comp.detalhes[0].seguro_nivel_curto }}{% endif %}</small>{% else %}{{ comp.detalhes[0].taxa_seguro }} do valor{% if comp.detalhes[0].seguro_fonte %}<small>Fonte: {{ comp.detalhes[0].seguro_fonte }}</small>{% endif %}{% endif %}</td><td>{% if comp.detalhes[1].seguro_considerado is defined and not comp.detalhes[1].seguro_considerado %}Não considerado{% elif comp.detalhes[1].seguro_reestimado_anualmente %}{{ comp.detalhes[1].taxa_seguro }} inicial<small>Fonte: IPSA + AUTOSEG/SUSEP{% if comp.detalhes[1].seguro_referencia_curta %} · {{ comp.detalhes[1].seguro_referencia_curta }}{% endif %}{% if comp.detalhes[1].seguro_nivel_curto %} · Nível: {{ comp.detalhes[1].seguro_nivel_curto }}{% endif %}</small>{% else %}{{ comp.detalhes[1].taxa_seguro }} do valor{% if comp.detalhes[1].seguro_fonte %}<small>Fonte: {{ comp.detalhes[1].seguro_fonte }}</small>{% endif %}{% endif %}</td></tr>
                   <tr><td><b>Financiamento</b></td><td>{{ 'Considerado' if comp.detalhes[0].financiamento_ativo else 'Não considerado' }}</td><td>{{ 'Considerado' if comp.detalhes[1].financiamento_ativo else 'Não considerado' }}</td></tr>
                 </tbody>
               </table>
@@ -2594,6 +2618,13 @@
         if (alvo) alvo.textContent = valor || "—";
         linha.classList.toggle("hidden", !valor);
       }
+    }
+
+    function atualizarRastreabilidadeFipeTCO(prefixo, referencia, origemCurva) {
+      const ref = document.getElementById(`referencia_fipe_${prefixo}`);
+      if (ref && referencia !== undefined) ref.value = String(referencia || "").trim();
+      const origem = document.getElementById(`origem_curva_${prefixo}`);
+      if (origem && origemCurva !== undefined) origem.value = String(origemCurva || "").trim();
     }
 
     const plugveEnergiaResumoAtual = {
@@ -3774,6 +3805,7 @@
         if (el) el.value = "";
       });
       atualizarCodigoFipeTCO(prefixo, "");
+      atualizarRastreabilidadeFipeTCO(prefixo, "", "");
       marcarIpvaManualTCO(prefixo, false);
       marcarSeguroManual(prefixo, false);
       marcarSeguroConsiderado(prefixo, true);
@@ -3859,6 +3891,7 @@
         if (el) el.value = "";
       });
       atualizarCodigoFipeTCO(prefixo, "");
+      atualizarRastreabilidadeFipeTCO(prefixo, "", "");
       marcarIpvaManualTCO(prefixo, false);
 
       const consumoId = prefixo === "ve" ? "consumo_ve" : prefixo === "icev" ? "consumo_icev" : "consumo_atual";
@@ -5150,6 +5183,7 @@
         const marcaStr = data.Marca || selecaoRapida?.marcaStr || textoOpcaoSelecionadaFipeTCO(marcaSelect);
         const codigoFipeSelecionado = data.CodigoFipe || data.CodigoFIPE || data.Codigo || "";
         atualizarCodigoFipeTCO(prefixo, codigoFipeSelecionado);
+        atualizarRastreabilidadeFipeTCO(prefixo, data.MesReferencia || data.referenceMonth || data.mes_referencia || "", "");
         const tipoSelecionado = tipoCatalogoAnoSelecionadoTCO(anoSelect)
           || classificarTipoVeiculoTCO(nomeModelo, combustivelStr || textoAnoTela, ano, marcaStr, prefixo);
         if (!tipoPermitidoNoBloco(prefixo, tipoSelecionado)) {
@@ -5362,6 +5396,7 @@
       campo.value = taxa.toFixed(2).replace(".", ",");
       campo.dataset.depreciacaoValidada = "1";
       campo.dataset.origemDepreciacao = origem || "módulo de depreciação";
+      atualizarRastreabilidadeFipeTCO(prefixo, undefined, campo.dataset.origemDepreciacao);
       campo.dataset.depreciacaoHorizonte = !isNaN(dep) ? String(dep) : "";
       campo.dataset.taxaAnualEquivalente = String(taxa);
     }
@@ -5397,6 +5432,7 @@
           campo.value = "";
           campo.dataset.depreciacaoValidada = "0";
           campo.dataset.origemDepreciacao = "";
+          atualizarRastreabilidadeFipeTCO(prefixo, undefined, "");
         }
         escreverStatusDepreciacaoTCO(prefixo, "Curva ainda não disponível.", "text-gray-500");
         configurarBotaoDepreciacaoTCO(prefixo, true, detalhe, "solicitar");

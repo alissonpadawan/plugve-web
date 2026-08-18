@@ -26,7 +26,7 @@ def _resolve_secret_key() -> str:
 
 
 class Config:
-    CURVE_VERSION = "V50.26"
+    CURVE_VERSION = "V50.27"
     SECRET_KEY = _resolve_secret_key()
 
     BASE_DIR = Path(__file__).resolve().parent
