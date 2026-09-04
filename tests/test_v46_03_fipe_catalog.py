@@ -166,25 +166,33 @@ def test_fipe_publica_continua_com_catalogo_integral(tmp_path: Path):
     assert [item["codigo"] for item in anos] == ["1999-1", "1998-1"]
 
 
-def test_fallback_sem_estado_do_robo_usa_pbev_sem_liberar_cadillac(tmp_path: Path):
+def test_sem_estado_do_robo_pbev_nao_decide_mais_elegibilidade_temporal(tmp_path: Path):
     service = _service(tmp_path)
     cache = Path(fipe_module.current_app.config["FIPE_CACHE_DIR"])
     _write(cache / "marcas_varridas.json", {})
     _write(cache / "marcas_bloqueadas.json", {})
     _write(cache / "modelos_bloqueados.json", {})
+    _write(cache / "modelos_zero_km.json", {})
+    _write(cache / "catalogo_elegibilidade_fipe_v1.json", {
+        "schema_version": "catalogo_elegibilidade_fipe_v1", "modelos": {}, "anos": {}, "atualizado_em": None
+    })
 
-    # Sem o snapshot do robô, o fallback local não libera uma marca/modelo
-    # sem qualquer evidência pós-2012 na PBEV.
-    assert service._marca_temporal_permitida("10", nome_marca="Cadillac", estrito=True) is False
+    # Marca desconhecida pode ser aberta para verificação, mas modelo desconhecido
+    # não é liberado por similaridade PBEV.
+    assert service._marca_temporal_permitida("10", nome_marca="Cadillac", estrito=True) is True
     assert service._modelo_temporal_permitido(
         "10", "1", nome_marca="Cadillac", nome_modelo="Deville/Eldorado 4.9", estrito=True
     ) is False
-
-    # Um modelo contemporâneo presente na base PBEV continua disponível.
-    assert service._marca_temporal_permitida("23", nome_marca="GM - Chevrolet", estrito=True) is True
     assert service._modelo_temporal_permitido(
         "23", "3", nome_marca="GM - Chevrolet", nome_modelo="Onix 1.0 Flex", estrito=True
-    ) is True
+    ) is False
+
+    # listar_modelos() consulta os anos FIPE exatos: Cadillac antigo some e Onix
+    # com 2012/Zero km permanece, independentemente da PBEV.
+    cadillac = service.listar_modelos("10", contexto="depreciacao", nome_marca="Cadillac")
+    onix = service.listar_modelos("23", contexto="depreciacao", nome_marca="GM - Chevrolet")
+    assert cadillac["modelos"] == []
+    assert [item["nome"] for item in onix["modelos"]] == ["AGILE LT 1.4 MPFI 8V FlexPower 5p", "Onix 1.0 Flex"]
 
 
 def test_estado_do_robo_nao_e_sobrescrito_pelo_indice_novo(tmp_path: Path):

@@ -48,6 +48,11 @@ class _CatalogProbe(FipeService):
                     {"code": "1002", "name": "Dolphin Mini GS (Elétrico)"},
                 ]
             }
+        if endpoint == "marcas/13/modelos/1001/anos":
+            return [
+                {"code": "2025-1", "name": "2025 Elétrico"},
+                {"code": "2024-1", "name": "2024 Elétrico"},
+            ]
         if endpoint == "marcas/13/modelos/1002/anos":
             return [
                 {"code": "32000-1", "name": "Zero km Elétrico"},

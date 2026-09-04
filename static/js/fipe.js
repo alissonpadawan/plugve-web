@@ -73,20 +73,6 @@ function nomeMarcaSelecionada() {
   return obterTextoSelecionado(marca);
 }
 
-function modeloProtegidoContraBloqueioAutomatico(nomeModelo) {
-  const n = String(nomeModelo || "").toLowerCase();
-  // Lista conservadora de modelos atuais/relevantes que não devem sumir
-  // por falha temporária da API ou por variação de nome na FIPE.
-  const termos = [
-    "pulse", "fastback", "toro", "strada", "mobi", "argo", "cronos",
-    "titano", "500e", "500 e", "renegade", "compass", "commander",
-    "corolla", "hilux", "sw4", "onix", "tracker", "s10", "montana",
-    "hb20", "creta", "hr-v", "city", "civic", "dolphin", "seal",
-    "song", "yuan", "ora", "haval", "kwid", "captur", "kicks"
-  ];
-  return termos.some(t => n.includes(t));
-}
-
 function anosVieramValidosDaApi(listaAnos) {
   return Array.isArray(listaAnos) && listaAnos.length > 0 && !listaAnos.erro;
 }
@@ -377,7 +363,7 @@ async function varrerMarcaAtual(opcoes = {}) {
       const elegiveis = listaAnos.filter(anoPermitidoNaTela);
 
       if (!elegiveis.length) {
-        const podeBloquearComSeguranca = listaAnos.length > 0 && !modeloProtegidoContraBloqueioAutomatico(nomeModelo);
+        const podeBloquearComSeguranca = listaAnos.length > 0;
         if (podeBloquearComSeguranca) {
           bloqueados++;
           await bloquearModeloPorCodigo(codigoMarca, codigoModelo, nomeMarca, nomeModelo, listaAnos);
@@ -505,7 +491,7 @@ async function bloquearModeloAntigoSemAnoValido(marca, modelo, anosOriginais) {
   const nomeMarca = obterTextoSelecionado(marca);
   const indiceBloqueado = modelo.selectedIndex;
 
-  if (!Array.isArray(anosOriginais) || !anosOriginais.length || modeloProtegidoContraBloqueioAutomatico(nomeModelo)) {
+  if (!Array.isArray(anosOriginais) || !anosOriginais.length) {
     const ano = document.getElementById("fipe_ano");
     limparSelect(ano, "Sem ano elegível; mantido para revisão");
     if (typeof atualizarStatusResultado === "function") {
