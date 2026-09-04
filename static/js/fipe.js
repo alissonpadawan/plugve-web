@@ -1,5 +1,6 @@
 let ultimoDetalheFipe = null;
 let sequenciaConsultaPrecoFipe = 0;
+let sequenciaCarregamentoModelosFipe = 0;
 
 function limparSelect(select, texto) {
   select.innerHTML = "";
@@ -619,20 +620,97 @@ async function carregarModelosFipe() {
   const marca = document.getElementById("fipe_marca");
   const modelo = document.getElementById("fipe_modelo");
   const ano = document.getElementById("fipe_ano");
+  const token = ++sequenciaCarregamentoModelosFipe;
+  const codigoMarcaInicial = marca?.value || "";
   limparSelect(modelo, "Carregando...");
   limparSelect(ano, "Selecione o modelo primeiro");
 
-  if (!marca.value) {
+  if (!codigoMarcaInicial) {
     limparSelect(modelo, "Selecione a marca primeiro");
     return;
   }
 
+  const aindaAtual = () => token === sequenciaCarregamentoModelosFipe && marca?.value === codigoMarcaInicial;
+  const nomeMarca = marca.options[marca.selectedIndex]?.dataset?.nome || marca.options[marca.selectedIndex]?.textContent || "";
+  const paramsBase = new URLSearchParams(`codigo_marca=${encodeURIComponent(codigoMarcaInicial)}&contexto=depreciacao&catalogo=v49_04&nome_marca=${encodeURIComponent(nomeMarca)}`);
+
+  const renderizarModelos = (data) => {
+    if (!aindaAtual()) return false;
+    if (data.marca_bloqueada) return false;
+    const valorAnterior = modelo.value;
+    const modelos = Array.isArray(data?.modelos) ? data.modelos : [];
+    const pendentes = Number(data?.modelos_temporais_pendentes || 0);
+    limparSelect(modelo, "Selecione");
+    modelos.forEach(item => {
+      const opt = document.createElement("option");
+      opt.value = item.codigo;
+      opt.textContent = item.nome;
+      opt.dataset.nome = item.nome;
+      try { window.CurVE?.marcadores?.aplicarNoOption?.(opt, item.nome); } catch (e) {}
+      if (item.tem_zero_km) destacarOpcaoModeloZeroKm(opt);
+      modelo.appendChild(opt);
+    });
+    if (!modelos.length) {
+      limparSelect(modelo, pendentes > 0 ? "Atualizando catálogo FIPE..." : "Nenhum modelo elegível nesta marca");
+    } else if (valorAnterior && Array.from(modelo.options).some(opt => opt.value === valorAnterior)) {
+      modelo.value = valorAnterior;
+    }
+    ultimoIndiceModeloNavegacao = -1;
+    try { window.CurVE?.marcadores?.aplicarNoSelect?.(modelo); } catch (e) {}
+    try {
+      window.CurVE?.marcadores?.carregar?.().then(() => {
+        if (!aindaAtual()) return;
+        window.CurVE?.marcadores?.aplicarNoSelect?.(modelo);
+        window.atualizarComboboxesFipeCurVE?.();
+      });
+    } catch (e) {}
+    if (typeof window.aplicarChecksModelosFipe === "function") window.aplicarChecksModelosFipe();
+    return true;
+  };
+
+  const atualizarPendentesEmLotes = async (dataInicial) => {
+    let atual = dataInicial || {};
+    let pendentesAnterior = Number(atual.modelos_temporais_pendentes || 0);
+    if (!atual.catalogo_incompleto || pendentesAnterior <= 0) return;
+    await new Promise(resolve => setTimeout(resolve, 250));
+    while (aindaAtual() && atual.catalogo_incompleto && pendentesAnterior > 0) {
+      if (modelo.value) return;
+      const paramsLote = new URLSearchParams(paramsBase.toString());
+      paramsLote.set("verificar_temporais", "1");
+      paramsLote.set("limite_verificacao", "2");
+      try {
+        const { data: proximo } = await buscarJsonFipeSeguro(`/api/fipe/modelos?${paramsLote.toString()}`);
+        if (!renderizarModelos(proximo)) return;
+        const pendentesAgora = Number(proximo?.modelos_temporais_pendentes || 0);
+        const verificados = Number(proximo?.modelos_temporais_verificados_nesta_requisicao || 0);
+        atual = proximo;
+        if (!atual.catalogo_incompleto || pendentesAgora <= 0) return;
+        if (verificados <= 0 && pendentesAgora >= pendentesAnterior) {
+          if (modelo.options.length <= 1 && !modelo.value) {
+            limparSelect(modelo, "Catálogo FIPE temporariamente incompleto — tente novamente");
+          }
+          return;
+        }
+        pendentesAnterior = pendentesAgora;
+        await new Promise(resolve => setTimeout(resolve, 120));
+      } catch (err) {
+        // A lista já comprovada permanece utilizável; falha temporal não libera
+        // modelos desconhecidos e a próxima seleção retoma o progresso salvo.
+        if (modelo.options.length <= 1 && !modelo.value) {
+          limparSelect(modelo, "Catálogo FIPE temporariamente incompleto — tente novamente");
+        }
+        return;
+      }
+    }
+  };
+
   try {
-    const nomeMarca = marca.options[marca.selectedIndex]?.dataset?.nome || marca.options[marca.selectedIndex]?.textContent || "";
-    const { data } = await buscarJsonFipeSeguro(`/api/fipe/modelos?codigo_marca=${encodeURIComponent(marca.value)}&contexto=depreciacao&catalogo=v49_04&nome_marca=${encodeURIComponent(nomeMarca)}`);
+    const { data } = await buscarJsonFipeSeguro(`/api/fipe/modelos?${paramsBase.toString()}`);
+    if (!aindaAtual()) return;
     limparErroFipe();
     if (data.marca_bloqueada) {
       await carregarMarcasFipe();
+      if (!aindaAtual()) return;
       limparSelect(modelo, "Marca ocultada: sem modelos elegíveis");
       limparSelect(ano, "Selecione outra marca");
       if (typeof atualizarStatusResultado === "function") {
@@ -641,34 +719,11 @@ async function carregarModelosFipe() {
       }
       return;
     }
-    limparSelect(modelo, "Selecione");
-    (data.modelos || []).forEach(item => {
-      const opt = document.createElement("option");
-      opt.value = item.codigo;
-      opt.textContent = item.nome;
-      opt.dataset.nome = item.nome;
-      try { window.CurVE?.marcadores?.aplicarNoOption?.(opt, item.nome); } catch (e) {}
-      if (item.tem_zero_km) {
-        destacarOpcaoModeloZeroKm(opt);
-      }
-      modelo.appendChild(opt);
-    });
-    if (!(data.modelos || []).length) {
-      limparSelect(modelo, "Nenhum modelo elegível nesta marca");
-    }
-    ultimoIndiceModeloNavegacao = -1;
-    try { window.CurVE?.marcadores?.aplicarNoSelect?.(modelo); } catch (e) {}
-    try {
-      window.CurVE?.marcadores?.carregar?.().then(() => {
-        window.CurVE?.marcadores?.aplicarNoSelect?.(modelo);
-        window.atualizarComboboxesFipeCurVE?.();
-      });
-    } catch (e) {}
-    if (typeof window.aplicarChecksModelosFipe === "function") {
-      window.aplicarChecksModelosFipe();
-    }
+    renderizarModelos(data);
     await atualizarBotaoContinuarVarredura();
+    void atualizarPendentesEmLotes(data);
   } catch (err) {
+    if (!aindaAtual()) return;
     limparSelect(modelo, "FIPE temporariamente indisponível");
     mostrarErroFipe(err.data || { erro: err.message || "Erro ao carregar modelos FIPE." }, true);
   }

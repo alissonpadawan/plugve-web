@@ -7798,20 +7798,20 @@
           atualizarEstiloSelectModeloPlugVE(selectModelo);
           return;
         }
-        try {
-          const contexto = contextoFipePorSelectId(selectModeloId);
-          const nomeMarca = marcaEl.options[marcaEl.selectedIndex]?.text || "";
-          const params = new URLSearchParams({ codigo_marca: marca, catalogo: "v49_04" });
-          if (contexto) params.set("contexto", contexto);
-          if (nomeMarca) params.set("nome_marca", nomeMarca);
-          const data = await fetchJsonFipePlugVE(`/api/fipe/modelos?${params.toString()}`);
 
-          if (!sequenciaFipeAtualPlugVE("modelos", selectModeloId, token) || marcaEl.value !== marcaInicial) {
-            return;
-          }
+        const contexto = contextoFipePorSelectId(selectModeloId);
+        const nomeMarca = marcaEl.options[marcaEl.selectedIndex]?.text || "";
+        const paramsBase = new URLSearchParams({ codigo_marca: marca, catalogo: "v49_04" });
+        if (contexto) paramsBase.set("contexto", contexto);
+        if (nomeMarca) paramsBase.set("nome_marca", nomeMarca);
 
+        const renderizarModelos = (data) => {
+          if (!sequenciaFipeAtualPlugVE("modelos", selectModeloId, token) || marcaEl.value !== marcaInicial) return false;
+          const valorAnterior = selectModelo.value;
+          const modelos = Array.isArray(data?.modelos) ? data.modelos : [];
+          const pendentes = Number(data?.modelos_temporais_pendentes || 0);
           selectModelo.innerHTML = "<option value=''>Selecione</option>";
-          (data.modelos || []).forEach(mod => {
+          modelos.forEach(mod => {
             const opt = document.createElement("option");
             const nome = mod.nome || "";
             opt.value = mod.codigo;
@@ -7825,22 +7825,78 @@
             }
             selectModelo.appendChild(opt);
           });
-          if (!(data.modelos || []).length) {
-            selectModelo.innerHTML = "<option value=''>Nenhum modelo elegível nesta marca</option>";
+          if (!modelos.length) {
+            selectModelo.innerHTML = pendentes > 0
+              ? "<option value=''>Atualizando catálogo FIPE...</option>"
+              : "<option value=''>Nenhum modelo elegível nesta marca</option>";
+          } else if (valorAnterior && Array.from(selectModelo.options).some(opt => opt.value === valorAnterior)) {
+            selectModelo.value = valorAnterior;
           }
           setTimeout(iniciarCatalogoCurvasPlugVE, 0);
+          atualizarEstiloSelectModeloPlugVE(selectModelo);
+          return true;
+        };
+
+        const atualizarPendentesEmLotes = async (dataInicial) => {
+          let atual = dataInicial || {};
+          let pendentesAnterior = Number(atual.modelos_temporais_pendentes || 0);
+          if (!atual.catalogo_incompleto || pendentesAnterior <= 0) return;
+          // Dá prioridade à resposta inicial e aos marcadores; a comprovação dos
+          // modelos desconhecidos acontece depois, em lotes pequenos.
+          await new Promise(resolve => setTimeout(resolve, 250));
+          while (atual.catalogo_incompleto && pendentesAnterior > 0) {
+            if (!sequenciaFipeAtualPlugVE("modelos", selectModeloId, token) || marcaEl.value !== marcaInicial) return;
+            // Se o usuário já escolheu um modelo comprovado, não ocupamos o
+            // worker com novas consultas de anos durante a interação atual.
+            if (selectModelo.value) return;
+            const paramsLote = new URLSearchParams(paramsBase.toString());
+            paramsLote.set("verificar_temporais", "1");
+            paramsLote.set("limite_verificacao", "2");
+            try {
+              const proximo = await fetchJsonFipePlugVE(`/api/fipe/modelos?${paramsLote.toString()}`);
+              if (!renderizarModelos(proximo)) return;
+              const pendentesAgora = Number(proximo?.modelos_temporais_pendentes || 0);
+              const verificados = Number(proximo?.modelos_temporais_verificados_nesta_requisicao || 0);
+              atual = proximo;
+              if (!atual.catalogo_incompleto || pendentesAgora <= 0) return;
+              // Timeout/429/falha sem qualquer progresso: para sem transformar
+              // modelo desconhecido em elegível e sem bombardear a API.
+              if (verificados <= 0 && pendentesAgora >= pendentesAnterior) {
+                if (selectModelo.options.length <= 1 && !selectModelo.value) {
+                  selectModelo.innerHTML = "<option value=''>Catálogo FIPE temporariamente incompleto — tente novamente</option>";
+                }
+                return;
+              }
+              pendentesAnterior = pendentesAgora;
+              await new Promise(resolve => setTimeout(resolve, 120));
+            } catch (e) {
+              console.warn("Catálogo FIPE temporal permanece parcial; nova tentativa ocorrerá na próxima seleção da marca.", e);
+              if (selectModelo.options.length <= 1 && !selectModelo.value) {
+                selectModelo.innerHTML = "<option value=''>Catálogo FIPE temporariamente incompleto — tente novamente</option>";
+              }
+              return;
+            }
+          }
+        };
+
+        try {
+          const data = await fetchJsonFipePlugVE(`/api/fipe/modelos?${paramsBase.toString()}`);
+          if (!renderizarModelos(data)) return;
+          selectModelo.disabled = false;
+          selectAno.disabled = false;
+          atualizarEstiloSelectModeloPlugVE(selectModelo);
+          // Não aguardamos a varredura: o dropdown já está disponível com tudo
+          // que foi comprovado anteriormente.
+          void atualizarPendentesEmLotes(data);
         } catch (e) {
           if (sequenciaFipeAtualPlugVE("modelos", selectModeloId, token)) {
             selectModelo.innerHTML = "<option value=''>Erro ao carregar modelos</option>";
-          }
-        } finally {
-          if (sequenciaFipeAtualPlugVE("modelos", selectModeloId, token)) {
             selectModelo.disabled = false;
             selectAno.disabled = false;
-            atualizarEstiloSelectModeloPlugVE(selectModelo);
           }
         }
       };
+
 
       window.carregarAnos = async function (selectMarcaId, selectModeloId, selectAnoId) {
         const marcaEl = document.getElementById(selectMarcaId);

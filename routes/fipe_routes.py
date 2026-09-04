@@ -188,10 +188,22 @@ def modelos():
     codigo_marca = request.args.get("codigo_marca", "").strip()
     contexto = request.args.get("contexto", "").strip()
     nome_marca = request.args.get("nome_marca", "").strip()
+    verificar_pendentes = str(request.args.get("verificar_temporais", "")).strip().lower() in {"1", "true", "sim", "yes", "on"}
+    try:
+        limite_verificacao = int(request.args.get("limite_verificacao", "2") or 2)
+    except (TypeError, ValueError):
+        limite_verificacao = 2
+    limite_verificacao = max(1, min(2, limite_verificacao))
     if not codigo_marca:
         return _resposta_catalogo({"modelos": []})
     try:
-        return _resposta_catalogo(fipe_service.listar_modelos(codigo_marca, contexto=contexto, nome_marca=nome_marca))
+        return _resposta_catalogo(fipe_service.listar_modelos(
+            codigo_marca,
+            contexto=contexto,
+            nome_marca=nome_marca,
+            verificar_pendentes=verificar_pendentes,
+            limite_verificacao=limite_verificacao,
+        ))
     except Exception as exc:
         resp, status = _erro_fipe_response(exc)
         data = resp.get_json() or {}

@@ -346,12 +346,12 @@ class FipeService:
         *,
         nome_marca: str = "",
     ) -> dict[str, dict | None]:
-        """Valida somente modelos sem decisão temporal persistida.
+        """Valida um lote pequeno de modelos ainda sem decisão temporal.
 
-        A FIPE é a única fonte da elegibilidade 2012+/Zero km. As consultas de
-        anos independentes são executadas com concorrência limitada apenas no
-        primeiro encontro do modelo; o resultado exato fica persistido no índice.
-        Falha/timeout não libera o modelo por similaridade: ele permanece pendente.
+        V50.28: esta rotina não é mais chamada automaticamente para todos os
+        modelos durante o carregamento do dropdown. O chamador fornece um lote
+        pequeno; cada decisão concluída é persistida assim que retorna. Assim,
+        timeout/429 em um item posterior não apaga o progresso já comprovado.
         """
         if not modelos:
             return {}
@@ -376,26 +376,32 @@ class FipeService:
             except Exception:
                 return codigo_modelo, None
 
+        def registrar(codigo: str, decisao: dict | None) -> None:
+            resultados[codigo] = decisao
+            if not isinstance(decisao, dict):
+                return
+            # Persistência individual: progresso válido sobrevive mesmo se outro
+            # modelo do lote falhar ou a requisição seguinte for interrompida.
+            self._salvar_decisao_catalogo(
+                codigo_marca=str(codigo_marca),
+                codigo_modelo=str(codigo),
+                decisao={**decisao, "temporal_atualizado_em": self._agora_iso()},
+            )
+
         resultados: dict[str, dict | None] = {}
         workers = min(self._temporal_verify_workers(), max(1, len(modelos)))
         if workers <= 1 or len(modelos) <= 1:
             for modelo in modelos:
                 codigo, decisao = consultar(modelo)
-                resultados[codigo] = decisao
+                registrar(codigo, decisao)
         else:
             with ThreadPoolExecutor(max_workers=workers, thread_name_prefix="curve-fipe-anos") as pool:
                 futuros = [pool.submit(consultar, modelo) for modelo in modelos]
                 for futuro in as_completed(futuros):
                     codigo, decisao = futuro.result()
-                    resultados[codigo] = decisao
+                    registrar(codigo, decisao)
 
-        persistir = {
-            codigo: {**decisao, "temporal_atualizado_em": self._agora_iso()}
-            for codigo, decisao in resultados.items()
-            if isinstance(decisao, dict)
-        }
-        if persistir:
-            self._salvar_decisoes_catalogo_lote(codigo_marca=str(codigo_marca), modelos=persistir)
+        if any(isinstance(decisao, dict) for decisao in resultados.values()):
             self._invalidar_filtered_model_cache(str(codigo_marca))
         return resultados
 
@@ -1370,7 +1376,16 @@ class FipeService:
             resultado.append(item)
         return resultado
 
-    def listar_modelos(self, codigo_marca: str, filtrar_bloqueados: bool = True, contexto: str | None = None, nome_marca: str = ""):
+    def listar_modelos(
+        self,
+        codigo_marca: str,
+        filtrar_bloqueados: bool = True,
+        contexto: str | None = None,
+        nome_marca: str = "",
+        *,
+        verificar_pendentes: bool = True,
+        limite_verificacao: int | None = None,
+    ):
         ctx = contexto_fipe(contexto or "")
         if filtrar_bloqueados or ctx:
             cache_final = self._filtered_model_cache_get(str(codigo_marca), ctx, filtrar_bloqueados)
@@ -1489,11 +1504,23 @@ class FipeService:
             })
 
         verificacoes: dict[str, dict | None] = {}
-        if aplicar_recorte_temporal and desconhecidos_temporais:
+        modelos_verificados_nesta_requisicao = 0
+        if aplicar_recorte_temporal and desconhecidos_temporais and verificar_pendentes:
+            if limite_verificacao is None:
+                lote = desconhecidos_temporais
+            else:
+                try:
+                    limite = max(1, min(2, int(limite_verificacao or 2)))
+                except (TypeError, ValueError):
+                    limite = 2
+                lote = desconhecidos_temporais[:limite]
             verificacoes = self._verificar_modelos_temporais_exatos(
                 marca_key,
-                desconhecidos_temporais,
+                lote,
                 nome_marca=marca_nome,
+            )
+            modelos_verificados_nesta_requisicao = sum(
+                1 for decisao in verificacoes.values() if isinstance(decisao, dict)
             )
 
         modelos_filtrados: list[dict] = []
@@ -1528,6 +1555,8 @@ class FipeService:
         data["modelos_ocultos_contexto"] = ocultos_contexto
         data["modelos_ocultos_temporais"] = ocultos_temporais
         data["modelos_temporais_pendentes"] = pendentes_temporais
+        data["modelos_temporais_verificados_nesta_requisicao"] = modelos_verificados_nesta_requisicao
+        data["verificacao_temporal_em_lotes"] = bool(aplicar_recorte_temporal)
         data["catalogo_temporal_pronto"] = bool(estado_temporal.get("pronto")) or not pendentes_temporais
         data["catalogo_incompleto"] = bool(aplicar_recorte_temporal and pendentes_temporais)
         data["cache_modelos_filtrados"] = False

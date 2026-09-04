@@ -3671,10 +3671,21 @@ def fipe_modelos():
     codigo_marca = (request.args.get("codigo_marca") or "").strip()
     contexto = (request.args.get("contexto") or request.args.get("tipo") or "").strip()
     nome_marca = (request.args.get("nome_marca") or "").strip()
+    verificar_pendentes = str(request.args.get("verificar_temporais", "")).strip().lower() in {"1", "true", "sim", "yes", "on"}
+    try:
+        limite_verificacao = max(1, min(2, int(request.args.get("limite_verificacao", "2") or 2)))
+    except (TypeError, ValueError):
+        limite_verificacao = 2
     if not codigo_marca:
         return jsonify({"modelos": []})
     try:
-        return jsonify(_tco_fipe_service.listar_modelos(codigo_marca, contexto=contexto, nome_marca=nome_marca))
+        return jsonify(_tco_fipe_service.listar_modelos(
+            codigo_marca,
+            contexto=contexto,
+            nome_marca=nome_marca,
+            verificar_pendentes=verificar_pendentes,
+            limite_verificacao=limite_verificacao,
+        ))
     except Exception as e:
         return _erro_fipe_tco(e, {"modelos": []})
 
