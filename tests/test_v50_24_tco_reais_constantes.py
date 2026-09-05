@@ -174,5 +174,5 @@ def test_seguro_manual_permanece_percentual_da_trajetoria_real_sem_inflacao_extr
 
 def test_versionamento_metodologico_e_site():
     cfg = (ROOT / "config.py").read_text(encoding="utf-8")
-    assert 'CURVE_VERSION = "V50.29"' in cfg
+    assert 'CURVE_VERSION = "V50.30"' in cfg
     assert 'TCO_METODOLOGIA_MONETARIA_VERSAO = "TCO_REAL_BASE_V1"' in ROUTE

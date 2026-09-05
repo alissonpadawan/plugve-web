@@ -63,4 +63,4 @@ def test_parameters_use_human_labels_and_zero_is_not_exposed_as_raw_numeric_zero
 
 
 def test_v50_19_version_is_declared():
-    assert 'CURVE_VERSION = "V50.29"' in read("config.py")
+    assert 'CURVE_VERSION = "V50.30"' in read("config.py")

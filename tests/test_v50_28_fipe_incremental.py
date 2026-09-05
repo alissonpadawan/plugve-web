@@ -172,4 +172,4 @@ def test_frontend_v50_29_nao_atualiza_modelos_progressivamente():
 
 
 def test_versao_v50_29():
-    assert 'CURVE_VERSION = "V50.29"' in (ROOT / "config.py").read_text(encoding="utf-8")
+    assert 'CURVE_VERSION = "V50.30"' in (ROOT / "config.py").read_text(encoding="utf-8")

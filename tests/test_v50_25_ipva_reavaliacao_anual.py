@@ -193,4 +193,4 @@ def test_regressao_monetaria_v50_24_e_versionamento_v50_25():
     assert 'AUMENTO_COMBUSTIVEL_PADRAO_PERCENTUAL = TCO_COMBUSTIVEL_REAL_PADRAO_PERCENTUAL' in ROUTE
     assert '"ipva_metodologia_versao": "IPVA_ANUAL_V1"' in ROUTE
     cfg = (ROOT / "config.py").read_text(encoding="utf-8")
-    assert 'CURVE_VERSION = "V50.29"' in cfg
+    assert 'CURVE_VERSION = "V50.30"' in cfg

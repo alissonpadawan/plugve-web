@@ -84,6 +84,23 @@ class _CatalogProbe(FipeService):
     def _ler_modelos_novos(self):
         return {}
 
+    # V50.30 adicionou camadas persistentes de catálogo; este probe legado
+    # continua isolando apenas a normalização canônica que o teste pretende medir.
+    def _ler_catalogo_elegibilidade(self):
+        return {"modelos": {}, "anos": {}}
+
+    def _ler_catalogo_elegibilidade_v2(self):
+        return {"marcas": {}}
+
+    def _filtered_model_cache_get(self, *args, **kwargs):
+        return None
+
+    def _filtered_model_cache_set(self, *args, **kwargs):
+        return None
+
+    def _pbev_catalog_signature(self):
+        return "probe"
+
     def _catalog_classifier(self):
         return _Classifier()
 

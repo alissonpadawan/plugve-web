@@ -106,6 +106,88 @@ class FipeService:
     def _catalogo_elegibilidade_v2_path(self) -> Path:
         return self._json_path("catalogo_elegibilidade_fipe_v2.json")
 
+    def _catalogo_navegacao_path(self) -> Path:
+        return self._json_path("catalogo_navegacao_fipe_v1.json")
+
+    def _ler_catalogo_navegacao(self) -> dict:
+        """Carrega o catálogo pré-compilado usado apenas na navegação pública.
+
+        V50.30: Simular e Depreciação não montam catálogo durante o clique da
+        marca. O arquivo é carregado uma vez por worker e recarregado somente se
+        sua assinatura mudar. Fipe+ continua usando os endpoints FIPE integrais.
+        """
+        try:
+            path = self._catalogo_navegacao_path()
+            stat = path.stat()
+            signature = f"{stat.st_size}:{stat.st_mtime_ns}"
+        except Exception:
+            # Mantém compatibilidade com testes/rotinas isoladas sem contexto
+            # Flask e com ambientes em que o catálogo ainda não foi semeado.
+            return {}
+
+        cached_signature = getattr(self, "_catalogo_navegacao_signature", None)
+        cached = getattr(self, "_catalogo_navegacao_cache", None)
+        if cached_signature == signature and isinstance(cached, dict):
+            return cached
+
+        dados = self._ler_json(path, {})
+        if not isinstance(dados, dict) or dados.get("schema_version") != "catalogo_navegacao_fipe_v1":
+            return {}
+        if not isinstance(dados.get("marcas"), dict):
+            return {}
+        self._catalogo_navegacao_signature = signature
+        self._catalogo_navegacao_cache = dados
+        return dados
+
+    def _modelos_catalogo_navegacao(self, codigo_marca: str, contexto: str) -> dict | None:
+        ctx = contexto_fipe(contexto or "")
+        if ctx not in {"ve", "icev", "depreciacao"}:
+            return None
+        catalogo = self._ler_catalogo_navegacao()
+        if not catalogo:
+            return None
+        entrada = (catalogo.get("marcas") or {}).get(str(codigo_marca))
+        if not isinstance(entrada, dict):
+            return {
+                "modelos": [],
+                "contexto_fipe": ctx,
+                "marca_bloqueada": True,
+                "catalogo_temporal_pronto": True,
+                "catalogo_incompleto": False,
+                "catalogo_estavel": True,
+                "catalogo_navegacao_precompilado": True,
+            }
+        por_contexto = entrada.get("modelos") or {}
+        modelos = por_contexto.get(ctx) if isinstance(por_contexto, dict) else None
+        if not isinstance(modelos, list):
+            modelos = []
+        return {
+            "modelos": copy.deepcopy(modelos),
+            "marca": str(entrada.get("marca") or ""),
+            "contexto_fipe": ctx,
+            "marca_varrida": True,
+            "catalogo_temporal_pronto": True,
+            "catalogo_incompleto": False,
+            "catalogo_estavel": True,
+            "catalogo_navegacao_precompilado": True,
+            "modelos_temporais_pendentes": 0,
+            "modelos_temporais_verificados_nesta_requisicao": 0,
+            "verificacao_temporal_em_lotes": False,
+        }
+
+    def _identidade_catalogo_navegacao(self, codigo_marca: str, codigo_modelo: str) -> tuple[str, str] | None:
+        catalogo = self._ler_catalogo_navegacao()
+        entrada = (catalogo.get("marcas") or {}).get(str(codigo_marca)) if catalogo else None
+        if not isinstance(entrada, dict):
+            return None
+        nome_marca = str(entrada.get("marca") or "")
+        por_contexto = entrada.get("modelos") or {}
+        modelos = por_contexto.get("depreciacao") if isinstance(por_contexto, dict) else []
+        for item in modelos or []:
+            if str((item or {}).get("codigo") or "") == str(codigo_modelo):
+                return nome_marca, str((item or {}).get("nome") or "")
+        return None
+
     def _ler_json(self, path: Path, padrao):
         if not path.exists():
             return padrao
@@ -1408,6 +1490,31 @@ class FipeService:
 
     def listar_marcas(self, contexto: str | None = None):
         ctx = contexto_fipe(contexto or "")
+
+        # V50.30: para Simular e Depreciação, as marcas vêm do mesmo catálogo
+        # pré-compilado dos modelos. Não há chamada FIPE nem classificação PBEV
+        # durante a navegação. Consulta Fipe+ não passa por este atalho.
+        if ctx in {"ve", "icev", "depreciacao"}:
+            catalogo_nav = self._ler_catalogo_navegacao()
+            if catalogo_nav:
+                resultado_nav: list[dict] = []
+                for codigo, entrada in (catalogo_nav.get("marcas") or {}).items():
+                    if not isinstance(entrada, dict):
+                        continue
+                    por_contexto = entrada.get("modelos") or {}
+                    modelos_ctx = por_contexto.get(ctx) if isinstance(por_contexto, dict) else None
+                    if not isinstance(modelos_ctx, list) or not modelos_ctx:
+                        continue
+                    resultado_nav.append({
+                        "codigo": str(codigo),
+                        "nome": str(entrada.get("marca") or ""),
+                        "marca_varrida": True,
+                        "contexto_fipe": ctx,
+                        "catalogo_temporal_pronto": True,
+                        "catalogo_navegacao_precompilado": True,
+                    })
+                return sorted(resultado_nav, key=lambda item: str(item.get("nome") or "").casefold())
+
         marcas = self.listar_marcas_canonicas_carros()
         bloqueadas = self._ler_marcas_bloqueadas()
         varridas = self._ler_marcas_varridas()
@@ -1459,6 +1566,13 @@ class FipeService:
         listar_modelos_tipo() e continua integral.
         """
         ctx = contexto_fipe(contexto or "")
+
+        # V50.30: caminho de produção para Simular/Depreciação. A resposta já
+        # está pronta por marca/contexto; não toca API, PBEV ou Persistent Disk.
+        catalogo_nav = self._modelos_catalogo_navegacao(str(codigo_marca), ctx)
+        if catalogo_nav is not None:
+            return catalogo_nav
+
         if filtrar_bloqueados or ctx:
             cache_final = self._filtered_model_cache_get(str(codigo_marca), ctx, filtrar_bloqueados)
             if cache_final is not None:
@@ -1646,16 +1760,20 @@ class FipeService:
         anos = self.listar_anos_canonicos_carros(codigo_marca, codigo_modelo)
         ctx = contexto_fipe(contexto or "")
 
-        marca_nome = self._nome_marca_por_codigo(str(codigo_marca))
-        modelo_nome = ""
-        try:
-            modelos_data = self.listar_modelos_canonicos_carros(codigo_marca)
-            for modelo in modelos_data.get("modelos", []):
-                if str(modelo.get("codigo")) == str(codigo_modelo):
-                    modelo_nome = str(modelo.get("nome") or "")
-                    break
-        except Exception:
+        identidade_nav = self._identidade_catalogo_navegacao(str(codigo_marca), str(codigo_modelo))
+        if identidade_nav:
+            marca_nome, modelo_nome = identidade_nav
+        else:
+            marca_nome = self._nome_marca_por_codigo(str(codigo_marca))
             modelo_nome = ""
+            try:
+                modelos_data = self.listar_modelos_canonicos_carros(codigo_marca)
+                for modelo in modelos_data.get("modelos", []):
+                    if str(modelo.get("codigo")) == str(codigo_modelo):
+                        modelo_nome = str(modelo.get("nome") or "")
+                        break
+            except Exception:
+                modelo_nome = ""
 
         # A resposta exata de anos FIPE alimenta o índice temporal mesmo quando
         # a chamada veio do robô de varredura sem contexto. A Consulta Fipe+ usa

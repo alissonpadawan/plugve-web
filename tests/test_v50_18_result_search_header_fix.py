@@ -8,7 +8,7 @@ def read(rel: str) -> str:
 
 
 def test_v50_18_version():
-    assert 'CURVE_VERSION = "V50.29"' in read("config.py")
+    assert 'CURVE_VERSION = "V50.30"' in read("config.py")
 
 
 def test_search_lens_exists_in_every_current_public_header_and_is_last_item():

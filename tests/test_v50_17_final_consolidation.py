@@ -165,7 +165,7 @@ def test_v5017_mobile_admin_and_version_markers():
     service = read("services/site_usage_service.py")
     config = read("config.py")
 
-    assert 'CURVE_VERSION = "V50.29"' in config
+    assert 'CURVE_VERSION = "V50.30"' in config
     assert "Inteligência V50.17" in html
     assert "20260815_v50_17" in html
     assert html.count("admin-mobile-cards") >= 2
