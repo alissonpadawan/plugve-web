@@ -160,18 +160,16 @@ def test_decisao_concluida_e_persistida_mesmo_quando_outro_modelo_falha(tmp_path
     assert data["modelos_temporais_pendentes"] == 3
 
 
-def test_frontend_usa_resposta_inicial_rapida_e_lotes_progressivos():
+def test_frontend_v50_29_nao_atualiza_modelos_progressivamente():
     simular = (ROOT / "templates" / "simular.html").read_text(encoding="utf-8")
     depreciacao = (ROOT / "static" / "js" / "fipe.js").read_text(encoding="utf-8")
     for texto in (simular, depreciacao):
-        assert 'paramsLote.set("verificar_temporais", "1")' in texto
-        assert 'paramsLote.set("limite_verificacao", "2")' in texto
-        assert "Atualizando catálogo FIPE..." in texto
-        assert "Catálogo FIPE temporariamente incompleto" in texto
-    # O endpoint inicial usa os parâmetros-base sem pedir varredura síncrona.
-    assert 'fetchJsonFipePlugVE(`/api/fipe/modelos?${paramsBase.toString()}`)' in simular
-    assert 'buscarJsonFipeSeguro(`/api/fipe/modelos?${paramsBase.toString()}`)' in depreciacao
+        assert 'paramsLote.set("verificar_temporais", "1")' not in texto
+        assert "atualizarPendentesEmLotes" not in texto
+        assert "Atualizando catálogo FIPE..." not in texto
+    assert 'catalogo: "v50_29"' in simular
+    assert "catalogo=v50_29" in depreciacao
 
 
-def test_versao_v50_28():
-    assert 'CURVE_VERSION = "V50.28"' in (ROOT / "config.py").read_text(encoding="utf-8")
+def test_versao_v50_29():
+    assert 'CURVE_VERSION = "V50.29"' in (ROOT / "config.py").read_text(encoding="utf-8")

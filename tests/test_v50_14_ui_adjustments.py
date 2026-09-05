@@ -7,7 +7,7 @@ def read(rel: str) -> str:
 
 
 def test_platform_version_is_v50_14():
-    assert 'CURVE_VERSION = "V50.28"' in read("config.py")
+    assert 'CURVE_VERSION = "V50.29"' in read("config.py")
 
 
 def test_phev_profile_syncs_actual_compact_phev_card_live_and_persisted():

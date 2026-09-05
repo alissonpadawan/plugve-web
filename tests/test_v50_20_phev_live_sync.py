@@ -23,7 +23,7 @@ def _function_body(html: str, name: str) -> str:
 
 
 def test_v50_20_declared():
-    assert 'CURVE_VERSION = "V50.28"' in read("config.py")
+    assert 'CURVE_VERSION = "V50.29"' in read("config.py")
 
 
 def test_slider_phev_targets_the_actual_visible_compact_card():

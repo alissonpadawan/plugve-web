@@ -103,6 +103,9 @@ class FipeService:
     def _catalogo_elegibilidade_path(self) -> Path:
         return self._json_path("catalogo_elegibilidade_fipe_v1.json")
 
+    def _catalogo_elegibilidade_v2_path(self) -> Path:
+        return self._json_path("catalogo_elegibilidade_fipe_v2.json")
+
     def _ler_json(self, path: Path, padrao):
         if not path.exists():
             return padrao
@@ -148,11 +151,22 @@ class FipeService:
         except (TypeError, ValueError):
             return 4
 
+    def _catalogo_v2_signature(self) -> str:
+        try:
+            path = self._catalogo_elegibilidade_v2_path()
+            stat = path.stat()
+            return f"{stat.st_size}:{stat.st_mtime_ns}"
+        except Exception:
+            return "ausente"
+
     def _filtered_model_cache_get(self, codigo_marca: str, contexto: str, filtrar_bloqueados: bool):
         cache = getattr(self, "_filtered_model_cache", None)
         if not isinstance(cache, dict):
             return None
-        key = (str(codigo_marca), str(contexto or ""), bool(filtrar_bloqueados))
+        # A assinatura do catálogo temporal participa da chave. Quando a rotina
+        # offline publica uma nova allowlist atômica, workers web deixam de usar
+        # imediatamente a lista filtrada anterior, sem depender do TTL.
+        key = (str(codigo_marca), str(contexto or ""), bool(filtrar_bloqueados), self._catalogo_v2_signature())
         entrada = cache.get(key)
         if not entrada:
             return None
@@ -167,7 +181,7 @@ class FipeService:
         if not isinstance(cache, dict):
             cache = {}
             self._filtered_model_cache = cache
-        key = (str(codigo_marca), str(contexto or ""), bool(filtrar_bloqueados))
+        key = (str(codigo_marca), str(contexto or ""), bool(filtrar_bloqueados), self._catalogo_v2_signature())
         cache[key] = (time.monotonic(), copy.deepcopy(dados))
 
     def _invalidar_filtered_model_cache(self, codigo_marca: str | None = None) -> None:
@@ -210,6 +224,36 @@ class FipeService:
         dados.setdefault("modelos", {})
         dados.setdefault("anos", {})
         return dados
+
+    def _ler_catalogo_elegibilidade_v2(self) -> dict:
+        dados = self._ler_json(self._catalogo_elegibilidade_v2_path(), {})
+        if not isinstance(dados, dict) or dados.get("schema_version") != "catalogo_elegibilidade_fipe_v2":
+            return {
+                "schema_version": "catalogo_elegibilidade_fipe_v2",
+                "modo": "ausente",
+                "marcas": {},
+                "atualizado_em": None,
+            }
+        dados.setdefault("marcas", {})
+        return dados
+
+    @staticmethod
+    def _status_temporal_v2_explicito(entrada_marca: Any, codigo_modelo: str) -> bool | None:
+        if not isinstance(entrada_marca, dict):
+            return None
+        modelos = entrada_marca.get("modelos") or {}
+        if not isinstance(modelos, dict):
+            return None
+        entrada = modelos.get(str(codigo_modelo))
+        if not isinstance(entrada, dict) or not isinstance(entrada.get("elegivel"), bool):
+            return None
+        return bool(entrada.get("elegivel"))
+
+    @staticmethod
+    def _modo_temporal_v2_marca(entrada_marca: Any) -> str:
+        if not isinstance(entrada_marca, dict):
+            return ""
+        return str(entrada_marca.get("status") or "").strip().lower()
 
     def _salvar_decisao_catalogo(
         self,
@@ -455,6 +499,10 @@ class FipeService:
         zero_km = self._ler_modelos_zero_km().get(marca_key, {})
         catalogo = self._ler_catalogo_elegibilidade()
         catalogo_modelos = (catalogo.get("modelos", {}) or {}).get(marca_key, {})
+
+        # Decisões exatas mais recentes sempre prevalecem sobre o baseline da
+        # varredura antiga. Assim, um modelo retroativamente adicionado pela FIPE
+        # e posteriormente comprovado como pré-2012 continua bloqueado.
         status = self._status_temporal_precarregado(
             modelo_key,
             bloqueados=bloqueados,
@@ -463,11 +511,27 @@ class FipeService:
         )
         if status is not None:
             return status
-        if not estrito:
+
+        catalogo_v2 = self._ler_catalogo_elegibilidade_v2()
+        entrada_marca_v2 = (catalogo_v2.get("marcas", {}) or {}).get(marca_key, {})
+        status_v2 = self._status_temporal_v2_explicito(entrada_marca_v2, modelo_key)
+        if status_v2 is not None:
+            return status_v2
+
+        modo_v2 = self._modo_temporal_v2_marca(entrada_marca_v2)
+        if modo_v2 == "bloqueada":
+            return False
+        if modo_v2 == "completo":
+            # Catálogo v2 completo funciona como allowlist: código novo não
+            # aparece até uma atualização de manutenção comprovar seus anos.
+            return False
+        if modo_v2 in {"varrida_legacy", "baseline_varredura", "baseline_varredura_render"}:
             return True
-        # Desconhecido não é sinônimo de elegível. A chamada de listar_modelos()
-        # valida esses casos pela FIPE exata e persiste a decisão.
-        return False
+
+        # Sem catálogo v2 compilado, o modo estrito é conservador: um modelo
+        # desconhecido não aparece. O seed V50.29 traz o baseline real da
+        # varredura do Render; assim, produção não depende deste fallback.
+        return not estrito
 
     def _ler_marcas_varridas(self) -> dict:
         return self._ler_json(self._marcas_varridas_path(), {})
@@ -1386,6 +1450,14 @@ class FipeService:
         verificar_pendentes: bool = True,
         limite_verificacao: int | None = None,
     ):
+        """Lista modelos com catálogo estável na interação do usuário.
+
+        V50.29: Simular/Depreciação usam o baseline persistente da varredura real
+        (ou um catálogo v2 completo). Nenhuma consulta /anos é necessária quando
+        esse baseline existe. A verificação opcional permanece disponível apenas
+        para manutenção/testes quando o chamador pede explicitamente. FIPE+ usa
+        listar_modelos_tipo() e continua integral.
+        """
         ctx = contexto_fipe(contexto or "")
         if filtrar_bloqueados or ctx:
             cache_final = self._filtered_model_cache_get(str(codigo_marca), ctx, filtrar_bloqueados)
@@ -1403,7 +1475,7 @@ class FipeService:
         if aplicar_recorte_temporal and not self._marca_temporal_permitida(str(codigo_marca), nome_marca=marca_nome, estrito=True):
             data["modelos"] = []
             data["marca_varrida"] = str(codigo_marca) in estado_temporal.get("varridas", {})
-            data["catalogo_temporal_pronto"] = bool(estado_temporal.get("pronto"))
+            data["catalogo_temporal_pronto"] = True
             data["catalogo_incompleto"] = False
             data["motivo_catalogo"] = "marca_sem_modelo_2012_ou_zero_km"
             self._filtered_model_cache_set(str(codigo_marca), ctx, filtrar_bloqueados, data)
@@ -1417,6 +1489,9 @@ class FipeService:
         varridas = self._ler_marcas_varridas()
         catalogo = self._ler_catalogo_elegibilidade()
         catalogo_modelos = (catalogo.get("modelos", {}) or {}).get(marca_key, {})
+        catalogo_v2 = self._ler_catalogo_elegibilidade_v2()
+        entrada_marca_v2 = (catalogo_v2.get("marcas", {}) or {}).get(marca_key, {})
+        modo_v2 = self._modo_temporal_v2_marca(entrada_marca_v2)
 
         ocultos_bloqueados = 0
         ocultos_contexto = 0
@@ -1425,12 +1500,9 @@ class FipeService:
         classifier = None
         assinatura_pbev = self._pbev_catalog_signature() if ctx in {"ve", "icev"} else ""
         decisoes_classificacao_persistir: dict[str, dict] = {}
-        preparados: list[dict[str, Any]] = []
-        desconhecidos_temporais: list[dict] = []
+        modelos_filtrados: list[dict] = []
+        pendentes_preparados: list[dict[str, Any]] = []
 
-        # V50.27: cada arquivo de estado é lido uma única vez por requisição.
-        # A classificação PBEV ocorre no máximo uma vez por modelo e serve
-        # exclusivamente para o contexto de propulsão, nunca para provar 2012+.
         for modelo in modelos:
             codigo_modelo = str(modelo.get("codigo") or "")
             if codigo_modelo in bloqueados:
@@ -1452,13 +1524,11 @@ class FipeService:
                         "score_pbev": entrada_catalogo.get("score_pbev"),
                         "margem_pbev": entrada_catalogo.get("margem_pbev"),
                     }
-                    tipo_modelo = str(entrada_catalogo.get("tipo_plugve") or "")
                 else:
                     if classifier is None:
                         classifier = self._catalog_classifier()
                     decisao = classifier.classify(marca_nome, item.get("nome", ""))
                     decisao_dict = decisao.as_dict()
-                    tipo_modelo = decisao.tipo_plugve
                     decisoes_classificacao_persistir[codigo_modelo] = {
                         **decisao_dict,
                         "marca": marca_nome,
@@ -1477,7 +1547,7 @@ class FipeService:
                     ocultos_contexto += 1
                     continue
 
-            status_temporal = None
+            status_temporal: bool | None = True
             if aplicar_recorte_temporal:
                 status_temporal = self._status_temporal_precarregado(
                     codigo_modelo,
@@ -1485,11 +1555,21 @@ class FipeService:
                     zero_km=zero_km,
                     catalogo_modelos=catalogo_modelos,
                 )
-                if status_temporal is False:
-                    ocultos_temporais += 1
-                    continue
                 if status_temporal is None:
-                    desconhecidos_temporais.append(modelo)
+                    status_temporal = self._status_temporal_v2_explicito(entrada_marca_v2, codigo_modelo)
+                if status_temporal is None:
+                    if modo_v2 == "bloqueada":
+                        status_temporal = False
+                    elif modo_v2 == "completo":
+                        # Catálogo exato completo é allowlist: código ausente fica
+                        # oculto até a próxima manutenção, sem aparecer sozinho.
+                        status_temporal = False
+                    elif modo_v2 in {"varrida_legacy", "baseline_varredura", "baseline_varredura_render"}:
+                        # Baseline real fornecido pelo usuário: a varredura já
+                        # percorreu a marca e a denylist contém os inelegíveis.
+                        status_temporal = True
+                    else:
+                        status_temporal = None
 
             item["contexto_fipe"] = ctx or "auto"
             if codigo_modelo in zero_km or bool(entrada_catalogo.get("tem_zero_km_temporal")):
@@ -1497,56 +1577,49 @@ class FipeService:
             if codigo_modelo in novos:
                 item["modelo_novo"] = True
             item["marca_varrida"] = marca_key in varridas
-            preparados.append({
-                "codigo_modelo": codigo_modelo,
-                "item": item,
-                "status_temporal": status_temporal,
-            })
+
+            if status_temporal is False:
+                ocultos_temporais += 1
+                continue
+            if status_temporal is None:
+                pendentes_preparados.append({"modelo": modelo, "item": item, "codigo_modelo": codigo_modelo})
+                continue
+            modelos_filtrados.append(item)
 
         verificacoes: dict[str, dict | None] = {}
         modelos_verificados_nesta_requisicao = 0
-        if aplicar_recorte_temporal and desconhecidos_temporais and verificar_pendentes:
+        if aplicar_recorte_temporal and pendentes_preparados and verificar_pendentes:
             if limite_verificacao is None:
-                lote = desconhecidos_temporais
+                lote_preparado = pendentes_preparados
             else:
                 try:
                     limite = max(1, min(2, int(limite_verificacao or 2)))
                 except (TypeError, ValueError):
                     limite = 2
-                lote = desconhecidos_temporais[:limite]
+                lote_preparado = pendentes_preparados[:limite]
             verificacoes = self._verificar_modelos_temporais_exatos(
                 marca_key,
-                lote,
+                [p["modelo"] for p in lote_preparado],
                 nome_marca=marca_nome,
             )
-            modelos_verificados_nesta_requisicao = sum(
-                1 for decisao in verificacoes.values() if isinstance(decisao, dict)
-            )
+            modelos_verificados_nesta_requisicao = sum(1 for d in verificacoes.values() if isinstance(d, dict))
 
-        modelos_filtrados: list[dict] = []
-        for preparado in preparados:
+        for preparado in pendentes_preparados:
             codigo_modelo = preparado["codigo_modelo"]
+            decisao = verificacoes.get(codigo_modelo)
+            if not isinstance(decisao, dict):
+                pendentes_temporais += 1
+                continue
+            if not bool(decisao.get("elegivel_2012_ou_zero_km")):
+                ocultos_temporais += 1
+                continue
             item = preparado["item"]
-            status_temporal = preparado["status_temporal"]
-            if aplicar_recorte_temporal and status_temporal is None:
-                decisao_temporal = verificacoes.get(codigo_modelo)
-                if not isinstance(decisao_temporal, dict):
-                    # Falha/timeout não pode ser transformado em elegibilidade
-                    # por PBEV ou por nome parecido. O modelo fica pendente.
-                    pendentes_temporais += 1
-                    continue
-                if not bool(decisao_temporal.get("elegivel_2012_ou_zero_km")):
-                    ocultos_temporais += 1
-                    continue
-                if bool(decisao_temporal.get("tem_zero_km_temporal")):
-                    item["tem_zero_km"] = True
+            if bool(decisao.get("tem_zero_km_temporal")):
+                item["tem_zero_km"] = True
             modelos_filtrados.append(item)
 
         if decisoes_classificacao_persistir:
-            self._salvar_decisoes_catalogo_lote(
-                codigo_marca=marca_key,
-                modelos=decisoes_classificacao_persistir,
-            )
+            self._salvar_decisoes_catalogo_lote(codigo_marca=marca_key, modelos=decisoes_classificacao_persistir)
 
         data["modelos"] = modelos_filtrados
         data["marca_varrida"] = marca_key in varridas
@@ -1556,29 +1629,15 @@ class FipeService:
         data["modelos_ocultos_temporais"] = ocultos_temporais
         data["modelos_temporais_pendentes"] = pendentes_temporais
         data["modelos_temporais_verificados_nesta_requisicao"] = modelos_verificados_nesta_requisicao
-        data["verificacao_temporal_em_lotes"] = bool(aplicar_recorte_temporal)
-        data["catalogo_temporal_pronto"] = bool(estado_temporal.get("pronto")) or not pendentes_temporais
-        data["catalogo_incompleto"] = bool(aplicar_recorte_temporal and pendentes_temporais)
+        data["verificacao_temporal_em_lotes"] = False
+        data["catalogo_temporal_pronto"] = pendentes_temporais == 0
+        data["catalogo_incompleto"] = bool(pendentes_temporais)
+        data["catalogo_estavel"] = not verificar_pendentes or pendentes_temporais == 0
+        data["catalogo_v2_modo"] = modo_v2 or "conservador"
         data["cache_modelos_filtrados"] = False
 
-        # Se a Depreciação comprovou todos os modelos da marca e nenhum é
-        # temporalmente elegível, preserva a função antiga de ocultar a marca
-        # inteira nas próximas consultas. Não se aplica a VE/ICEV, pois nesses
-        # contextos a propulsão pode ter filtrado parte dos modelos antes.
-        if (
-            ctx == "depreciacao"
-            and modelos
-            and not modelos_filtrados
-            and pendentes_temporais == 0
-            and ocultos_contexto == 0
-            and (ocultos_temporais + ocultos_bloqueados) >= len(modelos)
-        ):
-            try:
-                self.bloquear_marca_antiga(marca_key, marca_nome, motivo="sem_modelos_2012_ou_zero_km_confirmado_backend_v50_27")
-                data["marca_bloqueada"] = True
-            except Exception:
-                pass
-
+        # Só cacheia listas completas/estáveis. O frontend V50.29 nunca pede
+        # verificação incremental; portanto a lista exibida não muda sozinha.
         if pendentes_temporais == 0:
             self._filtered_model_cache_set(marca_key, ctx, filtrar_bloqueados, data)
         return data

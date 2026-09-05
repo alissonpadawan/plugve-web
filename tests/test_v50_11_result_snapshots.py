@@ -111,4 +111,4 @@ def test_snapshot_database_is_persistent_and_separate_from_usage_database():
     config = read("config.py")
     assert 'ARQUIVO_RESULTADOS = PERSISTENT_DIR / "institucional" / "result_snapshots.sqlite3"' in config
     assert 'ARQUIVO_USO_SITE = PERSISTENT_DIR / "institucional" / "site_usage.sqlite3"' in config
-    assert 'CURVE_VERSION = "V50.28"' in config
+    assert 'CURVE_VERSION = "V50.29"' in config

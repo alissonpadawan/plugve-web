@@ -215,7 +215,9 @@ def test_frontend_forca_nova_versao_do_catalogo_sem_cache_antigo():
     # A intenção original deste teste permanece: uma versão nova de catálogo
     # deve invalidar respostas antigas. V49.04 também elimina o cache local
     # independente da Simular e passa a revalidar no backend canônico.
-    assert simular.count('catalogo: "v49_04"') >= 4
+    assert simular.count('catalogo: "v49_04"') >= 3
+    assert 'catalogo: "v50_29"' in simular
     assert simular.count('params.set("catalogo", "v49_04")') >= 2
-    assert depreciacao_js.count("catalogo=v49_04") >= 3
+    assert depreciacao_js.count("catalogo=v49_04") >= 2
+    assert "catalogo=v50_29" in depreciacao_js
     assert "plugve:fipe:v2:" not in simular
