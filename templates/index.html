@@ -27,7 +27,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/result_search_modal.css') }}?v=20260816_v50_18">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/institucional.css') }}?v=20260725_v43_13">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}?v=51_35">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}?v=51_36">
   <style>
     :root{
       --curve-green:#168a4a;
@@ -87,8 +87,26 @@
     @keyframes newsSlide{from{transform:translateX(0)}to{transform:translateX(-50%)}}@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.home-card,.home-card-media img,.btn-start,.news-card,.news-thumb img{transition:none}.news-track{animation:none;width:auto;overflow-x:auto}}
   </style>
 </head>
-<body>
-  <header class="topbar home-topbar" id="homeTopbar" aria-label="Menu principal da CurVE">
+{% set access_gate = auth_access_control_enabled and (not auth_current_user or auth_current_user.access_status != 'active') %}
+<body{% if access_gate %} class="home-access-locked"{% endif %}>
+{% if access_gate %}
+  <div class="access-gate-overlay" role="presentation">
+    <section class="access-gate-card" role="dialog" aria-modal="true" aria-labelledby="access_gate_title" aria-describedby="access_gate_description">
+      <span class="auth-kicker">Acesso temporariamente controlado</span>
+      <h1 id="access_gate_title">CurVE — Calculadora Veicular</h1>
+      <p id="access_gate_description" class="auth-lead">A plataforma está disponível para usuários autorizados enquanto são tratados os procedimentos de registro e proteção do produto técnico.</p>
+      <div class="auth-actions">
+        <a class="auth-btn auth-btn-primary" href="{{ url_for('auth.login') }}">Entrar</a>
+        <a class="auth-btn auth-btn-secondary" href="{{ url_for('auth.register') }}">Solicitar acesso</a>
+      </div>
+      <p class="auth-note">Alunos, professores, pesquisadores, profissionais, empresas e outros interessados podem solicitar acesso. O cadastro exige confirmação de e-mail e aprovação.</p>
+      <div class="access-gate-legal">
+        <a href="{{ url_for('auth.privacy') }}">Política de Privacidade</a><span>·</span><a href="{{ url_for('auth.terms') }}">Termos de acesso</a>
+      </div>
+    </section>
+  </div>
+{% endif %}
+  <header class="topbar home-topbar" id="homeTopbar" aria-label="Menu principal da CurVE"{% if access_gate %} inert aria-hidden="true"{% endif %}>
     <div class="container nav">
       <a class="brand" href="/" aria-label="CurVE Calculadora Veicular">
         <img src="{{ url_for('static', filename='img/logo_curve_horizontal.png') }}" alt="CurVE Calculadora Veicular">
@@ -125,7 +143,7 @@
     </section>
   </div>
 
-  <main class="home-shell">
+  <main class="home-shell"{% if access_gate %} inert aria-hidden="true"{% endif %}>
     <section class="home-hero" aria-label="CurVE — Decisão com dados">
       <img src="{{ url_for('static', filename='img/curve-home-main.webp') }}" alt="CurVE — Decisão com dados para mobilidade e análise veicular" width="1600" height="900" loading="eager" decoding="async" fetchpriority="high">
       <div class="hero-actions">
@@ -200,7 +218,7 @@
     </section>
   </main>
 
-  <footer class="footer institutional-footer">
+  <footer class="footer institutional-footer"{% if access_gate %} inert aria-hidden="true"{% endif %}>
     <div class="container institutional-footer-main">
       <div class="institutional-footer-brand">
         <a href="https://www.ifg.edu.br/" target="_blank" rel="noopener noreferrer" aria-label="Acessar o portal do Instituto Federal de Goiás">

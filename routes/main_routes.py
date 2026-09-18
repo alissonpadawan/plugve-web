@@ -17,10 +17,9 @@ main_bp = Blueprint("main", __name__)
 
 @main_bp.route("/")
 def index():
-    if access_control_enabled():
-        user = current_auth_user()
-        if not user or str(user.get("access_status") or "") != "active":
-            return render_template("auth/access_landing.html")
+    # V51.36 — a Home permanece visível como contexto visual mesmo durante o
+    # acesso controlado. A própria template exibe um modal bloqueante para
+    # visitantes/contas sem status active, sem liberar interação com a Home.
     return render_template("index.html", noticias=carregar_noticias_home())
 
 
