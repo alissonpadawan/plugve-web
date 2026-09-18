@@ -8,7 +8,7 @@ def read(rel: str) -> str:
 
 
 def test_version_and_home_use_modal_gate():
-    assert 'CURVE_VERSION = "V51.36"' in read("config.py")
+    assert 'CURVE_VERSION = "V51.37"' in read("config.py")
     route = read("routes/main_routes.py")
     assert 'render_template("auth/access_landing.html")' not in route
     index = read("templates/index.html")
@@ -27,5 +27,5 @@ def test_auth_pages_share_same_alignment_axis():
 
 
 def test_cache_buster_updated():
-    assert '?v=51_36' in read("templates/auth/_base.html")
-    assert '?v=51_36' in read("templates/index.html")
+    assert '?v=51_37' in read("templates/auth/_base.html")
+    assert '?v=51_37' in read("templates/index.html")

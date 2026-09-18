@@ -66,7 +66,6 @@ def login():
                     )
                 except Exception:
                     pass
-                flash("Acesso realizado com sucesso.", "success")
                 return redirect(next_path)
             error = result.message
             if result.user and result.status in {"email_pending", "pending_approval"}:

@@ -131,7 +131,7 @@ def test_final_access_control_is_fail_closed_in_production_and_render():
     config = _read("config.py")
     render = _read("render.yaml")
     env = _read(".env.example")
-    assert 'CURVE_VERSION = "V51.36"' in config
+    assert 'CURVE_VERSION = "V51.37"' in config
     assert '_AUTH_DEFAULT = "1" if _is_production_runtime() else "0"' in config
     assert 'key: AUTH_ACCESS_CONTROL_ENABLED' in render and 'value: "1"' in render
     assert 'AUTH_ACCESS_CONTROL_ENABLED=1' in env
