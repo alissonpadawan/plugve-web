@@ -11,6 +11,12 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
+from services.sqlite_migration_backup import (
+    create_sqlite_backup_once,
+    needs_columns,
+    verify_sqlite_integrity,
+)
+
 
 
 ANALYSIS_TYPES = ("tco", "depreciacao", "fipe_plus")
@@ -117,6 +123,24 @@ class SiteUsageService:
             connection.close()
 
     def _initialize(self) -> None:
+        # V51.35 — se um banco legado precisar receber colunas novas, congelamos
+        # uma cópia consistente antes do primeiro ALTER TABLE. Bancos novos não
+        # geram backup desnecessário e o backup é único por rótulo de migração.
+        migration_requirements = {
+            "usage_sessions": ("user_id",),
+            "usage_events": (
+                "user_id", "result_code", "access_network", "access_city",
+                "access_region", "access_country", "access_browser",
+                "access_device", "access_os",
+            ),
+            "curve_request_visitors": ("user_id",),
+        }
+        migration_needed = needs_columns(self.database_path, migration_requirements)
+        if migration_needed:
+            create_sqlite_backup_once(
+                self.database_path, migration_label="v51_35_usage_schema"
+            )
+
         with self._connection() as connection:
             connection.executescript(
                 """
@@ -149,6 +173,7 @@ class SiteUsageService:
                 CREATE TABLE IF NOT EXISTS curve_request_visitors (
                     request_id INTEGER NOT NULL,
                     visitor_hash TEXT NOT NULL,
+                    user_id TEXT,
                     requested_at TEXT NOT NULL,
                     PRIMARY KEY (request_id, visitor_hash),
                     FOREIGN KEY (request_id) REFERENCES curve_requests(id) ON DELETE CASCADE
@@ -175,6 +200,7 @@ class SiteUsageService:
                 CREATE TABLE IF NOT EXISTS usage_sessions (
                     session_hash TEXT PRIMARY KEY,
                     visitor_hash TEXT NOT NULL,
+                    user_id TEXT,
                     started_at TEXT NOT NULL,
                     last_seen_at TEXT NOT NULL,
                     event_count INTEGER NOT NULL DEFAULT 0,
@@ -192,6 +218,7 @@ class SiteUsageService:
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     visitor_hash TEXT NOT NULL,
                     session_hash TEXT NOT NULL,
+                    user_id TEXT,
                     occurred_at TEXT NOT NULL,
                     event_type TEXT NOT NULL,
                     module TEXT NOT NULL,
@@ -254,6 +281,41 @@ class SiteUsageService:
                     ON usage_visitors(last_seen_at DESC);
                 CREATE INDEX IF NOT EXISTS idx_usage_sessions_visitor
                     ON usage_sessions(visitor_hash, started_at DESC);
+                """
+            )
+
+            # V51.34 — associação opcional da telemetria ao usuário autenticado.
+            # Eventos/sessões legados permanecem NULL; nenhuma identidade é inferida
+            # retroativamente a partir de visitor/session/network.
+            session_columns = {
+                str(row["name"])
+                for row in connection.execute("PRAGMA table_info(usage_sessions)").fetchall()
+            }
+            if "user_id" not in session_columns:
+                connection.execute("ALTER TABLE usage_sessions ADD COLUMN user_id TEXT")
+
+            event_columns_v5134 = {
+                str(row["name"])
+                for row in connection.execute("PRAGMA table_info(usage_events)").fetchall()
+            }
+            if "user_id" not in event_columns_v5134:
+                connection.execute("ALTER TABLE usage_events ADD COLUMN user_id TEXT")
+
+            request_visitor_columns = {
+                str(row["name"])
+                for row in connection.execute("PRAGMA table_info(curve_request_visitors)").fetchall()
+            }
+            if "user_id" not in request_visitor_columns:
+                connection.execute("ALTER TABLE curve_request_visitors ADD COLUMN user_id TEXT")
+
+            connection.executescript(
+                """
+                CREATE INDEX IF NOT EXISTS idx_usage_events_user_when
+                    ON usage_events(user_id, occurred_at DESC);
+                CREATE INDEX IF NOT EXISTS idx_usage_sessions_user_started
+                    ON usage_sessions(user_id, started_at DESC);
+                CREATE INDEX IF NOT EXISTS idx_curve_request_visitors_user
+                    ON curve_request_visitors(user_id, requested_at DESC);
                 """
             )
 
@@ -392,6 +454,9 @@ class SiteUsageService:
             self._increment_analysis(connection, analysis_type, amount)
         return self.get_analysis_counts()
 
+        if migration_needed:
+            verify_sqlite_integrity(self.database_path)
+
     def get_analysis_counts(self) -> dict[str, int]:
         with self._connection() as connection:
             rows = connection.execute(
@@ -449,6 +514,7 @@ class SiteUsageService:
             "id": int(row["id"]),
             "visitor": str(row["visitor_hash"] or "")[:12],
             "session": str(row["session_hash"] or "")[:12],
+            "user_id": str(row["user_id"] or "") if "user_id" in row.keys() else "",
             "occurred_at": str(row["occurred_at"] or ""),
             "event_type": str(row["event_type"] or ""),
             "module": str(row["module"] or ""),
@@ -475,6 +541,7 @@ class SiteUsageService:
         *,
         visitor_id: str,
         session_id: str,
+        user_id: str = "",
         event_type: str,
         module: str,
         action: str,
@@ -491,6 +558,7 @@ class SiteUsageService:
         session_id = str(session_id or "").strip()
         if not visitor_id or not session_id:
             raise SiteUsageValidationError("Identidade de telemetria ausente.", 403)
+        user_id = _clean_text(user_id, 80) or None
         event_type = _clean_text(event_type, 40).lower()
         module = _clean_text(module, 40).lower()
         action = _clean_text(action, 80).lower()
@@ -558,12 +626,12 @@ class SiteUsageService:
                 connection.execute(
                     """
                     INSERT INTO usage_sessions(
-                        session_hash, visitor_hash, started_at, last_seen_at, event_count,
+                        session_hash, visitor_hash, user_id, started_at, last_seen_at, event_count,
                         network_hash, city, region, country, browser_family, device_type, os_family
-                    ) VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?)
+                    ) VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
-                        session_hash, visitor_hash, now, now, fields["network_hash"],
+                        session_hash, visitor_hash, user_id, now, now, fields["network_hash"],
                         fields["city"], fields["region"], fields["country"],
                         fields["browser_family"], fields["device_type"], fields["os_family"],
                     ),
@@ -571,6 +639,13 @@ class SiteUsageService:
                 connection.execute(
                     "UPDATE usage_visitors SET session_count = session_count + 1 WHERE visitor_hash = ?",
                     (visitor_hash,),
+                )
+            elif user_id:
+                # Só associa uma sessão antiga se ela ainda não tiver dono. A
+                # associação analítica autoritativa permanece no próprio evento.
+                connection.execute(
+                    "UPDATE usage_sessions SET user_id = COALESCE(NULLIF(user_id, ''), ?) WHERE session_hash = ?",
+                    (user_id, session_hash),
                 )
 
             # Uma simulação/consulta concluída corresponde a um snapshot S/D/F
@@ -595,14 +670,14 @@ class SiteUsageService:
             cursor = connection.execute(
                 """
                 INSERT INTO usage_events(
-                    visitor_hash, session_hash, occurred_at, event_type, module, action,
+                    visitor_hash, session_hash, user_id, occurred_at, event_type, module, action,
                     path, simulation_uf, simulation_city, horizon_years, km_year, metadata_json,
                     result_code, access_network, access_city, access_region, access_country,
                     access_browser, access_device, access_os
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
-                    visitor_hash, session_hash, now, event_type, module, action,
+                    visitor_hash, session_hash, user_id, now, event_type, module, action,
                     fields["path"], _clean_text(simulation_uf, 20), _clean_text(simulation_city, 120),
                     horizon, km, metadata_json, result_code,
                     fields["network_hash"], fields["city"], fields["region"], fields["country"],
@@ -1314,6 +1389,263 @@ class SiteUsageService:
             "timezone_offset_minutes": tz_offset_minutes,
         }
 
+    def get_user_activity_overview(self, user_ids: list[str] | tuple[str, ...]) -> dict[str, dict[str, Any]]:
+        """Resumo compacto para listas administrativas de usuários autenticados.
+
+        ``user_id`` é o UUID público estável da conta de autenticação. Eventos
+        legados permanecem sem associação e, portanto, não aparecem aqui.
+        """
+        normalized = []
+        seen: set[str] = set()
+        for raw in user_ids or []:
+            value = _clean_text(raw, 80)
+            if value and value not in seen:
+                normalized.append(value)
+                seen.add(value)
+        if not normalized:
+            return {}
+        placeholders = ",".join("?" for _ in normalized)
+        with self._connection() as connection:
+            rows = connection.execute(
+                f"""
+                SELECT user_id,
+                       COUNT(*) AS events,
+                       COUNT(DISTINCT session_hash) AS sessions,
+                       MAX(occurred_at) AS last_activity,
+                       SUM(CASE WHEN module='tco' AND action='simulation_completed' THEN 1 ELSE 0 END) AS tco,
+                       SUM(CASE WHEN module='depreciacao' AND action='consultation_completed' THEN 1 ELSE 0 END) AS depreciation,
+                       SUM(CASE WHEN module='fipe_plus' AND action='consultation_completed' THEN 1 ELSE 0 END) AS fipe_plus,
+                       SUM(CASE WHEN action='pdf_exported' THEN 1 ELSE 0 END) AS pdf_exports
+                FROM usage_events
+                WHERE user_id IN ({placeholders})
+                GROUP BY user_id
+                """,
+                tuple(normalized),
+            ).fetchall()
+        result: dict[str, dict[str, Any]] = {}
+        for row in rows:
+            key = str(row["user_id"] or "")
+            if not key:
+                continue
+            result[key] = {
+                "events": int(row["events"] or 0),
+                "sessions": int(row["sessions"] or 0),
+                "last_activity": str(row["last_activity"] or ""),
+                "tco": int(row["tco"] or 0),
+                "depreciation": int(row["depreciation"] or 0),
+                "fipe_plus": int(row["fipe_plus"] or 0),
+                "pdf_exports": int(row["pdf_exports"] or 0),
+            }
+        return result
+
+    def get_user_activity_summary(
+        self, user_id: str, *, timeline_limit: int = 100, top_limit: int = 10
+    ) -> dict[str, Any]:
+        """Métricas administrativas por conta autenticada.
+
+        A consulta usa apenas eventos explicitamente gravados com ``user_id``;
+        não tenta correlacionar visitantes legados por sessão, rede ou navegador.
+        """
+        user_id = _clean_text(user_id, 80)
+        if not user_id:
+            raise SiteUsageValidationError("Usuário de telemetria inválido.")
+        timeline_limit = max(1, min(300, int(timeline_limit or 100)))
+        top_limit = max(1, min(50, int(top_limit or 10)))
+        research_predicate = self._market_research_predicate("e")
+
+        with self._connection() as connection:
+            counts = connection.execute(
+                """
+                SELECT COUNT(*) AS events,
+                       COUNT(DISTINCT session_hash) AS sessions,
+                       MIN(occurred_at) AS first_activity,
+                       MAX(occurred_at) AS last_activity,
+                       SUM(CASE WHEN module='tco' AND action='simulation_completed' THEN 1 ELSE 0 END) AS tco,
+                       SUM(CASE WHEN module='depreciacao' AND action='consultation_completed' THEN 1 ELSE 0 END) AS depreciation,
+                       SUM(CASE WHEN module='fipe_plus' AND action='consultation_completed' THEN 1 ELSE 0 END) AS fipe_plus,
+                       SUM(CASE WHEN action='pdf_exported' THEN 1 ELSE 0 END) AS pdf_exports,
+                       SUM(CASE WHEN module='resultado' AND action='historical_result_opened' THEN 1 ELSE 0 END) AS historical_opens,
+                       SUM(CASE WHEN module='auth' AND action='login' THEN 1 ELSE 0 END) AS logins
+                FROM usage_events WHERE user_id=?
+                """,
+                (user_id,),
+            ).fetchone()
+
+            result_rows = connection.execute(
+                """
+                SELECT substr(result_code,1,1) AS result_type, COUNT(*) AS total
+                FROM usage_events
+                WHERE user_id=? AND result_code<>'' AND (
+                    (module='tco' AND action='simulation_completed') OR
+                    (module='depreciacao' AND action='consultation_completed') OR
+                    (module='fipe_plus' AND action='consultation_completed')
+                )
+                GROUP BY substr(result_code,1,1)
+                """,
+                (user_id,),
+            ).fetchall()
+
+            top_vehicles_rows = connection.execute(
+                f"""
+                SELECT v.vehicle_key, v.codigo_fipe, v.marca, v.modelo, v.ano_modelo,
+                       v.technology, COUNT(DISTINCT e.id) AS uses
+                FROM usage_event_vehicles v
+                JOIN usage_events e ON e.id=v.event_id
+                WHERE e.user_id=? AND {research_predicate}
+                GROUP BY v.vehicle_key, v.codigo_fipe, v.marca, v.modelo, v.ano_modelo, v.technology
+                ORDER BY uses DESC, v.marca COLLATE NOCASE, v.modelo COLLATE NOCASE
+                LIMIT ?
+                """,
+                (user_id, top_limit),
+            ).fetchall()
+
+            technology_rows = connection.execute(
+                f"""
+                SELECT lower(v.technology) AS technology, COUNT(DISTINCT e.id) AS uses
+                FROM usage_event_vehicles v
+                JOIN usage_events e ON e.id=v.event_id
+                WHERE e.user_id=? AND {research_predicate} AND v.technology<>''
+                GROUP BY lower(v.technology)
+                ORDER BY uses DESC, technology
+                """,
+                (user_id,),
+            ).fetchall()
+
+            city_rows = connection.execute(
+                f"""
+                SELECT e.simulation_uf AS uf, e.simulation_city AS city, COUNT(*) AS uses
+                FROM usage_events e
+                WHERE e.user_id=? AND {research_predicate} AND e.simulation_city<>''
+                GROUP BY e.simulation_uf, e.simulation_city
+                ORDER BY uses DESC, e.simulation_city COLLATE NOCASE
+                LIMIT ?
+                """,
+                (user_id, top_limit),
+            ).fetchall()
+
+            request_row = connection.execute(
+                "SELECT COUNT(DISTINCT request_id) AS total FROM curve_request_visitors WHERE user_id=?",
+                (user_id,),
+            ).fetchone()
+
+            timeline_rows = connection.execute(
+                """
+                SELECT * FROM usage_events
+                WHERE user_id=?
+                ORDER BY occurred_at DESC, id DESC
+                LIMIT ?
+                """,
+                (user_id, timeline_limit),
+            ).fetchall()
+            timeline_ids = [int(row["id"]) for row in timeline_rows]
+            vehicle_map: dict[int, list[dict[str, Any]]] = {event_id: [] for event_id in timeline_ids}
+            if timeline_ids:
+                placeholders = ",".join("?" for _ in timeline_ids)
+                vehicle_rows = connection.execute(
+                    f"SELECT * FROM usage_event_vehicles WHERE event_id IN ({placeholders}) ORDER BY event_id, position",
+                    tuple(timeline_ids),
+                ).fetchall()
+                for row in vehicle_rows:
+                    vehicle_map[int(row["event_id"])].append({
+                        "role": str(row["role"] or ""),
+                        "vehicle_key": str(row["vehicle_key"] or ""),
+                        "codigo_fipe": str(row["codigo_fipe"] or ""),
+                        "marca": str(row["marca"] or ""),
+                        "modelo": str(row["modelo"] or ""),
+                        "ano_modelo": str(row["ano_modelo"] or ""),
+                        "technology": str(row["technology"] or ""),
+                    })
+
+            tco_event_rows = connection.execute(
+                """
+                SELECT id FROM usage_events
+                WHERE user_id=? AND module='tco' AND action='simulation_completed'
+                ORDER BY occurred_at ASC, id ASC
+                """,
+                (user_id,),
+            ).fetchall()
+            tco_ids = [int(row["id"]) for row in tco_event_rows]
+            pair_vehicle_map: dict[int, list[dict[str, str]]] = {event_id: [] for event_id in tco_ids}
+            if tco_ids:
+                placeholders = ",".join("?" for _ in tco_ids)
+                rows = connection.execute(
+                    f"SELECT event_id, position, role, vehicle_key, codigo_fipe, marca, modelo FROM usage_event_vehicles WHERE event_id IN ({placeholders}) ORDER BY event_id, position",
+                    tuple(tco_ids),
+                ).fetchall()
+                for row in rows:
+                    pair_vehicle_map[int(row["event_id"])].append({
+                        "role": str(row["role"] or ""),
+                        "key": str(row["vehicle_key"] or "") or str(row["codigo_fipe"] or ""),
+                        "codigo_fipe": str(row["codigo_fipe"] or ""),
+                        "marca": str(row["marca"] or ""),
+                        "modelo": str(row["modelo"] or ""),
+                    })
+
+        result_counts = {"S": 0, "D": 0, "F": 0}
+        for row in result_rows:
+            key = str(row["result_type"] or "").upper()
+            if key in result_counts:
+                result_counts[key] = int(row["total"] or 0)
+
+        def vehicle_label(item: dict[str, Any]) -> str:
+            label = " ".join(part for part in (str(item.get("marca") or "").strip(), str(item.get("modelo") or "").strip()) if part)
+            return label or str(item.get("codigo_fipe") or item.get("vehicle_key") or "Veículo")
+
+        pair_counts: dict[tuple[str, str], dict[str, Any]] = {}
+        for event_id in tco_ids:
+            items = pair_vehicle_map.get(event_id, [])
+            candidate_pairs: list[tuple[dict[str, str], dict[str, str]]] = []
+            if len(items) == 2:
+                candidate_pairs.append((items[0], items[1]))
+            elif len(items) >= 3:
+                current = next((item for item in items if item.get("role") == "veiculo_atual"), items[0])
+                for item in items:
+                    if item is current:
+                        continue
+                    candidate_pairs.append((current, item))
+            for left, right in candidate_pairs:
+                left_key = left.get("key") or vehicle_label(left)
+                right_key = right.get("key") or vehicle_label(right)
+                canonical = tuple(sorted((left_key, right_key)))
+                bucket = pair_counts.setdefault(canonical, {"vehicle_1": left, "vehicle_2": right, "uses": 0})
+                bucket["uses"] += 1
+
+        top_pairs = sorted(pair_counts.values(), key=lambda item: (-int(item["uses"]), vehicle_label(item["vehicle_1"]), vehicle_label(item["vehicle_2"])))[:top_limit]
+        timeline = [self._serialize_event(row, vehicle_map.get(int(row["id"]), [])) for row in timeline_rows]
+        metrics = {
+            "sessions": int(counts["sessions"] or 0) if counts else 0,
+            "events": int(counts["events"] or 0) if counts else 0,
+            "logins": int(counts["logins"] or 0) if counts else 0,
+            "tco": int(counts["tco"] or 0) if counts else 0,
+            "depreciation": int(counts["depreciation"] or 0) if counts else 0,
+            "fipe_plus": int(counts["fipe_plus"] or 0) if counts else 0,
+            "pdf_exports": int(counts["pdf_exports"] or 0) if counts else 0,
+            "historical_opens": int(counts["historical_opens"] or 0) if counts else 0,
+            "curve_requests": int(request_row["total"] or 0) if request_row else 0,
+            "first_activity": str(counts["first_activity"] or "") if counts else "",
+            "last_activity": str(counts["last_activity"] or "") if counts else "",
+            "results_s": result_counts["S"],
+            "results_d": result_counts["D"],
+            "results_f": result_counts["F"],
+        }
+        return {
+            "user_id": user_id,
+            "metrics": metrics,
+            "top_vehicles": [{
+                "vehicle_key": str(row["vehicle_key"] or ""),
+                "codigo_fipe": str(row["codigo_fipe"] or ""),
+                "marca": str(row["marca"] or ""),
+                "modelo": str(row["modelo"] or ""),
+                "ano_modelo": str(row["ano_modelo"] or ""),
+                "technology": str(row["technology"] or ""),
+                "uses": int(row["uses"] or 0),
+            } for row in top_vehicles_rows],
+            "top_pairs": top_pairs,
+            "technologies": [{"technology": str(row["technology"] or ""), "uses": int(row["uses"] or 0)} for row in technology_rows],
+            "simulation_cities": [{"uf": str(row["uf"] or ""), "city": str(row["city"] or ""), "uses": int(row["uses"] or 0)} for row in city_rows],
+            "timeline": timeline,
+        }
+
     def _request_key(self, payload: dict[str, Any]) -> str:
         vehicle_type = _normalize_key_part(payload.get("tipo") or payload.get("vehicle_type") or "auto")
         codigo_fipe = _normalize_key_part(payload.get("codigo_fipe"))
@@ -1330,12 +1662,13 @@ class SiteUsageService:
             raise SiteUsageValidationError("Não foi possível identificar o veículo solicitado.")
         return f"{vehicle_type}|{marca}|{modelo}|ano:{codigo_ano}"
 
-    def submit_curve_request(self, *, visitor_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+    def submit_curve_request(self, *, visitor_id: str, user_id: str = "", payload: dict[str, Any]) -> dict[str, Any]:
         if not isinstance(payload, dict):
             raise SiteUsageValidationError("Solicitação inválida.")
         visitor_id = str(visitor_id or "").strip()
         if not visitor_id:
             raise SiteUsageValidationError("Sessão inválida. Atualize a página e tente novamente.", 403)
+        user_id = _clean_text(user_id, 80) or None
 
         request_key = self._request_key(payload)
         vehicle = {
@@ -1393,10 +1726,15 @@ class SiteUsageService:
                 )
 
             cursor = connection.execute(
-                "INSERT OR IGNORE INTO curve_request_visitors(request_id, visitor_hash, requested_at) VALUES (?, ?, ?)",
-                (request_id, visitor_hash, now),
+                "INSERT OR IGNORE INTO curve_request_visitors(request_id, visitor_hash, user_id, requested_at) VALUES (?, ?, ?, ?)",
+                (request_id, visitor_hash, user_id, now),
             )
             added = cursor.rowcount > 0
+            if user_id:
+                connection.execute(
+                    "UPDATE curve_request_visitors SET user_id = COALESCE(NULLIF(user_id, ''), ?) WHERE request_id = ? AND visitor_hash = ?",
+                    (user_id, request_id, visitor_hash),
+                )
             if added:
                 connection.execute(
                     """

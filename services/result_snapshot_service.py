@@ -9,6 +9,12 @@ from datetime import datetime, timezone
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
+
+from services.sqlite_migration_backup import (
+    create_sqlite_backup_once,
+    needs_columns,
+    verify_sqlite_integrity,
+)
 from zoneinfo import ZoneInfo
 
 
@@ -78,6 +84,14 @@ class ResultSnapshotService:
             connection.close()
 
     def _initialize(self) -> None:
+        migration_needed = needs_columns(
+            self.database_path, {"result_snapshots": ("owner_user_id",)}
+        )
+        if migration_needed:
+            create_sqlite_backup_once(
+                self.database_path, migration_label="v51_35_snapshot_owner"
+            )
+
         with self._connection() as connection:
             connection.executescript(
                 """
@@ -94,7 +108,8 @@ class ResultSnapshotService:
                     payload_bytes INTEGER NOT NULL,
                     snapshot_json TEXT NOT NULL,
                     visitor_hash TEXT NOT NULL DEFAULT '',
-                    session_hash TEXT NOT NULL DEFAULT ''
+                    session_hash TEXT NOT NULL DEFAULT '',
+                    owner_user_id TEXT
                 );
 
                 CREATE INDEX IF NOT EXISTS idx_result_snapshots_created
@@ -117,6 +132,21 @@ class ResultSnapshotService:
                 END;
                 """
             )
+
+            # V51.34 — proprietário autenticado apenas para novos snapshots.
+            # Registros legados permanecem NULL e nunca são atribuídos por inferência.
+            columns = {
+                str(row["name"])
+                for row in connection.execute("PRAGMA table_info(result_snapshots)").fetchall()
+            }
+            if "owner_user_id" not in columns:
+                connection.execute("ALTER TABLE result_snapshots ADD COLUMN owner_user_id TEXT")
+            connection.execute(
+                "CREATE INDEX IF NOT EXISTS idx_result_snapshots_owner_created ON result_snapshots(owner_user_id, created_at_utc DESC)"
+            )
+
+        if migration_needed:
+            verify_sqlite_integrity(self.database_path)
 
     @staticmethod
     def _normalize_type(result_type: str) -> str:
@@ -147,6 +177,7 @@ class ResultSnapshotService:
         payload: dict[str, Any],
         visitor_id: str = "",
         session_id: str = "",
+        owner_user_id: str = "",
     ) -> dict[str, Any]:
         result_type = self._normalize_type(result_type)
         module = str(module or "").strip().lower()
@@ -177,6 +208,7 @@ class ResultSnapshotService:
         payload_sha256 = _sha256_text(snapshot_json)
         visitor_hash = _hash_optional_identifier(visitor_id)
         session_hash = _hash_optional_identifier(session_id)
+        owner_user_id = str(owner_user_id or "").strip()[:80] or None
 
         with self._connection() as connection:
             for _ in range(20):
@@ -189,8 +221,8 @@ class ResultSnapshotService:
                             created_at_utc, created_at_local, timezone_name,
                             schema_version, platform_version,
                             payload_sha256, payload_bytes, snapshot_json,
-                            visitor_hash, session_hash
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            visitor_hash, session_hash, owner_user_id
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         """,
                         (
                             result_code,
@@ -206,6 +238,7 @@ class ResultSnapshotService:
                             snapshot_json,
                             visitor_hash,
                             session_hash,
+                            owner_user_id,
                         ),
                     )
                     break
@@ -226,6 +259,7 @@ class ResultSnapshotService:
             "payload_sha256": payload_sha256,
             "payload_bytes": payload_bytes,
             "platform_version": self.platform_version,
+            "owner_user_id": owner_user_id or "",
         }
 
     def get_snapshot(self, result_code: str, *, verify_integrity: bool = True) -> dict[str, Any] | None:
@@ -253,6 +287,7 @@ class ResultSnapshotService:
             "platform_version": str(row["platform_version"]),
             "payload_sha256": str(row["payload_sha256"]),
             "payload_bytes": int(row["payload_bytes"] or 0),
+            "owner_user_id": str(row["owner_user_id"] or "") if "owner_user_id" in row.keys() else "",
             "snapshot": envelope,
         }
 

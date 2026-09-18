@@ -8,6 +8,8 @@ from flask import Flask, request, session
 
 from config import Config
 from routes.main_routes import main_bp
+from routes.auth_routes import auth_bp
+from routes.auth_admin_routes import access_admin_bp
 from routes.fipe_routes import fipe_bp
 from routes.depreciacao_routes import depreciacao_bp
 from routes.tco_routes import tco_bp
@@ -17,6 +19,14 @@ from routes.usage_routes import usage_bp
 from routes.seguro_routes import seguro_bp
 from services.persistent_storage import bootstrap_persistent_storage
 from services.site_usage_tracking import ensure_site_usage_identity, maybe_record_page_view
+from services.auth_access import (
+    current_auth_user,
+    enforce_auth_access,
+    access_control_enabled,
+    endpoint_is_technical,
+)
+from services.auth_security import ensure_auth_csrf_token
+from services.auth_service import get_auth_service
 
 
 def _preaquecer_catalogo_fipe_async(app: Flask) -> None:
@@ -42,6 +52,8 @@ def create_app() -> Flask:
     app.config.from_object(Config)
     bootstrap_persistent_storage(app)
 
+    app.register_blueprint(auth_bp)
+    app.register_blueprint(access_admin_bp)
     app.register_blueprint(main_bp)
     app.register_blueprint(fipe_bp, url_prefix="/api/fipe")
     app.register_blueprint(depreciacao_bp, url_prefix="/api/depreciacao")
@@ -57,8 +69,14 @@ def create_app() -> Flask:
 
     @app.before_request
     def prepare_site_usage_identity():
-        if request.endpoint != "static":
+        # Chamadas técnicas Painel → site permanecem stateless: não precisam
+        # ganhar cookie/visitor_id de navegador para usar autenticação por token.
+        if request.endpoint != "static" and not endpoint_is_technical():
             ensure_site_usage_identity()
+
+    @app.before_request
+    def enforce_controlled_access():
+        return enforce_auth_access()
 
     @app.after_request
     def record_site_usage_page_view(response):
@@ -68,10 +86,43 @@ def create_app() -> Flask:
             app.logger.debug("Falha de telemetria de página ignorada: %s", exc)
         return response
 
+    @app.after_request
+    def apply_security_headers(response):
+        # Hardening V51.35. Evita MIME sniffing/frame embedding e reduz vazamento
+        # de origem sem impor CSP que quebraria scripts legados inline da CurVE.
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
+        response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+        response.headers.setdefault("Permissions-Policy", "geolocation=(self), camera=(), microphone=()")
+
+        forwarded_proto = str(request.headers.get("X-Forwarded-Proto") or "").split(",", 1)[0].strip().lower()
+        if request.is_secure or forwarded_proto == "https":
+            response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+
+        # Com a porta fechada, respostas dinâmicas dependem da conta/sessão.
+        # Não permita que browser/CDN reutilize conteúdo autenticado para outro usuário.
+        if access_control_enabled() and request.endpoint != "static" and not endpoint_is_technical():
+            response.headers["Cache-Control"] = "private, no-store, max-age=0"
+            response.headers["Pragma"] = "no-cache"
+            vary = [item.strip() for item in str(response.headers.get("Vary") or "").split(",") if item.strip()]
+            if "Cookie" not in vary:
+                vary.append("Cookie")
+            response.headers["Vary"] = ", ".join(vary)
+        return response
+
     @app.context_processor
     def inject_site_usage_context():
         ensure_site_usage_identity()
-        return {"site_usage_csrf_token": str(session.get("site_usage_csrf_token") or "")}
+        return {
+            "site_usage_csrf_token": str(session.get("site_usage_csrf_token") or ""),
+            "auth_csrf_token": ensure_auth_csrf_token(),
+            "auth_current_user": current_auth_user(),
+            "auth_access_control_enabled": access_control_enabled(),
+        }
+
+    # Cria/migra o banco de autenticação de forma idempotente no Persistent Disk.
+    with app.app_context():
+        get_auth_service()
 
     _preaquecer_catalogo_fipe_async(app)
 

@@ -1,0 +1,14 @@
+{% extends "auth/_base.html" %}
+{% block title %}CurVE — Acesso controlado{% endblock %}
+{% block content %}
+<section class="auth-card auth-card-wide">
+  <span class="auth-kicker">Acesso temporariamente controlado</span>
+  <h1>CurVE — Calculadora Veicular</h1>
+  <p class="auth-lead">A plataforma está disponível para usuários autorizados enquanto são tratados os procedimentos de registro e proteção do produto técnico.</p>
+  <div class="auth-actions">
+    <a class="auth-btn auth-btn-primary" href="{{ url_for('auth.login') }}">Entrar</a>
+    <a class="auth-btn auth-btn-secondary" href="{{ url_for('auth.register') }}">Solicitar acesso</a>
+  </div>
+  <p class="auth-note">Alunos, professores, pesquisadores, profissionais, empresas e outros interessados podem solicitar acesso. O cadastro exige confirmação de e-mail e aprovação.</p>
+</section>
+{% endblock %}

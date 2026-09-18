@@ -138,6 +138,7 @@ def record_current_usage_event(
     module: str,
     action: str,
     metadata: dict | None = None,
+    user_id: str | None = None,
     vehicles: list[dict] | None = None,
     simulation_uf: str = "",
     simulation_city: str = "",
@@ -147,9 +148,19 @@ def record_current_usage_event(
 ) -> int | None:
     try:
         visitor_id, session_id = ensure_site_usage_identity()
+        resolved_user_id = str(user_id or "").strip()
+        if not resolved_user_id:
+            try:
+                from services.auth_access import current_auth_user
+                auth_user = current_auth_user()
+                if auth_user:
+                    resolved_user_id = str(auth_user.get("public_id") or "").strip()
+            except Exception:
+                resolved_user_id = ""
         return get_site_usage_service().record_event(
             visitor_id=visitor_id,
             session_id=session_id,
+            user_id=resolved_user_id,
             event_type=event_type,
             module=module,
             action=action,

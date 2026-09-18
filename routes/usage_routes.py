@@ -11,6 +11,7 @@ from services.site_usage_service import (
 from services.site_usage_tracking import record_current_usage_event
 from services.result_history_service import build_result_admin_summary
 from services.result_snapshot_service import ResultSnapshotError, get_result_snapshot_service
+from services.auth_access import current_auth_user
 
 usage_bp = Blueprint("site_usage", __name__)
 
@@ -128,8 +129,10 @@ def submit_curve_request():
     payload = request.get_json(silent=True) or {}
     try:
         _validate_csrf(payload)
+        auth_user = current_auth_user()
         result = get_site_usage_service().submit_curve_request(
             visitor_id=str(session.get("site_usage_visitor_id") or ""),
+            user_id=str((auth_user or {}).get("public_id") or ""),
             payload=payload,
         )
         record_current_usage_event(

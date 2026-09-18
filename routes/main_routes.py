@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from flask import Blueprint, current_app, make_response, redirect, render_template, request, url_for
+from flask import Blueprint, current_app, jsonify, make_response, redirect, render_template, request, url_for
 
 from services.noticias_service import carregar_noticias_home
 from services.result_history_service import (
@@ -10,13 +10,23 @@ from services.result_history_service import (
 )
 from services.result_snapshot_service import ResultSnapshotError, get_result_snapshot_service
 from services.site_usage_tracking import record_current_usage_event
+from services.auth_access import access_control_enabled, current_auth_user
 
 main_bp = Blueprint("main", __name__)
 
 
 @main_bp.route("/")
 def index():
+    if access_control_enabled():
+        user = current_auth_user()
+        if not user or str(user.get("access_status") or "") != "active":
+            return render_template("auth/access_landing.html")
     return render_template("index.html", noticias=carregar_noticias_home())
+
+
+@main_bp.route("/health")
+def health():
+    return jsonify({"ok": True, "service": "curve", "version": str(current_app.config.get("CURVE_VERSION") or "")})
 
 
 @main_bp.route("/consulta-fipe")
@@ -75,6 +85,21 @@ def resultado_historico(codigo: str):
             codigo=codigo,
             erro="Nenhum resultado histórico foi encontrado para esse código.",
         ), 404
+
+    # V51.34 — snapshots novos pertencem à conta que os criou. O código S/D/F
+    # deixa de ser, por si só, uma credencial de acesso a resultados de terceiros.
+    owner_user_id = str(stored.get("owner_user_id") or "").strip()
+    if owner_user_id:
+        auth_user = current_auth_user()
+        requester_user_id = str((auth_user or {}).get("public_id") or "").strip()
+        if not auth_user or str(auth_user.get("access_status") or "") != "active":
+            return redirect(url_for("auth.login", next=request.path, reason="login_required"))
+        if requester_user_id != owner_user_id:
+            return render_template(
+                "consultar_resultado.html",
+                codigo=codigo,
+                erro="Este resultado pertence a outra conta e não pode ser aberto com o seu acesso.",
+            ), 403
 
     view = build_result_history_view(stored)
     try:

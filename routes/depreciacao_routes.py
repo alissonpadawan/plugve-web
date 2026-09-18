@@ -10,6 +10,7 @@ from services.depreciacao_motor_v1917_adapter import DepreciacaoMotorV1917Adapte
 from services.site_usage_service import get_site_usage_service
 from services.result_snapshot_service import get_result_snapshot_service
 from services.site_usage_tracking import record_current_usage_event
+from services.auth_access import current_auth_user
 from repositories.curvas_repository import CurvasRepository
 
 depreciacao_bp = Blueprint("depreciacao", __name__)
@@ -81,6 +82,7 @@ def resumo():
                     },
                     visitor_id=str(session.get("site_usage_visitor_id") or ""),
                     session_id=str(session.get("site_usage_session_id") or ""),
+                    owner_user_id=str((current_auth_user() or {}).get("public_id") or ""),
                 )
                 resultado["resultado_codigo"] = snapshot_meta["code"]
                 resultado["resultado_gerado_em"] = snapshot_meta["created_at_local"]

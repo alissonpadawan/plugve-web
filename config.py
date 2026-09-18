@@ -26,7 +26,7 @@ def _resolve_secret_key() -> str:
 
 
 class Config:
-    CURVE_VERSION = "V50.30"
+    CURVE_VERSION = "V51.35"
     SECRET_KEY = _resolve_secret_key()
 
     BASE_DIR = Path(__file__).resolve().parent
@@ -41,10 +41,34 @@ class Config:
     ARQUIVO_USO_SITE = PERSISTENT_DIR / "institucional" / "site_usage.sqlite3"
     ARQUIVO_RESULTADOS = PERSISTENT_DIR / "institucional" / "result_snapshots.sqlite3"
     ARQUIVO_MENSAGENS_CONTATO = PERSISTENT_DIR / "institucional" / "contact_messages.sqlite3"
+    ARQUIVO_AUTH_USUARIOS = PERSISTENT_DIR / "institucional" / "auth_users.sqlite3"
 
     PERMANENT_SESSION_LIFETIME = timedelta(days=365)
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = "Lax"
+    SESSION_COOKIE_SECURE = _is_production_runtime()
+    SESSION_REFRESH_EACH_REQUEST = False
+
+    # V51.35 — homologação final. Em produção, a ausência explícita da variável
+    # falha para o lado seguro: acesso controlado ligado. Localmente o padrão
+    # continua aberto para desenvolvimento, salvo configuração em contrário.
+    _AUTH_DEFAULT = "1" if _is_production_runtime() else "0"
+    AUTH_ACCESS_CONTROL_ENABLED = os.environ.get("AUTH_ACCESS_CONTROL_ENABLED", _AUTH_DEFAULT).strip().lower() in {"1", "true", "sim", "yes", "on"}
+    AUTH_ENFORCE_IN_TESTS = False
+    AUTH_PASSWORD_MIN_LENGTH = int(os.environ.get("AUTH_PASSWORD_MIN_LENGTH", "10"))
+    AUTH_CODE_TTL_SECONDS = int(os.environ.get("AUTH_CODE_TTL_SECONDS", "900"))
+    AUTH_CODE_MAX_ATTEMPTS = int(os.environ.get("AUTH_CODE_MAX_ATTEMPTS", "5"))
+    AUTH_CODE_RESEND_COOLDOWN_SECONDS = int(os.environ.get("AUTH_CODE_RESEND_COOLDOWN_SECONDS", "60"))
+    AUTH_SESSION_TTL_SECONDS = int(os.environ.get("AUTH_SESSION_TTL_SECONDS", "43200"))
+    AUTH_PRIVACY_VERSION = os.environ.get("AUTH_PRIVACY_VERSION", "2026-09").strip()
+    AUTH_RATE_LOGIN_WINDOW_SECONDS = int(os.environ.get("AUTH_RATE_LOGIN_WINDOW_SECONDS", "900"))
+    AUTH_RATE_LOGIN_MAX = int(os.environ.get("AUTH_RATE_LOGIN_MAX", "10"))
+    AUTH_RATE_REGISTER_WINDOW_SECONDS = int(os.environ.get("AUTH_RATE_REGISTER_WINDOW_SECONDS", "3600"))
+    AUTH_RATE_REGISTER_MAX = int(os.environ.get("AUTH_RATE_REGISTER_MAX", "5"))
+    AUTH_RATE_VERIFY_WINDOW_SECONDS = int(os.environ.get("AUTH_RATE_VERIFY_WINDOW_SECONDS", "900"))
+    AUTH_RATE_VERIFY_MAX = int(os.environ.get("AUTH_RATE_VERIFY_MAX", "10"))
+    AUTH_RATE_RESET_WINDOW_SECONDS = int(os.environ.get("AUTH_RATE_RESET_WINDOW_SECONDS", "3600"))
+    AUTH_RATE_RESET_MAX = int(os.environ.get("AUTH_RATE_RESET_MAX", "5"))
     FIPE_CACHE_DIR = PERSISTENT_DIR / "fipe_cache"
 
     ARQUIVO_FAMILIAS = DATA_DIR / "familias_fipe.xlsx"

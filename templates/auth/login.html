@@ -1,0 +1,21 @@
+{% extends "auth/_base.html" %}
+{% block title %}Entrar — CurVE{% endblock %}
+{% block content %}
+<section class="auth-card">
+  <h1>Entrar</h1>
+  <p>Acesse a CurVE com sua conta aprovada.</p>
+  {% if reason == 'suspended' %}<div class="auth-flash auth-flash-error">Seu acesso está suspenso.</div>{% endif %}
+  {% if error %}<div class="auth-flash auth-flash-error">{{ error }}</div>{% endif %}
+  <form method="post" class="auth-form" novalidate>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="next" value="{{ next_path }}">
+    <label>E-mail<input type="email" name="email" autocomplete="email" maxlength="254" required></label>
+    <label>Senha<input type="password" name="password" autocomplete="current-password" required></label>
+    <button class="auth-btn auth-btn-primary" type="submit">Entrar</button>
+  </form>
+  <div class="auth-links">
+    <a href="{{ url_for('auth.forgot_password') }}">Esqueci minha senha</a>
+    <a href="{{ url_for('auth.register') }}">Solicitar acesso</a>
+  </div>
+</section>
+{% endblock %}

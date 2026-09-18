@@ -1,0 +1,22 @@
+{% extends "auth/_base.html" %}
+{% block title %}Confirmar e-mail — CurVE{% endblock %}
+{% block content %}
+<section class="auth-card">
+  <h1>Confirme seu e-mail</h1>
+  {% if has_pending %}<p>Enviamos um código de 6 dígitos{% if email_masked %} para <strong>{{ email_masked }}</strong>{% endif %}.</p>{% else %}<p>Faça login para retomar uma confirmação pendente.</p>{% endif %}
+  {% if error %}<div class="auth-flash auth-flash-error">{{ error }}</div>{% endif %}
+  {% if has_pending %}
+  <form method="post" class="auth-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label>Código de confirmação<input class="auth-code" type="text" name="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required placeholder="_ _ _ _ _ _"></label>
+    <button class="auth-btn auth-btn-primary" type="submit">Confirmar</button>
+  </form>
+  <form method="post" action="{{ url_for('auth.resend_verification') }}" class="auth-inline-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button class="auth-link-button" type="submit">Reenviar código</button>
+  </form>
+  {% else %}
+  <a class="auth-btn auth-btn-primary" href="{{ url_for('auth.login') }}">Ir para login</a>
+  {% endif %}
+</section>
+{% endblock %}
