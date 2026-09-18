@@ -6,6 +6,7 @@ from flask import Blueprint, current_app, jsonify, request, session
 
 from services.fipe_service import FipeApiError, FipeService
 from services.result_snapshot_service import get_result_snapshot_service
+from services.auth_access import current_auth_user
 
 fipe_bp = Blueprint("fipe", __name__)
 fipe_service = FipeService()
@@ -55,6 +56,7 @@ def _snapshot_fipe_plus_if_requested(dados, *, tipo: str, codigo_marca: str, cod
             },
             visitor_id=str(session.get("site_usage_visitor_id") or ""),
             session_id=str(session.get("site_usage_session_id") or ""),
+            owner_user_id=str((current_auth_user() or {}).get("public_id") or ""),
         )
         resposta["resultado_codigo"] = snapshot_meta["code"]
         resposta["resultado_gerado_em"] = snapshot_meta["created_at_local"]

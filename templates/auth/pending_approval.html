@@ -1,0 +1,11 @@
+{% extends "auth/_base.html" %}
+{% block title %}Aguardando aprovação — CurVE{% endblock %}
+{% block content %}
+<section class="auth-card">
+  <span class="auth-status-dot"></span>
+  <h1>Aguardando aprovação</h1>
+  <p>Seu e-mail foi confirmado e sua solicitação está aguardando análise administrativa.</p>
+  {% if user %}<p class="auth-note">Solicitação de <strong>{{ user.full_name }}</strong>. Você receberá uma comunicação quando houver mudança no acesso.</p>{% endif %}
+  <a class="auth-btn auth-btn-secondary" href="{{ url_for('auth.login') }}">Voltar ao login</a>
+</section>
+{% endblock %}

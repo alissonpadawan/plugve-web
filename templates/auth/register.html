@@ -1,0 +1,29 @@
+{% extends "auth/_base.html" %}
+{% block title %}Solicitar acesso — CurVE{% endblock %}
+{% block content %}
+<section class="auth-card auth-card-wide">
+  <h1>Solicitar acesso à CurVE</h1>
+  <p>Preencha somente as informações necessárias para análise da solicitação.</p>
+  {% if error %}<div class="auth-flash auth-flash-error">{{ error }}</div>{% endif %}
+  <form method="post" class="auth-form auth-form-grid" novalidate>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input class="auth-honeypot" type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
+    <label class="auth-span-2">Nome completo<input type="text" name="full_name" maxlength="120" value="{{ values.get('full_name','') }}" autocomplete="name" required></label>
+    <label class="auth-span-2">E-mail<input type="email" name="email" maxlength="254" value="{{ values.get('email','') }}" autocomplete="email" required></label>
+    <label>Senha<input type="password" name="password" minlength="{{ minimum_password }}" autocomplete="new-password" required><small>Mínimo de {{ minimum_password }} caracteres.</small></label>
+    <label>Confirmar senha<input type="password" name="password_confirm" minlength="{{ minimum_password }}" autocomplete="new-password" required></label>
+    <label>Perfil informado
+      <select name="profile_type" required>
+        <option value="">Selecione</option>
+        {% for value, label in profile_types.items() %}<option value="{{ value }}" {% if values.get('profile_type') == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select>
+    </label>
+    <label>Instituição / empresa<input type="text" name="institution" maxlength="160" value="{{ values.get('institution','') }}"></label>
+    <label class="auth-span-2">Curso, programa, departamento ou área <span class="auth-optional">(opcional)</span><input type="text" name="course_area" maxlength="160" value="{{ values.get('course_area','') }}"></label>
+    <label class="auth-span-2">Finalidade de uso<textarea name="purpose" maxlength="300" rows="3" required placeholder="Ex.: pesquisa, ensino, análise profissional ou avaliação da plataforma">{{ values.get('purpose','') }}</textarea></label>
+    <label class="auth-check auth-span-2"><input type="checkbox" name="privacy_accepted" value="1" required {% if values.get('privacy_accepted') %}checked{% endif %}><span>Li e aceito a <a href="{{ url_for('auth.privacy') }}" target="_blank" rel="noopener">Política de Privacidade</a>.</span></label>
+    <div class="auth-span-2"><button class="auth-btn auth-btn-primary" type="submit">Enviar solicitação</button></div>
+  </form>
+  <div class="auth-links"><a href="{{ url_for('auth.login') }}">Já tenho conta</a></div>
+</section>
+{% endblock %}

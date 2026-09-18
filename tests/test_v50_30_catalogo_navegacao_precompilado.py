@@ -196,4 +196,4 @@ def test_persistent_storage_semeia_catalogo_novo_sem_substituir_existente():
 
 def test_versao_v50_30():
     texto = (ROOT / "config.py").read_text(encoding="utf-8")
-    assert 'CURVE_VERSION = "V50.30"' in texto
+    assert 'CURVE_VERSION = "V51.35"' in texto

@@ -27,6 +27,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/result_search_modal.css') }}?v=20260816_v50_18">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/institucional.css') }}?v=20260725_v43_13">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}?v=51_35">
   <style>
     :root{
       --curve-green:#168a4a;
@@ -102,6 +103,12 @@
         <button type="button" id="result_search_trigger" class="result-search-trigger{% if request.path.startswith('/resultado') %} active{% endif %}" aria-label="Consultar resultado por código" title="Consultar resultado">
           <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"></circle><path d="m16 16 4 4"></path></svg>
         </button>
+        {% if auth_current_user and auth_current_user.access_status == 'active' %}
+          <form method="post" action="{{ url_for('auth.logout') }}" class="auth-nav-logout">
+            <input type="hidden" name="csrf_token" value="{{ auth_csrf_token }}">
+            <button type="submit" class="auth-nav-user" title="Encerrar sessão">{{ auth_current_user.full_name.split(' ')[0] }} · Sair</button>
+          </form>
+        {% endif %}
       </nav>
     </div>
   </header>

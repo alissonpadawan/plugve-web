@@ -87,18 +87,50 @@ def _as_bool(value: Any) -> bool:
     return str(value or "").strip().lower() in {"1", "true", "sim", "yes", "on"}
 
 
-def send_contact_email(contact: ContactMessage, config: Mapping[str, Any]) -> None:
+def send_email_message(email_message: EmailMessage, config: Mapping[str, Any]) -> None:
+    """Envia uma mensagem usando a infraestrutura SMTP única da CurVE.
+
+    O transporte é compartilhado por Contato e Autenticação; credenciais continuam
+    vindo exclusivamente das mesmas variáveis CONTACT_SMTP_* já existentes.
+    """
     host = str(config.get("CONTACT_SMTP_HOST") or "").strip()
     port = int(config.get("CONTACT_SMTP_PORT") or 587)
     username = str(config.get("CONTACT_SMTP_USERNAME") or "").strip()
     password = str(config.get("CONTACT_SMTP_PASSWORD") or "").strip()
-    recipient = str(config.get("CONTACT_TO_EMAIL") or "").strip()
-    sender = str(config.get("CONTACT_FROM_EMAIL") or username or recipient).strip()
     timeout = int(config.get("CONTACT_SMTP_TIMEOUT") or 20)
     use_tls = _as_bool(config.get("CONTACT_SMTP_USE_TLS", True))
     use_ssl = _as_bool(config.get("CONTACT_SMTP_USE_SSL", False))
 
-    if not host or not username or not password or not recipient or not sender:
+    if not host or not username or not password:
+        raise ContactEmailConfigurationError(
+            "O envio direto ainda não está configurado no servidor.", 503
+        )
+
+    try:
+        if use_ssl:
+            context = ssl.create_default_context()
+            with smtplib.SMTP_SSL(host, port, timeout=timeout, context=context) as smtp:
+                smtp.login(username, password)
+                smtp.send_message(email_message)
+            return
+
+        with smtplib.SMTP(host, port, timeout=timeout) as smtp:
+            smtp.ehlo()
+            if use_tls:
+                smtp.starttls(context=ssl.create_default_context())
+                smtp.ehlo()
+            smtp.login(username, password)
+            smtp.send_message(email_message)
+    except (smtplib.SMTPException, OSError) as exc:
+        raise ContactEmailDeliveryError(
+            "Não foi possível enviar a mensagem agora. Tente novamente em alguns minutos.", 502
+        ) from exc
+
+
+def send_contact_email(contact: ContactMessage, config: Mapping[str, Any]) -> None:
+    recipient = str(config.get("CONTACT_TO_EMAIL") or "").strip()
+    sender = str(config.get("CONTACT_FROM_EMAIL") or config.get("CONTACT_SMTP_USERNAME") or recipient).strip()
+    if not recipient or not sender:
         raise ContactEmailConfigurationError(
             "O envio direto ainda não está configurado no servidor.", 503
         )
@@ -122,23 +154,4 @@ def send_contact_email(contact: ContactMessage, config: Mapping[str, Any]) -> No
             )
         )
     )
-
-    try:
-        if use_ssl:
-            context = ssl.create_default_context()
-            with smtplib.SMTP_SSL(host, port, timeout=timeout, context=context) as smtp:
-                smtp.login(username, password)
-                smtp.send_message(email_message)
-            return
-
-        with smtplib.SMTP(host, port, timeout=timeout) as smtp:
-            smtp.ehlo()
-            if use_tls:
-                smtp.starttls(context=ssl.create_default_context())
-                smtp.ehlo()
-            smtp.login(username, password)
-            smtp.send_message(email_message)
-    except (smtplib.SMTPException, OSError) as exc:
-        raise ContactEmailDeliveryError(
-            "Não foi possível enviar a mensagem agora. Tente novamente em alguns minutos.", 502
-        ) from exc
+    send_email_message(email_message, config)

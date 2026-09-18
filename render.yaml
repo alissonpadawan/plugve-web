@@ -16,3 +16,6 @@ services:
         value: 3.11.9
       - key: FLASK_ENV
         value: production
+      # V51.35 Etapa 4: porta homologada e fechada por padrão.
+      - key: AUTH_ACCESS_CONTROL_ENABLED
+        value: "1"
