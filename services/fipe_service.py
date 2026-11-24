@@ -766,12 +766,7 @@ class FipeService:
         return {"ok": True, "bloqueado": dados[marca_key][modelo_key], "marca_bloqueada": False}
 
     def _usar_publica_apenas(self) -> bool:
-        """Define se deve usar somente a FIPE pública v1.
-
-        V24.7: quando há FIPE_TOKEN configurado, o padrão passa a ser API paga
-        oficial v2. O modo público só é usado se FIPE_PUBLIC_ONLY=1 for
-        explicitamente configurado.
-        """
+        """Seleciona a v1 legada quando FIPE_PUBLIC_ONLY está habilitado."""
         bruto = os.environ.get("FIPE_PUBLIC_ONLY")
         if bruto is None:
             bruto = str(current_app.config.get("FIPE_PUBLIC_ONLY", False))
@@ -812,6 +807,11 @@ class FipeService:
         except Exception:
             return max(12, self._timeout())
 
+    @staticmethod
+    def _token_consultas_atuais() -> str:
+        # A chave histórica pode permanecer configurada sem afetar as consultas atuais.
+        return os.environ.get("FIPE_CURRENT_TOKEN", "").strip()
+
     def _token(self) -> str:
         token = os.environ.get("FIPE_TOKEN", "").strip()
         if token:
@@ -835,9 +835,10 @@ class FipeService:
             return f"brands/{partes[1]}/models/{partes[3]}/years/{partes[5]}"
         return endpoint
 
-    def _get_json(self, endpoint: str):
+    def _get_json(self, endpoint: str, *, token: str | None = None):
         base_url = self._base_url()
-        token = self._token()
+        if token is None:
+            token = self._token_consultas_atuais()
         # Se a URL for da API v2, traduzimos os endpoints internos do app.
         endpoint_final = self._endpoint_v2(endpoint) if "/api/v2" in base_url else endpoint
         return self._get_json_cached(
@@ -858,7 +859,7 @@ class FipeService:
         if tipo == "carros":
             return self._get_json(endpoint)
         base_url = self._base_url_tipo(tipo)
-        token = self._token()
+        token = self._token_consultas_atuais()
         endpoint_final = self._endpoint_v2(endpoint) if "/api/v2" in base_url else endpoint
         return self._get_json_cached(
             base_url,
@@ -1093,7 +1094,8 @@ class FipeService:
 
     @staticmethod
     def _registrar_erro_static(cache_dir: Path, status_code: int | None, url: str, detalhe: str) -> None:
-        dados = FipeService._normalizar_janela_usage(FipeService._ler_usage_static(cache_dir), token_ativo=True)
+        dados = FipeService._ler_usage_static(cache_dir)
+        dados = FipeService._normalizar_janela_usage(dados, token_ativo=bool(dados.get("token_ativo")))
         dados["last_error"] = {
             "status_code": status_code,
             "url": url,
@@ -1262,8 +1264,12 @@ class FipeService:
         return self._normalizar_preco(data)
 
     def uso_requisicoes(self) -> dict:
-        dados = self._normalizar_janela_usage(self._ler_usage_static(self._cache_dir()), token_ativo=bool(self._token()))
-        self._salvar_usage_static(self._cache_dir(), dados)
+        cache_dir = self._cache_dir()
+        dados = self._normalizar_janela_usage(
+            self._ler_usage_static(cache_dir),
+            token_ativo=bool(self._token_consultas_atuais()),
+        )
+        self._salvar_usage_static(cache_dir, dados)
         return dados
 
 
@@ -1877,7 +1883,7 @@ class FipeService:
             return []
         endpoint = f"{codigo_fipe}/years"
         if reference is None:
-            data = self._get_json(endpoint)
+            data = self._get_json(endpoint, token=self._token())
         else:
             data = self._get_json_referencia(endpoint, str(reference), timeout_segundos=self._timeout_historico())
         return self._normalizar_anos(data)
@@ -1895,7 +1901,7 @@ class FipeService:
             return {}
         endpoint = f"{codigo_fipe}/years/{codigo_ano}"
         if reference is None:
-            return self._normalizar_preco(self._get_json(endpoint))
+            return self._normalizar_preco(self._get_json(endpoint, token=self._token()))
         return self._normalizar_preco(self._get_json_referencia(endpoint, str(reference), timeout_segundos=self._timeout_historico()))
 
     def consultar_historico_por_codigo_fipe(self, codigo_fipe: str, codigo_ano: str, reference: str | None = None) -> dict:
@@ -1913,5 +1919,5 @@ class FipeService:
             return {}
         endpoint = f"{codigo_fipe}/years/{codigo_ano}/history"
         if reference is None:
-            return self._normalizar_preco(self._get_json(endpoint))
+            return self._normalizar_preco(self._get_json(endpoint, token=self._token()))
         return self._normalizar_preco(self._get_json_referencia(endpoint, str(reference), timeout_segundos=self._timeout_historico()))

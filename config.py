@@ -91,9 +91,8 @@ class Config:
     ARQUIVO_HISTORICO_COMBUSTAO = DATA_DIR / "combustao" / "historico_fipe_sob_demanda_v18.csv"
     ARQUIVO_HISTORICO_ELETRICO = DATA_DIR / "eletrico" / "historico_fipe_ev_v20.csv"
 
-    # V24.7: motor V19.17 online usando API PRO oficial por referência mensal.
-    # A FIPE Web pública funciona no desktop local, mas bloqueia o Render com 403.
-    # Mantemos a pública v1 apenas como fallback para telas simples quando não houver token.
+    # Consultas atuais usam a v2 pública por padrão. FIPE_PUBLIC_ONLY seleciona a v1 legada.
+    # A coleta histórica por referência mensal usa configuração de token própria.
     FIPE_PUBLIC_BASE_URL = "https://parallelum.com.br/fipe/api/v1/carros"
     FIPE_PUBLIC_ONLY = os.environ.get("FIPE_PUBLIC_ONLY", "0").strip().lower() in {"1", "true", "sim", "yes", "on"}
     FIPE_BASE_URL = os.environ.get("FIPE_BASE_URL", "https://fipe.parallelum.com.br/api/v2/cars")

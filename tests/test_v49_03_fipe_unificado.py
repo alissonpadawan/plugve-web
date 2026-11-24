@@ -4,6 +4,8 @@ import sys
 import types
 from pathlib import Path
 
+import pytest
+
 try:
     import flask  # type: ignore  # noqa: F401
 except ModuleNotFoundError:
@@ -83,6 +85,77 @@ def test_preco_carro_tipado_delega_para_mesma_funcao_da_simular_depreciacao():
     assert ("consultar_preco", "13", "1234", "32000-1") in service.calls
     assert data["Valor"] == "R$ 118.800,00"
     assert data["TipoConsulta"] == "carros"
+
+
+@pytest.fixture
+def fipe_app(tmp_path, monkeypatch):
+    from flask import Flask, current_app
+
+    monkeypatch.setattr("services.fipe_service.current_app", current_app)
+    monkeypatch.delenv("FIPE_PUBLIC_ONLY", raising=False)
+    monkeypatch.delenv("FIPE_CURRENT_TOKEN", raising=False)
+    monkeypatch.delenv("FIPE_TOKEN", raising=False)
+    app = Flask(__name__)
+    app.config.update(
+        FIPE_BASE_URL="https://fipe.parallelum.com.br/api/v2/cars",
+        PERSISTENT_DIR=tmp_path,
+    )
+    return app
+
+
+@pytest.mark.parametrize("origem", ["ambiente", "arquivo"])
+def test_consultas_atuais_ignoram_token_historico(fipe_app, tmp_path, monkeypatch, origem):
+    if origem == "ambiente":
+        monkeypatch.setenv("FIPE_TOKEN", "historico-expirado")
+    else:
+        (tmp_path / "fipe_token.txt").write_text("historico-expirado", encoding="utf-8")
+
+    urls = []
+
+    def consultar(url, *, timeout, headers):
+        assert "X-Subscription-Token" not in headers
+        assert "Authorization" not in headers
+        urls.append(url)
+        return types.SimpleNamespace(status_code=200, json=lambda: {"price": "R$ 29.180,00"})
+
+    monkeypatch.setattr("services.fipe_service.requests.get", consultar)
+    service = FipeService()
+    with fipe_app.app_context():
+        for tipo in ("carros", "motos", "caminhoes"):
+            dados = service.consultar_preco_tipo(tipo, "59", "6280", "2013-5")
+            assert dados["Valor"] == "R$ 29.180,00"
+        uso = service.uso_requisicoes()
+        assert uso["token_ativo"] is False
+        assert uso["limit"] == 500
+
+    assert urls == [
+        f"https://fipe.parallelum.com.br/api/v2/{tipo}/brands/59/models/6280/years/2013-5"
+        for tipo in ("cars", "motorcycles", "trucks")
+    ]
+
+
+def test_chave_opcional_para_consulta_atual_preserva_autenticacao_do_historico(fipe_app, monkeypatch):
+    monkeypatch.setenv("FIPE_CURRENT_TOKEN", "chave-gratuita")
+    monkeypatch.setenv("FIPE_TOKEN", "chave-historica")
+    chamadas = []
+
+    def consultar(url, *, timeout, headers, params=None):
+        chamadas.append((url, headers.get("X-Subscription-Token"), params))
+        return types.SimpleNamespace(status_code=200, json=lambda: {"price": "R$ 29.180,00"})
+
+    monkeypatch.setattr("services.fipe_service.requests.get", consultar)
+    service = FipeService()
+    with fipe_app.app_context():
+        service.consultar_preco("59", "6280", "2013-5")
+        service.consultar_historico_por_codigo_fipe("005345-7", "2013-5")
+        service.consultar_preco_referencia("59", "6280", "2013-5", "278")
+
+    base = "https://fipe.parallelum.com.br/api/v2/cars"
+    assert chamadas == [
+        (f"{base}/brands/59/models/6280/years/2013-5", "chave-gratuita", None),
+        (f"{base}/005345-7/years/2013-5/history", "chave-historica", None),
+        (f"{base}/brands/59/models/6280/years/2013-5", "chave-historica", {"reference": "278"}),
+    ]
 
 
 def test_fipe_plus_carros_chama_mesma_rota_de_preco_da_simular():

@@ -1,13 +1,11 @@
 # Configuração FIPE Online
 
-O token da FIPE deve ser configurado no Render em Environment Variables, com o nome:
+O catálogo e o preço atual usam a API FIPE v2 da Parallelum sem chave por padrão.
 
-FIPE_TOKEN
+- Para ampliar a cota com uma chave gratuita, configure `FIPE_CURRENT_TOKEN` nas variáveis de ambiente do Render.
+- A coleta técnica de histórico usa `FIPE_TOKEN` ou o arquivo persistente `fipe_token.txt`. O histórico estendido está sujeito ao plano do provedor.
 
-Não salvar token real no GitHub.
-
-O app usa a API v2:
-https://fipe.parallelum.com.br/api/v2/cars
+Guarde os tokens no ambiente do servidor.
 
 O contador local de requisições é salvo no Persistent Disk em:
 /var/data/plugve/fipe_cache/requisicoes_fipe.json
