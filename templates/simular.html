@@ -6898,25 +6898,41 @@
       RJ: 0.98, RN: 0.86, RS: 0.88, RO: 0.85, RR: 0.78, SC: 0.78, SP: 0.82, SE: 0.88, TO: 0.83
     };
 
+    function preencherTarifaEnergiaAutomaticaPlugVE(energiaInput, valor) {
+      if (!energiaInput) return;
+      energiaInput.value = formatarNumero5(valor);
+      const modal = document.getElementById("modal_phev_tco");
+      const precoModal = document.getElementById("phev_modal_preco_energia");
+      if (modal?.getAttribute("aria-hidden") === "false" && precoModal && precoModal.dataset.plugveFonteEditada !== "1") {
+        precoModal.value = energiaInput.value;
+        atualizarEstadoModalPhevTCO();
+      }
+    }
+
     function aplicarFallbackEnergiaLocal(uf, motivo) {
       const energiaInput = document.getElementById("energia_input");
       const valor = TARIFA_FALLBACK_JS_UF[String(uf || "").toUpperCase()] || 0.80;
       plugveEnergiaResumoAtual.fonteOficialAplicada = false;
       marcarTarifaEnergiaManualPlugVE(false);
-      if (energiaInput) energiaInput.value = formatarNumero5(valor);
+      preencherTarifaEnergiaAutomaticaPlugVE(energiaInput, valor);
       atualizarCardEnergiaEletricaPlugVE();
-      montarStatusEnergiaPlugVE(`${motivo || "Consulta ANEEL indisponível"}. Estimativa local`, `Fallback ${String(uf || "").toUpperCase()}`, "Estimativa local usada como fallback técnico.");
+      montarStatusEnergiaPlugVE("Estimativa local de energia", String(uf || "").toUpperCase(), "");
+      const status = document.getElementById("status_energia");
+      if (status) status.textContent += `. ${motivo || "Tarifa vigente da ANEEL indisponível. Você pode informar seu preço."}`;
       renderEnergiaBreakdown(0, null);
       setBreakdownDisabled(true);
       atualizarLogosAneelPlugVE();
     }
 
     async function atualizarPrecoEnergiaAutomatico() {
-      const uf = document.getElementById("estado_uf").value;
-      const municipio = document.getElementById("municipio_select").value;
+      const estadoInput = document.getElementById("estado_uf");
+      const municipioInput = document.getElementById("municipio_select");
+      const uf = estadoInput.value;
+      const municipio = municipioInput.value;
       const energiaInput = document.getElementById("energia_input");
       const status = document.getElementById("status_energia");
-      const manual = Boolean(document.getElementById("energia_manual_checkbox")?.checked);
+      const manual = tarifaEnergiaManualPlugVE();
+      const consultaAindaSeAplica = () => estadoInput.value === uf && municipioInput.value === municipio && !tarifaEnergiaManualPlugVE();
 
       if (!energiaInput || !status) return;
       if (!uf || !municipio) return;
@@ -6936,19 +6952,21 @@
         const params = new URLSearchParams({ uf, municipio });
         const resp = await fetch(`/preco_energia?${params.toString()}`);
         const data = await resp.json();
+        if (!consultaAindaSeAplica()) return;
 
-        if (data && data.tarifa_kwh !== null && data.tarifa_kwh !== undefined && !isNaN(Number(data.tarifa_kwh))) {
+        const valor = Number(data?.tarifa_kwh);
+        if (resp.ok && data?.fonte_oficial === true && Number.isFinite(valor) && valor > 0) {
           plugveEnergiaResumoAtual.fonteOficialAplicada = true;
           marcarTarifaEnergiaManualPlugVE(false);
-          energiaInput.value = formatarNumero5(Number(data.tarifa_kwh));
+          preencherTarifaEnergiaAutomaticaPlugVE(energiaInput, valor);
           atualizarCardEnergiaEletricaPlugVE();
 
           const vigenciaEnergia = (data.vigencia_inicio || data.vigencia_fim)
             ? `Vigência: ${data.vigencia_inicio || "?"} até ${data.vigencia_fim || "?"}`
             : "";
-          montarStatusEnergiaPlugVE("Tarifa B1 Residencial", data.distribuidora || "Equatorial GO", vigenciaEnergia);
+          montarStatusEnergiaPlugVE("Tarifa B1 Residencial", data.distribuidora, vigenciaEnergia);
 
-          renderEnergiaBreakdown(Number(data.tarifa_kwh), data.detalhe || null);
+          renderEnergiaBreakdown(valor, data.detalhe || null);
           atualizarLogosAneelPlugVE();
 
         } else {
@@ -6957,7 +6975,7 @@
 
       } catch (e) {
         console.error("Erro ao buscar tarifa da energia:", e);
-        aplicarFallbackEnergiaLocal(uf, "Erro ao consultar a ANEEL");
+        if (consultaAindaSeAplica()) aplicarFallbackEnergiaLocal(uf, "Erro ao consultar a ANEEL. Você pode informar seu preço.");
       }
     }
 

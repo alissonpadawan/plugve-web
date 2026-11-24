@@ -35,6 +35,7 @@ def preco_energia():
             "vigencia_inicio": None,
             "vigencia_fim": None,
             "detalhe": None,
+            "fonte_oficial": False,
             "mensagem": "UF e município são obrigatórios.",
         }), 400
     try:
@@ -52,5 +53,6 @@ def preco_energia():
                 "base_tarifaria": "Estimativa local",
                 "detalhe_aneel": "Fallback usado porque houve erro na consulta automática",
             },
-            "mensagem": f"Tarifa preenchida por estimativa local para {uf}, pois a consulta automática falhou. Ajuste manualmente se necessário.",
+            "fonte_oficial": False,
+            "mensagem": "Tarifa vigente da ANEEL indisponível. Você pode informar seu preço.",
         }), 200

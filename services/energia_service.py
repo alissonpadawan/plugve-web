@@ -4,8 +4,10 @@ from datetime import date, datetime
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Optional
+from zoneinfo import ZoneInfo
 
 import json
+import math
 import os
 import threading
 import time
@@ -21,6 +23,14 @@ CAMINHO_MUNICIPIOS = BASE_DIR / "data" / "municipios.xlsx"
 
 ANEEL_DATASTORE_URL = "https://dadosabertos.aneel.gov.br/api/3/action/datastore_search"
 ANEEL_RESOURCE_ID = "fcf2906c-7c32-4b9b-a637-054e7a5234f4"
+ANEEL_FILTROS_B1 = {
+    "DscSubGrupo": "B1",
+    "DscClasse": "Residencial",
+    "DscModalidadeTarifaria": "Convencional",
+    "DscSubClasse": "Residencial",
+    "DscBaseTarifaria": "Tarifa de Aplicação",
+    "DscDetalhe": "Não se aplica",
+}
 
 
 def _env_float(nome: str, padrao: float, minimo: float, maximo: float) -> float:
@@ -113,7 +123,7 @@ def _salvar_cache_aneel() -> None:
             print("[ANEEL] Não foi possível salvar o cache persistente:", exc)
 
 
-def _obter_cache_aneel(sig: str, *, permitir_expirado: bool) -> Optional[dict[str, Any]]:
+def _obter_cache_aneel(sig: str, hoje: date, *, permitir_antigo: bool) -> Optional[dict[str, Any]]:
     _carregar_cache_aneel()
     chave = _normalizar(sig)
     with _ANEEL_CACHE_LOCK:
@@ -128,13 +138,19 @@ def _obter_cache_aneel(sig: str, *, permitir_expirado: bool) -> Optional[dict[st
             idade = max(0.0, time.time() - float(salvo_em))
         except (TypeError, ValueError):
             return None
-        limite = ANEEL_STALE_MAX_AGE_SECONDS if permitir_expirado else ANEEL_CACHE_TTL_SECONDS
+        limite = ANEEL_STALE_MAX_AGE_SECONDS if permitir_antigo else ANEEL_CACHE_TTL_SECONDS
         if idade > limite:
             return None
-        # Aceita o cache criado pelo pacote 06, pois ele já guarda somente
-        # TUSD, TE, tarifa-base e vigência oficiais, nunca os tributos da UF.
         obrigatorios = {"tarifa_base_kwh", "tusd_kwh", "te_kwh", "sigagente"}
         if not obrigatorios.issubset(dados):
+            return None
+        inicio = _parse_data_aneel(dados.get("inicio_vig"))
+        fim = _parse_data_aneel(dados.get("fim_vig"))
+        if not _tarifa_vigente_em(inicio, fim, hoje):
+            return None
+        if _normalizar(dados.get("base_tarifaria")) != _normalizar(ANEEL_FILTROS_B1["DscBaseTarifaria"]):
+            return None
+        if _normalizar(dados.get("detalhe")) != _normalizar(ANEEL_FILTROS_B1["DscDetalhe"]):
             return None
         copia = dict(dados)
         copia["_cache_status"] = "stale" if idade > ANEEL_CACHE_TTL_SECONDS else "fresh"
@@ -186,7 +202,7 @@ def _parse_valor_monetario(v: Any) -> float:
         return 0.0
 
 
-def _parse_data_aneel(v: Any):
+def _parse_data_aneel(v: Any) -> date | None:
     if not v:
         return None
     s = str(v).strip()
@@ -198,6 +214,14 @@ def _parse_data_aneel(v: Any):
         return datetime.strptime(s[:10], "%d/%m/%Y").date()
     except Exception:
         return None
+
+
+def _data_referencia_aneel() -> date:
+    return datetime.now(ZoneInfo("America/Sao_Paulo")).date()
+
+
+def _tarifa_vigente_em(inicio: date | None, fim: date | None, hoje: date) -> bool:
+    return inicio is not None and fim is not None and inicio <= hoje <= fim
 
 
 @lru_cache(maxsize=1)
@@ -375,167 +399,98 @@ def sugerir_sigagente_aneel(sig_digitado: str, limit: int = 25) -> list[str]:
     return unicos
 
 
-def _filtrar_registros_aneel(records: list[dict[str, Any]], sig: str) -> list[dict[str, Any]]:
-    def n(valor: Any) -> str:
-        return _normalizar(valor)
-
-    sig_norm = n(sig)
-    saida = []
+def _selecionar_tarifa_vigente(
+    records: list[dict[str, Any]], sig: str, hoje: date,
+) -> dict[str, Any] | None:
+    filtros = {campo: _normalizar(valor) for campo, valor in {**ANEEL_FILTROS_B1, "SigAgente": sig}.items()}
+    candidatos = []
     for rec in records:
-        if n(rec.get("SigAgente")) != sig_norm:
+        if any(_normalizar(rec.get(campo)) != valor for campo, valor in filtros.items()):
             continue
-        if n(rec.get("DscSubGrupo")) != "B1":
+
+        inicio = _parse_data_aneel(rec.get("DatInicioVigencia"))
+        fim = _parse_data_aneel(rec.get("DatFimVigencia"))
+        if not _tarifa_vigente_em(inicio, fim, hoje):
             continue
-        if n(rec.get("DscClasse")) != "RESIDENCIAL":
+
+        unidade = str(rec.get("DscUnidadeTerciaria") or "").strip().upper()
+        tusd = _parse_valor_monetario(rec.get("VlrTUSD"))
+        te = _parse_valor_monetario(rec.get("VlrTE"))
+        total = tusd + te
+        if unidade not in {"MWH", "KWH"} or not math.isfinite(total) or total <= 0:
             continue
-        if n(rec.get("DscModalidadeTarifaria")) != "CONVENCIONAL":
-            continue
-        if n(rec.get("DscSubClasse")) != "RESIDENCIAL":
-            continue
-        saida.append(rec)
-    return saida
+
+        divisor = 1000.0 if unidade == "MWH" else 1.0
+        candidatos.append(((inicio, fim), {
+            "sigagente": rec["SigAgente"],
+            "tarifa_base_kwh": round(total / divisor, 5),
+            "tusd_kwh": round(tusd / divisor, 5),
+            "te_kwh": round(te / divisor, 5),
+            "inicio_vig": str(inicio),
+            "fim_vig": str(fim),
+            "base_tarifaria": rec["DscBaseTarifaria"],
+            "detalhe": rec["DscDetalhe"],
+        }))
+
+    escolhido = max(candidatos, key=lambda item: item[0], default=None)
+    return escolhido[1] if escolhido else None
 
 
-def obter_tarifa_energia_por_distribuidora(nome_distribuidora: str) -> Optional[dict[str, Any]]:
-    """Obtém os componentes oficiais B1 preservando a metodologia da V46.04.
-
-    O cache contém somente dados oficiais da ANEEL (TUSD, TE, tarifa-base e
-    vigência). Os tributos estaduais nunca são persistidos aqui: continuam
-    sendo lidos de municipios.xlsx e aplicados em obter_tarifa_energia().
-    """
-    sig = mapear_para_sigagente(nome_distribuidora)
-    if not sig:
-        return None
-
-    cache_recente = _obter_cache_aneel(sig, permitir_expirado=False)
-    if cache_recente is not None:
-        print(f"[ANEEL] Componentes oficiais recentes usados do cache para {sig}.")
-        return cache_recente
-
-    cache_anterior = _obter_cache_aneel(sig, permitir_expirado=True)
-    if _aneel_em_cooldown(sig):
-        if cache_anterior is not None:
-            print(f"[ANEEL] Cooldown ativo; componentes oficiais anteriores usados para {sig}.")
-        else:
-            print(f"[ANEEL] Cooldown ativo e sem componentes oficiais para {sig}.")
-        return cache_anterior
-
+def _buscar_tarifa_aneel(sig: str, sig_alternativo: str, hoje: date) -> dict[str, Any] | None:
     deadline = time.monotonic() + ANEEL_TOTAL_BUDGET_SECONDS
     payload = {
         "resource_id": ANEEL_RESOURCE_ID,
         "limit": 500,
-        "filters": {
-            "SigAgente": sig,
-            "DscSubGrupo": "B1",
-            "DscClasse": "Residencial",
-            "DscModalidadeTarifaria": "Convencional",
-            "DscSubClasse": "Residencial",
-        },
+        "sort": "DatInicioVigencia desc",
     }
 
-    data = _aneel_datastore_search(payload, deadline=deadline)
+    for nome in dict.fromkeys((sig, sig_alternativo)):
+        consulta = {**payload, "filters": {**ANEEL_FILTROS_B1, "SigAgente": nome}}
+        data = _aneel_datastore_search(consulta, deadline=deadline)
+        if data is None:
+            return None
+        tarifa = _selecionar_tarifa_vigente(data.get("result", {}).get("records", []), nome, hoje)
+        if tarifa is not None:
+            return tarifa
+
+    # A busca textual é limitada à classe B1 e continua exigindo a mesma distribuidora.
+    if (deadline - time.monotonic()) <= 0.75:
+        return None
+    consulta = {**payload, "filters": ANEEL_FILTROS_B1, "q": sig_alternativo}
+    data = _aneel_datastore_search(consulta, deadline=deadline)
     records = data.get("result", {}).get("records", []) if data else []
+    return _selecionar_tarifa_vigente(records, sig_alternativo, hoje)
 
-    # Fallback textual original, ainda limitado pelo mesmo orçamento total.
-    if data is not None and not records and (deadline - time.monotonic()) > 0.75:
-        payload_q = {
-            "resource_id": ANEEL_RESOURCE_ID,
-            "limit": 5000,
-            "q": sig,
-        }
-        data_q = _aneel_datastore_search(payload_q, deadline=deadline)
-        records_q = data_q.get("result", {}).get("records", []) if data_q else []
-        records = _filtrar_registros_aneel(records_q, sig)
 
-    if not records:
-        _registrar_falha_aneel(sig)
-        if cache_anterior is not None:
-            print(f"[ANEEL] Consulta indisponível; componentes oficiais anteriores usados para {sig}.")
-            return cache_anterior
-        print(f"[ANEEL] Sem componentes oficiais disponíveis para {sig}.")
+def obter_tarifa_energia_por_distribuidora(nome_distribuidora: str) -> Optional[dict[str, Any]]:
+    """Obtém os componentes da tarifa B1 residencial convencional em vigor."""
+    sig = (nome_distribuidora or "").strip()
+    if not sig:
         return None
 
-    def n(valor: Any) -> str:
-        return _normalizar(valor)
+    hoje = _data_referencia_aneel()
+    # A chave anterior preserva a leitura dos registros válidos já gravados no Render.
+    sig_alternativo = mapear_para_sigagente(sig)
+    cache_recente = _obter_cache_aneel(sig_alternativo, hoje, permitir_antigo=False)
+    if cache_recente is not None:
+        print(f"[ANEEL] Tarifa vigente em cache recente para {sig}.")
+        return cache_recente
 
-    # A partir daqui, seleção literal da V46.04.
-    bases_preferidas = {"TARIFA DE APLICACAO", "BASE ECONOMICA"}
-    filtrados = [r for r in records if n(r.get("DscBaseTarifaria")) in bases_preferidas]
-    if not filtrados:
-        filtrados = records
-
-    def prioridade_base(r):
-        base = n(r.get("DscBaseTarifaria"))
-        if base == "TARIFA DE APLICACAO":
-            return 0
-        if base == "BASE ECONOMICA":
-            return 1
-        return 2
-
-    def prioridade_detalhe(r):
-        det = n(r.get("DscDetalhe"))
-        return 0 if det == "NAO SE APLICA" else 1
-
-    hoje = date.today()
-    candidatos = []
-    for rec in filtrados:
-        unidade = str(rec.get("DscUnidadeTerciaria") or "").strip().upper()
-        tusd = _parse_valor_monetario(rec.get("VlrTUSD"))
-        te = _parse_valor_monetario(rec.get("VlrTE"))
-        if tusd <= 0 and te <= 0:
-            continue
-        if unidade not in {"MWH", "KWH"}:
-            continue
-
-        di = _parse_data_aneel(rec.get("DatInicioVigencia"))
-        df = _parse_data_aneel(rec.get("DatFimVigencia"))
-        vigente = (di <= hoje <= df) if di and df else ((di <= hoje) if di and not df else False)
-        total = tusd + te
-        candidatos.append((not vigente, prioridade_base(rec), prioridade_detalhe(rec), -total, rec))
-
-    if not candidatos:
-        _registrar_falha_aneel(sig)
-        print(f"[ANEEL] Registros encontrados para {sig}, mas nenhum candidato válido em kWh/MWh.")
+    cache_anterior = _obter_cache_aneel(sig_alternativo, hoje, permitir_antigo=True)
+    if _aneel_em_cooldown(sig_alternativo):
         return cache_anterior
 
-    candidatos.sort(key=lambda x: (x[0], x[1], x[2], x[3]))
-    rec = candidatos[0][4]
+    resultado = _buscar_tarifa_aneel(sig, sig_alternativo, hoje)
+    if resultado is None:
+        _registrar_falha_aneel(sig_alternativo)
+        print(f"[ANEEL] Nenhuma tarifa vigente retornada para {sig}.")
+        return cache_anterior
 
-    tusd = _parse_valor_monetario(rec.get("VlrTUSD"))
-    te = _parse_valor_monetario(rec.get("VlrTE"))
-    unidade = str(rec.get("DscUnidadeTerciaria") or "").strip().upper()
-    total = tusd + te
-
-    if unidade == "MWH":
-        tarifa_base_kwh = total / 1000.0
-        tusd_kwh = tusd / 1000.0
-        te_kwh = te / 1000.0
-    else:
-        tarifa_base_kwh = total
-        tusd_kwh = tusd
-        te_kwh = te
-
-    inicio_vig = _parse_data_aneel(rec.get("DatInicioVigencia"))
-    fim_vig = _parse_data_aneel(rec.get("DatFimVigencia"))
-
-    print(
-        f"[ANEEL] OK datastore_search SigAgente={sig} Base={rec.get('DscBaseTarifaria')} "
-        f"Detalhe={rec.get('DscDetalhe')} TUSD={tusd} TE={te} unidade={unidade}"
-    )
-
-    resultado = {
-        "sigagente": sig,
-        "tarifa_base_kwh": round(tarifa_base_kwh, 5),
-        "tusd_kwh": round(tusd_kwh, 5),
-        "te_kwh": round(te_kwh, 5),
-        "inicio_vig": str(inicio_vig) if inicio_vig else None,
-        "fim_vig": str(fim_vig) if fim_vig else None,
-        "base_tarifaria": rec.get("DscBaseTarifaria"),
-        "detalhe": rec.get("DscDetalhe"),
-    }
-    _registrar_cache_aneel(sig, resultado)
-    _limpar_falha_aneel(sig)
+    print(f"[ANEEL] Tarifa vigente para {resultado['sigagente']} desde {resultado['inicio_vig']}.")
+    _registrar_cache_aneel(sig_alternativo, resultado)
+    _limpar_falha_aneel(sig_alternativo)
     return resultado
+
 
 def calcular_tarifa_com_impostos(tarifa_base_kwh: float, uf: str) -> dict[str, float]:
     imp = obter_impostos_por_uf(uf)
@@ -566,6 +521,7 @@ def obter_tarifa_energia(uf: str, municipio: str) -> dict[str, Any]:
             "vigencia_inicio": None,
             "vigencia_fim": None,
             "detalhe": None,
+            "fonte_oficial": False,
             "mensagem": "Não achei a distribuidora na tabela local. Ajuste manualmente.",
         }
 
@@ -582,9 +538,8 @@ def obter_tarifa_energia(uf: str, municipio: str) -> dict[str, Any]:
             "detalhe": None,
             "fonte_oficial": False,
             "mensagem": (
-                "A consulta ANEEL não respondeu dentro do limite seguro e ainda não há "
-                "componentes oficiais em cache para esta distribuidora. Ajuste manualmente "
-                "ou tente novamente em instantes."
+                "Tarifa vigente da ANEEL indisponível para esta distribuidora. "
+                "Você pode informar o preço da sua conta ou tentar novamente."
             ),
         }
 

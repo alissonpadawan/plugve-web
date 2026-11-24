@@ -4,6 +4,7 @@ import json
 import tempfile
 import time
 import unittest
+from datetime import date
 from pathlib import Path
 from unittest.mock import patch
 
@@ -27,6 +28,9 @@ class AneelOriginalCalculationOperationalTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
+        data_referencia = patch.object(energia, "_data_referencia_aneel", return_value=date(2026, 11, 24))
+        data_referencia.start()
+        self.addCleanup(data_referencia.stop)
         self.cache_path = Path(self.tmp.name) / "aneel_cache" / "tarifas_b1.json"
         self.old_cache_file = energia.ANEEL_CACHE_FILE
         self.old_budget = energia.ANEEL_TOTAL_BUDGET_SECONDS
@@ -54,7 +58,7 @@ class AneelOriginalCalculationOperationalTests(unittest.TestCase):
     @staticmethod
     def _record():
         return {
-            "SigAgente": "Equatorial GO",
+            "SigAgente": "EQUATORIAL GO",
             "DscSubGrupo": "B1",
             "DscClasse": "Residencial",
             "DscModalidadeTarifaria": "Convencional",
@@ -96,7 +100,103 @@ class AneelOriginalCalculationOperationalTests(unittest.TestCase):
         self.assertEqual(result["detalhe"]["cofins_pct"], 7.6)
         self.assertTrue(result["fonte_oficial"])
         self.assertEqual(post.call_count, 1)
+        self.assertEqual(post.call_args.kwargs["json"]["filters"]["SigAgente"], "EQUATORIAL GO")
         get.assert_not_called()
+
+    def _seed_expired_cache(self):
+        self.cache_path.parent.mkdir(parents=True)
+        self.cache_path.write_text(json.dumps({
+            "schema_version": 2,
+            "tarifas": {"EQUATORIAL GO": {
+                "salvo_em": time.time(),
+                "dados": {
+                    "sigagente": "Equatorial GO",
+                    "tarifa_base_kwh": 0.56175,
+                    "tusd_kwh": 0.26697,
+                    "te_kwh": 0.29478,
+                    "inicio_vig": "2018-10-22",
+                    "fim_vig": "2019-10-21",
+                    "base_tarifaria": "Tarifa de Aplicação",
+                    "detalhe": "Não se aplica",
+                },
+            }},
+        }), encoding="utf-8")
+
+    def test_goiania_replaces_expired_cache_with_current_b1_application_tariff(self):
+        self._seed_expired_cache()
+        atual = {
+            **self._record(),
+            "DatInicioVigencia": "2026-10-22",
+            "DatFimVigencia": "2027-10-21",
+            "VlrTUSD": "617,38",
+            "VlrTE": "337,01",
+        }
+        records = [
+            {**self._record(), "VlrTUSD": "999"},
+            {**atual, "DatInicioVigencia": "2027-10-22", "DatFimVigencia": "2028-10-21"},
+            {**atual, "DscDetalhe": "SCEE", "VlrTE": "40,01"},
+            {**atual, "DscBaseTarifaria": "Base Econômica", "VlrTUSD": "589,66"},
+            {**atual, "DatFimVigencia": None, "VlrTUSD": "999"},
+            {**atual, "DscSubGrupo": "B3", "VlrTUSD": "999"},
+            atual,
+        ]
+        response = _FakeResponse({"success": True, "result": {"records": records}})
+        with patch.object(energia.requests, "post", return_value=response) as post:
+            result = energia.obter_tarifa_energia("GO", "Goiânia")
+            cached = energia.obter_tarifa_energia("GO", "Goiânia")
+
+        self.assertEqual(post.call_count, 1)
+        self.assertEqual(result["tarifa_base_kwh"], 0.95439)
+        self.assertEqual(result["tarifa_kwh"], 1.22401)
+        self.assertEqual(result["vigencia_inicio"], "2026-10-22")
+        self.assertEqual(result["vigencia_fim"], "2027-10-21")
+        self.assertEqual(cached["tarifa_kwh"], 1.22401)
+        self.assertIn("2027-10-21", self.cache_path.read_text(encoding="utf-8"))
+
+    def test_expired_tariff_is_refused_during_outage_and_cooldown(self):
+        self._seed_expired_cache()
+        with patch.object(energia.requests, "post", side_effect=requests.Timeout), patch.object(
+            energia.requests, "get", side_effect=requests.Timeout
+        ) as get:
+            for _ in range(2):
+                result = energia.obter_tarifa_energia("GO", "Goiânia")
+                self.assertFalse(result["fonte_oficial"])
+                self.assertIsNone(result["tarifa_kwh"])
+                self.assertIsNone(result["vigencia_fim"])
+            self.assertEqual(get.call_count, 1)
+
+    def test_name_alias_is_tried_when_spreadsheet_name_has_only_expired_records(self):
+        antigo = {
+            **self._record(),
+            "SigAgente": "NEOENERGIA BRASILIA",
+            "DatInicioVigencia": "2025-10-22",
+            "DatFimVigencia": "2026-10-21",
+        }
+        vigente = {**self._record(), "SigAgente": "Neoenergia Brasília"}
+        responses = [_FakeResponse({"success": True, "result": {"records": [r]}}) for r in (antigo, vigente)]
+        with patch.object(energia.requests, "post", side_effect=responses) as post:
+            result = energia.obter_tarifa_energia_por_distribuidora("NEOENERGIA BRASILIA")
+
+        self.assertEqual(
+            [call.kwargs["json"]["filters"]["SigAgente"] for call in post.call_args_list],
+            ["NEOENERGIA BRASILIA", "Neoenergia Brasília"],
+        )
+        self.assertEqual(result["sigagente"], "Neoenergia Brasília")
+
+    def test_text_search_rejects_other_distributor_and_expired_records(self):
+        antigo = {**self._record(), "DatFimVigencia": "2026-10-21"}
+        outra_distribuidora = {**self._record(), "SigAgente": "EQUATORIAL PA"}
+        responses = [
+            _FakeResponse({"success": True, "result": {"records": records}})
+            for records in ([antigo], [], [antigo, outra_distribuidora])
+        ]
+        with patch.object(energia.requests, "post", side_effect=responses) as post:
+            result = energia.obter_tarifa_energia("GO", "Goiânia")
+
+        self.assertEqual(post.call_args.kwargs["json"]["q"], "Equatorial GO")
+        self.assertFalse(result["fonte_oficial"])
+        self.assertIsNone(result["tarifa_kwh"])
+        self.assertFalse(self.cache_path.exists())
 
     def test_cache_persists_only_official_components_and_reapplies_uf_taxes(self):
         response = _FakeResponse({"success": True, "result": {"records": [self._record()]}})
