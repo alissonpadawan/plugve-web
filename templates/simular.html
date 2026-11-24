@@ -1467,7 +1467,7 @@
                     <span class="plugve-fuel-icon" aria-hidden="true">🔌</span>
                     <div>
                       <strong>Energia elétrica</strong>
-                      <small>Tarifa ANEEL residencial</small>
+                      <small id="subtitulo_energia">Tarifa residencial</small>
                     </div>
                   </div>
                   <div class="plugve-energy-input-wrap" aria-label="Tarifa de energia em reais por kWh">
@@ -1477,8 +1477,8 @@
                         type="text"
                         name="energia"
                         id="energia_input"
-                        value="0,80"
                         inputmode="decimal"
+                        aria-describedby="status_energia"
                         required
                       >
                       <span class="plugve-field-source plugve-source-tooltip plugve-aneel-tooltip hidden" data-plugve-source-for="energia_input" aria-hidden="true">
@@ -1790,7 +1790,7 @@
                 <label for="phev_modal_preco_energia">Preço (R$/kWh)</label>
                 <div class="plugve-money-field plugve-money-field--source">
                   <span class="plugve-money-prefix">R$</span>
-                  <input type="text" id="phev_modal_preco_energia" inputmode="numeric" placeholder="ex: 0,86">
+                  <input type="text" id="phev_modal_preco_energia" inputmode="numeric" placeholder="Informe o preço">
                   <span class="plugve-field-source plugve-source-tooltip plugve-aneel-tooltip hidden" data-plugve-source-for="phev_modal_preco_energia" aria-hidden="true">
                     <button type="button" class="plugve-source-logo plugve-source-logo--aneel plugve-aneel-tooltip-trigger" aria-label="Ver composição da tarifa de energia da ANEEL" aria-expanded="false" title="Ver composição da tarifa de energia">
                       <img src="{{ url_for('static', filename='img/fontes/aneel.png') }}" alt="ANEEL">
@@ -2597,7 +2597,7 @@
     }
 
     const plugveEnergiaResumoAtual = {
-      texto: "Tarifa ANEEL",
+      texto: "Tarifa residencial",
       distribuidora: "",
       vigencia: "",
       tarifaTotal: 0,
@@ -2625,6 +2625,11 @@
 
     function atualizarLogosAneelPlugVE() {
       const oficial = plugveEnergiaResumoAtual.fonteOficialAplicada === true && !tarifaEnergiaManualPlugVE();
+      const subtitulo = document.getElementById("subtitulo_energia");
+      if (subtitulo) {
+        if (oficial) subtitulo.textContent = "Tarifa ANEEL residencial";
+        else subtitulo.textContent = tarifaEnergiaManualPlugVE() ? "Preço informado" : plugveEnergiaResumoAtual.texto;
+      }
       definirVisibilidadeFonteCampoPlugVE("energia_input", oficial);
       const modal = document.getElementById("phev_modal_preco_energia");
       const modalManual = modal?.dataset.plugveFonteEditada === "1";
@@ -3370,6 +3375,9 @@
     async function restaurarEstadoFormularioTCO(forcarFipe = false) {
       const estado = estadoCombinadoFormularioTCO();
       aplicarEstadoFormularioTCO(estado);
+      if (!forcarFipe && !window.PLUGVE_TCO_TEM_RESULTADO && localizacaoValida()) {
+        atualizarPrecoEnergiaAutomatico();
+      }
       ["ve", "icev", "atual"].forEach(prefixo => {
         const manual = campoSeguroManualPorPrefixo(prefixo)?.value === "1";
         const seguro = campoSeguroPorPrefixo(prefixo);
@@ -6791,6 +6799,7 @@
       const phevEditando = !!phevInline?.classList.contains("plugve-edit-modal");
 
       if (energia) energia.classList.toggle("hidden", !veSelecionado || phev);
+      setRequired(["energia_input"], veSelecionado && !phev);
       if (phevCard) phevCard.classList.toggle("hidden", !veSelecionado || !phev);
       if (phevInline && !phevEditando) {
         phevInline.classList.toggle("hidden", !veSelecionado || !phev || phevConfigurado);
@@ -6892,12 +6901,6 @@
     }
 
 
-    const TARIFA_FALLBACK_JS_UF = {
-      AC: 0.95, AL: 0.88, AP: 0.78, AM: 0.88, BA: 0.91, CE: 0.86, DF: 0.84, ES: 0.82, GO: 0.86,
-      MA: 0.83, MT: 0.89, MS: 0.84, MG: 0.90, PA: 0.93, PB: 0.84, PR: 0.82, PE: 0.87, PI: 0.86,
-      RJ: 0.98, RN: 0.86, RS: 0.88, RO: 0.85, RR: 0.78, SC: 0.78, SP: 0.82, SE: 0.88, TO: 0.83
-    };
-
     function preencherTarifaEnergiaAutomaticaPlugVE(energiaInput, valor) {
       if (!energiaInput) return;
       energiaInput.value = formatarNumero5(valor);
@@ -6909,22 +6912,19 @@
       }
     }
 
-    function aplicarFallbackEnergiaLocal(uf, motivo) {
-      const energiaInput = document.getElementById("energia_input");
-      const valor = TARIFA_FALLBACK_JS_UF[String(uf || "").toUpperCase()] || 0.80;
+    function sinalizarTarifaEnergiaIndisponivelPlugVE(energiaInput, status, mensagem) {
       plugveEnergiaResumoAtual.fonteOficialAplicada = false;
-      marcarTarifaEnergiaManualPlugVE(false);
-      preencherTarifaEnergiaAutomaticaPlugVE(energiaInput, valor);
-      atualizarCardEnergiaEletricaPlugVE();
-      montarStatusEnergiaPlugVE("Estimativa local de energia", String(uf || "").toUpperCase(), "");
-      const status = document.getElementById("status_energia");
-      if (status) status.textContent += `. ${motivo || "Tarifa vigente da ANEEL indisponível. Você pode informar seu preço."}`;
+      preencherTarifaEnergiaAutomaticaPlugVE(energiaInput, null);
+      montarStatusEnergiaPlugVE("Informe o preço da sua conta", "", "");
+      if (mensagem) status.textContent = mensagem;
       renderEnergiaBreakdown(0, null);
       setBreakdownDisabled(true);
-      atualizarLogosAneelPlugVE();
     }
 
+    let sequenciaConsultaEnergiaPlugVE = 0;
+
     async function atualizarPrecoEnergiaAutomatico() {
+      const sequencia = ++sequenciaConsultaEnergiaPlugVE;
       const estadoInput = document.getElementById("estado_uf");
       const municipioInput = document.getElementById("municipio_select");
       const uf = estadoInput.value;
@@ -6932,7 +6932,8 @@
       const energiaInput = document.getElementById("energia_input");
       const status = document.getElementById("status_energia");
       const manual = tarifaEnergiaManualPlugVE();
-      const consultaAindaSeAplica = () => estadoInput.value === uf && municipioInput.value === municipio && !tarifaEnergiaManualPlugVE();
+      const consultaAindaSeAplica = () => sequencia === sequenciaConsultaEnergiaPlugVE
+        && estadoInput.value === uf && municipioInput.value === municipio && !tarifaEnergiaManualPlugVE();
 
       if (!energiaInput || !status) return;
       if (!uf || !municipio) return;
@@ -6945,8 +6946,12 @@
         return;
       }
 
+      plugveEnergiaResumoAtual.fonteOficialAplicada = false;
+      preencherTarifaEnergiaAutomaticaPlugVE(energiaInput, null);
+      montarStatusEnergiaPlugVE("Consultando tarifa residencial", "", "");
       status.textContent = "Buscando tarifa de energia na ANEEL (com impostos)...";
-      setBreakdownDisabled(false);
+      renderEnergiaBreakdown(0, null);
+      setBreakdownDisabled(true);
 
       try {
         const params = new URLSearchParams({ uf, municipio });
@@ -6955,7 +6960,7 @@
         if (!consultaAindaSeAplica()) return;
 
         const valor = Number(data?.tarifa_kwh);
-        if (resp.ok && data?.fonte_oficial === true && Number.isFinite(valor) && valor > 0) {
+        if (resp.ok && data?.fonte_oficial === true && data.detalhe && Number.isFinite(valor) && valor > 0) {
           plugveEnergiaResumoAtual.fonteOficialAplicada = true;
           marcarTarifaEnergiaManualPlugVE(false);
           preencherTarifaEnergiaAutomaticaPlugVE(energiaInput, valor);
@@ -6966,16 +6971,17 @@
             : "";
           montarStatusEnergiaPlugVE("Tarifa B1 Residencial", data.distribuidora, vigenciaEnergia);
 
-          renderEnergiaBreakdown(valor, data.detalhe || null);
+          renderEnergiaBreakdown(valor, data.detalhe);
+          setBreakdownDisabled(false);
           atualizarLogosAneelPlugVE();
 
         } else {
-          aplicarFallbackEnergiaLocal(uf, data?.mensagem || "Não foi possível obter a tarifa automática pela ANEEL");
+          sinalizarTarifaEnergiaIndisponivelPlugVE(energiaInput, status, data?.mensagem);
         }
 
       } catch (e) {
         console.error("Erro ao buscar tarifa da energia:", e);
-        if (consultaAindaSeAplica()) aplicarFallbackEnergiaLocal(uf, "Erro ao consultar a ANEEL. Você pode informar seu preço.");
+        if (consultaAindaSeAplica()) sinalizarTarifaEnergiaIndisponivelPlugVE(energiaInput, status);
       }
     }
 
@@ -8209,6 +8215,14 @@
           if (!detalhesLiberadosPlugVE) {
             ev.preventDefault();
             alert("Selecione os veículos pela FIPE antes de simular. Os campos complementares serão liberados em seguida.");
+            return;
+          }
+          const participacaoEletrica = Number(document.getElementById("phev_percent_eletrico")?.value || 0);
+          const precoEnergia = numeroBRParaFloat(document.getElementById("energia_input")?.value || 0);
+          if (ehPhevSelecionadoTCO() && participacaoEletrica > 0 && precoEnergia <= 0) {
+            ev.preventDefault();
+            abrirModalPhevTCO();
+            document.getElementById("phev_modal_preco_energia")?.focus();
             return;
           }
           capturarEstadoFormularioTCO();

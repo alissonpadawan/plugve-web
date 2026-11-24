@@ -3,7 +3,7 @@ from __future__ import annotations
 from flask import Blueprint, jsonify, request
 
 from services.combustivel_service import obter_precos_combustiveis
-from services.energia_service import obter_tarifa_energia, TARIFA_FALLBACK_UF
+from services.energia_service import obter_tarifa_energia
 
 utility_bp = Blueprint("utility", __name__)
 
@@ -42,17 +42,13 @@ def preco_energia():
         return jsonify(obter_tarifa_energia(uf, municipio))
     except Exception as exc:
         print("[ENERGIA] Erro no endpoint /preco_energia:", exc)
-        tarifa = TARIFA_FALLBACK_UF.get(uf, 0.80)
         return jsonify({
-            "tarifa_kwh": round(float(tarifa), 5),
-            "tarifa_base_kwh": round(float(tarifa), 5),
+            "tarifa_kwh": None,
+            "tarifa_base_kwh": None,
             "distribuidora": None,
             "vigencia_inicio": None,
             "vigencia_fim": None,
-            "detalhe": {
-                "base_tarifaria": "Estimativa local",
-                "detalhe_aneel": "Fallback usado porque houve erro na consulta automática",
-            },
+            "detalhe": None,
             "fonte_oficial": False,
             "mensagem": "Tarifa vigente da ANEEL indisponível. Você pode informar seu preço.",
-        }), 200
+        }), 503

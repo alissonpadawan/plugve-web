@@ -23,6 +23,7 @@ CAMINHO_MUNICIPIOS = BASE_DIR / "data" / "municipios.xlsx"
 
 ANEEL_DATASTORE_URL = "https://dadosabertos.aneel.gov.br/api/3/action/datastore_search"
 ANEEL_RESOURCE_ID = "fcf2906c-7c32-4b9b-a637-054e7a5234f4"
+ANEEL_TARIFAS_PUBLICADAS_FILE = BASE_DIR / "data" / "aneel_tarifas_b1.json"
 ANEEL_FILTROS_B1 = {
     "DscSubGrupo": "B1",
     "DscClasse": "Residencial",
@@ -63,6 +64,10 @@ _ANEEL_CACHE_MEMORIA: dict[str, Any] = {}
 _ANEEL_FALHA_ATE: dict[str, float] = {}
 
 MAPA_SIGAGENTE_EXATO = {
+    "AME": "Âmbar Amazonas",
+    "BOA VISTA": "Âmbar Roraima",
+    "ENEL SP": "ELETROPAULO",
+    "FORCEL": "PACTO ENERGIA PR",
     "CPFL SANTA CRUZ": "CPFL Santa Cruz",
     "NEOENERGIA BRASILIA": "Neoenergia Brasília",
     "NEOENERGIA PE": "Neoenergia PE",
@@ -72,18 +77,6 @@ MAPA_SIGAGENTE_EXATO = {
     "EQUATORIAL GOIAS": "Equatorial GO",
     "EQUATORIAL GOIÁS": "Equatorial GO",
 }
-
-# Fallback controlado para não deixar a calculadora travar quando a API da ANEEL falhar.
-# Estes valores são apenas estimativas iniciais por UF, usados somente se a consulta online não retornar.
-TARIFA_FALLBACK_UF = {
-    "AC": 0.95, "AL": 0.88, "AP": 0.78, "AM": 0.88, "BA": 0.91,
-    "CE": 0.86, "DF": 0.84, "ES": 0.82, "GO": 0.86, "MA": 0.83,
-    "MT": 0.89, "MS": 0.84, "MG": 0.90, "PA": 0.93, "PB": 0.84,
-    "PR": 0.82, "PE": 0.87, "PI": 0.86, "RJ": 0.98, "RN": 0.86,
-    "RS": 0.88, "RO": 0.85, "RR": 0.78, "SC": 0.78, "SP": 0.82,
-    "SE": 0.88, "TO": 0.83,
-}
-
 
 def _normalizar(s: Any) -> str:
     return normalizar_texto(s).upper()
@@ -436,6 +429,28 @@ def _selecionar_tarifa_vigente(
     return escolhido[1] if escolhido else None
 
 
+@lru_cache(maxsize=1)
+def _carregar_tarifas_publicadas_aneel() -> list[dict[str, Any]]:
+    try:
+        with ANEEL_TARIFAS_PUBLICADAS_FILE.open(encoding="utf-8") as arquivo:
+            dados = json.load(arquivo)
+    except (OSError, ValueError) as exc:
+        print(f"[ANEEL] Base tarifária publicada indisponível: {exc}")
+        return []
+    registros = dados.get("registros") if isinstance(dados, dict) else None
+    return registros if isinstance(registros, list) else []
+
+
+def _buscar_tarifa_publicada(sig: str, sig_alternativo: str, hoje: date) -> dict[str, Any] | None:
+    registros = _carregar_tarifas_publicadas_aneel()
+    tarifa = _selecionar_tarifa_vigente(registros, sig, hoje)
+    if tarifa is None and _normalizar(sig) != _normalizar(sig_alternativo):
+        tarifa = _selecionar_tarifa_vigente(registros, sig_alternativo, hoje)
+    if tarifa is not None:
+        tarifa["_cache_status"] = "publicada"
+    return tarifa
+
+
 def _buscar_tarifa_aneel(sig: str, sig_alternativo: str, hoje: date) -> dict[str, Any] | None:
     deadline = time.monotonic() + ANEEL_TOTAL_BUDGET_SECONDS
     payload = {
@@ -476,20 +491,23 @@ def obter_tarifa_energia_por_distribuidora(nome_distribuidora: str) -> Optional[
         print(f"[ANEEL] Tarifa vigente em cache recente para {sig}.")
         return cache_recente
 
-    cache_anterior = _obter_cache_aneel(sig_alternativo, hoje, permitir_antigo=True)
-    if _aneel_em_cooldown(sig_alternativo):
-        return cache_anterior
-
-    resultado = _buscar_tarifa_aneel(sig, sig_alternativo, hoje)
-    if resultado is None:
+    if not _aneel_em_cooldown(sig_alternativo):
+        resultado = _buscar_tarifa_aneel(sig, sig_alternativo, hoje)
+        if resultado is not None:
+            print(f"[ANEEL] Tarifa vigente para {resultado['sigagente']} desde {resultado['inicio_vig']}.")
+            _registrar_cache_aneel(sig_alternativo, resultado)
+            _limpar_falha_aneel(sig_alternativo)
+            return resultado
         _registrar_falha_aneel(sig_alternativo)
-        print(f"[ANEEL] Nenhuma tarifa vigente retornada para {sig}.")
-        return cache_anterior
+        print(f"[ANEEL] Nenhuma tarifa vigente retornada pela consulta online para {sig}.")
 
-    print(f"[ANEEL] Tarifa vigente para {resultado['sigagente']} desde {resultado['inicio_vig']}.")
-    _registrar_cache_aneel(sig_alternativo, resultado)
-    _limpar_falha_aneel(sig_alternativo)
-    return resultado
+    cache_anterior = _obter_cache_aneel(sig_alternativo, hoje, permitir_antigo=True)
+    publicada = _buscar_tarifa_publicada(sig, sig_alternativo, hoje)
+    return max(
+        (tarifa for tarifa in (cache_anterior, publicada) if tarifa is not None),
+        key=lambda tarifa: tarifa["inicio_vig"],
+        default=None,
+    )
 
 
 def calcular_tarifa_com_impostos(tarifa_base_kwh: float, uf: str) -> dict[str, float]:
@@ -527,8 +545,6 @@ def obter_tarifa_energia(uf: str, municipio: str) -> dict[str, Any]:
 
     dados_aneel = obter_tarifa_energia_por_distribuidora(dist)
     if dados_aneel is None:
-        # Não devolver um número fixo como se fosse tarifa oficial. O frontend
-        # pode oferecer uma estimativa claramente identificada, sem selo ANEEL.
         return {
             "tarifa_kwh": None,
             "tarifa_base_kwh": None,
@@ -560,7 +576,12 @@ def obter_tarifa_energia(uf: str, municipio: str) -> dict[str, Any]:
         "detalhe_aneel": dados_aneel.get("detalhe"),
     }
     cache_status = dados_aneel.get("_cache_status")
-    if cache_status == "stale":
+    if cache_status == "publicada":
+        mensagem = (
+            f"Tarifa vigente publicada pela ANEEL para {dist}, com impostos de {uf} "
+            f"recalculados pela planilha. Vigência: {dados_aneel['inicio_vig']} até {dados_aneel['fim_vig']}."
+        )
+    elif cache_status == "stale":
         mensagem = (
             f"Últimos componentes oficiais ANEEL disponíveis para {dist}, com impostos de {uf} "
             f"recalculados pela planilha. Vigência: {dados_aneel['inicio_vig']} até {dados_aneel['fim_vig']}."

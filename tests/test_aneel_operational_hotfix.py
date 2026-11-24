@@ -32,6 +32,10 @@ class AneelOriginalCalculationOperationalTests(unittest.TestCase):
         data_referencia.start()
         self.addCleanup(data_referencia.stop)
         self.cache_path = Path(self.tmp.name) / "aneel_cache" / "tarifas_b1.json"
+        self.publicadas_path = Path(self.tmp.name) / "aneel_tarifas_b1.json"
+        arquivo_publicado = patch.object(energia, "ANEEL_TARIFAS_PUBLICADAS_FILE", self.publicadas_path)
+        arquivo_publicado.start()
+        self.addCleanup(arquivo_publicado.stop)
         self.old_cache_file = energia.ANEEL_CACHE_FILE
         self.old_budget = energia.ANEEL_TOTAL_BUDGET_SECONDS
         self.old_cooldown = energia.ANEEL_FAILURE_COOLDOWN_SECONDS
@@ -54,6 +58,7 @@ class AneelOriginalCalculationOperationalTests(unittest.TestCase):
             energia._ANEEL_FALHA_ATE = {}
         energia.carregar_df_municipios.cache_clear()
         energia.carregar_impostos_uf.cache_clear()
+        energia._carregar_tarifas_publicadas_aneel.cache_clear()
 
     @staticmethod
     def _record():
@@ -164,6 +169,55 @@ class AneelOriginalCalculationOperationalTests(unittest.TestCase):
                 self.assertIsNone(result["tarifa_kwh"])
                 self.assertIsNone(result["vigencia_fim"])
             self.assertEqual(get.call_count, 1)
+
+    def test_official_published_tariff_preserves_tax_breakdown_during_outage(self):
+        self._seed_expired_cache()
+        vigente = {
+            **self._record(),
+            "DatInicioVigencia": "2026-10-22",
+            "DatFimVigencia": "2027-10-21",
+            "VlrTUSD": "617,38",
+            "VlrTE": "337,01",
+        }
+        self.publicadas_path.write_text(json.dumps({"registros": [vigente]}), encoding="utf-8")
+
+        with patch.object(energia, "_aneel_datastore_search", return_value=None) as search:
+            result = energia.obter_tarifa_energia("GO", "Goiânia")
+            self.assertEqual(energia.obter_tarifa_energia("GO", "Goiânia"), result)
+            search.assert_called_once()
+
+        self.assertTrue(result["fonte_oficial"])
+        self.assertEqual(result["tarifa_base_kwh"], 0.95439)
+        self.assertEqual(result["tarifa_kwh"], 1.22401)
+        self.assertEqual(result["vigencia_inicio"], "2026-10-22")
+        self.assertEqual(result["vigencia_fim"], "2027-10-21")
+        self.assertIn("publicada pela ANEEL", result["mensagem"])
+        self.assertEqual(
+            {key: result["detalhe"][key] for key in ("icms_kwh", "pis_kwh", "cofins_kwh")},
+            {"icms_kwh": 0.18133, "pis_kwh": 0.01575, "cofins_kwh": 0.07253},
+        )
+
+    def test_expired_published_tariff_does_not_produce_a_price(self):
+        vencida = {**self._record(), "DatFimVigencia": "2026-10-21"}
+        self.publicadas_path.write_text(json.dumps({"registros": [vencida]}), encoding="utf-8")
+
+        with patch.object(energia, "_aneel_datastore_search", return_value=None):
+            result = energia.obter_tarifa_energia("GO", "Goiânia")
+
+        self.assertIsNone(result["tarifa_kwh"])
+        self.assertIsNone(result["detalhe"])
+        self.assertFalse(result["fonte_oficial"])
+
+    def test_live_tariff_takes_priority_over_published_tariff(self):
+        publicada = {**self._record(), "VlrTUSD": "100"}
+        self.publicadas_path.write_text(json.dumps({"registros": [publicada]}), encoding="utf-8")
+        response = _FakeResponse({"success": True, "result": {"records": [self._record()]}})
+
+        with patch.object(energia.requests, "post", return_value=response):
+            result = energia.obter_tarifa_energia("GO", "Goiânia")
+
+        self.assertEqual(result["tarifa_kwh"], 1.14375)
+        self.assertTrue(self.cache_path.exists())
 
     def test_name_alias_is_tried_when_spreadsheet_name_has_only_expired_records(self):
         antigo = {
